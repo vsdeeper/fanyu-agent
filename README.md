@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Agent
 
-## Getting Started
+基于 **Next.js App Router + TypeScript + Vercel AI SDK + @ant-design/x** 的 AI 对话前端脚手架。样式使用 CSS Modules 与 Ant Design。
 
-First, run the development server:
+## 技术栈
+
+- [Next.js](https://nextjs.org/) 16（App Router）
+- [Vercel AI SDK](https://ai-sdk.dev/)（`ai` / `@ai-sdk/react` / `@ai-sdk/openai`）
+- [@ant-design/x](https://x.ant.design/) + [Ant Design](https://ant.design/)
+- TypeScript、ESLint、Prettier、Husky、Commitlint
+
+## 环境要求
+
+- Node.js 22+
+- pnpm
+
+## 快速开始
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+在 `.env.local` 中填入 OpenAI API Key：
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+OPENAI_API_KEY=sk-xxxxxxxx
+# 可选：OpenAI 兼容接口
+# OPENAI_BASE_URL=https://api.openai.com/v1
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+启动开发服务：
 
-## Learn More
+```bash
+pnpm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+浏览器打开 [http://localhost:3000](http://localhost:3000)。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 常用命令
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| 命令              | 说明            |
+| ----------------- | --------------- |
+| `pnpm run dev`    | 启动开发服务器  |
+| `pnpm run build`  | 生产构建        |
+| `pnpm run start`  | 启动生产服务    |
+| `pnpm run lint`   | ESLint 检查     |
+| `pnpm run format` | Prettier 格式化 |
 
-## Deploy on Vercel
+## 目录结构
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/
+  app/
+    api/chat/route.ts   # 流式对话 API（streamText）
+    layout.tsx          # AntdRegistry + Providers
+    page.tsx            # 首页
+  components/
+    Providers.tsx       # ConfigProvider + XProvider
+    Chat.tsx            # 对话 UI（useChat + Bubble / Sender）
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 提交规范
+
+采用 [Conventional Commits](https://www.conventionalcommits.org/)，description 使用中文简体：
+
+```text
+feat(chat): 新增流式对话与停止生成
+fix(api): 修复消息转换失败导致的 500
+docs(readme): 更新本地启动说明
+```
+
+更多协作约定见 [AGENTS.md](./AGENTS.md)。
+
+## 相关文档
+
+- [Next.js 文档](https://nextjs.org/docs)
+- [Vercel AI SDK](https://ai-sdk.dev/docs)
+- [Ant Design X](https://x.ant.design/docs/react/introduce)
+- [Vercel 部署指南](https://nextjs.org/docs/app/building-your-application/deploying)

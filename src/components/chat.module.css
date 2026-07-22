@@ -1,0 +1,33 @@
+.chat {
+  display: flex;
+  flex-direction: column;
+  width: min(880px, 100%);
+  height: min(720px, 100%);
+  margin: auto;
+  padding: 16px;
+  gap: 12px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.messages {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.sender {
+  flex-shrink: 0;
+}
+
+.error {
+  display: block;
+}
