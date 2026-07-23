@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { type ReactNode, useMemo, useRef, useState } from 'react';
 import { Sender, Think, Welcome } from '@ant-design/x';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
@@ -18,6 +18,29 @@ function getPartsText(
     .filter((part) => part.type === type && part.text)
     .map((part) => part.text ?? '')
     .join('');
+}
+
+function ReasoningThink({ thinking, children }: { thinking: boolean; children: ReactNode }) {
+  const [expanded, setExpanded] = useState(thinking);
+  const [prevThinking, setPrevThinking] = useState(thinking);
+
+  if (thinking !== prevThinking) {
+    setPrevThinking(thinking);
+    setExpanded(thinking);
+  }
+
+  return (
+    <Think
+      className={styles.think}
+      title={thinking ? '思考中' : '思考过程'}
+      loading={thinking}
+      blink={thinking}
+      expanded={expanded}
+      onExpand={setExpanded}
+    >
+      {children}
+    </Think>
+  );
 }
 
 const bubbleRole = {
@@ -45,17 +68,7 @@ export default function Chat() {
           role: isAi ? ('ai' as const) : ('user' as const),
           content: isAi ? (
             <div className={styles.bubbleContent}>
-              {reasoning ? (
-                <Think
-                  className={styles.think}
-                  title={thinking ? '思考中' : '思考过程'}
-                  loading={thinking}
-                  blink={thinking}
-                  defaultExpanded={thinking}
-                >
-                  {reasoning}
-                </Think>
-              ) : null}
+              {reasoning ? <ReasoningThink thinking={thinking}>{reasoning}</ReasoningThink> : null}
               {text ? <div>{text}</div> : null}
             </div>
           ) : (
