@@ -60,3 +60,13 @@
   display: block;
   padding: 0 16px;
 }
+
+.bubbleContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.think {
+  margin-bottom: 0;
+}

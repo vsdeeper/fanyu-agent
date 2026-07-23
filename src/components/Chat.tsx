@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { Sender, Welcome } from '@ant-design/x';
+import { Sender, Think, Welcome } from '@ant-design/x';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
 import { useChat } from '@ai-sdk/react';
@@ -9,10 +9,13 @@ import { CommentOutlined, DownOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import styles from './chat.module.css';
 
-function getTextFromMessage(message: { parts?: Array<{ type: string; text?: string }> }): string {
+function getPartsText(
+  message: { parts?: Array<{ type: string; text?: string }> },
+  type: 'text' | 'reasoning',
+): string {
   if (!message.parts?.length) return '';
   return message.parts
-    .filter((part) => part.type === 'text' && part.text)
+    .filter((part) => part.type === type && part.text)
     .map((part) => part.text ?? '')
     .join('');
 }
@@ -32,11 +35,33 @@ export default function Chat() {
       messages.map((message, index) => {
         const isLast = index === messages.length - 1;
         const isAi = message.role !== 'user';
+        const streaming = isAi && isLast && status === 'streaming';
+        const text = getPartsText(message, 'text');
+        const reasoning = isAi ? getPartsText(message, 'reasoning') : '';
+        const thinking = streaming && !text;
+
         return {
           key: message.id,
           role: isAi ? ('ai' as const) : ('user' as const),
-          content: getTextFromMessage(message),
-          streaming: isAi && isLast && status === 'streaming',
+          content: isAi ? (
+            <div className={styles.bubbleContent}>
+              {reasoning ? (
+                <Think
+                  className={styles.think}
+                  title={thinking ? '思考中' : '思考过程'}
+                  loading={thinking}
+                  blink={thinking}
+                  defaultExpanded={thinking}
+                >
+                  {reasoning}
+                </Think>
+              ) : null}
+              {text ? <div>{text}</div> : null}
+            </div>
+          ) : (
+            text
+          ),
+          streaming,
         };
       }),
     [messages, status],
