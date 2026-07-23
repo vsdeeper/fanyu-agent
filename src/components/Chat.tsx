@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Sender, Welcome } from '@ant-design/x';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
+import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
 import { useChat } from '@ai-sdk/react';
-import { Flex, Typography } from 'antd';
+import { CommentOutlined, DownOutlined } from '@ant-design/icons';
+import { Button, Typography } from 'antd';
 import styles from './chat.module.css';
 
 function getTextFromMessage(message: { parts?: Array<{ type: string; text?: string }> }): string {
@@ -15,8 +17,14 @@ function getTextFromMessage(message: { parts?: Array<{ type: string; text?: stri
     .join('');
 }
 
+const bubbleRole = {
+  user: { placement: 'end' as const },
+  ai: { placement: 'start' as const },
+};
+
 export default function Chat() {
   const [input, setInput] = useState('');
+  const listRef = useRef<BubbleListRef>(null);
   const { messages, sendMessage, status, stop, error } = useChat();
 
   const bubbleItems = useMemo(
@@ -28,7 +36,6 @@ export default function Chat() {
           key: message.id,
           role: isAi ? ('ai' as const) : ('user' as const),
           content: getTextFromMessage(message),
-          placement: isAi ? ('start' as const) : ('end' as const),
           streaming: isAi && isLast && status === 'streaming',
         };
       }),
@@ -36,50 +43,70 @@ export default function Chat() {
   );
 
   const loading = status === 'submitted' || status === 'streaming';
+  const hasMessages = messages.length > 0;
+
+  const senderNode = (
+    <div className={styles.sender}>
+      <Sender
+        value={input}
+        onChange={setInput}
+        loading={loading}
+        onCancel={stop}
+        placeholder="给 AI Agent 发送消息"
+        onSubmit={(value) => {
+          const text = value.trim();
+          if (!text) return;
+          sendMessage({ text });
+          setInput('');
+        }}
+      />
+    </div>
+  );
 
   return (
     <div className={styles.chat}>
-      <header className={styles.header}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          AI Agent
-        </Typography.Title>
-        <Typography.Text type="secondary">Next.js · Vercel AI SDK · Ant Design X</Typography.Text>
-      </header>
-
-      <div className={styles.messages}>
-        {messages.length === 0 ? (
-          <Flex vertical align="center" justify="center" style={{ height: '100%' }}>
-            <Welcome
-              title="开始对话"
-              description="基于 Vercel AI SDK 与 @ant-design/x 的聊天脚手架"
+      {hasMessages ? (
+        <>
+          <div className={styles.messages}>
+            <BubbleList
+              ref={listRef}
+              className={styles.bubbleList}
+              items={bubbleItems}
+              role={bubbleRole}
+              autoScroll
             />
-          </Flex>
-        ) : (
-          <BubbleList items={bubbleItems} autoScroll />
-        )}
-      </div>
+            <Button
+              className={styles.scrollBottom}
+              shape="circle"
+              icon={<DownOutlined />}
+              aria-label="滚动到底部"
+              onClick={() => listRef.current?.scrollTo({ top: 'bottom', behavior: 'smooth' })}
+            />
+          </div>
 
-      {error ? (
-        <Typography.Text type="danger" className={styles.error}>
-          {error.message}
-        </Typography.Text>
-      ) : null}
+          {error ? (
+            <Typography.Text type="danger" className={styles.error}>
+              {error.message}
+            </Typography.Text>
+          ) : null}
 
-      <div className={styles.sender}>
-        <Sender
-          value={input}
-          onChange={setInput}
-          loading={loading}
-          onCancel={stop}
-          placeholder="输入消息，按 Enter 发送"
-          onSubmit={(value) => {
-            const text = value.trim();
-            if (!text) return;
-            sendMessage({ text });
-            setInput('');
-          }}
-        />
-      </div>
+          {senderNode}
+
+          <Typography.Text type="secondary" className={styles.disclaimer}>
+            内容由 AI 生成，请仔细甄别
+          </Typography.Text>
+        </>
+      ) : (
+        <div className={styles.emptyStage}>
+          <Welcome
+            variant="borderless"
+            icon={<CommentOutlined style={{ fontSize: 32 }} />}
+            title="开始对话"
+            description="基于 Vercel AI SDK 与 @ant-design/x 的聊天脚手架"
+          />
+          {senderNode}
+        </div>
+      )}
     </div>
   );
 }
