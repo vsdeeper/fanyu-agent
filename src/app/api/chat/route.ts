@@ -7,6 +7,7 @@ import {
   type UIMessage,
 } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
+import { normalizeArkResponsesSse } from './ark-sse';
 
 export const maxDuration = 60;
 
@@ -17,6 +18,7 @@ export const maxDuration = 60;
  * 3. 历史 reasoning + itemId 与方舟不兼容 → pruneMessages 去掉 reasoning；前端 Think 仍可展示本轮流式思考
  * 4. @ai-sdk/openai 遇 web_search 会自动加 include: web_search_call.action.sources（OpenAI 专有）；
  *    方舟报 unknown type → 出站前剥离不支持的 include（同类还有 reasoning.encrypted_content）
+ * 5. 方舟引用多在 message.annotations，不发 annotation.added；SDK 流式只认后者 → fetch SSE 注入/补全
  */
 /** 方舟 Responses 不认的 OpenAI include 值（Cherry Studio #13144 等同款坑） */
 const ARK_UNSUPPORTED_INCLUDES = new Set([
@@ -67,7 +69,9 @@ const ark = createOpenAI({
         init = { ...init, body: JSON.stringify(body) };
       }
     }
-    return globalThis.fetch(url, init);
+    const response = await globalThis.fetch(url, init);
+    // 坑点：注入 annotation.added，否则 sendSources 也拿不到 source-url
+    return normalizeArkResponsesSse(response);
   },
 });
 

@@ -94,3 +94,4 @@ public/                 # 静态资源
 - 完成修改后对改动文件执行格式化（`pnpm run format` 或依赖 lint-staged）
 - 提交前由 lint-staged 检查暂存文件
 - 编写 Next.js 相关代码前先查阅 `node_modules/next/dist/docs/`
+- **修复 BUG 后须对坑点进行标注说明**：在相关代码处用简短注释标明「为何容易出错 / 为何这样改 / 以后勿再踩」，必要时同步更新本文件或 README 中的约定说明；仅修代码不留说明视为未完成

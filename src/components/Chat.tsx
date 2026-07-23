@@ -10,27 +10,96 @@ import { Button, Typography } from 'antd';
 import styles from './chat.module.css';
 
 function getPartsText(
-  message: { parts?: Array<{ type: string; text?: string }> },
+  message: { parts?: ReadonlyArray<{ type: string; [key: string]: unknown }> },
   type: 'text' | 'reasoning',
 ): string {
   if (!message.parts?.length) return '';
   return message.parts
-    .filter((part) => part.type === type && part.text)
-    .map((part) => part.text ?? '')
+    .filter((part) => part.type === type && typeof part.text === 'string')
+    .map((part) => (part.text as string) ?? '')
     .join('');
 }
 
+type SourceItem = { key: string; title: string; url: string };
+
+function getHostname(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+/** 用域名推导 favicon（DeepSeek CDN；模型不返回图标 URL） */
+function SourceFavicon({ url }: { url: string }) {
+  const [failed, setFailed] = useState(false);
+  const host = getHostname(url)?.replace(/^www\./, '') ?? null;
+
+  if (!host || failed) {
+    return <GlobalOutlined className={styles.sourceFaviconFallback} />;
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- 第三方 favicon 服务，无需 next/image
+    <img
+      className={styles.sourceFavicon}
+      src={`https://cdn.deepseek.com/site-icons/${encodeURIComponent(host)}`}
+      alt=""
+      width={16}
+      height={16}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function getSourceItems(message: {
-  parts?: Array<{ type: string; sourceId?: string; url?: string; title?: string }>;
-}) {
+  parts?: ReadonlyArray<{ type: string; [key: string]: unknown }>;
+}): SourceItem[] {
   if (!message.parts?.length) return [];
-  return message.parts
-    .filter((part) => part.type === 'source-url' && part.url)
-    .map((part) => ({
-      key: part.sourceId ?? part.url!,
-      title: part.title || part.url!,
-      url: part.url,
-    }));
+
+  const byUrl = new Map<string, SourceItem>();
+
+  const add = (url: string, title?: string, key?: string) => {
+    if (!url || byUrl.has(url)) return;
+    byUrl.set(url, {
+      key: key ?? url,
+      title: title || url,
+      url,
+    });
+  };
+
+  for (const part of message.parts) {
+    // 1. AI SDK source-url（后端 SSE 注入 annotation.added 后的主路径）
+    if (part.type === 'source-url' && typeof part.url === 'string') {
+      add(
+        part.url,
+        typeof part.title === 'string' ? part.title : undefined,
+        String(part.sourceId ?? part.url),
+      );
+      continue;
+    }
+
+    // 2. tool-web_search.output.sources（偶发 / 兼容）
+    if (part.type === 'tool-web_search' && part.state === 'output-available') {
+      const output = part.output as
+        { sources?: Array<{ type?: string; url?: string; title?: string }> } | undefined;
+      for (const source of output?.sources ?? []) {
+        if (source.url) {
+          add(source.url, source.title);
+        }
+      }
+    }
+  }
+
+  // 3. 兜底：正文 Markdown 链接 [title](url)
+  const text = getPartsText(message, 'text');
+  const mdLinkRe = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = mdLinkRe.exec(text)) !== null) {
+    add(match[2], match[1] || match[2]);
+  }
+
+  return Array.from(byUrl.values());
 }
 
 function ReasoningThink({ thinking, children }: { thinking: boolean; children: ReactNode }) {
@@ -90,7 +159,10 @@ export default function Chat() {
                   className={styles.sources}
                   title={`引用 ${sourceItems.length} 个来源`}
                   defaultExpanded={false}
-                  items={sourceItems}
+                  items={sourceItems.map((item) => ({
+                    ...item,
+                    icon: <SourceFavicon url={item.url} />,
+                  }))}
                   onClick={(item) => {
                     if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer');
                   }}

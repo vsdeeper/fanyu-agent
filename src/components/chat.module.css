@@ -74,3 +74,16 @@
 .sources {
   margin-top: 4px;
 }
+
+.sourceFavicon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  object-fit: contain;
+}
+
+.sourceFaviconFallback {
+  font-size: 14px;
+  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.45));
+}
