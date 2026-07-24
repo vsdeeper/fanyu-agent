@@ -75,6 +75,10 @@
   margin-top: 4px;
 }
 
+.sources :global(.ant-sources-link) {
+  align-items: center;
+}
+
 .sourceFavicon {
   display: block;
   width: 16px;

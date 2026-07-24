@@ -142,47 +142,65 @@ export default function Chat() {
     void getUserLocation();
   }, []);
 
-  const bubbleItems = useMemo(
-    () =>
-      messages.map((message, index) => {
-        const isLast = index === messages.length - 1;
-        const isAi = message.role !== 'user';
-        const streaming = isAi && isLast && status === 'streaming';
-        const text = getPartsText(message, 'text');
-        const reasoning = isAi ? getPartsText(message, 'reasoning') : '';
-        const thinking = streaming && !text;
-        const sourceItems = isAi ? getSourceItems(message) : [];
+  const bubbleItems = useMemo(() => {
+    // submitted：等首包；streaming 起视为已有响应，loading 必须结束
+    const awaitingFirstChunk = status === 'submitted';
+    const lastMessage = messages[messages.length - 1];
+    const lastIsUser = lastMessage?.role === 'user';
 
-        return {
-          key: message.id,
-          role: isAi ? ('ai' as const) : ('user' as const),
-          content: isAi ? (
-            <div className={styles.bubbleContent}>
-              {reasoning ? <ReasoningThink thinking={thinking}>{reasoning}</ReasoningThink> : null}
-              {text ? <div>{text}</div> : null}
-              {sourceItems.length > 0 ? (
-                <Sources
-                  className={styles.sources}
-                  title={`引用 ${sourceItems.length} 个来源`}
-                  defaultExpanded={false}
-                  items={sourceItems.map((item) => ({
-                    ...item,
-                    icon: <SourceFavicon url={item.url} />,
-                  }))}
-                  onClick={(item) => {
-                    if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer');
-                  }}
-                />
-              ) : null}
-            </div>
-          ) : (
-            text
-          ),
-          streaming,
-        };
-      }),
-    [messages, status],
-  );
+    const items = messages.map((message, index) => {
+      const isLast = index === messages.length - 1;
+      const isAi = message.role !== 'user';
+      const streaming = isAi && isLast && status === 'streaming';
+      const text = getPartsText(message, 'text');
+      const reasoning = isAi ? getPartsText(message, 'reasoning') : '';
+      const thinking = streaming && !text;
+      const sourceItems = isAi ? getSourceItems(message) : [];
+
+      return {
+        key: message.id,
+        role: isAi ? ('ai' as const) : ('user' as const),
+        content: isAi ? (
+          <div className={styles.bubbleContent}>
+            {reasoning ? <ReasoningThink thinking={thinking}>{reasoning}</ReasoningThink> : null}
+            {text ? <div>{text}</div> : null}
+            {sourceItems.length > 0 ? (
+              <Sources
+                className={styles.sources}
+                title={`引用 ${sourceItems.length} 个来源`}
+                defaultExpanded={false}
+                items={sourceItems.map((item) => ({
+                  ...item,
+                  icon: <SourceFavicon url={item.url} />,
+                }))}
+                onClick={(item) => {
+                  if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer');
+                }}
+              />
+            ) : null}
+          </div>
+        ) : (
+          text
+        ),
+        streaming,
+        // 末条已是 AI（如 regenerate）时，submitted 阶段直接挂 loading
+        loading: awaitingFirstChunk && isAi && isLast,
+      };
+    });
+
+    // 正常发送：submitted 时末条仍是 user，补占位 AI loading 气泡
+    if (awaitingFirstChunk && lastIsUser) {
+      items.push({
+        key: 'ai-pending',
+        role: 'ai' as const,
+        content: '',
+        streaming: false,
+        loading: true,
+      });
+    }
+
+    return items;
+  }, [messages, status]);
 
   const loading = status === 'submitted' || status === 'streaming';
   const hasMessages = messages.length > 0;
