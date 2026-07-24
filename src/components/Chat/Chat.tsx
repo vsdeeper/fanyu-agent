@@ -133,6 +133,11 @@ const bubbleRole = {
   ai: { placement: 'start' as const },
 };
 
+/** autoScroll 下贴底时 scrollTop≈0；不做正/倒序双分支 */
+function isNearBottom(el: HTMLElement, threshold = 40) {
+  return Math.abs(el.scrollTop) <= threshold;
+}
+
 type ChatProps = {
   id: string;
   initialMessages: UIMessage[];
@@ -142,7 +147,15 @@ export default function Chat({ id, initialMessages }: ChatProps) {
   const router = useRouter();
   const [input, setInput] = useState('');
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [scrollBottomChatId, setScrollBottomChatId] = useState(id);
   const listRef = useRef<BubbleListRef>(null);
+
+  // 切换会话默认贴底，隐藏「滚动到底部」
+  if (id !== scrollBottomChatId) {
+    setScrollBottomChatId(id);
+    setShowScrollBottom(false);
+  }
 
   // 修复：transport 只建一次；联网开关经 sendMessage body 传入 prepareSendMessagesRequest
   const [transport] = useState(
@@ -287,14 +300,22 @@ export default function Chat({ id, initialMessages }: ChatProps) {
               items={bubbleItems}
               role={bubbleRole}
               autoScroll
+              onScroll={(event) => {
+                setShowScrollBottom(!isNearBottom(event.currentTarget));
+              }}
             />
-            <Button
-              className={styles.scrollBottom}
-              shape="circle"
-              icon={<DownOutlined />}
-              aria-label="滚动到底部"
-              onClick={() => listRef.current?.scrollTo({ top: 'bottom', behavior: 'smooth' })}
-            />
+            {showScrollBottom ? (
+              <Button
+                className={styles.scrollBottom}
+                shape="circle"
+                icon={<DownOutlined />}
+                aria-label="滚动到底部"
+                onClick={() => {
+                  listRef.current?.scrollTo({ top: 'bottom', behavior: 'smooth' });
+                  setShowScrollBottom(false);
+                }}
+              />
+            ) : null}
           </div>
 
           <div className={styles.composer}>
