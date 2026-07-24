@@ -27,6 +27,15 @@
   padding-bottom: 148px !important;
 }
 
+/* 覆盖 BubbleList 默认 start/end 对侧 15% padding，让气泡在内容区内拉满 */
+.bubbleList :global(.ant-bubble-start:not(.ant-bubble-divider):not(.ant-bubble-system)) {
+  padding-inline-end: 0 !important;
+}
+
+.bubbleList :global(.ant-bubble-end:not(.ant-bubble-divider):not(.ant-bubble-system)) {
+  padding-inline-start: 0 !important;
+}
+
 .emptyStage {
   flex: 1;
   display: flex;
@@ -82,6 +91,7 @@
 .sender {
   flex-shrink: 0;
   width: 100%;
+  background-color: #fff;
 }
 
 .disclaimer {

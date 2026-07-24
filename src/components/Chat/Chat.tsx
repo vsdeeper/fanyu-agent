@@ -129,8 +129,15 @@ function ReasoningThink({ thinking, children }: { thinking: boolean; children: R
 }
 
 const bubbleRole = {
-  user: { placement: 'end' as const },
-  ai: { placement: 'start' as const },
+  user: {
+    placement: 'end' as const,
+    shape: 'corner' as const,
+    // variant 默认即为 filled，与文档「filled - corner right」一致
+  },
+  ai: {
+    placement: 'start' as const,
+    variant: 'borderless' as const,
+  },
 };
 
 /** autoScroll 下贴底时 scrollTop≈0；不做正/倒序双分支 */
