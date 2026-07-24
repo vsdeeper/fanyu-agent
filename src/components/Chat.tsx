@@ -7,6 +7,7 @@ import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
 import { useChat } from '@ai-sdk/react';
 import { CommentOutlined, DownOutlined, GlobalOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
+import { getUserLocation } from '@/lib/user-location';
 import styles from './chat.module.css';
 
 function getPartsText(
@@ -198,10 +199,15 @@ export default function Chat() {
             联网搜索
           </Sender.Switch>
         }
-        onSubmit={(value) => {
+        onSubmit={async (value) => {
           const text = value.trim();
           if (!text) return;
-          sendMessage({ text }, { body: { webSearch: webSearchEnabled } });
+          // 未开联网不请求定位，避免无意义授权弹窗
+          const userLocation = webSearchEnabled ? await getUserLocation() : undefined;
+          sendMessage(
+            { text },
+            { body: { webSearch: webSearchEnabled, ...(userLocation ? { userLocation } : {}) } },
+          );
           setInput('');
         }}
       />

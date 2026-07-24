@@ -7,9 +7,30 @@ import {
   type UIMessage,
 } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
+import type { UserLocation } from '@/lib/user-location';
 import { normalizeArkResponsesSse } from './ark-sse';
 
 export const maxDuration = 60;
+
+/** 仅接受 approximate + 已知可选字符串字段，忽略非法结构 */
+function parseUserLocation(value: unknown): UserLocation | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as Record<string, unknown>;
+  if (raw.type !== 'approximate') return undefined;
+
+  const pick = (key: string): string | undefined => {
+    const v = raw[key];
+    return typeof v === 'string' && v.trim() ? v.trim() : undefined;
+  };
+
+  return {
+    type: 'approximate',
+    ...(pick('country') ? { country: pick('country') } : {}),
+    ...(pick('city') ? { city: pick('city') } : {}),
+    ...(pick('region') ? { region: pick('region') } : {}),
+    ...(pick('timezone') ? { timezone: pick('timezone') } : {}),
+  };
+}
 
 /**
  * 方舟 Responses 与 OpenAI SDK 默认行为不完全兼容，多轮时需注意：
@@ -76,8 +97,13 @@ const ark = createOpenAI({
 });
 
 export async function POST(req: Request) {
-  const { messages, webSearch = true }: { messages: UIMessage[]; webSearch?: boolean } =
-    await req.json();
+  const {
+    messages,
+    webSearch = true,
+    userLocation: rawUserLocation,
+  }: { messages: UIMessage[]; webSearch?: boolean; userLocation?: unknown } = await req.json();
+
+  const userLocation = parseUserLocation(rawUserLocation);
 
   // 坑点：勿把历史 reasoning/itemId 回传方舟；不影响前端对本轮思考的展示
   const modelMessages = pruneMessages({
@@ -93,7 +119,9 @@ export async function POST(req: Request) {
     ...(webSearch
       ? {
           tools: {
-            web_search: ark.tools.webSearch(),
+            web_search: ark.tools.webSearch(
+              userLocation?.type === 'approximate' ? { userLocation } : {},
+            ),
           },
         }
       : {}),
