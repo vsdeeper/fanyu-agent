@@ -7,7 +7,7 @@ export type UserLocation = {
   timezone?: string;
 };
 
-/** 模块级缓存：同页会话内避免重复授权与重复打高德 */
+/** 模块级缓存：仅成功获取城市级位置时写入 */
 let cached: UserLocation | null = null;
 
 function fallbackLocation(): UserLocation {
@@ -32,9 +32,15 @@ function readPosition(): Promise<GeolocationPosition> {
   });
 }
 
+/** 同步读缓存；提交路径用，避免 await 定位阻塞发送；失败时为 null */
+export function getCachedUserLocation(): UserLocation | null {
+  return cached;
+}
+
 /**
  * 获取城市级近似位置，供联网搜索使用。
  * 坑点：只把城市级结果交给 /api/chat，不把原始经纬度发给方舟，降低隐私风险。
+ * 坑点：失败/拒绝不写 cached，提交侧不带假位置；无缓存则再走授权（调用方保证进页只触发一次）。
  */
 export async function getUserLocation(): Promise<UserLocation> {
   if (cached) return cached;

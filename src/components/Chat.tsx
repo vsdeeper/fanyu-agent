@@ -1,13 +1,13 @@
 'use client';
 
-import { type ReactNode, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Sender, Sources, Think, Welcome } from '@ant-design/x';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
 import { useChat } from '@ai-sdk/react';
 import { CommentOutlined, DownOutlined, GlobalOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
-import { getUserLocation } from '@/lib/user-location';
+import { getCachedUserLocation, getUserLocation } from '@/lib/user-location';
 import styles from './chat.module.css';
 
 function getPartsText(
@@ -137,6 +137,11 @@ export default function Chat() {
   const listRef = useRef<BubbleListRef>(null);
   const { messages, sendMessage, status, stop, error } = useChat();
 
+  // 进页后台预取定位（浏览器原生授权）；提交只读缓存，避免 await 阻塞发送
+  useEffect(() => {
+    void getUserLocation();
+  }, []);
+
   const bubbleItems = useMemo(
     () =>
       messages.map((message, index) => {
@@ -199,11 +204,11 @@ export default function Chat() {
             联网搜索
           </Sender.Switch>
         }
-        onSubmit={async (value) => {
+        onSubmit={(value) => {
           const text = value.trim();
           if (!text) return;
-          // 未开联网不请求定位，避免无意义授权弹窗
-          const userLocation = webSearchEnabled ? await getUserLocation() : undefined;
+          // 仅同步读预取缓存；未就绪则本轮不带位置，不在此 await 定位
+          const userLocation = webSearchEnabled ? getCachedUserLocation() : null;
           sendMessage(
             { text },
             { body: { webSearch: webSearchEnabled, ...(userLocation ? { userLocation } : {}) } },
