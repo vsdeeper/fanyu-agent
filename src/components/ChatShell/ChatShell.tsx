@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import type { ChatListItem } from '@/lib/chat-store';
-import ChatSidebar from './ChatSidebar';
-import styles from './chat-shell.module.css';
+import ChatSidebar from '@/components/ChatSidebar';
+import styles from './ChatShell.module.css';
 
 type ChatShellProps = {
   chats: ChatListItem[];

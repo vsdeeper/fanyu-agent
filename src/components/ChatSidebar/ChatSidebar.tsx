@@ -8,7 +8,7 @@ import { DeleteOutlined, MenuFoldOutlined, PlusOutlined } from '@ant-design/icon
 import { Button, Typography } from 'antd';
 import { getChatGroupLabel } from '@/lib/chat-group';
 import type { ChatListItem } from '@/lib/chat-store';
-import styles from './chat-sidebar.module.css';
+import styles from './ChatSidebar.module.css';
 
 type ChatSidebarProps = {
   chats: ChatListItem[];

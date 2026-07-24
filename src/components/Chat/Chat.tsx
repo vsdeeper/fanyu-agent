@@ -10,7 +10,7 @@ import { CommentOutlined, DownOutlined, GlobalOutlined } from '@ant-design/icons
 import { Button, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { getCachedUserLocation, getUserLocation } from '@/lib/user-location';
-import styles from './chat.module.css';
+import styles from './Chat.module.css';
 
 function getPartsText(
   message: { parts?: ReadonlyArray<{ type: string; [key: string]: unknown }> },

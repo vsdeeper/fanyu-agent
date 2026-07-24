@@ -83,15 +83,35 @@ src/
     layout.tsx             # AntdRegistry + Providers
     globals.css
   components/
-    Providers.tsx
-    ChatShell.tsx / ChatSidebar.tsx
-    Chat.tsx
+    Chat/
+      Chat.tsx / Chat.module.css / index.ts
+    ChatShell/
+      ChatShell.tsx / ChatShell.module.css / index.ts
+    ChatSidebar/
+      ChatSidebar.tsx / ChatSidebar.module.css / index.ts
+    Providers.tsx          # 无样式，可暂平铺
   lib/
     chat-store.ts          # 本地 JSON 会话 CRUD
     chat-group.ts          # 侧栏时间分组（可客户端用）
     user-location.ts
 public/
 ```
+
+### 组件目录约定
+
+有样式 / 测试 / 子文件时，**一个公开组件一个目录**（PascalCase，与主组件同名）；相关文件 colocation，勿单独堆 `styles/`：
+
+```text
+Button/
+  Button.tsx          # 或 index.tsx
+  Button.module.css   # 勿用 index.module.css（IDE 标签难辨认）
+  Button.test.tsx
+  index.ts            # 再导出（可选）
+```
+
+- 仅单文件且无样式时可暂平铺：`components/Foo.tsx`
+- `index.ts` 只做对外导出，勿塞业务逻辑
+- 路由私有组件可放 `app/<route>/_components/`；跨路由复用放 `src/components`
 
 ## 会话持久化约定
 
@@ -106,6 +126,7 @@ public/
 - 与用户/AI 对话默认使用中文简体
 - 提交说明使用中文 description 的 Conventional Commits
 - **不引入 Tailwind**；样式优先 CSS Modules 与 Ant Design / Ant Design X
+- 组件目录遵循上文「组件目录约定」（`ComponentName/ComponentName.tsx` + 同名 `.module.css`）
 - App Router 下避免 `Bubble.List` 这类点号子组件写法，改为从独立路径导入（如 `@ant-design/x/es/bubble/BubbleList`）
 - 完成修改后对改动文件执行格式化（`pnpm run format` 或依赖 lint-staged）
 - 提交前由 lint-staged 检查暂存文件
