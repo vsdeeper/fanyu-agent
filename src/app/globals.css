@@ -1,6 +1,7 @@
 :root {
   --background: #ffffff;
   --foreground: #141414;
+  --message-list-max-width: 840px;
 }
 
 html,

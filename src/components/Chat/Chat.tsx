@@ -297,17 +297,19 @@ export default function Chat({ id, initialMessages }: ChatProps) {
             />
           </div>
 
-          {error ? (
-            <Typography.Text type="danger" className={styles.error}>
-              {error.message}
+          <div className={styles.composer}>
+            {error ? (
+              <Typography.Text type="danger" className={styles.error}>
+                {error.message}
+              </Typography.Text>
+            ) : null}
+
+            {senderNode}
+
+            <Typography.Text type="secondary" className={styles.disclaimer}>
+              内容由 AI 生成，请仔细甄别
             </Typography.Text>
-          ) : null}
-
-          {senderNode}
-
-          <Typography.Text type="secondary" className={styles.disclaimer}>
-            内容由 AI 生成，请仔细甄别
-          </Typography.Text>
+          </div>
         </>
       ) : (
         <div className={styles.emptyStage}>
