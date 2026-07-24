@@ -21,15 +21,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  box-sizing: border-box;
+/* App Router：保证双栏壳能吃满视口高度 */
+body > * {
+  height: 100%;
 }
 
-.page {
-  display: flex;
-  height: 100%;
-  min-height: 100%;
-  padding: 0 16px;
+* {
+  box-sizing: border-box;
 }
 
 /* Sender 内部 borderless Input：去掉 antd focus-visible outline */

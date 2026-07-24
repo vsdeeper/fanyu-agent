@@ -1,5 +1,6 @@
 import {
   convertToModelMessages,
+  createIdGenerator,
   createUIMessageStreamResponse,
   pruneMessages,
   streamText,
@@ -8,9 +9,11 @@ import {
 } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import type { UserLocation } from '@/lib/user-location';
+import { loadChat, saveChat } from '@/lib/chat-store';
 import { normalizeArkResponsesSse } from './ark-sse';
 
 export const maxDuration = 60;
+export const runtime = 'nodejs';
 
 /** 仅接受 approximate + 已知可选字符串字段，忽略非法结构 */
 function parseUserLocation(value: unknown): UserLocation | undefined {
@@ -62,11 +65,11 @@ const ark = createOpenAI({
         body.input = body.input.map((item) => {
           if (!item || typeof item !== 'object') return item;
           const next = { ...item };
-          // 坑点：有 role 无 type 时方舟报 MissingParameter input.type
+          // 修复：有 role 无 type 时方舟报 MissingParameter input.type
           if (item.role && item.type == null) {
             next.type = 'message';
           }
-          // 坑点：回放 assistant 缺 status 时方舟报 MissingParameter input.status
+          // 修复：回放 assistant 缺 status 时方舟报 MissingParameter input.status
           if (item.role === 'assistant' && item.status == null) {
             next.status = 'completed';
           }
@@ -75,7 +78,7 @@ const ark = createOpenAI({
         patched = true;
       }
 
-      // 坑点：SDK 自动注入的 OpenAI include，方舟报 InvalidParameter unknown type
+      // 修复：SDK 自动注入的 OpenAI include，方舟报 InvalidParameter unknown type
       if (Array.isArray(body.include)) {
         const nextInclude = body.include.filter((item) => !ARK_UNSUPPORTED_INCLUDES.has(item));
         if (nextInclude.length === 0) {
@@ -91,21 +94,40 @@ const ark = createOpenAI({
       }
     }
     const response = await globalThis.fetch(url, init);
-    // 坑点：注入 annotation.added，否则 sendSources 也拿不到 source-url
+    // 修复：注入 annotation.added，否则 sendSources 也拿不到 source-url
     return normalizeArkResponsesSse(response);
   },
 });
 
 export async function POST(req: Request) {
   const {
-    messages,
+    id,
+    message,
     webSearch = true,
     userLocation: rawUserLocation,
-  }: { messages: UIMessage[]; webSearch?: boolean; userLocation?: unknown } = await req.json();
+  }: {
+    id: string;
+    message: UIMessage;
+    webSearch?: boolean;
+    userLocation?: unknown;
+  } = await req.json();
 
+  if (!id || typeof id !== 'string' || !message) {
+    return Response.json({ error: 'Missing chat id or message' }, { status: 400 });
+  }
+
+  let previous;
+  try {
+    previous = await loadChat(id);
+  } catch {
+    return Response.json({ error: 'Chat not found' }, { status: 404 });
+  }
+
+  // 修复：持久化后只收本轮 message，历史从磁盘拼；勿再信任客户端整包 messages
+  const messages = [...previous.messages, message];
   const userLocation = parseUserLocation(rawUserLocation);
 
-  // 坑点：勿把历史 reasoning/itemId 回传方舟；不影响前端对本轮思考的展示
+  // 修复：勿把历史 reasoning/itemId 回传方舟；磁盘仍保留完整 UIMessage 供刷新展示 Think
   const modelMessages = pruneMessages({
     messages: await convertToModelMessages(messages),
     reasoning: 'all',
@@ -124,11 +146,22 @@ export async function POST(req: Request) {
           },
         }
       : {}),
-    // 坑点：避免 store 默认 true 产生 item_reference
+    // 修复：避免 store 默认 true 产生 item_reference
     providerOptions: { openai: { store: false } },
   });
 
+  // 修复：客户端断开时仍消费流，确保 onEnd 落盘，避免半截会话
+  void result.consumeStream();
+
   return createUIMessageStreamResponse({
-    stream: toUIMessageStream({ stream: result.stream, sendSources: true }),
+    stream: toUIMessageStream({
+      stream: result.stream,
+      sendSources: true,
+      originalMessages: messages,
+      generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
+      onEnd: ({ messages: nextMessages }) => {
+        void saveChat({ chatId: id, messages: nextMessages });
+      },
+    }),
   });
 }

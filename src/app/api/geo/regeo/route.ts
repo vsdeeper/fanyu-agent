@@ -8,7 +8,7 @@ const COUNTRY_TO_ISO: Record<string, string> = {
 };
 
 /**
- * 坑点：高德空字段常返回 [] 而非 "" / null，直接当 string 用会异常。
+ * 修复：高德空字段常返回 [] 而非 "" / null，直接当 string 用会异常。
  */
 function amapText(value: unknown): string | undefined {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'latitude/longitude 无效' }, { status: 400 });
   }
 
-  // 坑点：高德 location 为「经度,纬度」，小数点后不超过 6 位
+  // 修复：高德 location 为「经度,纬度」，小数点后不超过 6 位
   const location = `${longitude.toFixed(6)},${latitude.toFixed(6)}`;
   const url = new URL('https://restapi.amap.com/v3/geocode/regeo');
   url.searchParams.set('key', key);
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
   url.searchParams.set('extensions', 'base');
   url.searchParams.set('output', 'JSON');
 
-  // 坑点：浏览器 Geolocation 多为 WGS-84，高德默认 GCJ-02；城市级偏差通常可接受，故不做坐标转换
+  // 修复：浏览器 Geolocation 多为 WGS-84，高德默认 GCJ-02；城市级偏差通常可接受，故不做坐标转换
   let amap: AmapRegeoResponse;
   try {
     const res = await fetch(url.toString(), { method: 'GET', cache: 'no-store' });
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
 
   const component = amap.regeocode?.addressComponent;
   const province = amapText(component?.province);
-  // 坑点：直辖市 city 常为空 / []，用 province 兜底
+  // 修复：直辖市 city 常为空 / []，用 province 兜底
   const city = amapText(component?.city) ?? province;
   const country = toIsoCountry(amapText(component?.country));
 

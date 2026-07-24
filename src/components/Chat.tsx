@@ -5,8 +5,10 @@ import { Sender, Sources, Think, Welcome } from '@ant-design/x';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
 import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport, type UIMessage } from 'ai';
 import { CommentOutlined, DownOutlined, GlobalOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
+import { useRouter } from 'next/navigation';
 import { getCachedUserLocation, getUserLocation } from '@/lib/user-location';
 import styles from './chat.module.css';
 
@@ -131,11 +133,43 @@ const bubbleRole = {
   ai: { placement: 'start' as const },
 };
 
-export default function Chat() {
+type ChatProps = {
+  id: string;
+  initialMessages: UIMessage[];
+};
+
+export default function Chat({ id, initialMessages }: ChatProps) {
+  const router = useRouter();
   const [input, setInput] = useState('');
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
   const listRef = useRef<BubbleListRef>(null);
-  const { messages, sendMessage, status, stop, error } = useChat();
+
+  // 修复：transport 只建一次；联网开关经 sendMessage body 传入 prepareSendMessagesRequest
+  const [transport] = useState(
+    () =>
+      new DefaultChatTransport({
+        api: '/api/chat',
+        prepareSendMessagesRequest({ messages, id: chatId, body }) {
+          return {
+            body: {
+              id: chatId,
+              message: messages[messages.length - 1],
+              ...body,
+            },
+          };
+        },
+      }),
+  );
+
+  const { messages, sendMessage, status, stop, error } = useChat({
+    id,
+    messages: initialMessages,
+    transport,
+    onFinish: () => {
+      // 落盘后刷新 layout，侧栏标题/分组才会更新
+      router.refresh();
+    },
+  });
 
   // 进页后台预取定位（浏览器原生授权）；提交只读缓存，避免 await 阻塞发送
   useEffect(() => {
@@ -229,7 +263,12 @@ export default function Chat() {
           const userLocation = webSearchEnabled ? getCachedUserLocation() : null;
           sendMessage(
             { text },
-            { body: { webSearch: webSearchEnabled, ...(userLocation ? { userLocation } : {}) } },
+            {
+              body: {
+                webSearch: webSearchEnabled,
+                ...(userLocation ? { userLocation } : {}),
+              },
+            },
           );
           setInput('');
         }}

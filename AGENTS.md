@@ -74,16 +74,32 @@ commit-msg 由 commitlint（`@commitlint/config-conventional`）校验；pre-com
 ```
 src/
   app/
-    api/chat/route.ts   # AI 流式对话 API
-    layout.tsx          # AntdRegistry + Providers
-    page.tsx            # 首页（挂载 Chat）
-    globals.css         # 全局样式（无 Tailwind）
+    api/chat/route.ts      # AI 流式对话 API（落盘）
+    api/chats/route.ts     # 会话列表 / 新建
+    api/chats/[id]/route.ts
+    chat/layout.tsx        # 侧栏壳（跨 /chat/[id] 保持）
+    chat/[id]/page.tsx     # 加载并 hydrate 会话
+    page.tsx               # createChat → redirect /chat/[id]
+    layout.tsx             # AntdRegistry + Providers
+    globals.css
   components/
-    Providers.tsx       # 客户端 ConfigProvider + XProvider
-    Chat.tsx            # 对话 UI（AI SDK + Ant Design X）
-    chat.module.css
-public/                 # 静态资源
+    Providers.tsx
+    ChatShell.tsx / ChatSidebar.tsx
+    Chat.tsx
+  lib/
+    chat-store.ts          # 本地 JSON 会话 CRUD
+    chat-group.ts          # 侧栏时间分组（可客户端用）
+    user-location.ts
+public/
 ```
+
+## 会话持久化约定
+
+- 存储目录由环境变量 **`CHAT_STORE_DIR`** 指定（示例：`D:/华为云盘/ai-agent/chats`，Windows 建议正斜杠）；每个会话一个 `{id}.json`
+- 磁盘存完整 **`UIMessage[]`**（含 reasoning / source-url），刷新可还原 Think 与引用
+- **修复**：调方舟前仍用 `pruneMessages` 去掉历史 reasoning；持久化与模型入参解耦，勿把落盘也 prune 掉
+- 路由：`/` 有历史则进最近会话，否则新建；`/chat/[id]` 打开会话；侧栏在 `chat/layout`，切换 id 不卸载；新建走侧栏「开启新对话」
+- 明文 JSON + 云盘同步不适合高敏感内容
 
 ## 编码约定
 
@@ -94,4 +110,4 @@ public/                 # 静态资源
 - 完成修改后对改动文件执行格式化（`pnpm run format` 或依赖 lint-staged）
 - 提交前由 lint-staged 检查暂存文件
 - 编写 Next.js 相关代码前先查阅 `node_modules/next/dist/docs/`
-- **修复 BUG 后须对坑点进行标注说明**：在相关代码处用简短注释标明「为何容易出错 / 为何这样改 / 以后勿再踩」，必要时同步更新本文件或 README 中的约定说明；仅修代码不留说明视为未完成
+- **修复 BUG 后须标注修复**：在相关代码处用简短注释标明「为何容易出错 / 为何这样改 / 以后勿再踩」，必要时同步更新本文件或 README 中的约定说明；仅修代码不留说明视为未完成

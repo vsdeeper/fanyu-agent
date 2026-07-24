@@ -1,5 +1,5 @@
 /**
- * 坑点：方舟联网引用常挂在 message.content[].annotations（url_citation），
+ * 修复：方舟联网引用常挂在 message.content[].annotations（url_citation），
  * 却不发 OpenAI 的 response.output_text.annotation.added；
  * @ai-sdk/openai 流式路径只认 annotation.added → source-url，故需在此注入/补全。
  */
@@ -125,7 +125,7 @@ export function normalizeArkSseEventJson(raw: string, seenUrls: Set<string>): st
 
   const out: string[] = [];
 
-  // 坑点：方舟 annotation.added 常缺 start_index/end_index，Zod 失败会变 unknown_chunk
+  // 修复：方舟 annotation.added 常缺 start_index/end_index，Zod 失败会变 unknown_chunk
   if (event.type === 'response.output_text.annotation.added' && event.annotation) {
     const ann = event.annotation;
     if (ann.type === 'url_citation' && typeof ann.url === 'string' && ann.url) {
