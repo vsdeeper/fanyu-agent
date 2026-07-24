@@ -113,8 +113,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: ark.responses(process.env.ARK_MODEL_ID ?? 'deepseek-v4-flash-260425'),
-    system:
-      '你是一个简洁、友好的中文助手。思考过程与最终回答都必须使用简体中文，不要使用英文推演（专有名词、URL、工具名除外）。',
+    system: '按用户语言与语境自然回答。',
     messages: modelMessages,
     ...(webSearch
       ? {
