@@ -30,7 +30,7 @@ function getHostname(url: string): string | null {
   }
 }
 
-/** 用域名推导 favicon（DeepSeek CDN；模型不返回图标 URL） */
+/** 用域名推导 favicon（ico.n3v.cn；模型不返回图标 URL） */
 function SourceFavicon({ url }: { url: string }) {
   const [failed, setFailed] = useState(false);
   const host = getHostname(url)?.replace(/^www\./, '') ?? null;
@@ -43,7 +43,7 @@ function SourceFavicon({ url }: { url: string }) {
     // eslint-disable-next-line @next/next/no-img-element -- 第三方 favicon 服务，无需 next/image
     <img
       className={styles.sourceFavicon}
-      src={`https://cdn.deepseek.com/site-icons/${encodeURIComponent(host)}`}
+      src={`https://ico.n3v.cn/get.php?url=${encodeURIComponent(host)}`}
       alt=""
       width={16}
       height={16}
