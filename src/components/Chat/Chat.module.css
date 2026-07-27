@@ -24,11 +24,35 @@
 /* 预留滚动条槽，避免出现滚动条时内容区变窄导致与 composer 错位 */
 .bubbleList :global(.ant-bubble-list-scroll-box) {
   scrollbar-gutter: stable;
-  scrollbar-color: var(--scrollbar-color) transparent !important;
 }
 
-.bubbleList :global(.ant-bubble-list-scroll-box)::-webkit-scrollbar {
-  width: var(--scrollbar-size) !important;
+/* 覆盖 Ant Design X 注入的 scrollbar-*，避免压制全局 ::-webkit-scrollbar */
+@supports selector(::-webkit-scrollbar) {
+  .bubbleList :global(.ant-bubble-list-scroll-box) {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+
+  .bubbleList :global(.ant-bubble-list-scroll-box)::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+
+  .bubbleList :global(.ant-bubble-list-scroll-box)::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .bubbleList :global(.ant-bubble-list-scroll-box)::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-color);
+    border-radius: 999px;
+  }
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .bubbleList :global(.ant-bubble-list-scroll-box) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-color) transparent;
+  }
 }
 
 .bubbleList :global(.ant-bubble-list-scroll-content) {

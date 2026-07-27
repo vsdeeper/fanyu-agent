@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import Providers from '@/components/Providers';
-import './globals.css';
+import './global.css';
 
 export const metadata: Metadata = {
   title: 'AI Agent',

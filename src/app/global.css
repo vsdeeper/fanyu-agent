@@ -31,26 +31,35 @@ body > * {
 
 * {
   box-sizing: border-box;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-color) transparent;
 }
 
-*::-webkit-scrollbar {
-  width: var(--scrollbar-size);
-  height: var(--scrollbar-size);
+/* Firefox 等：无 webkit 伪元素时用标准属性（勿与 ::-webkit-scrollbar 同用，否则 Chromium 会忽略伪元素） */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-color) transparent;
+  }
 }
 
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
+/* Chromium / Safari：精确宽度与圆角 thumb */
+@supports selector(::-webkit-scrollbar) {
+  *::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
 
-*::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-color);
-  border-radius: 999px;
-}
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-*::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--foreground) 42%, transparent);
+  *::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-color);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--foreground) 42%, transparent);
+  }
 }
 
 /* Sender 内部 borderless Input：去掉 antd focus-visible outline */
