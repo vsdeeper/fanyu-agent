@@ -26,35 +26,6 @@
   scrollbar-gutter: stable;
 }
 
-/* 覆盖 Ant Design X 注入的 scrollbar-*，避免压制全局 ::-webkit-scrollbar */
-@supports selector(::-webkit-scrollbar) {
-  .bubbleList :global(.ant-bubble-list-scroll-box) {
-    scrollbar-width: auto;
-    scrollbar-color: auto;
-  }
-
-  .bubbleList :global(.ant-bubble-list-scroll-box)::-webkit-scrollbar {
-    width: var(--scrollbar-size);
-    height: var(--scrollbar-size);
-  }
-
-  .bubbleList :global(.ant-bubble-list-scroll-box)::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .bubbleList :global(.ant-bubble-list-scroll-box)::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-color);
-    border-radius: 999px;
-  }
-}
-
-@supports not selector(::-webkit-scrollbar) {
-  .bubbleList :global(.ant-bubble-list-scroll-box) {
-    scrollbar-width: thin;
-    scrollbar-color: var(--scrollbar-color) transparent;
-  }
-}
-
 .bubbleList :global(.ant-bubble-list-scroll-content) {
   padding-left: calc((100% - var(--message-list-max-width)) / 2) !important;
   padding-right: calc((100% - var(--message-list-max-width)) / 2) !important;
@@ -107,12 +78,12 @@
   flex-direction: column;
   gap: 8px;
   pointer-events: none;
-  background: linear-gradient(
+  /* background: linear-gradient(
     to top,
     var(--background, #fff) 55%,
     color-mix(in srgb, var(--background, #fff) 70%, transparent) 75%,
     transparent
-  );
+  ); */
   /* 与 scroll-box（含 scrollbar-gutter）内容区对齐 */
   padding-left: calc((100% - var(--message-list-max-width) - var(--scrollbar-size)) / 2) !important;
   padding-right: calc(
