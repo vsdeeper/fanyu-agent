@@ -116,16 +116,19 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Missing chat id or message' }, { status: 400 });
   }
 
-  let previous;
+  // 修复：/chat 草稿首条磁盘无记录，勿 404；历史从磁盘拼，勿信任客户端整包 messages
+  let previousMessages: UIMessage[] = [];
   try {
-    previous = await loadChat(id);
+    previousMessages = (await loadChat(id)).messages;
   } catch {
-    return Response.json({ error: 'Chat not found' }, { status: 404 });
+    /* 新草稿 */
   }
 
-  // 修复：持久化后只收本轮 message，历史从磁盘拼；勿再信任客户端整包 messages
-  const messages = [...previous.messages, message];
+  const messages = [...previousMessages, message];
   const userLocation = parseUserLocation(rawUserLocation);
+
+  // 修复：流式前先落盘用户消息，侧栏 refresh 即可见新会话与标题
+  await saveChat({ chatId: id, messages });
 
   // 修复：勿把历史 reasoning/itemId 回传方舟；磁盘仍保留完整 UIMessage 供刷新展示 Think
   const modelMessages = pruneMessages({

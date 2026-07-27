@@ -1,10 +1,21 @@
 'use client';
 
-import { useCallback, useMemo, useState, useTransition, type ReactNode } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from 'react';
+import { useParams, usePathname, useRouter } from 'next/navigation';
+import { generateId, type UIMessage } from 'ai';
 import { MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Button, Spin, Typography } from 'antd';
 import type { ChatListItem } from '@/lib/chat-store';
+import { resolveChatRouteId } from '@/lib/chat-route';
+import Chat from '@/components/Chat';
 import ChatSidebar from '@/components/ChatSidebar';
 import styles from './ChatShell.module.css';
 
@@ -15,11 +26,57 @@ type ChatShellProps = {
 
 export default function ChatShell({ chats, children }: ChatShellProps) {
   const params = useParams();
+  const pathname = usePathname();
   const router = useRouter();
-  const activeChatId = typeof params?.id === 'string' ? params.id : '';
+  const routeChatId = resolveChatRouteId(params?.id as string | string[] | undefined);
+  const isDraftRoute = !routeChatId;
+
+  const [draftChatId, setDraftChatId] = useState(() => generateId());
+  const [hydratedMessages, setHydratedMessages] = useState<UIMessage[] | null>(null);
+  const [loadingChat, setLoadingChat] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [anchorChatId, setAnchorChatId] = useState<string | undefined>();
   const [, startTransition] = useTransition();
+
+  const promotedFromDraftRef = useRef(false);
+
+  const effectiveChatId = isDraftRoute ? draftChatId : routeChatId;
+
+  // 非草稿路由 hydrate；draft→同 id 晋升时跳过 refetch，避免打断 useChat 流
+  useEffect(() => {
+    if (isDraftRoute || !routeChatId) return;
+
+    if (promotedFromDraftRef.current) {
+      promotedFromDraftRef.current = false;
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingChat(true);
+    setHydratedMessages(null);
+
+    void fetch(`/api/chats/${routeChatId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('加载会话失败');
+        return res.json() as Promise<{ messages: UIMessage[] }>;
+      })
+      .then((data) => {
+        if (!cancelled) setHydratedMessages(data.messages);
+      })
+      .catch(() => {
+        if (!cancelled) setHydratedMessages([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingChat(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isDraftRoute, routeChatId]);
+
+  const activeChatId = routeChatId ?? '';
 
   const title = useMemo(() => {
     if (!activeChatId) return undefined;
@@ -30,23 +87,37 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
     if (busy) return;
     setBusy(true);
     try {
-      const res = await fetch('/api/chats', { method: 'POST' });
-      if (!res.ok) throw new Error('创建会话失败');
-      const data = (await res.json()) as { id: string };
-      startTransition(() => {
-        router.push(`/chat/${data.id}`);
-        router.refresh();
-      });
+      // 修复：先换 draftId 再跳 /chat，避免在 /chat/[id] 页面临时改用 draft key
+      setDraftChatId(generateId());
+      if (pathname !== '/chat') {
+        startTransition(() => {
+          router.push('/chat');
+          router.refresh();
+        });
+      }
     } finally {
       setBusy(false);
     }
-  }, [busy, router]);
+  }, [busy, pathname, router]);
+
+  const handleFirstMessageSent = useCallback(() => {
+    if (!isDraftRoute) return;
+    promotedFromDraftRef.current = true;
+    setAnchorChatId(effectiveChatId);
+    startTransition(() => {
+      router.replace(`/chat/${effectiveChatId}`);
+      router.refresh();
+    });
+  }, [effectiveChatId, isDraftRoute, router]);
+
+  const chatReady = isDraftRoute || hydratedMessages !== null;
 
   return (
     <div className={styles.shell}>
       <ChatSidebar
         chats={chats}
         activeChatId={activeChatId}
+        anchorChatId={anchorChatId}
         collapsed={collapsed}
         onCollapsedChange={setCollapsed}
         onCreateChat={handleCreateChat}
@@ -83,7 +154,22 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
             </Typography.Title>
           ) : null}
         </div>
-        <div className={styles.content}>{children}</div>
+        <div className={styles.content}>
+          {!chatReady || loadingChat ? (
+            <div className={styles.loading}>
+              <Spin />
+            </div>
+          ) : (
+            <Chat
+              key={effectiveChatId}
+              id={effectiveChatId}
+              initialMessages={isDraftRoute ? [] : hydratedMessages!}
+              isDraft={isDraftRoute}
+              onFirstMessageSent={handleFirstMessageSent}
+            />
+          )}
+          {children}
+        </div>
       </div>
     </div>
   );

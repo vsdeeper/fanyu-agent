@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Conversations } from '@ant-design/x';
 import type { ConversationItemType } from '@ant-design/x/es/conversations/interface';
@@ -13,6 +13,7 @@ import styles from './ChatSidebar.module.css';
 type ChatSidebarProps = {
   chats: ChatListItem[];
   activeChatId: string;
+  anchorChatId?: string;
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   onCreateChat: () => Promise<void>;
@@ -22,6 +23,7 @@ type ChatSidebarProps = {
 export default function ChatSidebar({
   chats,
   activeChatId,
+  anchorChatId,
   collapsed,
   onCollapsedChange,
   onCreateChat,
@@ -30,6 +32,7 @@ export default function ChatSidebar({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [deleting, setDeleting] = useState(false);
+  const conversationsRef = useRef<{ nativeElement: HTMLDivElement }>(null);
 
   const items = useMemo<ConversationItemType[]>(
     () =>
@@ -40,6 +43,24 @@ export default function ChatSidebar({
       })),
     [chats],
   );
+
+  const scrollTargetId = anchorChatId || activeChatId;
+
+  // 修复：首条发送或切换会话后，将 active 项滚入 Conversations 可视区
+  useEffect(() => {
+    if (!scrollTargetId || collapsed) return;
+    const root = conversationsRef.current?.nativeElement;
+    if (!root) return;
+
+    const frame = requestAnimationFrame(() => {
+      const activeEl =
+        root.querySelector<HTMLElement>(`[data-key="${scrollTargetId}"]`) ??
+        root.querySelector<HTMLElement>('[aria-selected="true"]');
+      activeEl?.scrollIntoView({ block: 'nearest' });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [scrollTargetId, collapsed, chats]);
 
   // 折叠后整栏卸载，展开/新建入口改由 ChatShell 胶囊条提供
   if (collapsed) {
@@ -61,7 +82,10 @@ export default function ChatSidebar({
       if (!res.ok) throw new Error('删除会话失败');
 
       if (chatId === activeChatId) {
-        await onCreateChat();
+        startTransition(() => {
+          router.push('/chat');
+          router.refresh();
+        });
       } else {
         startTransition(() => {
           router.refresh();
@@ -109,9 +133,10 @@ export default function ChatSidebar({
 
       {/* 修复：只有列表区 overflow，header/creation 必须在滚动容器外，否则会整栏一起滚 */}
       <Conversations
+        ref={conversationsRef}
         className={styles.conversations}
         items={items}
-        activeKey={activeChatId}
+        activeKey={activeChatId || undefined}
         groupable
         onActiveChange={(key) => {
           if (!key || key === activeChatId || actionsDisabled) return;

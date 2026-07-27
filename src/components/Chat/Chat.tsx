@@ -148,15 +148,23 @@ function isNearBottom(el: HTMLElement, threshold = 40) {
 type ChatProps = {
   id: string;
   initialMessages: UIMessage[];
+  isDraft?: boolean;
+  onFirstMessageSent?: () => void;
 };
 
-export default function Chat({ id, initialMessages }: ChatProps) {
+export default function Chat({
+  id,
+  initialMessages,
+  isDraft = false,
+  onFirstMessageSent,
+}: ChatProps) {
   const router = useRouter();
   const [input, setInput] = useState('');
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [scrollBottomChatId, setScrollBottomChatId] = useState(id);
   const listRef = useRef<BubbleListRef>(null);
+  const firstMessageSentRef = useRef(false);
 
   // 切换会话默认贴底，隐藏「滚动到底部」
   if (id !== scrollBottomChatId) {
@@ -290,6 +298,11 @@ export default function Chat({ id, initialMessages }: ChatProps) {
               },
             },
           );
+          // 修复：草稿首条发送后立即 replace 到 /chat/[id]，须在本组件 remount 前触发
+          if (isDraft && !firstMessageSentRef.current) {
+            firstMessageSentRef.current = true;
+            onFirstMessageSent?.();
+          }
           setInput('');
         }}
       />

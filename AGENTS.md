@@ -76,10 +76,10 @@ src/
   app/
     api/chat/route.ts      # AI 流式对话 API（落盘）
     api/chats/route.ts     # 会话列表 / 新建
-    api/chats/[id]/route.ts
-    chat/layout.tsx        # 侧栏壳（跨 /chat/[id] 保持）
-    chat/[id]/page.tsx     # 加载并 hydrate 会话
-    page.tsx               # createChat → redirect /chat/[id]
+    api/chats/[id]/route.ts  # GET 单会话 / DELETE
+    chat/layout.tsx           # 侧栏壳（跨 /chat/* 保持）
+    chat/[[...id]]/page.tsx   # 路由校验；UI 在 ChatShell
+    page.tsx                  # 有历史进最近会话，否则 /chat
     layout.tsx             # AntdRegistry + Providers
     globals.css
   components/
@@ -96,6 +96,7 @@ src/
       client.ts            # better-sqlite3 连接、WAL、migrate、清理旧 JSON
       schema.ts            # chats / messages 表
     chat-group.ts          # 侧栏时间分组（可客户端用）
+    chat-route.ts          # [[...id]] params 归一化
     user-location.ts
 public/
 drizzle/                   # SQL migrations（drizzle-kit generate）
@@ -123,7 +124,7 @@ Button/
 - 表：`chats` + `messages`（`messages.data` 存完整 **`UIMessage` JSON**，含 reasoning / source-url）；刷新可还原 Think 与引用
 - 换机前建议先关闭应用，便于 WAL checkpoint 回主库后再靠云盘同步
 - **修复**：调方舟前仍用 `pruneMessages` 去掉历史 reasoning；持久化与模型入参解耦，勿把落盘也 prune 掉
-- 路由：`/` 有历史则进最近会话，否则 `/chat`；`/chat` 空欢迎态不写库；`/chat/[id]` 打开会话；侧栏「开启新对话」会 createChat 后进入 `/chat/[id]`；侧栏在 `chat/layout`，切换 id 不卸载
+- 路由：`/` 有历史则进最近会话，否则 `/chat`；`chat/[[...id]]` 单页承载 `/chat`（草稿欢迎态不写库）与 `/chat/[id]`（多段路径 `notFound`）；侧栏「开启新对话」→ `/chat`；首条发送 → `replace('/chat/[id]')` 并侧栏锚定；Chat 在 `ChatShell` 渲染以免首条发送 remount 丢流；侧栏在 `chat/layout`，切换 id 不卸载
 - 明文落盘 + 云盘同步不适合高敏感内容
 
 ## 编码约定
