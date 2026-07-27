@@ -1,12 +1,9 @@
-import { existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from './schema';
-
-/** 仅允许安全会话 id，用于校验与清理旧 JSON 文件名 */
-export const chatIdRegex = /^[A-Za-z0-9_-]+$/;
 
 export function getChatDir(): string {
   const configured = process.env.CHAT_STORE_DIR?.trim();
@@ -17,27 +14,6 @@ export function getChatDir(): string {
 function ensureChatDir(chatDir: string): void {
   if (!existsSync(chatDir)) {
     mkdirSync(chatDir, { recursive: true });
-  }
-}
-
-/** 切换到 SQLite 后不再需要会话 JSON；删除同目录旧文件，避免侧栏/同步残留 */
-function cleanupLegacyJsonFiles(chatDir: string): void {
-  let files: string[];
-  try {
-    files = readdirSync(chatDir);
-  } catch {
-    return;
-  }
-
-  for (const file of files) {
-    if (!file.endsWith('.json')) continue;
-    const id = file.slice(0, -'.json'.length);
-    if (!chatIdRegex.test(id)) continue;
-    try {
-      unlinkSync(path.join(chatDir, file));
-    } catch {
-      // 忽略单文件删除失败（占用中等），不阻断启动
-    }
   }
 }
 
@@ -56,7 +32,6 @@ function getGlobal(): GlobalDb {
 function createDb(): Db {
   const chatDir = path.resolve(getChatDir());
   ensureChatDir(chatDir);
-  cleanupLegacyJsonFiles(chatDir);
 
   const dbPath = path.join(chatDir, 'chats.db');
   const sqlite = new Database(dbPath);
@@ -74,17 +49,11 @@ function createDb(): Db {
   return db;
 }
 
-/** 懒初始化：首次调用时建连、migrate、清理旧 JSON */
+/** 懒初始化：首次调用时建连并 migrate */
 export function getDb(): Db {
   const g = getGlobal();
   if (g.__aiAgentDb && g.__aiAgentDbReady) {
     return g.__aiAgentDb;
   }
   return createDb();
-}
-
-export function assertValidChatId(id: string): void {
-  if (!chatIdRegex.test(id)) {
-    throw new Error('Invalid chat ID');
-  }
 }

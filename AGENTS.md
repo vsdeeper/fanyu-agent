@@ -122,9 +122,8 @@ Button/
 - 存储目录由环境变量 **`CHAT_STORE_DIR`** 指定（示例：`D:/华为云盘/ai-agent/chats`，Windows 建议正斜杠）；库文件为目录内 **`chats.db`**（Drizzle + better-sqlite3，`journal_mode=WAL`，运行中可能另有 `chats.db-wal` / `chats.db-shm`）
 - 表：`chats` + `messages`（`messages.data` 存完整 **`UIMessage` JSON**，含 reasoning / source-url）；刷新可还原 Think 与引用
 - 换机前建议先关闭应用，便于 WAL checkpoint 回主库后再靠云盘同步
-- 旧版「一会话一 `{id}.json`」已废弃；首次连库会**删除**同目录会话 JSON（不迁移），从空库或已有 `chats.db` 继续
 - **修复**：调方舟前仍用 `pruneMessages` 去掉历史 reasoning；持久化与模型入参解耦，勿把落盘也 prune 掉
-- 路由：`/` 有历史则进最近会话，否则新建；`/chat/[id]` 打开会话；侧栏在 `chat/layout`，切换 id 不卸载；新建走侧栏「开启新对话」
+- 路由：`/` 有历史则进最近会话，否则 `/chat`；`/chat` 空欢迎态不写库；`/chat/[id]` 打开会话；侧栏「开启新对话」会 createChat 后进入 `/chat/[id]`；侧栏在 `chat/layout`，切换 id 不卸载
 - 明文落盘 + 云盘同步不适合高敏感内容
 
 ## 编码约定

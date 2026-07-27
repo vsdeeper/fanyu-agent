@@ -1,6 +1,6 @@
 import { generateId, type UIMessage } from 'ai';
 import { asc, desc, eq } from 'drizzle-orm';
-import { assertValidChatId, getDb } from '@/lib/db/client';
+import { getDb } from '@/lib/db/client';
 import { chats, messages } from '@/lib/db/schema';
 
 export const DEFAULT_CHAT_TITLE = '新对话';
@@ -53,7 +53,6 @@ export async function createChat(): Promise<string> {
 }
 
 export async function loadChat(id: string): Promise<ChatRecord> {
-  assertValidChatId(id);
   const db = getDb();
   const chat = db.select().from(chats).where(eq(chats.id, id)).get();
   if (!chat) {
@@ -77,11 +76,6 @@ export async function loadChat(id: string): Promise<ChatRecord> {
 }
 
 export async function chatExists(id: string): Promise<boolean> {
-  try {
-    assertValidChatId(id);
-  } catch {
-    return false;
-  }
   const db = getDb();
   const row = db.select({ id: chats.id }).from(chats).where(eq(chats.id, id)).get();
   return Boolean(row);
@@ -94,7 +88,6 @@ export async function saveChat({
   chatId: string;
   messages: UIMessage[];
 }): Promise<void> {
-  assertValidChatId(chatId);
   const db = getDb();
   const now = new Date().toISOString();
 
@@ -154,7 +147,6 @@ export async function listChats(): Promise<ChatListItem[]> {
 }
 
 export async function deleteChat(id: string): Promise<void> {
-  assertValidChatId(id);
   const db = getDb();
   db.delete(chats).where(eq(chats.id, id)).run();
 }
