@@ -218,8 +218,8 @@ export default function Chat({
   }, [isDraft, id]);
 
   const bubbleItems = useMemo(() => {
-    // submitted：等首包；streaming 起视为已有响应，loading 必须结束
-    const awaitingFirstChunk = status === 'submitted';
+    // 修复：loading 延续到有可见 text/reasoning，避免 submitted→streaming 首包空 parts 时的真空期
+    const isAwaitingAi = status === 'submitted' || status === 'streaming';
     const lastMessage = messages[messages.length - 1];
     const lastIsUser = lastMessage?.role === 'user';
 
@@ -229,6 +229,7 @@ export default function Chat({
       const streaming = isAi && isLast && status === 'streaming';
       const text = getPartsText(message, 'text');
       const reasoning = isAi ? getPartsText(message, 'reasoning') : '';
+      const hasVisibleAiContent = Boolean(text || reasoning);
       const thinking = streaming && !text;
       const sourceItems = isAi ? getSourceItems(message) : [];
 
@@ -270,13 +271,12 @@ export default function Chat({
           text
         ),
         streaming,
-        // 末条已是 AI（如 regenerate）时，submitted 阶段直接挂 loading
-        loading: awaitingFirstChunk && isAi && isLast,
+        loading: isAwaitingAi && isAi && isLast && !hasVisibleAiContent,
       };
     });
 
-    // 正常发送：submitted 时末条仍是 user，补占位 AI loading 气泡
-    if (awaitingFirstChunk && lastIsUser) {
+    // 首包写入前末条仍是 user，须单独补占位；勿与上条 loading 合并为 submitted&&lastIsUser
+    if (isAwaitingAi && lastIsUser) {
       items.push({
         key: 'ai-pending',
         role: 'ai' as const,
