@@ -25,10 +25,10 @@ type ChatShellProps = {
 };
 
 export default function ChatShell({ chats, children }: ChatShellProps) {
-  const params = useParams();
+  const { id: idParts } = useParams<{ id?: string[] }>();
   const pathname = usePathname();
   const router = useRouter();
-  const routeChatId = resolveChatRouteId(params?.id as string | string[] | undefined);
+  const routeChatId = resolveChatRouteId(idParts);
   const isDraftRoute = !routeChatId;
 
   const [draftChatId, setDraftChatId] = useState(() => generateId());
