@@ -6,6 +6,7 @@ import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
+import type { SenderRef } from '@ant-design/x/es/sender/interface';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { CommentOutlined, DownOutlined, GlobalOutlined } from '@ant-design/icons';
@@ -166,6 +167,7 @@ export default function Chat({
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [scrollBottomChatId, setScrollBottomChatId] = useState(id);
   const listRef = useRef<BubbleListRef>(null);
+  const senderRef = useRef<SenderRef>(null);
   const firstMessageSentRef = useRef(false);
 
   // 切换会话默认贴底，隐藏「滚动到底部」
@@ -203,9 +205,17 @@ export default function Chat({
 
   // 进页后台预取定位（浏览器原生授权）；提交只读缓存，避免 await 阻塞发送
   useEffect(() => {
-    console.log('getUserLocation');
     void getUserLocation();
   }, []);
+
+  // 草稿态（/chat 欢迎页）挂载后聚焦 Sender，便于立即输入
+  useEffect(() => {
+    if (!isDraft) return;
+    const frame = requestAnimationFrame(() => {
+      senderRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isDraft, id]);
 
   const bubbleItems = useMemo(() => {
     // submitted：等首包；streaming 起视为已有响应，loading 必须结束
@@ -285,6 +295,7 @@ export default function Chat({
   const senderNode = (
     <div className={styles.sender}>
       <Sender
+        ref={senderRef}
         value={input}
         onChange={setInput}
         loading={loading}
