@@ -123,10 +123,14 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
       <div className={styles.main}>
         <div className={styles.mainHeader}>
           {collapsed ? (
-            <div className={styles.collapsedBar} role="toolbar" aria-label="侧栏快捷操作">
+            <div
+              className={`${styles.collapsedBar} ${styles.collapsedBarEnter}`}
+              role="toolbar"
+              aria-label="侧栏快捷操作"
+            >
               <Button
                 type="text"
-                icon={<MenuUnfoldOutlined />}
+                icon={<MenuUnfoldOutlined style={{ fontSize: '16px' }} />}
                 aria-label="展开侧栏"
                 shape="circle"
                 variant="filled"
@@ -134,7 +138,7 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
               />
               <Button
                 type="text"
-                icon={<PlusOutlined />}
+                icon={<PlusOutlined style={{ fontSize: '16px' }} />}
                 aria-label="开启新对话"
                 shape="circle"
                 variant="filled"

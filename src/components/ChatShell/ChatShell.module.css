@@ -34,6 +34,28 @@
   background: var(--ant-color-bg-container, #fff);
 }
 
+.collapsedBarEnter {
+  animation: collapsedBarIn 0.22s ease 0.1s both;
+}
+
+@keyframes collapsedBarIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapsedBarEnter {
+    animation: none;
+  }
+}
+
 .title {
   margin: 0 !important;
   font-weight: 600;
