@@ -238,6 +238,7 @@ export default function Chat({
                   hasNextChunk: streaming,
                   tail: streaming,
                 }}
+                disableDefaultStyles={['code']}
               />
             ) : null}
             {sourceItems.length > 0 ? (
