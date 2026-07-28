@@ -101,71 +101,76 @@ const ark = createOpenAI({
 });
 
 export async function POST(req: Request) {
-  const {
-    id,
-    message,
-    webSearch = true,
-    userLocation: rawUserLocation,
-  }: {
-    id: string;
-    message: UIMessage;
-    webSearch?: boolean;
-    userLocation?: unknown;
-  } = await req.json();
-
-  if (!id || typeof id !== 'string' || !message) {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, '缺少 chat id 或 message', 400);
-  }
-
-  // 修复：/chat 草稿首条磁盘无记录，勿 404；历史从磁盘拼，勿信任客户端整包 messages
-  let previousMessages: UIMessage[] = [];
   try {
-    previousMessages = (await loadChat(id)).messages;
+    const {
+      id,
+      message,
+      webSearch = true,
+      userLocation: rawUserLocation,
+    }: {
+      id: string;
+      message: UIMessage;
+      webSearch?: boolean;
+      userLocation?: unknown;
+    } = await req.json();
+
+    if (!id || typeof id !== 'string' || !message) {
+      return jsonFail(ApiErrorCode.INVALID_PARAMS, '缺少会话或消息内容', 400);
+    }
+
+    // 修复：/chat 草稿首条磁盘无记录，勿 404；历史从磁盘拼，勿信任客户端整包 messages
+    let previousMessages: UIMessage[] = [];
+    try {
+      previousMessages = (await loadChat(id)).messages;
+    } catch {
+      /* 新草稿 */
+    }
+
+    const messages = [...previousMessages, message];
+    const userLocation = parseUserLocation(rawUserLocation);
+
+    // 修复：流式前先落盘用户消息，侧栏 refresh 即可见新会话与标题
+    await saveChat({ chatId: id, messages });
+
+    // 修复：勿把历史 reasoning/itemId 回传方舟；磁盘仍保留完整 UIMessage 供刷新展示 Think
+    const modelMessages = pruneMessages({
+      messages: await convertToModelMessages(messages),
+      reasoning: 'all',
+    });
+
+    const result = streamText({
+      model: ark.responses(process.env.ARK_MODEL_ID ?? 'deepseek-v4-flash-260425'),
+      system: '按用户语言与语境自然回答。',
+      messages: modelMessages,
+      ...(webSearch
+        ? {
+            tools: {
+              web_search: ark.tools.webSearch(
+                userLocation?.type === 'approximate' ? { userLocation } : {},
+              ),
+            },
+          }
+        : {}),
+      // 修复：避免 store 默认 true 产生 item_reference
+      providerOptions: { openai: { store: false } },
+    });
+
+    // 修复：客户端断开时仍消费流，确保 onEnd 落盘，避免半截会话
+    void result.consumeStream();
+
+    return createUIMessageStreamResponse({
+      stream: toUIMessageStream({
+        stream: result.stream,
+        sendSources: true,
+        originalMessages: messages,
+        generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
+        onEnd: ({ messages: nextMessages }) => {
+          void saveChat({ chatId: id, messages: nextMessages });
+        },
+      }),
+    });
   } catch {
-    /* 新草稿 */
+    // 修复：勿把 err.message 写入响应，避免英文 provider/内部错误暴露给客户端
+    return jsonFail(ApiErrorCode.INTERNAL_ERROR, '服务暂时不可用，请稍后重试', 500);
   }
-
-  const messages = [...previousMessages, message];
-  const userLocation = parseUserLocation(rawUserLocation);
-
-  // 修复：流式前先落盘用户消息，侧栏 refresh 即可见新会话与标题
-  await saveChat({ chatId: id, messages });
-
-  // 修复：勿把历史 reasoning/itemId 回传方舟；磁盘仍保留完整 UIMessage 供刷新展示 Think
-  const modelMessages = pruneMessages({
-    messages: await convertToModelMessages(messages),
-    reasoning: 'all',
-  });
-
-  const result = streamText({
-    model: ark.responses(process.env.ARK_MODEL_ID ?? 'deepseek-v4-flash-260425'),
-    system: '按用户语言与语境自然回答。',
-    messages: modelMessages,
-    ...(webSearch
-      ? {
-          tools: {
-            web_search: ark.tools.webSearch(
-              userLocation?.type === 'approximate' ? { userLocation } : {},
-            ),
-          },
-        }
-      : {}),
-    // 修复：避免 store 默认 true 产生 item_reference
-    providerOptions: { openai: { store: false } },
-  });
-
-  // 修复：客户端断开时仍消费流，确保 onEnd 落盘，避免半截会话
-  void result.consumeStream();
-
-  return createUIMessageStreamResponse({
-    stream: toUIMessageStream({
-      stream: result.stream,
-      sendSources: true,
-      originalMessages: messages,
-      generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
-      onEnd: ({ messages: nextMessages }) => {
-        void saveChat({ chatId: id, messages: nextMessages });
-      },
-    }),
-  });
 }

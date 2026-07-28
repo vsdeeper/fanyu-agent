@@ -4,6 +4,11 @@ import { message } from 'antd';
 
 const API_OK = 0;
 
+/** 客户端兜底文案：勿把 err.message / 服务端 stack 直接展示给用户 */
+const FALLBACK_REQUEST_ERROR = '请求失败，请稍后重试';
+const NETWORK_ERROR = '网络连接失败，请稍后重试';
+const PARSE_ERROR = '响应格式错误';
+
 type ApiEnvelope<T> = {
   code: number;
   message: string;
@@ -30,11 +35,11 @@ async function parseApiEnvelope<T>(res: Response): Promise<T> {
   try {
     body = (await res.json()) as ApiEnvelope<T>;
   } catch {
-    throw new ApiClientError('响应格式错误', undefined, res.status);
+    throw new ApiClientError(PARSE_ERROR, undefined, res.status);
   }
 
   if (body.code !== API_OK) {
-    throw new ApiClientError(body.message || '请求失败', body.code, res.status);
+    throw new ApiClientError(body.message || FALLBACK_REQUEST_ERROR, body.code, res.status);
   }
 
   return body.data as T;
@@ -45,8 +50,13 @@ function notifyError(err: unknown, silent?: boolean): never {
     err instanceof ApiClientError
       ? err
       : err instanceof TypeError
-        ? new ApiClientError('网络连接失败，请稍后重试')
-        : new ApiClientError(err instanceof Error ? err.message : '请求失败');
+        ? new ApiClientError(NETWORK_ERROR)
+        : new ApiClientError(FALLBACK_REQUEST_ERROR);
+
+  // 修复：原始错误仅打日志，Toast 只用 apiErr.message，避免透传英文 stack / provider 原文
+  if (!(err instanceof ApiClientError)) {
+    console.error('[api-client]', err);
+  }
 
   if (!silent) {
     message.error(apiErr.message);

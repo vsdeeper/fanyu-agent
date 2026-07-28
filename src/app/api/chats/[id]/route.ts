@@ -17,6 +17,10 @@ export async function GET(_req: Request, context: RouteContext) {
 
 export async function DELETE(_req: Request, context: RouteContext) {
   const { id } = await context.params;
-  await deleteChat(id);
-  return jsonOk(null);
+  try {
+    await deleteChat(id);
+    return jsonOk(null);
+  } catch {
+    return jsonFail(ApiErrorCode.INTERNAL_ERROR, '删除失败，请稍后重试', 500);
+  }
 }

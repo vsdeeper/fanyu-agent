@@ -36,7 +36,7 @@ type AmapRegeoResponse = {
 export async function POST(req: Request) {
   const key = process.env.AMAP_WEB_KEY;
   if (!key) {
-    return jsonFail(ApiErrorCode.AMAP_NOT_CONFIGURED, '未配置 AMAP_WEB_KEY', 503);
+    return jsonFail(ApiErrorCode.AMAP_NOT_CONFIGURED, '位置服务暂不可用', 503);
   }
 
   let body: unknown;
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     longitude < -180 ||
     longitude > 180
   ) {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, 'latitude/longitude 无效', 400);
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, '经纬度参数无效', 400);
   }
 
   // 修复：高德 location 为「经度,纬度」，小数点后不超过 6 位
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
   }
 
   if (amap.status !== '1') {
-    return jsonFail(ApiErrorCode.AMAP_UPSTREAM, amap.info || '高德逆地理失败', 502);
+    return jsonFail(ApiErrorCode.AMAP_UPSTREAM, '无法解析位置信息', 502);
   }
 
   const component = amap.regeocode?.addressComponent;

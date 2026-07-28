@@ -10,6 +10,7 @@ export const API_OK = 0 as const;
 export const ApiErrorCode = {
   INVALID_PARAMS: 40001,
   CHAT_NOT_FOUND: 40401,
+  INTERNAL_ERROR: 50001,
   AMAP_UPSTREAM: 50201,
   AMAP_NOT_CONFIGURED: 50301,
 } as const;

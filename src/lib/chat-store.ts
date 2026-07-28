@@ -56,7 +56,7 @@ export async function loadChat(id: string): Promise<ChatRecord> {
   const db = getDb();
   const chat = db.select().from(chats).where(eq(chats.id, id)).get();
   if (!chat) {
-    throw new Error('Chat not found');
+    throw new Error('会话不存在');
   }
 
   const rows = db
