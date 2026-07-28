@@ -14,7 +14,7 @@ import { generateId, type UIMessage } from 'ai';
 import { MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Spin, Typography } from 'antd';
 import type { ChatListItem, ChatRecord } from '@/lib/chat-store';
-import { readApiData } from '@/lib/api-response';
+import { apiGet } from '@/lib/api-client';
 import { resolveChatRouteId } from '@/lib/chat-route';
 import Chat from '@/components/Chat';
 import ChatSidebar from '@/components/ChatSidebar';
@@ -57,8 +57,7 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
     setLoadingChat(true);
     setHydratedMessages(null);
 
-    void fetch(`/api/chats/${routeChatId}`)
-      .then((res) => readApiData<ChatRecord>(res))
+    void apiGet<ChatRecord>(`/api/chats/${routeChatId}`)
       .then((data) => {
         if (!cancelled) setHydratedMessages(data.messages);
       })

@@ -1,4 +1,4 @@
-import { readApiData } from '@/lib/api-response';
+import { apiPost } from '@/lib/api-client';
 
 /** AI SDK / 方舟 web_search 的近似用户位置 */
 export type UserLocation = {
@@ -53,13 +53,11 @@ export async function getUserLocation(): Promise<UserLocation> {
     const position = await readPosition();
     const { latitude, longitude } = position.coords;
 
-    const res = await fetch('/api/geo/regeo', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ latitude, longitude }),
-    });
-
-    const data = await readApiData<UserLocation>(res);
+    const data = await apiPost<UserLocation>(
+      '/api/geo/regeo',
+      { latitude, longitude },
+      { silent: true },
+    );
 
     if (data?.type !== 'approximate') {
       return fallbackLocation();
