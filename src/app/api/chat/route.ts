@@ -9,6 +9,7 @@ import {
 } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import type { UserLocation } from '@/lib/user-location';
+import { ApiErrorCode, jsonFail } from '@/lib/api-response';
 import { loadChat, saveChat } from '@/lib/chat-store';
 import { normalizeArkResponsesSse } from './ark-sse';
 
@@ -113,7 +114,7 @@ export async function POST(req: Request) {
   } = await req.json();
 
   if (!id || typeof id !== 'string' || !message) {
-    return Response.json({ error: 'Missing chat id or message' }, { status: 400 });
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, '缺少 chat id 或 message', 400);
   }
 
   // 修复：/chat 草稿首条磁盘无记录，勿 404；历史从磁盘拼，勿信任客户端整包 messages

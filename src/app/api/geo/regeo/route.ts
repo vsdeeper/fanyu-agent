@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import type { UserLocation } from '@/lib/user-location';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/api-response';
 
 /** 高德中文国名 → ISO 3166-1 alpha-2；未知默认 CN（本项目主要服务国内） */
 const COUNTRY_TO_ISO: Record<string, string> = {
@@ -36,14 +36,14 @@ type AmapRegeoResponse = {
 export async function POST(req: Request) {
   const key = process.env.AMAP_WEB_KEY;
   if (!key) {
-    return NextResponse.json({ error: '未配置 AMAP_WEB_KEY' }, { status: 503 });
+    return jsonFail(ApiErrorCode.AMAP_NOT_CONFIGURED, '未配置 AMAP_WEB_KEY', 503);
   }
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: '无效 JSON' }, { status: 400 });
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, '无效 JSON', 400);
   }
 
   const { latitude, longitude } = (body ?? {}) as {
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     longitude < -180 ||
     longitude > 180
   ) {
-    return NextResponse.json({ error: 'latitude/longitude 无效' }, { status: 400 });
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, 'latitude/longitude 无效', 400);
   }
 
   // 修复：高德 location 为「经度,纬度」，小数点后不超过 6 位
@@ -77,15 +77,15 @@ export async function POST(req: Request) {
   try {
     const res = await fetch(url.toString(), { method: 'GET', cache: 'no-store' });
     if (!res.ok) {
-      return NextResponse.json({ error: '高德请求失败' }, { status: 502 });
+      return jsonFail(ApiErrorCode.AMAP_UPSTREAM, '高德请求失败', 502);
     }
     amap = (await res.json()) as AmapRegeoResponse;
   } catch {
-    return NextResponse.json({ error: '高德网络错误' }, { status: 502 });
+    return jsonFail(ApiErrorCode.AMAP_UPSTREAM, '高德网络错误', 502);
   }
 
   if (amap.status !== '1') {
-    return NextResponse.json({ error: amap.info || '高德逆地理失败' }, { status: 502 });
+    return jsonFail(ApiErrorCode.AMAP_UPSTREAM, amap.info || '高德逆地理失败', 502);
   }
 
   const component = amap.regeocode?.addressComponent;
@@ -101,5 +101,5 @@ export async function POST(req: Request) {
     ...(province ? { region: province } : {}),
   };
 
-  return NextResponse.json(userLocation);
+  return jsonOk(userLocation);
 }

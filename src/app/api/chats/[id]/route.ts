@@ -1,4 +1,5 @@
 import { deleteChat, loadChat } from '@/lib/chat-store';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/api-response';
 
 export const runtime = 'nodejs';
 
@@ -8,14 +9,14 @@ export async function GET(_req: Request, context: RouteContext) {
   const { id } = await context.params;
   try {
     const chat = await loadChat(id);
-    return Response.json(chat);
+    return jsonOk(chat);
   } catch {
-    return Response.json({ error: 'Chat not found' }, { status: 404 });
+    return jsonFail(ApiErrorCode.CHAT_NOT_FOUND, '会话不存在', 404);
   }
 }
 
 export async function DELETE(_req: Request, context: RouteContext) {
   const { id } = await context.params;
   await deleteChat(id);
-  return Response.json({ ok: true });
+  return jsonOk(null);
 }

@@ -13,7 +13,8 @@ import { useParams, usePathname, useRouter } from 'next/navigation';
 import { generateId, type UIMessage } from 'ai';
 import { MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Spin, Typography } from 'antd';
-import type { ChatListItem } from '@/lib/chat-store';
+import type { ChatListItem, ChatRecord } from '@/lib/chat-store';
+import { readApiData } from '@/lib/api-response';
 import { resolveChatRouteId } from '@/lib/chat-route';
 import Chat from '@/components/Chat';
 import ChatSidebar from '@/components/ChatSidebar';
@@ -57,10 +58,7 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
     setHydratedMessages(null);
 
     void fetch(`/api/chats/${routeChatId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('加载会话失败');
-        return res.json() as Promise<{ messages: UIMessage[] }>;
-      })
+      .then((res) => readApiData<ChatRecord>(res))
       .then((data) => {
         if (!cancelled) setHydratedMessages(data.messages);
       })

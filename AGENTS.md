@@ -138,3 +138,13 @@ Button/
 - 提交前由 lint-staged 检查暂存文件
 - 编写 Next.js 相关代码前先查阅 `node_modules/next/dist/docs/`
 - **修复 BUG 后须标注修复**：在相关代码处用简短注释标明「为何容易出错 / 为何这样改 / 以后勿再踩」，必要时同步更新本文件或 README 中的约定说明；仅修代码不留说明视为未完成
+
+### JSON API 响应约定
+
+- 所有 JSON Route Handler（`Response.json`）统一返回业务码信封：`{ code: number; message: string; data: T | null }`
+- **成功**：`code === 0`，`message === 'ok'`，`data` 为业务载荷；HTTP 200
+- **失败**：`code !== 0`，`message` 为中文可读描述，`data: null`；HTTP status 保留语义（400/404/502 等）；客户端以 `code === 0` 判业务成功
+- 工具：[`src/lib/api-response.ts`](src/lib/api-response.ts) — `jsonOk(data)` / `jsonFail(code, message, status)` / `readApiData<T>(res)`
+- 业务码（`ApiErrorCode`）：`40001` 参数无效、`40401` 会话不存在、`50201` 高德上游失败、`50301` 未配置 `AMAP_WEB_KEY`
+- **例外**：`POST /api/chat` 成功为 AI SDK SSE 流（`createUIMessageStreamResponse`），非 JSON 信封；其 400 错误仍走信封
+- 服务端组件直调 `chat-store`（如 `chat/layout` 的 `listChats()`）不经 HTTP，无需信封

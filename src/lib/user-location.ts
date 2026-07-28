@@ -1,3 +1,5 @@
+import { readApiData } from '@/lib/api-response';
+
 /** AI SDK / 方舟 web_search 的近似用户位置 */
 export type UserLocation = {
   type: 'approximate';
@@ -57,13 +59,7 @@ export async function getUserLocation(): Promise<UserLocation> {
       body: JSON.stringify({ latitude, longitude }),
     });
 
-    if (!res.ok) {
-      return fallbackLocation();
-    }
-
-    const data = (await res.json()) as Omit<UserLocation, 'timezone'> & {
-      timezone?: string;
-    };
+    const data = await readApiData<UserLocation>(res);
 
     if (data?.type !== 'approximate') {
       return fallbackLocation();

@@ -8,6 +8,7 @@ import { DeleteOutlined, MenuFoldOutlined, MessageOutlined } from '@ant-design/i
 import { Button, Typography } from 'antd';
 import { getChatGroupLabel } from '@/lib/chat-group';
 import type { ChatListItem } from '@/lib/chat-store';
+import { readApiData } from '@/lib/api-response';
 import styles from './ChatSidebar.module.css';
 
 type ChatSidebarProps = {
@@ -79,7 +80,7 @@ export default function ChatSidebar({
     setDeleting(true);
     try {
       const res = await fetch(`/api/chats/${chatId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('删除会话失败');
+      await readApiData<null>(res);
 
       if (chatId === activeChatId) {
         startTransition(() => {
