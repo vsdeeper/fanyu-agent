@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Conversations } from '@ant-design/x';
 import type { ConversationItemType } from '@ant-design/x/es/conversations/interface';
-import { DeleteOutlined, MenuFoldOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, MenuFoldOutlined, MessageOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { getChatGroupLabel } from '@/lib/chat-group';
 import type { ChatListItem } from '@/lib/chat-store';
@@ -120,8 +120,9 @@ export default function ChatSidebar({
           block
           color="default"
           variant="outlined"
-          size="middle"
-          icon={<PlusOutlined />}
+          size="medium"
+          shape="round"
+          icon={<MessageOutlined />}
           disabled={actionsDisabled}
           onClick={() => {
             void onCreateChat();

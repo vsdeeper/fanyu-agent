@@ -42,3 +42,7 @@
   overflow-y: auto;
   padding: 0 8px 12px;
 }
+
+.conversations :global(.ant-conversation-item-label) {
+  font-size: 12px;
+}
