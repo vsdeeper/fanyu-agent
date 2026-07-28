@@ -2,6 +2,8 @@
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Sender, Sources, Think, Welcome } from '@ant-design/x';
+import { XMarkdown } from '@ant-design/x-markdown';
+import '@ant-design/x-markdown/themes/light.css';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
 import { useChat } from '@ai-sdk/react';
@@ -201,6 +203,7 @@ export default function Chat({
 
   // 进页后台预取定位（浏览器原生授权）；提交只读缓存，避免 await 阻塞发送
   useEffect(() => {
+    console.log('getUserLocation');
     void getUserLocation();
   }, []);
 
@@ -225,7 +228,18 @@ export default function Chat({
         content: isAi ? (
           <div className={styles.bubbleContent}>
             {reasoning ? <ReasoningThink thinking={thinking}>{reasoning}</ReasoningThink> : null}
-            {text ? <div>{text}</div> : null}
+            {text ? (
+              <XMarkdown
+                className={`x-markdown-light ${styles.markdown}`}
+                content={text}
+                openLinksInNewTab
+                escapeRawHtml
+                streaming={{
+                  hasNextChunk: streaming,
+                  tail: streaming,
+                }}
+              />
+            ) : null}
             {sourceItems.length > 0 ? (
               <Sources
                 className={styles.sources}
