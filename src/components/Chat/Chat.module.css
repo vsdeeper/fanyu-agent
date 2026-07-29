@@ -55,12 +55,6 @@
   margin-inline: auto;
 }
 
-.emptyStage .sender {
-  width: 100%;
-  max-width: none;
-  margin-inline: 0;
-}
-
 .scrollBottom {
   position: absolute !important;
   right: calc((100% - var(--message-list-max-width)) / 2 + var(--scrollbar-size) + 10px);
@@ -87,14 +81,6 @@
 
 .composer > * {
   pointer-events: auto;
-}
-
-.sender {
-  flex-shrink: 0;
-  width: 100%;
-  background-color: #fff;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
 }
 
 .disclaimer {
