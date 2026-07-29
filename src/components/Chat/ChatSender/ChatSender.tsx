@@ -15,6 +15,58 @@ const ATTACHMENT_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,.pdf,.txt,.
 
 type AttachmentItem = NonNullable<GetProp<AttachmentsProps, 'items'>>[number];
 
+function isImageAttachment(item: AttachmentItem) {
+  const type = item.type ?? item.originFileObj?.type;
+  return type?.startsWith('image/') ?? false;
+}
+
+function revokeBlobUrls(items: AttachmentItem[]) {
+  for (const item of items) {
+    const blobUrls = new Set<string>();
+    if (item.url?.startsWith('blob:')) blobUrls.add(item.url);
+    if (item.thumbUrl?.startsWith('blob:')) blobUrls.add(item.thumbUrl);
+    for (const url of blobUrls) {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
+// 修复：previewImage 会压到约 200px；图片用原图 blob 作预览，状态仍保留 originFileObj 供发送。
+function withPreviewUrls(
+  fileList: AttachmentItem[],
+  prevItems: AttachmentItem[],
+): AttachmentItem[] {
+  const nextUids = new Set(fileList.map((item) => item.uid));
+  for (const prev of prevItems) {
+    if (!nextUids.has(prev.uid)) {
+      revokeBlobUrls([prev]);
+    }
+  }
+
+  return fileList.map((item) => {
+    if (!isImageAttachment(item) || !item.originFileObj) {
+      return item;
+    }
+
+    const hasBlobPreview = item.thumbUrl?.startsWith('blob:') || item.url?.startsWith('blob:');
+    if (hasBlobPreview) {
+      const blobUrl = item.thumbUrl?.startsWith('blob:') ? item.thumbUrl : item.url;
+      return { ...item, thumbUrl: blobUrl, url: blobUrl };
+    }
+
+    const blobUrl = URL.createObjectURL(item.originFileObj);
+    return { ...item, thumbUrl: blobUrl, url: blobUrl };
+  });
+}
+
+// 修复：传给 Attachments 的 items 去掉 originFileObj，跳过 FileList 内 previewImage 压缩与真空期。
+function toDisplayItems(items: AttachmentItem[]): AttachmentItem[] {
+  return items.map(({ originFileObj, ...rest }) => {
+    void originFileObj;
+    return rest;
+  });
+}
+
 function createFileListFromAttachments(items: AttachmentItem[]): FileList | undefined {
   const dataTransfer = new DataTransfer();
   for (const item of items) {
@@ -55,6 +107,7 @@ export default function ChatSender({
 
   const senderRef = useRef<SenderRef>(null);
   const attachmentsRef = useRef<AttachmentsRef>(null);
+  const latestAttachmentItemsRef = useRef<AttachmentItem[]>([]);
   const firstMessageSentRef = useRef(false);
 
   const attachmentItems = attachmentScope.items;
@@ -64,8 +117,21 @@ export default function ChatSender({
   // 切换会话：清空附件，避免跨会话误发
   if (id !== chatId) {
     setChatId(id);
+    revokeBlobUrls(attachmentScope.items);
     setAttachmentScope({ items: [], open: false });
   }
+
+  // 同步附件列表供卸载清理；勿在 render 写 ref
+  useEffect(() => {
+    latestAttachmentItemsRef.current = attachmentItems;
+  }, [attachmentItems]);
+
+  // 卸载时释放 blob 预览 URL
+  useEffect(() => {
+    return () => {
+      revokeBlobUrls(latestAttachmentItemsRef.current);
+    };
+  }, []);
 
   // 草稿态（/chat 欢迎页）挂载后聚焦 Sender，便于立即输入
   useEffect(() => {
@@ -104,12 +170,13 @@ export default function ChatSender({
           }
           return false;
         }}
-        items={attachmentItems}
+        items={toDisplayItems(attachmentItems)}
         onChange={({ fileList }) => {
+          const next = withPreviewUrls(fileList, attachmentItems);
           setAttachmentScope((prev) => ({
             ...prev,
-            items: fileList,
-            open: fileList.length > 0,
+            items: next,
+            open: next.length > 0,
           }));
         }}
         getDropContainer={() => senderRef.current?.nativeElement ?? null}
@@ -173,6 +240,7 @@ export default function ChatSender({
             firstMessageSentRef.current = true;
             onFirstMessageSent?.();
           }
+          revokeBlobUrls(attachmentItems);
           setAttachmentScope((prev) => ({ ...prev, items: [], open: false }));
           setInput('');
         }}
