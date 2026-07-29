@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Sender, Welcome } from '@ant-design/x';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
@@ -8,7 +8,7 @@ import type { SenderRef } from '@ant-design/x/es/sender/interface';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { CommentOutlined, DownOutlined, GlobalOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Button, Flex, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { getCachedUserLocation, getUserLocation } from '@/lib/user-location';
 import AiBubbleContent from './AiBubbleContent';
@@ -60,6 +60,8 @@ export default function Chat({
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [scrollBottomChatId, setScrollBottomChatId] = useState(id);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<BubbleListRef>(null);
   const senderRef = useRef<SenderRef>(null);
   const firstMessageSentRef = useRef(false);
@@ -87,7 +89,7 @@ export default function Chat({
       }),
   );
 
-  const { messages, sendMessage, status, stop, error } = useChat({
+  const { messages, sendMessage, status, stop } = useChat({
     id,
     messages: initialMessages,
     transport,
@@ -163,6 +165,24 @@ export default function Chat({
   const loading = status === 'submitted' || status === 'streaming';
   const hasMessages = messages.length > 0;
 
+  // 修复：composer 绝对定位浮在消息区上，须动态测高写入 --composer-height；勿再写死 148px
+  useLayoutEffect(() => {
+    if (!hasMessages) return;
+
+    const chatEl = chatRef.current;
+    const composerEl = composerRef.current;
+    if (!chatEl || !composerEl) return;
+
+    const syncComposerHeight = () => {
+      chatEl.style.setProperty('--composer-height', `${composerEl.offsetHeight}px`);
+    };
+
+    syncComposerHeight();
+    const observer = new ResizeObserver(syncComposerHeight);
+    observer.observe(composerEl);
+    return () => observer.disconnect();
+  }, [hasMessages]);
+
   const senderNode = (
     <div className={styles.sender}>
       <Sender
@@ -172,15 +192,20 @@ export default function Chat({
         loading={loading}
         onCancel={stop}
         placeholder="给 AI Agent 发送消息"
-        footer={
-          <Sender.Switch
-            value={webSearchEnabled}
-            onChange={setWebSearchEnabled}
-            icon={<GlobalOutlined />}
-          >
-            联网搜索
-          </Sender.Switch>
-        }
+        suffix={false}
+        autoSize={{ minRows: 2, maxRows: 8 }}
+        footer={(actionNode) => (
+          <Flex justify="space-between" align="center">
+            <Sender.Switch
+              value={webSearchEnabled}
+              onChange={setWebSearchEnabled}
+              icon={<GlobalOutlined />}
+            >
+              联网搜索
+            </Sender.Switch>
+            {actionNode}
+          </Flex>
+        )}
         onSubmit={(value) => {
           const text = value.trim();
           if (!text) return;
@@ -207,7 +232,7 @@ export default function Chat({
   );
 
   return (
-    <div className={styles.chat}>
+    <div ref={chatRef} className={styles.chat}>
       {hasMessages ? (
         <>
           <div className={styles.messages}>
@@ -235,13 +260,7 @@ export default function Chat({
             ) : null}
           </div>
 
-          <div className={styles.composer}>
-            {error ? (
-              <Typography.Text type="danger" className={styles.error}>
-                {error.message}
-              </Typography.Text>
-            ) : null}
-
+          <div ref={composerRef} className={styles.composer}>
             {senderNode}
 
             <Typography.Text type="secondary" className={styles.disclaimer}>

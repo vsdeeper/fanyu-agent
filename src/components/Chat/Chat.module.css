@@ -29,7 +29,7 @@
 .bubbleList :global(.ant-bubble-list-scroll-content) {
   padding-left: max(calc((100% - var(--message-list-max-width)) / 2), 16px) !important;
   padding-right: max(calc((100% - var(--message-list-max-width)) / 2), 16px) !important;
-  padding-bottom: 148px !important;
+  padding-bottom: var(--composer-height, 148px) !important;
 }
 
 /* 覆盖 BubbleList 默认 start/end 对侧 15% padding，让气泡在内容区内拉满 */
@@ -64,7 +64,7 @@
 .scrollBottom {
   position: absolute !important;
   right: calc((100% - var(--message-list-max-width)) / 2 + var(--scrollbar-size) + 14px);
-  bottom: 180px;
+  bottom: calc(var(--composer-height, 148px) + 32px);
   z-index: 2;
 }
 
@@ -105,9 +105,4 @@
   margin-bottom: -10px;
   padding: 10px 0;
   background-color: #fff;
-}
-
-.error {
-  display: block;
-  width: 100%;
 }
