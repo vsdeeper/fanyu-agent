@@ -15,29 +15,6 @@ const ATTACHMENT_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,.pdf,.txt,.
 
 type AttachmentItem = NonNullable<GetProp<AttachmentsProps, 'items'>>[number];
 
-function revokeBlobUrls(items: AttachmentItem[]) {
-  for (const item of items) {
-    if (item.url?.startsWith('blob:')) {
-      URL.revokeObjectURL(item.url);
-    }
-  }
-}
-
-function withPreviewUrls(file: AttachmentItem, fileList: AttachmentItem[]): AttachmentItem[] {
-  return fileList.map((item) => {
-    if (item.uid === file.uid && file.status !== 'removed' && item.originFileObj) {
-      if (item.url?.startsWith('blob:')) {
-        URL.revokeObjectURL(item.url);
-      }
-      return {
-        ...item,
-        url: URL.createObjectURL(item.originFileObj),
-      };
-    }
-    return item;
-  });
-}
-
 function createFileListFromAttachments(items: AttachmentItem[]): FileList | undefined {
   const dataTransfer = new DataTransfer();
   for (const item of items) {
@@ -78,7 +55,6 @@ export default function ChatSender({
 
   const senderRef = useRef<SenderRef>(null);
   const attachmentsRef = useRef<AttachmentsRef>(null);
-  const latestAttachmentItemsRef = useRef<AttachmentItem[]>([]);
   const firstMessageSentRef = useRef(false);
 
   const attachmentItems = attachmentScope.items;
@@ -88,21 +64,8 @@ export default function ChatSender({
   // 切换会话：清空附件，避免跨会话误发
   if (id !== chatId) {
     setChatId(id);
-    revokeBlobUrls(attachmentScope.items);
     setAttachmentScope({ items: [], open: false });
   }
-
-  // 同步附件列表供卸载清理；勿在 render 写 ref
-  useEffect(() => {
-    latestAttachmentItemsRef.current = attachmentItems;
-  }, [attachmentItems]);
-
-  // 卸载时释放 blob 预览 URL
-  useEffect(() => {
-    return () => {
-      revokeBlobUrls(latestAttachmentItemsRef.current);
-    };
-  }, []);
 
   // 草稿态（/chat 欢迎页）挂载后聚焦 Sender，便于立即输入
   useEffect(() => {
@@ -142,12 +105,11 @@ export default function ChatSender({
           return false;
         }}
         items={attachmentItems}
-        onChange={({ file, fileList }) => {
-          const next = withPreviewUrls(file, fileList);
+        onChange={({ fileList }) => {
           setAttachmentScope((prev) => ({
             ...prev,
-            items: next,
-            open: next.length > 0,
+            items: fileList,
+            open: fileList.length > 0,
           }));
         }}
         getDropContainer={() => senderRef.current?.nativeElement ?? null}
@@ -211,7 +173,6 @@ export default function ChatSender({
             firstMessageSentRef.current = true;
             onFirstMessageSent?.();
           }
-          revokeBlobUrls(attachmentItems);
           setAttachmentScope((prev) => ({ ...prev, items: [], open: false }));
           setInput('');
         }}
