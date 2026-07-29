@@ -63,8 +63,8 @@
 
 .scrollBottom {
   position: absolute !important;
-  right: calc((100% - var(--message-list-max-width)) / 2 + var(--scrollbar-size) + 14px);
-  bottom: calc(var(--composer-height, 148px) + 32px);
+  right: calc((100% - var(--message-list-max-width)) / 2 + var(--scrollbar-size) + 10px);
+  bottom: calc(var(--composer-height, 148px) + 30px);
   z-index: 2;
 }
 
