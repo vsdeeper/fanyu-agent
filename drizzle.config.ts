@@ -1,6 +1,7 @@
 import { defineConfig } from 'drizzle-kit';
+import { requireEnv } from './src/lib/env';
 
-const storeDir = process.env.CHAT_STORE_DIR?.trim() || 'D:/华为云盘/ai-agent/chats';
+const storeDir = requireEnv('CHAT_STORE_DIR');
 
 export default defineConfig({
   schema: './src/lib/db/schema.ts',

@@ -11,6 +11,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import type { UserLocation } from '@/lib/user-location';
 import { ApiErrorCode, jsonFail } from '@/lib/api-response';
 import { loadChat, saveChat } from '@/lib/chat-store';
+import { requireEnv } from '@/lib/env';
 import { normalizeArkResponsesSse } from './ark-sse';
 
 // globalThis.AI_SDK_LOG_WARNINGS = false;
@@ -54,8 +55,8 @@ const ARK_UNSUPPORTED_INCLUDES = new Set([
 ]);
 
 const ark = createOpenAI({
-  apiKey: process.env.ARK_API_KEY,
-  baseURL: process.env.ARK_BASE_URL ?? 'https://ark.cn-beijing.volces.com/api/v3',
+  apiKey: requireEnv('ARK_API_KEY'),
+  baseURL: requireEnv('ARK_BASE_URL'),
   fetch: async (url, init) => {
     if (init?.body && typeof init.body === 'string') {
       const body = JSON.parse(init.body) as {
@@ -120,10 +121,7 @@ export async function POST(req: Request) {
       return jsonFail(ApiErrorCode.INVALID_PARAMS, '缺少会话或消息内容', 400);
     }
 
-    const modelId = process.env.ARK_MODEL_ID?.trim();
-    if (!modelId) {
-      return jsonFail(ApiErrorCode.ARK_NOT_CONFIGURED, '对话服务暂不可用', 503);
-    }
+    const modelId = requireEnv('ARK_MODEL_ID');
 
     // 修复：/chat 草稿首条磁盘无记录，勿 404；历史从磁盘拼，勿信任客户端整包 messages
     let previousMessages: UIMessage[] = [];

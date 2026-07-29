@@ -1,5 +1,6 @@
 import type { UserLocation } from '@/lib/user-location';
 import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/api-response';
+import { requireEnv } from '@/lib/env';
 
 /** 高德中文国名 → ISO 3166-1 alpha-2；未知默认 CN（本项目主要服务国内） */
 const COUNTRY_TO_ISO: Record<string, string> = {
@@ -34,10 +35,7 @@ type AmapRegeoResponse = {
 };
 
 export async function POST(req: Request) {
-  const key = process.env.AMAP_WEB_KEY;
-  if (!key) {
-    return jsonFail(ApiErrorCode.AMAP_NOT_CONFIGURED, '位置服务暂不可用', 503);
-  }
+  const key = requireEnv('AMAP_WEB_KEY');
 
   let body: unknown;
   try {

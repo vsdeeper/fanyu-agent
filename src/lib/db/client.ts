@@ -3,12 +3,11 @@ import path from 'path';
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { requireEnv } from '@/lib/env';
 import * as schema from './schema';
 
 export function getChatDir(): string {
-  const configured = process.env.CHAT_STORE_DIR?.trim();
-  // 修复：勿默认落到仓库内；未配置时用计划约定的华为云盘路径，换机请改 CHAT_STORE_DIR
-  return configured && configured.length > 0 ? configured : 'D:/华为云盘/ai-agent/chats';
+  return requireEnv('CHAT_STORE_DIR');
 }
 
 function ensureChatDir(chatDir: string): void {

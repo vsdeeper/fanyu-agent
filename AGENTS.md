@@ -139,6 +139,12 @@ Button/
 - 编写 Next.js 相关代码前先查阅 `node_modules/next/dist/docs/`
 - **修复 BUG 后须标注修复**：在相关代码处用简短注释标明「为何容易出错 / 为何这样改 / 以后勿再踩」，必要时同步更新本文件或 README 中的约定说明；仅修代码不留说明视为未完成
 
+### 环境变量约定
+
+- 本地开发须复制 `.env.example` 为 `.env.local`，**其中列出的变量必须填写**；业务代码假定其已配置且有非空值
+- 读取时使用 [`requireEnv(name)`](src/lib/env.ts)，**勿**写 `process.env.X ?? 默认值`、`|| 'fallback'` 或 Route 内 `if (!process.env.X)` 判空分支；缺失或空字符串直接 `throw`，排查看服务端日志
+- 面向用户的 JSON API 亦不因「未配置环境变量」单独返回 503 业务码；属部署/本地配置错误，由抛错或外层 catch 处理
+
 ### JSON API 响应约定
 
 - 所有 JSON Route Handler（`Response.json`）统一返回业务码信封：`{ code: number; message: string; data: T | null }`
@@ -146,10 +152,10 @@ Button/
 - **失败**：`code !== 0`，`message` 为中文可读描述，`data: null`；HTTP status 保留语义（400/404/502 等）；客户端以 `code === 0` 判业务成功
 - **用户端友好提示语**（`jsonFail` 的 `message` 字段）：
   - 面向终端用户，勿暴露环境变量名、业务码含义、Provider/SDK 原文、`err.message` 等内部信息；排查细节写服务端日志，勿塞进响应
-  - 未配置密钥/模型、上游不可用等运维类问题：用「**XX 服务暂不可用**」等中性表述（如 `50301` →「位置服务暂不可用」、`50302` →「对话服务暂不可用」）
+  - 上游不可用等运维类问题：用「**XX 服务暂不可用**」等中性表述；环境变量缺失见上文「环境变量约定」，不在 Route 内判空返回友好文案
   - 用户输入问题：简短说明缺什么或哪里不对（如「缺少会话或消息内容」「无效 JSON」）
   - 未知/兜底异常：「服务暂时不可用，请稍后重试」；勿把英文 provider 错误直接返回客户端
 - 工具：[`src/lib/api-response.ts`](src/lib/api-response.ts) — `jsonOk(data)` / `jsonFail(code, message, status)` / `readApiData<T>(res)`
-- 业务码（`ApiErrorCode`）：`40001` 参数无效、`40401` 会话不存在、`50201` 高德上游失败、`50301` 未配置 `AMAP_WEB_KEY`、`50302` 未配置 `ARK_MODEL_ID`
+- 业务码（`ApiErrorCode`）：`40001` 参数无效、`40401` 会话不存在、`50201` 高德上游失败；`50301` / `50302` 保留码位，环境变量缺省改由 `requireEnv` 抛错
 - **例外**：`POST /api/chat` 成功为 AI SDK SSE 流（`createUIMessageStreamResponse`），非 JSON 信封；其 400 错误仍走信封
 - 服务端组件直调 `chat-store`（如 `chat/layout` 的 `listChats()`）不经 HTTP，无需信封
