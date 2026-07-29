@@ -1,0 +1,43 @@
+.bubbleContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.markdown {
+  width: 100%;
+  line-height: 1.6;
+}
+
+.markdown :global(p:first-child) {
+  margin-top: 0;
+}
+
+.markdown :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.think {
+  margin-bottom: 0;
+}
+
+.sources {
+  margin-top: 4px;
+}
+
+.sources :global(.ant-sources-link) {
+  align-items: center;
+}
+
+.sourceFavicon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  object-fit: contain;
+}
+
+.sourceFaviconFallback {
+  font-size: 14px;
+  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.45));
+}

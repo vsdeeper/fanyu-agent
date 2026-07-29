@@ -13,6 +13,7 @@ export const ApiErrorCode = {
   INTERNAL_ERROR: 50001,
   AMAP_UPSTREAM: 50201,
   AMAP_NOT_CONFIGURED: 50301,
+  ARK_NOT_CONFIGURED: 50302,
 } as const;
 
 const OK_MESSAGE = 'ok';

@@ -13,6 +13,8 @@ import { ApiErrorCode, jsonFail } from '@/lib/api-response';
 import { loadChat, saveChat } from '@/lib/chat-store';
 import { normalizeArkResponsesSse } from './ark-sse';
 
+// globalThis.AI_SDK_LOG_WARNINGS = false;
+
 export const maxDuration = 60;
 export const runtime = 'nodejs';
 
@@ -118,6 +120,11 @@ export async function POST(req: Request) {
       return jsonFail(ApiErrorCode.INVALID_PARAMS, '缺少会话或消息内容', 400);
     }
 
+    const modelId = process.env.ARK_MODEL_ID?.trim();
+    if (!modelId) {
+      return jsonFail(ApiErrorCode.ARK_NOT_CONFIGURED, '对话服务暂不可用', 503);
+    }
+
     // 修复：/chat 草稿首条磁盘无记录，勿 404；历史从磁盘拼，勿信任客户端整包 messages
     let previousMessages: UIMessage[] = [];
     try {
@@ -139,7 +146,7 @@ export async function POST(req: Request) {
     });
 
     const result = streamText({
-      model: ark.responses(process.env.ARK_MODEL_ID ?? 'deepseek-v4-flash-260425'),
+      model: ark.responses(modelId),
       system: '按用户语言与语境自然回答。',
       messages: modelMessages,
       ...(webSearch

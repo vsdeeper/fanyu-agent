@@ -1,9 +1,7 @@
 'use client';
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Sender, Sources, Think, Welcome } from '@ant-design/x';
-import { XMarkdown } from '@ant-design/x-markdown';
-import '@ant-design/x-markdown/themes/light.css';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Sender, Welcome } from '@ant-design/x';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
 import type { SenderRef } from '@ant-design/x/es/sender/interface';
@@ -13,6 +11,7 @@ import { CommentOutlined, DownOutlined, GlobalOutlined } from '@ant-design/icons
 import { Button, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { getCachedUserLocation, getUserLocation } from '@/lib/user-location';
+import AiBubbleContent from './AiBubbleContent';
 import styles from './Chat.module.css';
 
 function getPartsText(
@@ -24,111 +23,6 @@ function getPartsText(
     .filter((part) => part.type === type && typeof part.text === 'string')
     .map((part) => (part.text as string) ?? '')
     .join('');
-}
-
-type SourceItem = { key: string; title: string; url: string };
-
-function getHostname(url: string): string | null {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-}
-
-/** 用域名推导 favicon（ico.n3v.cn；模型不返回图标 URL） */
-function SourceFavicon({ url }: { url: string }) {
-  const [failed, setFailed] = useState(false);
-  const host = getHostname(url)?.replace(/^www\./, '') ?? null;
-
-  if (!host || failed) {
-    return <GlobalOutlined className={styles.sourceFaviconFallback} />;
-  }
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element -- 第三方 favicon 服务，无需 next/image
-    <img
-      className={styles.sourceFavicon}
-      src={`https://ico.n3v.cn/get.php?url=${encodeURIComponent(host)}`}
-      alt=""
-      width={16}
-      height={16}
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
-function getSourceItems(message: {
-  parts?: ReadonlyArray<{ type: string; [key: string]: unknown }>;
-}): SourceItem[] {
-  if (!message.parts?.length) return [];
-
-  const byUrl = new Map<string, SourceItem>();
-
-  const add = (url: string, title?: string, key?: string) => {
-    if (!url || byUrl.has(url)) return;
-    byUrl.set(url, {
-      key: key ?? url,
-      title: title || url,
-      url,
-    });
-  };
-
-  for (const part of message.parts) {
-    // 1. AI SDK source-url（后端 SSE 注入 annotation.added 后的主路径）
-    if (part.type === 'source-url' && typeof part.url === 'string') {
-      add(
-        part.url,
-        typeof part.title === 'string' ? part.title : undefined,
-        String(part.sourceId ?? part.url),
-      );
-      continue;
-    }
-
-    // 2. tool-web_search.output.sources（偶发 / 兼容）
-    if (part.type === 'tool-web_search' && part.state === 'output-available') {
-      const output = part.output as
-        { sources?: Array<{ type?: string; url?: string; title?: string }> } | undefined;
-      for (const source of output?.sources ?? []) {
-        if (source.url) {
-          add(source.url, source.title);
-        }
-      }
-    }
-  }
-
-  // 3. 兜底：正文 Markdown 链接 [title](url)
-  const text = getPartsText(message, 'text');
-  const mdLinkRe = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
-  let match: RegExpExecArray | null;
-  while ((match = mdLinkRe.exec(text)) !== null) {
-    add(match[2], match[1] || match[2]);
-  }
-
-  return Array.from(byUrl.values());
-}
-
-function ReasoningThink({ thinking, children }: { thinking: boolean; children: ReactNode }) {
-  const [expanded, setExpanded] = useState(thinking);
-  const [prevThinking, setPrevThinking] = useState(thinking);
-
-  if (thinking !== prevThinking) {
-    setPrevThinking(thinking);
-    setExpanded(thinking);
-  }
-
-  return (
-    <Think
-      className={styles.think}
-      title={thinking ? '思考中' : '思考过程'}
-      loading={thinking}
-      blink={thinking}
-      expanded={expanded}
-      onExpand={setExpanded}
-    >
-      {children}
-    </Think>
-  );
 }
 
 const bubbleRole = {
@@ -197,6 +91,7 @@ export default function Chat({
     id,
     messages: initialMessages,
     transport,
+    throttle: 100,
     onFinish: () => {
       // 落盘后刷新 layout，侧栏标题/分组才会更新
       router.refresh();
@@ -231,42 +126,18 @@ export default function Chat({
       const reasoning = isAi ? getPartsText(message, 'reasoning') : '';
       const hasVisibleAiContent = Boolean(text || reasoning);
       const thinking = streaming && !text;
-      const sourceItems = isAi ? getSourceItems(message) : [];
 
       return {
         key: message.id,
         role: isAi ? ('ai' as const) : ('user' as const),
         content: isAi ? (
-          <div className={styles.bubbleContent}>
-            {reasoning ? <ReasoningThink thinking={thinking}>{reasoning}</ReasoningThink> : null}
-            {text ? (
-              <XMarkdown
-                className={`x-markdown-light ${styles.markdown}`}
-                content={text}
-                openLinksInNewTab
-                escapeRawHtml
-                streaming={{
-                  hasNextChunk: streaming,
-                  tail: streaming,
-                }}
-                disableDefaultStyles={['code']}
-              />
-            ) : null}
-            {sourceItems.length > 0 ? (
-              <Sources
-                className={styles.sources}
-                title={`引用 ${sourceItems.length} 个来源`}
-                defaultExpanded={false}
-                items={sourceItems.map((item) => ({
-                  ...item,
-                  icon: <SourceFavicon url={item.url} />,
-                }))}
-                onClick={(item) => {
-                  if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer');
-                }}
-              />
-            ) : null}
-          </div>
+          <AiBubbleContent
+            text={text}
+            reasoning={reasoning}
+            streaming={streaming}
+            thinking={thinking}
+            messageParts={message.parts}
+          />
         ) : (
           text
         ),
