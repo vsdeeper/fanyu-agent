@@ -10,21 +10,6 @@ export type AiBubbleContentProps = {
   messageParts: ReadonlyArray<MessagePart> | undefined;
 };
 
-export type GenerateImageOutput = {
-  ok?: boolean;
-  assetId?: string;
-  url?: string;
-  error?: string;
-};
-
-export function getHostname(url: string): string | null {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-}
-
 export function getSourceItems(
   messageParts: ReadonlyArray<MessagePart> | undefined,
   text: string,

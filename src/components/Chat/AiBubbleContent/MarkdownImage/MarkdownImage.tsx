@@ -2,7 +2,7 @@
 
 import { type ComponentProps } from '@ant-design/x-markdown';
 import { Image, Skeleton } from 'antd';
-import styles from '../AiBubbleContent.module.css';
+import styles from './MarkdownImage.module.css';
 
 export default function MarkdownImage(props: ComponentProps) {
   const src = typeof props.src === 'string' ? props.src : undefined;
@@ -11,17 +11,12 @@ export default function MarkdownImage(props: ComponentProps) {
   if (!src) return null;
 
   return (
-    <Image
-      classNames={{ root: styles.markdownImage }}
-      src={src}
-      alt={alt}
-      preview={{ mask: '预览' }}
-    />
+    <Image classNames={{ root: styles.image }} src={src} alt={alt} preview={{ mask: '预览' }} />
   );
 }
 
 export function IncompleteImage() {
-  return <Skeleton.Image active classNames={{ root: styles.markdownImageSkeleton }} />;
+  return <Skeleton.Image active classNames={{ root: styles.skeleton }} />;
 }
 
 export const markdownComponents = {

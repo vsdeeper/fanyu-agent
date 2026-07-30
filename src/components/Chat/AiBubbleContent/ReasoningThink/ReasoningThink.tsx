@@ -2,7 +2,7 @@
 
 import { type ReactNode, useState } from 'react';
 import { Think } from '@ant-design/x';
-import styles from '../AiBubbleContent.module.css';
+import styles from './ReasoningThink.module.css';
 
 export type ReasoningThinkProps = {
   thinking: boolean;
