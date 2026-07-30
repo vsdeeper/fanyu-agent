@@ -4,7 +4,8 @@ import { memo, type ReactNode, useMemo, useState } from 'react';
 import { Sources, Think } from '@ant-design/x';
 import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
-import { GlobalOutlined } from '@ant-design/icons';
+import { GlobalOutlined, PictureOutlined } from '@ant-design/icons';
+import { Image, Spin } from 'antd';
 import styles from './AiBubbleContent.module.css';
 
 type MessagePart = { type: string; [key: string]: unknown };
@@ -115,6 +116,69 @@ export function sourcePartsKey(messageParts: ReadonlyArray<MessagePart> | undefi
   return keys.join('|');
 }
 
+/** memo 比较用：tool-generate_image 状态与输出 */
+export function imagePartsKey(messageParts: ReadonlyArray<MessagePart> | undefined): string {
+  if (!messageParts?.length) return '';
+
+  const keys: string[] = [];
+  for (const part of messageParts) {
+    if (part.type === 'tool-generate_image') {
+      keys.push(`g:${String(part.state ?? '')}:${JSON.stringify(part.output ?? null)}`);
+    }
+  }
+  return keys.join('|');
+}
+
+type GenerateImageOutput = {
+  ok?: boolean;
+  assetId?: string;
+  url?: string;
+  error?: string;
+};
+
+function GenerateImageBlock({ part }: { part: MessagePart }) {
+  const state = typeof part.state === 'string' ? part.state : '';
+  const output = part.output as GenerateImageOutput | undefined;
+
+  if (state === 'output-error') {
+    return <div className={styles.generateImageError}>图片生成失败</div>;
+  }
+
+  if (output?.ok === false) {
+    return <div className={styles.generateImageError}>{output.error || '图片生成失败'}</div>;
+  }
+
+  if (output?.ok === true && output.assetId) {
+    const src = output.url || `/api/images/${output.assetId}`;
+    return (
+      <div className={styles.generateImageWrap}>
+        <Image
+          className={styles.generateImage}
+          src={src}
+          alt="生成的图片"
+          preview={{ mask: '预览' }}
+        />
+      </div>
+    );
+  }
+
+  if (
+    state === 'input-streaming' ||
+    state === 'input-available' ||
+    state === 'approval-requested'
+  ) {
+    return (
+      <div className={styles.generateImagePending}>
+        <Spin size="small" />
+        <PictureOutlined className={styles.generateImagePendingIcon} />
+        <span>正在生成图片…</span>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function openSourceUrl(item: { url?: string }) {
   if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer');
 }
@@ -151,7 +215,8 @@ function aiBubbleContentPropsAreEqual(
     prev.reasoning === next.reasoning &&
     prev.streaming === next.streaming &&
     prev.thinking === next.thinking &&
-    sourcePartsKey(prev.messageParts) === sourcePartsKey(next.messageParts)
+    sourcePartsKey(prev.messageParts) === sourcePartsKey(next.messageParts) &&
+    imagePartsKey(prev.messageParts) === imagePartsKey(next.messageParts)
   );
 }
 
@@ -163,10 +228,17 @@ function AiBubbleContent({
   messageParts,
 }: AiBubbleContentProps) {
   const sourceItems = useMemo(() => getSourceItems(messageParts, text), [messageParts, text]);
+  const imageParts = useMemo(
+    () => (messageParts ?? []).filter((part) => part.type === 'tool-generate_image'),
+    [messageParts],
+  );
 
   return (
     <div className={styles.bubbleContent}>
       {reasoning ? <ReasoningThink thinking={thinking}>{reasoning}</ReasoningThink> : null}
+      {imageParts.map((part, index) => (
+        <GenerateImageBlock key={`generate-image-${index}`} part={part} />
+      ))}
       {text ? (
         <XMarkdown
           className={`x-markdown-light ${styles.markdown}`}

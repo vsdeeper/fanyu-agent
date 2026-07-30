@@ -3,6 +3,7 @@ import {
   createIdGenerator,
   createUIMessageStreamResponse,
   pruneMessages,
+  stepCountIs,
   streamText,
   toUIMessageStream,
   type UIMessage,
@@ -12,11 +13,12 @@ import type { UserLocation } from '@/lib/user-location';
 import { ApiErrorCode, jsonFail } from '@/lib/api-response';
 import { loadChat, saveChat } from '@/lib/chat-store';
 import { requireEnv } from '@/lib/env';
+import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/image/generate-image-tool';
 import { normalizeArkResponsesSse } from './ark-sse';
 
 // globalThis.AI_SDK_LOG_WARNINGS = false;
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 export const runtime = 'nodejs';
 
 /** 仅接受 approximate + 已知可选字符串字段，忽略非法结构 */
@@ -145,17 +147,20 @@ export async function POST(req: Request) {
 
     const result = streamText({
       model: ark.responses(modelId),
-      system: '按用户语言与语境自然回答。',
+      system: `按用户语言与语境自然回答。\n\n${IMAGE_SYSTEM_HINT}`,
       messages: modelMessages,
-      ...(webSearch
-        ? {
-            tools: {
+      tools: {
+        generate_image: createGenerateImageTool(id),
+        ...(webSearch
+          ? {
               web_search: ark.tools.webSearch(
                 userLocation?.type === 'approximate' ? { userLocation } : {},
               ),
-            },
-          }
-        : {}),
+            }
+          : {}),
+      },
+      // 修复：无 stopWhen 时 tool 执行后不会继续汇总；生图+说明需多步
+      stopWhen: stepCountIs(5),
       // 修复：避免 store 默认 true 产生 item_reference
       providerOptions: { openai: { store: false } },
     });
