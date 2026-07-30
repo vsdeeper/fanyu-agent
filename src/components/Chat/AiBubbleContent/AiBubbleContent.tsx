@@ -4,8 +4,8 @@ import { memo, type ReactNode, useMemo, useState } from 'react';
 import { Sources, Think } from '@ant-design/x';
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
-import { GlobalOutlined, PictureOutlined } from '@ant-design/icons';
-import { Image, Skeleton, Spin } from 'antd';
+import { GlobalOutlined } from '@ant-design/icons';
+import { Image, Skeleton } from 'antd';
 import styles from './AiBubbleContent.module.css';
 
 type MessagePart = { type: string; [key: string]: unknown };
@@ -136,29 +136,30 @@ type GenerateImageOutput = {
   error?: string;
 };
 
-function GenerateImageBlock({ part }: { part: MessagePart }) {
+function GenerateImageItem({ part }: { part: MessagePart }) {
   const state = typeof part.state === 'string' ? part.state : '';
   const output = part.output as GenerateImageOutput | undefined;
 
-  if (state === 'output-error') {
-    return <div className={styles.generateImageError}>图片生成失败</div>;
-  }
-
-  if (output?.ok === false) {
-    return <div className={styles.generateImageError}>{output.error || '图片生成失败'}</div>;
+  if (state === 'output-error' || output?.ok === false) {
+    return (
+      <Image
+        classNames={{ root: styles.generateImage }}
+        src=""
+        alt="图片生成失败"
+        preview={false}
+      />
+    );
   }
 
   if (output?.ok === true && output.assetId) {
     const src = output.url || `/api/images/${output.assetId}`;
     return (
-      <div className={styles.generateImageWrap}>
-        <Image
-          className={styles.generateImage}
-          src={src}
-          alt="生成的图片"
-          preview={{ mask: '预览' }}
-        />
-      </div>
+      <Image
+        classNames={{ root: styles.generateImage }}
+        src={src}
+        alt="生成的图片"
+        preview={{ mask: '预览' }}
+      />
     );
   }
 
@@ -167,16 +168,22 @@ function GenerateImageBlock({ part }: { part: MessagePart }) {
     state === 'input-available' ||
     state === 'approval-requested'
   ) {
-    return (
-      <div className={styles.generateImagePending}>
-        <Spin size="small" />
-        <PictureOutlined className={styles.generateImagePendingIcon} />
-        <span>正在生成图片…</span>
-      </div>
-    );
+    return <Skeleton.Image active classNames={{ root: styles.generateImage }} />;
   }
 
   return null;
+}
+
+function GenerateImageBlock({ parts }: { parts: ReadonlyArray<MessagePart> }) {
+  return (
+    <div className={styles.generateImageList}>
+      <Image.PreviewGroup>
+        {parts.map((part, index) => (
+          <GenerateImageItem key={`generate-image-${index}`} part={part} />
+        ))}
+      </Image.PreviewGroup>
+    </div>
+  );
 }
 
 function MarkdownImage(props: ComponentProps) {
@@ -276,9 +283,7 @@ function AiBubbleContent({
           disableDefaultStyles={['code', 'img']}
         />
       ) : null}
-      {imageParts.map((part, index) => (
-        <GenerateImageBlock key={`generate-image-${index}`} part={part} />
-      ))}
+      <GenerateImageBlock parts={imageParts} />
       {sourceItems.length > 0 && !streaming ? (
         <Sources
           className={styles.sources}
