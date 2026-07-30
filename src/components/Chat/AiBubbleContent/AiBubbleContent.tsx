@@ -2,10 +2,10 @@
 
 import { memo, type ReactNode, useMemo, useState } from 'react';
 import { Sources, Think } from '@ant-design/x';
-import { XMarkdown } from '@ant-design/x-markdown';
+import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import { GlobalOutlined, PictureOutlined } from '@ant-design/icons';
-import { Image, Spin } from 'antd';
+import { Image, Skeleton, Spin } from 'antd';
 import styles from './AiBubbleContent.module.css';
 
 type MessagePart = { type: string; [key: string]: unknown };
@@ -179,6 +179,31 @@ function GenerateImageBlock({ part }: { part: MessagePart }) {
   return null;
 }
 
+function MarkdownImage(props: ComponentProps) {
+  const src = typeof props.src === 'string' ? props.src : undefined;
+  const alt = typeof props.alt === 'string' ? props.alt : '';
+
+  if (!src) return null;
+
+  return (
+    <Image
+      classNames={{ root: styles.markdownImage }}
+      src={src}
+      alt={alt}
+      preview={{ mask: '预览' }}
+    />
+  );
+}
+
+function ImageSkeleton() {
+  return <Skeleton.Image active classNames={{ root: styles.markdownImageSkeleton }} />;
+}
+
+const markdownComponents = {
+  img: MarkdownImage,
+  'incomplete-image': ImageSkeleton,
+};
+
 function openSourceUrl(item: { url?: string }) {
   if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer');
 }
@@ -236,21 +261,24 @@ function AiBubbleContent({
   return (
     <div className={styles.bubbleContent}>
       {reasoning ? <ReasoningThink thinking={thinking}>{reasoning}</ReasoningThink> : null}
-      {imageParts.map((part, index) => (
-        <GenerateImageBlock key={`generate-image-${index}`} part={part} />
-      ))}
       {text ? (
         <XMarkdown
           className={`x-markdown-light ${styles.markdown}`}
           content={text}
+          components={markdownComponents}
+          paragraphTag="div"
           openLinksInNewTab
           escapeRawHtml
           streaming={{
             hasNextChunk: streaming,
+            incompleteMarkdownComponentMap: { image: 'incomplete-image' },
           }}
-          disableDefaultStyles={['code']}
+          disableDefaultStyles={['code', 'img']}
         />
       ) : null}
+      {imageParts.map((part, index) => (
+        <GenerateImageBlock key={`generate-image-${index}`} part={part} />
+      ))}
       {sourceItems.length > 0 && !streaming ? (
         <Sources
           className={styles.sources}

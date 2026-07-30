@@ -73,3 +73,21 @@
   color: var(--ant-color-error, #ff4d4f);
   font-size: 14px;
 }
+
+.markdownImage {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin: 4px;
+}
+
+.markdownImageSkeleton {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin: 4px;
+}
