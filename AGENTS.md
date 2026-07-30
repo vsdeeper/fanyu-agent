@@ -111,11 +111,17 @@ Button/
   Button.tsx          # 或 index.tsx
   Button.module.css   # 勿用 index.module.css（IDE 标签难辨认）
   Button.test.tsx
+  utils.ts            # 组件级纯函数 / 数据处理（可选）
+  SubButton/          # 子组件拆离（勿在主文件内定义）
+    SubButton.tsx
+    index.ts          # 再导出
   index.ts            # 再导出（可选）
 ```
 
 - 仅单文件且无样式时可暂平铺：`components/Foo.tsx`
 - `index.ts` 只做对外导出，勿塞业务逻辑
+- **不在主组件文件内定义子组件**：抽到同级子目录（如 `Button/SubButton/`），由 `index.ts` 再导出后供主组件引用
+- **不在主组件文件内定义方法**：解析、归一化、memo 比较、事件处理等一律抽到同目录 `utils.ts`；主文件只保留组件函数与 JSX 组装
 - 路由私有组件可放 `app/<route>/_components/`；跨路由复用放 `src/components`
 
 ## 会话持久化约定
@@ -140,7 +146,7 @@ Button/
 - 与用户/AI 对话默认使用中文简体
 - 提交说明使用中文 description 的 Conventional Commits
 - **不引入 Tailwind**；样式优先 CSS Modules 与 Ant Design / Ant Design X
-- 组件目录遵循上文「组件目录约定」（`ComponentName/ComponentName.tsx` + 同名 `.module.css`）
+- 组件目录遵循上文「组件目录约定」（子组件拆离、主文件不定义方法、`utils.ts` 维护、`ComponentName.tsx` + 同名 `.module.css`）
 - App Router 下避免 `Bubble.List` 这类点号子组件写法，改为从独立路径导入（如 `@ant-design/x/es/bubble/BubbleList`）
 - 完成修改后对改动文件执行格式化（`pnpm run format` 或依赖 lint-staged）
 - 提交前由 lint-staged 检查暂存文件
