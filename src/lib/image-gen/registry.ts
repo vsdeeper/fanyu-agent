@@ -1,4 +1,4 @@
-import { requireEnv } from '@/lib/env';
+import { requireEnv } from '@/lib/shared/env';
 import type { ImageModelProfile } from './types';
 
 /** 首版默认方舟 Seedream；Flux Art 模型仅注册，Provider 二期实现 */

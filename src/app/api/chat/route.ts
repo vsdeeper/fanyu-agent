@@ -9,11 +9,11 @@ import {
   type UIMessage,
 } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
-import type { UserLocation } from '@/lib/user-location';
-import { ApiErrorCode, jsonFail } from '@/lib/api-response';
-import { loadChat, saveChat } from '@/lib/chat-store';
-import { requireEnv } from '@/lib/env';
-import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/image/generate-image-tool';
+import type { UserLocation } from '@/lib/shared/user-location';
+import { ApiErrorCode, jsonFail } from '@/lib/shared/api-response';
+import { loadChat, saveChat } from '@/lib/chat/store';
+import { requireEnv } from '@/lib/shared/env';
+import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/image-gen/generate-image-tool';
 import { normalizeArkResponsesSse } from './ark-sse';
 
 // globalThis.AI_SDK_LOG_WARNINGS = false;

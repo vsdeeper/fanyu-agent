@@ -91,13 +91,19 @@ src/
       ChatSidebar.tsx / ChatSidebar.module.css / index.ts
     Providers.tsx          # 无样式，可暂平铺
   lib/
-    chat-store.ts          # 会话 CRUD（Drizzle + SQLite）
+    chat/
+      store.ts             # 会话 CRUD（Drizzle + SQLite）
+      group.ts             # 侧栏时间分组（可客户端用）
+      route.ts             # [[...id]] params 归一化
     db/
       client.ts            # better-sqlite3 连接、WAL、migrate、清理旧 JSON
       schema.ts            # chats / messages 表
-    chat-group.ts          # 侧栏时间分组（可客户端用）
-    chat-route.ts          # [[...id]] params 归一化
-    user-location.ts
+    image-gen/
+      assets.ts            # 生图资源落盘与元数据
+      generate-image-tool.ts / router.ts / registry.ts / providers/
+    shared/
+      api-client.ts / api-response.ts / env.ts  # 横切基础设施
+      user-location.ts
 public/
 drizzle/                   # SQL migrations（drizzle-kit generate）
 ```
@@ -111,10 +117,12 @@ Button/
   Button.tsx          # 或 index.tsx
   Button.module.css   # 勿用 index.module.css（IDE 标签难辨认）
   Button.test.tsx
+  constants.ts        # 组件专属常量（可选）
   utils.ts            # 组件级纯函数 / 数据处理（可选）
   SubButton/          # 子组件拆离（勿在主文件内定义）
     SubButton.tsx
     SubButton.module.css  # 抽离时同步带走专属样式
+    constants.ts          # 抽离时同步带走专属常量（可选）
     utils.ts              # 抽离时同步带走专属方法（可选）
     index.ts              # 再导出
   index.ts            # 再导出（可选）
@@ -124,7 +132,8 @@ Button/
 - `index.ts` 只做对外导出，勿塞业务逻辑
 - **不在主组件文件内定义子组件**：抽到同级子目录（如 `Button/SubButton/`），由 `index.ts` 再导出后供主组件引用
 - **不在主组件文件内定义方法**：解析、归一化、memo 比较、事件处理等一律抽到同目录 `utils.ts`；主文件只保留组件函数与 JSX 组装
-- **抽离子组件时同步抽离样式与方法**：专属样式迁入子目录同名样式文件；专属方法迁入子目录 `utils.ts`；勿继续依赖父级样式/utils 中的专属部分（跨子组件共享类型/工具可留在父级 `utils.ts`）
+- **不在主组件文件内定义专属常量**：枚举值、文案映射、默认配置等一律抽到同目录 `constants.ts`
+- **抽离子组件时同步抽离样式、方法与常量**：专属样式迁入子目录同名样式文件；专属方法迁入子目录 `utils.ts`；专属常量迁入子目录 `constants.ts`；勿继续依赖父级样式/utils/constants 中的专属部分（跨子组件共享类型/工具/常量可留在父级对应文件）
 - 路由私有组件可放 `app/<route>/_components/`；跨路由复用放 `src/components`
 
 ## 会话持久化约定
@@ -149,7 +158,7 @@ Button/
 - 与用户/AI 对话默认使用中文简体
 - 提交说明使用中文 description 的 Conventional Commits
 - **不引入 Tailwind**；样式优先 CSS Modules 与 Ant Design / Ant Design X
-- 组件目录遵循上文「组件目录约定」（子组件拆离并同步带走样式/方法、主文件不定义方法、`utils.ts` 维护、`ComponentName.tsx` + 同名 `.module.css`）
+- 组件目录遵循上文「组件目录约定」（子组件拆离并同步带走样式/方法/常量、主文件不定义方法与专属常量、`utils.ts` / `constants.ts` 维护、`ComponentName.tsx` + 同名 `.module.css`）
 - App Router 下避免 `Bubble.List` 这类点号子组件写法，改为从独立路径导入（如 `@ant-design/x/es/bubble/BubbleList`）
 - 完成修改后对改动文件执行格式化（`pnpm run format` 或依赖 lint-staged）
 - 提交前由 lint-staged 检查暂存文件
@@ -159,7 +168,7 @@ Button/
 ### 环境变量约定
 
 - 本地开发须复制 `.env.example` 为 `.env.local`，**其中列出的变量必须填写**；业务代码假定其已配置且有非空值
-- 读取时使用 [`requireEnv(name)`](src/lib/env.ts)，**勿**写 `process.env.X ?? 默认值`、`|| 'fallback'` 或 Route 内 `if (!process.env.X)` 判空分支；缺失或空字符串直接 `throw`，排查看服务端日志
+- 读取时使用 [`requireEnv(name)`](src/lib/shared/env.ts)，**勿**写 `process.env.X ?? 默认值`、`|| 'fallback'` 或 Route 内 `if (!process.env.X)` 判空分支；缺失或空字符串直接 `throw`，排查看服务端日志
 - 面向用户的 JSON API 亦不因「未配置环境变量」单独返回 503 业务码；属部署/本地配置错误，由抛错或外层 catch 处理
 
 ### JSON API 响应约定
@@ -172,7 +181,7 @@ Button/
   - 上游不可用等运维类问题：用「**XX 服务暂不可用**」等中性表述；环境变量缺失见上文「环境变量约定」，不在 Route 内判空返回友好文案
   - 用户输入问题：简短说明缺什么或哪里不对（如「缺少会话或消息内容」「无效 JSON」）
   - 未知/兜底异常：「服务暂时不可用，请稍后重试」；勿把英文 provider 错误直接返回客户端
-- 工具：[`src/lib/api-response.ts`](src/lib/api-response.ts) — `jsonOk(data)` / `jsonFail(code, message, status)` / `readApiData<T>(res)`
+- 工具：[`src/lib/shared/api-response.ts`](src/lib/shared/api-response.ts) — `jsonOk(data)` / `jsonFail(code, message, status)` / `readApiData<T>(res)`
 - 业务码（`ApiErrorCode`）：`40001` 参数无效、`40401` 会话不存在、`50201` 高德上游失败；`50301` / `50302` 保留码位，环境变量缺省改由 `requireEnv` 抛错
 - **例外**：`POST /api/chat` 成功为 AI SDK SSE 流（`createUIMessageStreamResponse`），非 JSON 信封；其 400 错误仍走信封
-- 服务端组件直调 `chat-store`（如 `chat/layout` 的 `listChats()`）不经 HTTP，无需信封
+- 服务端组件直调 `lib/chat/store`（如 `chat/layout` 的 `listChats()`）不经 HTTP，无需信封

@@ -1,6 +1,6 @@
-import type { UserLocation } from '@/lib/user-location';
-import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/api-response';
-import { requireEnv } from '@/lib/env';
+import type { UserLocation } from '@/lib/shared/user-location';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/api-response';
+import { requireEnv } from '@/lib/shared/env';
 
 /** 高德中文国名 → ISO 3166-1 alpha-2；未知默认 CN（本项目主要服务国内） */
 const COUNTRY_TO_ISO: Record<string, string> = {

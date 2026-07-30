@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { getAsset, getAssetFilePath } from '@/lib/image-assets';
+import { getAsset, getAssetFilePath } from '@/lib/image-gen/assets';
 
 export const runtime = 'nodejs';
 

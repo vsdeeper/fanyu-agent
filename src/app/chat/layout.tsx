@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import ChatShell from '@/components/ChatShell';
-import { listChats } from '@/lib/chat-store';
+import { listChats } from '@/lib/chat/store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

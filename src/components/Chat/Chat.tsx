@@ -9,7 +9,7 @@ import { DefaultChatTransport, type UIMessage } from 'ai';
 import { CommentOutlined, DownOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
-import { getCachedUserLocation, getUserLocation } from '@/lib/user-location';
+import { getCachedUserLocation, getUserLocation } from '@/lib/shared/user-location';
 import AiBubbleContent from './AiBubbleContent';
 import ChatSender from './ChatSender';
 import UserBubbleContent from './UserBubbleContent';

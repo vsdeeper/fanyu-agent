@@ -1,4 +1,4 @@
-import { apiPost } from '@/lib/api-client';
+import { apiPost } from '@/lib/shared/api-client';
 
 /** AI SDK / 方舟 web_search 的近似用户位置 */
 export type UserLocation = {

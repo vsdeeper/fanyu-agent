@@ -6,9 +6,9 @@ import { Conversations } from '@ant-design/x';
 import type { ConversationItemType } from '@ant-design/x/es/conversations/interface';
 import { DeleteOutlined, MenuFoldOutlined, MessageOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
-import { getChatGroupLabel } from '@/lib/chat-group';
-import type { ChatListItem } from '@/lib/chat-store';
-import { apiDelete } from '@/lib/api-client';
+import { getChatGroupLabel } from '@/lib/chat/group';
+import type { ChatListItem } from '@/lib/chat/store';
+import { apiDelete } from '@/lib/shared/api-client';
 import styles from './ChatSidebar.module.css';
 
 type ChatSidebarProps = {

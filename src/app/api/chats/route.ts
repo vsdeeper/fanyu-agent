@@ -1,5 +1,5 @@
-import { createChat, listChats } from '@/lib/chat-store';
-import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/api-response';
+import { createChat, listChats } from '@/lib/chat/store';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/api-response';
 
 export const runtime = 'nodejs';
 

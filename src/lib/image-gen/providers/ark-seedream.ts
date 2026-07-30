@@ -1,4 +1,4 @@
-import { requireEnv } from '@/lib/env';
+import { requireEnv } from '@/lib/shared/env';
 import type { ImageProvider } from '../types';
 
 type ArkImageResponse = {

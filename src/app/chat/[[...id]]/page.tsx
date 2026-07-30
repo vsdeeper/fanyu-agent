@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
-import { chatExists } from '@/lib/chat-store';
-import { isDraftChatRoute } from '@/lib/chat-route';
+import { isDraftChatRoute } from '@/lib/chat/route';
+import { chatExists } from '@/lib/chat/store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

@@ -7,7 +7,7 @@ import {
   getWorkingAsset,
   resolveParentModelId,
   saveImageAsset,
-} from '@/lib/image-assets';
+} from '@/lib/image-gen/assets';
 import { generateImageViaRouter, resolveImageModelId } from './router';
 import type { ImageToolResult } from './types';
 
