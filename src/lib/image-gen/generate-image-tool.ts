@@ -15,7 +15,8 @@ const IMAGE_SYSTEM_HINT = `生图工具使用规则：
 - 用户明确要求生成/绘制/出图时调用 generate_image，mode=generate
 - 用户要求修改刚生成的图（更亮、换背景等）时调用 generate_image，mode=edit
 - 仅讨论如何画、不请求出图时不要调用
-- edit 时尽量传 sourceAssetIds；未传则服务端使用 working image`;
+- edit 时尽量传 sourceAssetIds；未传则服务端使用 working image
+- 生图成功后界面会自动展示图片；汇总回复时只用文字说明，勿在正文中插入 Markdown 图片或 URL`;
 
 export { IMAGE_SYSTEM_HINT };
 
@@ -89,6 +90,17 @@ export function createGenerateImageTool(chatId: string) {
         console.error('[generate_image]', err);
         return { ok: false, error: '生图服务暂不可用，请稍后重试' };
       }
+    },
+    // 修复：execute 完整 output 供 UI part 落盘；toModelOutput 不含 url，避免主模型正文重复写 ![]()
+    toModelOutput: ({ output }) => {
+      if (!output.ok) {
+        return { type: 'text', value: `生图失败：${output.error}` };
+      }
+      return {
+        type: 'text',
+        value:
+          '图片已生成，界面会自动展示。请用简短文字向用户说明，不要在正文中插入 Markdown 图片、图片 URL 或 /api/images 链接。',
+      };
     },
   });
 }
