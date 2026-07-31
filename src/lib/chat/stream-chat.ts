@@ -9,7 +9,7 @@ import {
   type UIMessage,
 } from 'ai';
 
-import type { UserLocation } from '@/lib/shared/user-location';
+import type { UserLocation } from '@/lib/geo/types';
 import { saveChat } from '@/lib/chat/store';
 import { requireEnv } from '@/lib/shared/env';
 import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/images/generate-image-tool';

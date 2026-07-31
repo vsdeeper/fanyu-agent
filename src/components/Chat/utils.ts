@@ -6,7 +6,7 @@ import {
   isToolUIPart,
   type UIMessage,
 } from 'ai';
-import type { UserLocation } from '@/lib/shared/user-location';
+import type { UserLocation } from '@/lib/geo/types';
 
 /**
  * 是否展示「继续生成」按钮（仅 assistant 且为最后一条消息）。

@@ -102,9 +102,14 @@ src/
       assets.ts            # 生图资源落盘与元数据
       serve-asset.ts       # GET /api/images/[assetId] 业务逻辑
       generate-image-tool.ts / router.ts / registry.ts / providers/
+    geo/
+      types.ts             # UserLocation 类型
+      parse-request.ts     # 请求体 / userLocation 校验
+      regeo.ts             # 高德逆地理编码
+      handle-regeo.ts      # POST /api/geo/regeo 业务逻辑
+      client.ts            # 浏览器定位与缓存（调用 regeo API）
     shared/
       api-client.ts / api-response.ts / env.ts  # 横切基础设施
-      user-location.ts
 public/
 drizzle/                   # SQL migrations（drizzle-kit generate）
 ```

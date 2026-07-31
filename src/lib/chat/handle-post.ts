@@ -2,7 +2,7 @@ import type { UIMessage } from 'ai';
 
 import { loadChat, saveChat } from '@/lib/chat/store';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/api-response';
-import type { UserLocation } from '@/lib/shared/user-location';
+import type { UserLocation } from '@/lib/geo/types';
 import type { ChatPostBody } from './parse-request';
 import { streamChatResponse } from './stream-chat';
 

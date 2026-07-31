@@ -1,5 +1,6 @@
 import { handleChatPost } from '@/lib/chat/handle-post';
-import { parseChatPostBody, parseUserLocation } from '@/lib/chat/parse-request';
+import { parseChatPostBody } from '@/lib/chat/parse-request';
+import { parseUserLocation } from '@/lib/geo/parse-request';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/api-response';
 
 // globalThis.AI_SDK_LOG_WARNINGS = false;

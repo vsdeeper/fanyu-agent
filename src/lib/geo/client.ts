@@ -1,13 +1,6 @@
 import { apiPost } from '@/lib/shared/api-client';
 
-/** AI SDK / 方舟 web_search 的近似用户位置 */
-export type UserLocation = {
-  type: 'approximate';
-  country?: string;
-  city?: string;
-  region?: string;
-  timezone?: string;
-};
+import type { UserLocation } from './types';
 
 /** 模块级缓存：仅成功获取城市级位置时写入 */
 let cached: UserLocation | null = null;
