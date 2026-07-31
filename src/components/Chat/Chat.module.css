@@ -21,6 +21,14 @@
   height: 100%;
 }
 
+.bubbleList :global(.ant-bubble-footer) {
+  width: 100%;
+}
+
+.aiBubbleBody {
+  width: 100%;
+}
+
 /* 预留滚动条槽，避免出现滚动条时内容区变窄导致与 composer 错位 */
 .bubbleList :global(.ant-bubble-list-scroll-box) {
   scrollbar-gutter: stable;

@@ -1,19 +1,20 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Welcome } from '@ant-design/x';
+import { BubbleItemType, Welcome } from '@ant-design/x';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { CommentOutlined, DownOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Button, Flex, Space, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { getCachedUserLocation, getUserLocation } from '@/lib/shared/user-location';
 import AiBubbleContent from './AiBubbleContent';
 import ChatSender from './ChatSender';
 import UserBubbleContent from './UserBubbleContent';
 import styles from './Chat.module.css';
+import { shouldShowContinueButton } from './utils';
 
 function getPartsText(
   message: { parts?: ReadonlyArray<{ type: string; [key: string]: unknown }> },
@@ -102,11 +103,9 @@ export default function Chat({
     void getUserLocation();
   }, []);
 
-  const bubbleItems = useMemo(() => {
+  const bubbleItems = useMemo<BubbleItemType[]>(() => {
     // 修复：loading 延续到有可见 text/reasoning，避免 submitted→streaming 首包空 parts 时的真空期
     const isAwaitingAi = status === 'submitted' || status === 'streaming';
-    const lastMessage = messages[messages.length - 1];
-    const lastIsUser = lastMessage?.role === 'user';
 
     const items = messages.map((message, index) => {
       const isLast = index === messages.length - 1;
@@ -116,6 +115,7 @@ export default function Chat({
       const reasoning = isAi ? getPartsText(message, 'reasoning') : '';
       const hasVisibleAiContent = Boolean(text || reasoning);
       const thinking = streaming && !text;
+      const showContinueButton = shouldShowContinueButton(message, index === messages.length - 1);
 
       return {
         key: message.id,
@@ -133,19 +133,19 @@ export default function Chat({
         ),
         streaming,
         loading: isAwaitingAi && isAi && isLast && !hasVisibleAiContent,
+        classNames: {
+          body: isAi ? styles.aiBubbleBody : undefined,
+        },
+        footer: showContinueButton ? (
+          <Flex justify="end" flex={1}>
+            <Space></Space>
+            <Button shape="round" onClick={() => {}}>
+              继续生成
+            </Button>
+          </Flex>
+        ) : null,
       };
     });
-
-    // 首包写入前末条仍是 user，须单独补占位；勿与上条 loading 合并为 submitted&&lastIsUser
-    if (isAwaitingAi && lastIsUser) {
-      items.push({
-        key: 'ai-pending',
-        role: 'ai' as const,
-        content: <span aria-hidden />,
-        streaming: false,
-        loading: true,
-      });
-    }
 
     return items;
   }, [messages, status]);
