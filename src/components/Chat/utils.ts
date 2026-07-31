@@ -1,7 +1,7 @@
 import { isReasoningUIPart, isTextUIPart, isToolUIPart, type UIMessage } from 'ai';
 
 /**
- * 是否展示「继续生成」按钮（仅最后一条消息）。
+ * 是否展示「继续生成」按钮（仅 assistant 且为最后一条消息）。
  * - 无 parts：展示（首包未到达即中断）
  * - 末 part 为 reasoning / tool：展示（推理或工具调用阶段中断）
  * - 末 part 为 text 且 state === 'streaming'：展示（正文流式中断）
@@ -10,6 +10,7 @@ import { isReasoningUIPart, isTextUIPart, isToolUIPart, type UIMessage } from 'a
  */
 export function shouldShowContinueButton(message: UIMessage, isLast: boolean): boolean {
   if (!isLast) return false;
+  if (message.role !== 'assistant') return false;
   const lastPart = message.parts.at(-1);
   if (!lastPart) return true;
   if (isReasoningUIPart(lastPart)) return true;
