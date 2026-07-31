@@ -136,14 +136,15 @@ export default function Chat({
         classNames: {
           body: isAi ? styles.aiBubbleBody : undefined,
         },
-        footer: showContinueButton ? (
-          <Flex justify="end" flex={1}>
-            <Space></Space>
-            <Button shape="round" onClick={() => {}}>
-              继续生成
-            </Button>
-          </Flex>
-        ) : null,
+        footer:
+          !isAwaitingAi && showContinueButton ? (
+            <Flex justify="end" flex={1}>
+              <Space></Space>
+              <Button shape="round" onClick={() => {}}>
+                继续生成
+              </Button>
+            </Flex>
+          ) : null,
       };
     });
 
