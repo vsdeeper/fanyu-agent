@@ -12,7 +12,7 @@ import {
 import type { UserLocation } from '@/lib/shared/user-location';
 import { saveChat } from '@/lib/chat/store';
 import { requireEnv } from '@/lib/shared/env';
-import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/image-gen/generate-image-tool';
+import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/images/generate-image-tool';
 import { ark } from './providers/ark/client';
 
 const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });

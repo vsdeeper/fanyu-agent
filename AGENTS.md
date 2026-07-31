@@ -98,8 +98,9 @@ src/
     db/
       client.ts            # better-sqlite3 连接、WAL、migrate、清理旧 JSON
       schema.ts            # chats / messages 表
-    image-gen/
+    images/
       assets.ts            # 生图资源落盘与元数据
+      serve-asset.ts       # GET /api/images/[assetId] 业务逻辑
       generate-image-tool.ts / router.ts / registry.ts / providers/
     shared/
       api-client.ts / api-response.ts / env.ts  # 横切基础设施
