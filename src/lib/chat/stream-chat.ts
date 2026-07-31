@@ -10,6 +10,7 @@ import {
 } from 'ai';
 
 import type { UserLocation } from '@/lib/geo/types';
+import { dropIncompleteToolParts } from '@/lib/chat/sanitize-messages';
 import { saveChat } from '@/lib/chat/store';
 import { requireEnv } from '@/lib/shared/env';
 import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/images/generate-image-tool';
@@ -36,9 +37,24 @@ export async function streamChatResponse({
 }: StreamChatOptions) {
   const modelId = requireEnv('ARK_MODEL_ID');
 
+  const tools = {
+    generate_image: createGenerateImageTool(chatId),
+    ...(webSearch
+      ? {
+          web_search: ark.tools.webSearch(
+            userLocation?.type === 'approximate' ? { userLocation } : {},
+          ),
+        }
+      : {}),
+  };
+
   // 修复：勿把历史 reasoning/itemId 回传方舟；磁盘仍保留完整 UIMessage 供刷新展示 Think
+  // 修复：stop 在 tool 阶段中断时末条仅有 tool-call 无 result，须 ignoreIncompleteToolCalls
   const modelMessages = pruneMessages({
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(messages, {
+      tools,
+      ignoreIncompleteToolCalls: true,
+    }),
     reasoning: 'all',
   });
 
@@ -46,16 +62,7 @@ export async function streamChatResponse({
     model: ark.responses(modelId),
     system: `按用户语言与语境自然回答。\n\n${IMAGE_SYSTEM_HINT}`,
     messages: modelMessages,
-    tools: {
-      generate_image: createGenerateImageTool(chatId),
-      ...(webSearch
-        ? {
-            web_search: ark.tools.webSearch(
-              userLocation?.type === 'approximate' ? { userLocation } : {},
-            ),
-          }
-        : {}),
-    },
+    tools,
     // 修复：无 stopWhen 时 tool 执行后不会继续汇总；生图+说明需多步
     stopWhen: stepCountIs(5),
     // 修复：避免 store 默认 true 产生 item_reference
@@ -72,7 +79,7 @@ export async function streamChatResponse({
       originalMessages: messages,
       generateMessageId,
       onEnd: ({ messages: nextMessages }) => {
-        void saveChat({ chatId, messages: nextMessages });
+        void saveChat({ chatId, messages: dropIncompleteToolParts(nextMessages) });
       },
     }),
   });
