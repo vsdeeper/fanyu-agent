@@ -1,20 +1,20 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { BubbleItemType, Welcome } from '@ant-design/x';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { CommentOutlined, DownOutlined } from '@ant-design/icons';
-import { Button, Flex, Space, Typography } from 'antd';
+import { Button, Flex, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { getCachedUserLocation, getUserLocation } from '@/lib/shared/user-location';
 import AiBubbleContent from './AiBubbleContent';
 import ChatSender from './ChatSender';
 import UserBubbleContent from './UserBubbleContent';
 import styles from './Chat.module.css';
-import { shouldShowContinueButton } from './utils';
+import { continueAssistantMessage, shouldShowContinueButton } from './utils';
 
 function getPartsText(
   message: { parts?: ReadonlyArray<{ type: string; [key: string]: unknown }> },
@@ -60,9 +60,12 @@ export default function Chat({
   const router = useRouter();
   const [chatId, setChatId] = useState(id);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [isContinuing, setIsContinuing] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<BubbleListRef>(null);
+  const continueAbortRef = useRef<AbortController | null>(null);
+  const lastWebSearchRef = useRef(true);
 
   // 切换会话：贴底隐藏「滚动到底部」
   if (id !== chatId) {
@@ -75,10 +78,34 @@ export default function Chat({
     () =>
       new DefaultChatTransport({
         api: '/api/chat',
-        prepareSendMessagesRequest({ messages, id: chatId, body }) {
+        prepareSendMessagesRequest({ messages, id: requestChatId, body }) {
+          if (
+            body &&
+            typeof body === 'object' &&
+            'trigger' in body &&
+            body.trigger === 'continue-message'
+          ) {
+            const continueBody = body as {
+              trigger: 'continue-message';
+              messageId: string;
+              webSearch?: boolean;
+              userLocation?: unknown;
+            };
+            return {
+              body: {
+                id: requestChatId,
+                trigger: 'continue-message',
+                messageId: continueBody.messageId,
+                webSearch: continueBody.webSearch,
+                ...(continueBody.userLocation ? { userLocation: continueBody.userLocation } : {}),
+              },
+            };
+          }
+
           return {
             body: {
-              id: chatId,
+              id: requestChatId,
+              trigger: 'submit-message',
               message: messages[messages.length - 1],
               ...body,
             },
@@ -87,13 +114,13 @@ export default function Chat({
       }),
   );
 
-  const { messages, sendMessage, status, stop } = useChat({
+  const { messages, sendMessage, setMessages, status, stop } = useChat({
     id,
     messages: initialMessages,
     transport,
     throttle: 100,
     onFinish: () => {
-      // 落盘后刷新 layout，侧栏标题/分组才会更新
+      // 落盘后刷新 layout，侧栏标题/分组才会更新（含 stop 半截落盘）
       router.refresh();
     },
   });
@@ -103,14 +130,42 @@ export default function Chat({
     void getUserLocation();
   }, []);
 
+  const loading = status === 'submitted' || status === 'streaming' || isContinuing;
+
+  const handleContinue = useCallback(() => {
+    if (loading) return;
+
+    void continueAssistantMessage({
+      transport,
+      chatId: id,
+      messages,
+      setMessages,
+      body: {
+        webSearch: lastWebSearchRef.current,
+        userLocation: lastWebSearchRef.current ? getCachedUserLocation() : null,
+      },
+      abortControllerRef: continueAbortRef,
+      onStatusChange: setIsContinuing,
+      onFinish: () => router.refresh(),
+    });
+  }, [id, loading, messages, router, setMessages, transport]);
+
+  const handleCancel = useCallback(() => {
+    if (continueAbortRef.current) {
+      continueAbortRef.current.abort();
+      return;
+    }
+    void stop();
+  }, [stop]);
+
   const bubbleItems = useMemo<BubbleItemType[]>(() => {
     // 修复：loading 延续到有可见 text/reasoning，避免 submitted→streaming 首包空 parts 时的真空期
-    const isAwaitingAi = status === 'submitted' || status === 'streaming';
+    const isAwaitingAi = status === 'submitted' || status === 'streaming' || isContinuing;
 
     const items = messages.map((message, index) => {
       const isLast = index === messages.length - 1;
       const isAi = message.role !== 'user';
-      const streaming = isAi && isLast && status === 'streaming';
+      const streaming = isAi && isLast && (status === 'streaming' || isContinuing);
       const text = getPartsText(message, 'text');
       const reasoning = isAi ? getPartsText(message, 'reasoning') : '';
       const hasVisibleAiContent = Boolean(text || reasoning);
@@ -139,8 +194,7 @@ export default function Chat({
         footer:
           !isAwaitingAi && showContinueButton ? (
             <Flex justify="end" flex={1}>
-              <Space></Space>
-              <Button shape="round" onClick={() => {}}>
+              <Button shape="round" disabled={loading} onClick={() => void handleContinue()}>
                 继续生成
               </Button>
             </Flex>
@@ -149,9 +203,8 @@ export default function Chat({
     });
 
     return items;
-  }, [messages, status]);
+  }, [handleContinue, isContinuing, loading, messages, status]);
 
-  const loading = status === 'submitted' || status === 'streaming';
   const hasMessages = messages.length > 0;
 
   // 修复：composer 绝对定位浮在消息区上，须动态测高写入 --composer-height；勿再写死 148px
@@ -181,6 +234,7 @@ export default function Chat({
     files?: FileList;
     webSearch: boolean;
   }) => {
+    lastWebSearchRef.current = webSearch;
     const userLocation = webSearch ? getCachedUserLocation() : null;
     // 修复：附件经 SDK 转 data URL 写入 UIMessage 落盘；勿像 reasoning 一样 prune 历史 file parts
     sendMessage(files?.length ? { text, files } : { text }, {
@@ -195,7 +249,7 @@ export default function Chat({
     id,
     loading,
     isDraft,
-    onCancel: stop,
+    onCancel: handleCancel,
     onFirstMessageSent,
     onSend: handleSend,
   };
