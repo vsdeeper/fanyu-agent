@@ -1,9 +1,11 @@
 import type { UIMessage } from 'ai';
 
+import { parseUserLocation } from '@/lib/geo/parse-request';
+import type { UserLocation } from '@/lib/geo/types';
 import { loadChat, saveChat } from '@/lib/chat/store';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/api-response';
-import type { UserLocation } from '@/lib/geo/types';
 import type { ChatPostBody } from './parse-request';
+import { parseChatPostBody } from './parse-request';
 import { streamChatResponse } from './stream-chat';
 
 type HandleChatPostOptions = {
@@ -81,4 +83,21 @@ export async function handleChatPost({ body, userLocation, abortSignal }: Handle
   }
 
   return handleSubmitMessage({ body, userLocation, abortSignal });
+}
+
+/** POST /api/chat 入口：解析请求体并分发 submit / continue */
+export async function handleChatApiPost(req: Request): Promise<Response> {
+  const body = await parseChatPostBody(req);
+
+  if (!body.id || typeof body.id !== 'string') {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, '缺少会话或消息内容', 400);
+  }
+
+  const userLocation = parseUserLocation(body.userLocation);
+
+  return handleChatPost({
+    body,
+    userLocation,
+    abortSignal: req.signal,
+  });
 }

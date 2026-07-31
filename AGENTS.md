@@ -73,28 +73,26 @@ commit-msg 由 commitlint（`@commitlint/config-conventional`）校验；pre-com
 
 ```
 src/
-  app/
-    api/chat/route.ts      # AI 流式对话 API（落盘）
-    api/chats/route.ts     # 会话列表 / 新建
-    api/chats/[id]/route.ts  # GET 单会话 / DELETE
-    chat/layout.tsx           # 侧栏壳（跨 /chat/* 保持）
-    chat/[[...id]]/page.tsx   # 路由校验；UI 在 ChatShell
-    page.tsx                  # 有历史进最近会话，否则 /chat
-    layout.tsx             # AntdRegistry + Providers
-    globals.css
-  components/
-    Chat/
-      Chat.tsx / Chat.module.css / index.ts
-    ChatShell/
-      ChatShell.tsx / ChatShell.module.css / index.ts
-    ChatSidebar/
-      ChatSidebar.tsx / ChatSidebar.module.css / index.ts
-    Providers.tsx          # 无样式，可暂平铺
-  lib/
+  app/                     # 仅 Next.js 路由壳：route / page / layout / 静态资源
+    api/
+      chat/route.ts        # → lib/chat
+      chats/route.ts       # → lib/chat
+      chats/[id]/route.ts  # → lib/chat
+      geo/regeo/route.ts   # → lib/geo
+      images/[assetId]/route.ts  # → lib/images
+    chat/layout.tsx
+    chat/[[...id]]/page.tsx
+    page.tsx
+    layout.tsx
+    global.css
+  components/              # 跨路由 UI；见「组件目录约定」
+  lib/                     # 业务逻辑与领域实现；与 app/api/<域> 一一对应
     chat/
       store.ts             # 会话 CRUD（Drizzle + SQLite）
       group.ts             # 侧栏时间分组（可客户端用）
       route.ts             # [[...id]] params 归一化
+      parse-request.ts / handle-post.ts / handle-chats.ts / handle-chat-by-id.ts / stream-chat.ts
+      providers/ark/       # 对话模型 Provider 适配（出站 patch、入站 SSE、client）
     db/
       client.ts            # better-sqlite3 连接、WAL、migrate、清理旧 JSON
       schema.ts            # chats / messages 表
@@ -113,6 +111,51 @@ src/
 public/
 drizzle/                   # SQL migrations（drizzle-kit generate）
 ```
+
+### App Router 与 lib 分层约定
+
+**`src/app/` 保持 Next.js 规范下的「路由壳」**：只放框架识别的入口文件（`route.ts`、`page.tsx`、`layout.tsx`、`loading.tsx`、`error.tsx`、样式与静态资源等），**不在 `app/api/*` 下堆 `utils/`、Provider 适配、业务方法或领域类型**。
+
+业务逻辑一律抽到 **`src/lib/<域>/`**，并与 API 路径对齐：
+
+| API Route                               | lib 目录      | 说明                           |
+| --------------------------------------- | ------------- | ------------------------------ |
+| `app/api/chat/`                         | `lib/chat/`   | 流式对话、会话 submit/continue |
+| `app/api/chats/`、`app/api/chats/[id]/` | `lib/chat/`   | 会话列表 / 新建 / 读取 / 删除  |
+| `app/api/geo/`                          | `lib/geo/`    | 逆地理、UserLocation           |
+| `app/api/images/`                       | `lib/images/` | 生图资源、tool、Provider       |
+
+**Route Handler（`route.ts`）职责上限：**
+
+- 导出 Route 段配置（`runtime`、`maxDuration`、`dynamic` 等）
+- 读取 `params` / `req` 等 HTTP 边界参数
+- 调用 `lib/<域>/handle-*.ts`（或 `serve-*.ts` 等）并 `return` 其结果
+- 最外层 `try/catch` 与统一错误信封（若 lib 未包）
+
+**`lib/<域>/` 典型文件命名：**
+
+- `handle-<动作>.ts` — 对应 HTTP 方法或 Route 入口（如 `handle-post.ts`、`handle-regeo.ts`、`handle-chats.ts`）
+- `parse-request.ts` — 请求体解析与 zod/手工校验
+- `store.ts` / `assets.ts` — 持久化与领域存储
+- `providers/<name>/` — 第三方模型/SDK 适配（client、request-patch、sse 等）；后期新 Provider 增同级目录
+- `client.ts` — 仅浏览器端调用该域 API 的封装（如 `lib/geo/client.ts`）
+
+**跨域复用：**
+
+- 横切工具放 `lib/shared/`（`env`、`api-response`、`api-client`）
+- 某域类型/校验被其他域引用时，从 **`lib/<域>/types.ts`** 或 **`lib/<域>/parse-request.ts`** 导入，勿再塞回 `lib/shared/` 除非 truly 全局
+
+**页面路由（非 API）：**
+
+- `page.tsx` / `layout.tsx` 可直调 `lib/*`（如 `listChats()`），复杂校验抽到 `lib/chat/route.ts` 等
+- 路由私有 UI 放 `app/<route>/_components/`；跨路由 UI 放 `src/components/`
+
+**新增 API 时 checklist：**
+
+1. 在 `app/api/<域>/.../route.ts` 建薄壳
+2. 在 `lib/<域>/` 实现 `handle-*` / 领域模块
+3. 多 Provider 时放 `lib/<域>/providers/<name>/`
+4. 不在 `app/` 留业务实现文件
 
 ### 组件目录约定
 
@@ -167,6 +210,7 @@ Button/
 - 提交说明使用中文 description 的 Conventional Commits
 - **不引入 Tailwind**；样式优先 CSS Modules 与 Ant Design / Ant Design X
 - 组件目录遵循上文「组件目录约定」（子组件拆离并同步带走样式/方法/常量、主文件不定义方法与专属常量、`utils.ts` / `constants.ts` 维护、`ComponentName.tsx` + 同名 `.module.css`）
+- **App Router 与 lib 分层**遵循上文「App Router 与 lib 分层约定」：`app/` 仅路由壳，业务在 `lib/<域>/`，`app/api/<域>` 对应 `lib/<域>`
 - App Router 下避免 `Bubble.List` 这类点号子组件写法，改为从独立路径导入（如 `@ant-design/x/es/bubble/BubbleList`）
 - 完成修改后对改动文件执行格式化（`pnpm run format` 或依赖 lint-staged）
 - 提交前由 lint-staged 检查暂存文件
