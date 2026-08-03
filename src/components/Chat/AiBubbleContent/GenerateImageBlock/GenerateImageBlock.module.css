@@ -5,8 +5,8 @@
 }
 
 .image {
-  width: 120px;
-  height: 120px;
+  width: 120px !important;
+  height: 120px !important;
   border-radius: 8px;
   overflow: hidden;
   flex-shrink: 0;
