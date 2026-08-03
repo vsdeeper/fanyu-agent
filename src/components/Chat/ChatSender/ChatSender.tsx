@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Attachments, Sender } from '@ant-design/x';
 import type { AttachmentsProps, AttachmentsRef } from '@ant-design/x/es/attachments';
 import type { SenderRef } from '@ant-design/x/es/sender/interface';
-import { GlobalOutlined, LinkOutlined } from '@ant-design/icons';
+import { LinkOutlined } from '@ant-design/icons';
 import type { GetProp } from 'antd';
 import { Badge, Button, Flex, Upload, message } from 'antd';
 import styles from './ChatSender.module.css';
@@ -85,7 +85,7 @@ export type ChatSenderProps = {
   variant?: 'default' | 'welcome';
   onCancel: () => void;
   onFirstMessageSent?: () => void;
-  onSend: (payload: { text: string; files?: FileList; webSearch: boolean }) => void;
+  onSend: (payload: { text: string; files?: FileList }) => void;
 };
 
 export default function ChatSender({
@@ -98,7 +98,6 @@ export default function ChatSender({
   onSend,
 }: ChatSenderProps) {
   const [input, setInput] = useState('');
-  const [webSearchEnabled, setWebSearchEnabled] = useState(true);
   const [chatId, setChatId] = useState(id);
   const [attachmentScope, setAttachmentScope] = useState<{
     items: AttachmentItem[];
@@ -203,29 +202,20 @@ export default function ChatSender({
         }}
         footer={(actionNode) => (
           <Flex justify="space-between" align="center">
-            <Flex align="center" gap={8}>
-              <Badge dot={hasAttachments && !attachmentsOpen}>
-                <Button
-                  type="text"
-                  aria-label="上传附件"
-                  icon={<LinkOutlined />}
-                  disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
-                  onClick={() => {
-                    attachmentsRef.current?.select({
-                      accept: ATTACHMENT_ACCEPT,
-                      multiple: true,
-                    });
-                  }}
-                />
-              </Badge>
-              <Sender.Switch
-                value={webSearchEnabled}
-                onChange={setWebSearchEnabled}
-                icon={<GlobalOutlined />}
-              >
-                联网搜索
-              </Sender.Switch>
-            </Flex>
+            <Badge dot={hasAttachments && !attachmentsOpen}>
+              <Button
+                type="text"
+                aria-label="上传附件"
+                icon={<LinkOutlined />}
+                disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
+                onClick={() => {
+                  attachmentsRef.current?.select({
+                    accept: ATTACHMENT_ACCEPT,
+                    multiple: true,
+                  });
+                }}
+              />
+            </Badge>
             {actionNode}
           </Flex>
         )}
@@ -234,7 +224,7 @@ export default function ChatSender({
           const files = createFileListFromAttachments(attachmentItems);
           if (!text && !files?.length) return;
 
-          onSend({ text, files, webSearch: webSearchEnabled });
+          onSend({ text, files });
           // 修复：草稿首条发送后立即 replace 到 /chat/[id]，须在本组件 remount 前触发
           if (isDraft && !firstMessageSentRef.current) {
             firstMessageSentRef.current = true;

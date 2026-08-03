@@ -7,7 +7,6 @@ export type ChatPostBody = {
   message?: UIMessage;
   trigger?: ChatTrigger;
   messageId?: string;
-  webSearch?: boolean;
   userLocation?: unknown;
 };
 

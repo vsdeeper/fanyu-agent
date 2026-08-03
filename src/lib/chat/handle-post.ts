@@ -15,7 +15,7 @@ type HandleChatPostOptions = {
 };
 
 async function handleContinueMessage({ body, userLocation, abortSignal }: HandleChatPostOptions) {
-  const { id, messageId, webSearch = true } = body;
+  const { id, messageId } = body;
 
   if (!messageId || typeof messageId !== 'string') {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, '缺少会话或消息内容', 400);
@@ -38,7 +38,6 @@ async function handleContinueMessage({ body, userLocation, abortSignal }: Handle
   return streamChatResponse({
     chatId: id,
     messages,
-    webSearch,
     userLocation,
     abortSignal,
     sendStart: false,
@@ -46,7 +45,7 @@ async function handleContinueMessage({ body, userLocation, abortSignal }: Handle
 }
 
 async function handleSubmitMessage({ body, userLocation, abortSignal }: HandleChatPostOptions) {
-  const { id, message, webSearch = true } = body;
+  const { id, message } = body;
 
   if (!message) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, '缺少会话或消息内容', 400);
@@ -69,7 +68,6 @@ async function handleSubmitMessage({ body, userLocation, abortSignal }: HandleCh
   return streamChatResponse({
     chatId: id,
     messages,
-    webSearch,
     userLocation,
     abortSignal,
   });

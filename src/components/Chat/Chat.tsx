@@ -65,7 +65,6 @@ export default function Chat({
   const composerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<BubbleListRef>(null);
   const continueAbortRef = useRef<AbortController | null>(null);
-  const lastWebSearchRef = useRef(true);
 
   // 切换会话：贴底隐藏「滚动到底部」
   if (id !== chatId) {
@@ -73,7 +72,7 @@ export default function Chat({
     setShowScrollBottom(false);
   }
 
-  // 修复：transport 只建一次；联网开关经 sendMessage body 传入 prepareSendMessagesRequest
+  // 修复：transport 只建一次；userLocation 经 sendMessage body 传入 prepareSendMessagesRequest
   const [transport] = useState(
     () =>
       new DefaultChatTransport({
@@ -88,7 +87,6 @@ export default function Chat({
             const continueBody = body as {
               trigger: 'continue-message';
               messageId: string;
-              webSearch?: boolean;
               userLocation?: unknown;
             };
             return {
@@ -96,7 +94,6 @@ export default function Chat({
                 id: requestChatId,
                 trigger: 'continue-message',
                 messageId: continueBody.messageId,
-                webSearch: continueBody.webSearch,
                 ...(continueBody.userLocation ? { userLocation: continueBody.userLocation } : {}),
               },
             };
@@ -141,8 +138,7 @@ export default function Chat({
       messages,
       setMessages,
       body: {
-        webSearch: lastWebSearchRef.current,
-        userLocation: lastWebSearchRef.current ? getCachedUserLocation() : null,
+        userLocation: getCachedUserLocation(),
       },
       abortControllerRef: continueAbortRef,
       onStatusChange: setIsContinuing,
@@ -225,21 +221,11 @@ export default function Chat({
     return () => observer.disconnect();
   }, [hasMessages]);
 
-  const handleSend = ({
-    text,
-    files,
-    webSearch,
-  }: {
-    text: string;
-    files?: FileList;
-    webSearch: boolean;
-  }) => {
-    lastWebSearchRef.current = webSearch;
-    const userLocation = webSearch ? getCachedUserLocation() : null;
+  const handleSend = ({ text, files }: { text: string; files?: FileList }) => {
+    const userLocation = getCachedUserLocation();
     // 修复：附件经 SDK 转 data URL 写入 UIMessage 落盘；勿像 reasoning 一样 prune 历史 file parts
     sendMessage(files?.length ? { text, files } : { text }, {
       body: {
-        webSearch,
         ...(userLocation ? { userLocation } : {}),
       },
     });

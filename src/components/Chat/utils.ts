@@ -33,7 +33,6 @@ export type ContinueAssistantMessageOptions = {
   messages: UIMessage[];
   setMessages: (messages: UIMessage[] | ((prev: UIMessage[]) => UIMessage[])) => void;
   body: {
-    webSearch: boolean;
     userLocation?: UserLocation | null;
   };
   abortControllerRef: { current: AbortController | null };
@@ -69,7 +68,6 @@ export async function continueAssistantMessage({
       body: {
         trigger: 'continue-message',
         messageId: lastMessage.id,
-        webSearch: body.webSearch,
         ...(body.userLocation ? { userLocation: body.userLocation } : {}),
       },
     });

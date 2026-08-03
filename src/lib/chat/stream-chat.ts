@@ -21,7 +21,6 @@ const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });
 export type StreamChatOptions = {
   chatId: string;
   messages: UIMessage[];
-  webSearch: boolean;
   userLocation: UserLocation | undefined;
   abortSignal: AbortSignal;
   sendStart?: boolean;
@@ -30,22 +29,16 @@ export type StreamChatOptions = {
 export async function streamChatResponse({
   chatId,
   messages,
-  webSearch,
   userLocation,
   abortSignal,
   sendStart = true,
 }: StreamChatOptions) {
   const modelId = requireEnv('ARK_MODEL_ID');
 
+  // 修复：始终注册 web_search tool，由模型根据用户意图自动判断是否需要搜索
   const tools = {
     generate_image: createGenerateImageTool(chatId),
-    ...(webSearch
-      ? {
-          web_search: ark.tools.webSearch(
-            userLocation?.type === 'approximate' ? { userLocation } : {},
-          ),
-        }
-      : {}),
+    web_search: ark.tools.webSearch(userLocation?.type === 'approximate' ? { userLocation } : {}),
   };
 
   // 修复：勿把历史 reasoning/itemId 回传方舟；磁盘仍保留完整 UIMessage 供刷新展示 Think
