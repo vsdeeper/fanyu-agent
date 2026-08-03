@@ -3,7 +3,8 @@
   --foreground: #141414;
   --message-list-max-width: 840px;
   --scrollbar-size: 7px;
-  --scrollbar-color: color-mix(in srgb, var(--foreground) 5%, transparent);
+  --scrollbar-color: #e5e5e5;
+  --scrollbar-hover-color: #d4d4d4;
 }
 
 html,
@@ -62,7 +63,7 @@ body > * {
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, var(--foreground) 10%, transparent) !important;
+    background: var(--scrollbar-hover-color) !important;
   }
 }
 

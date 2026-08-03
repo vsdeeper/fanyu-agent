@@ -107,6 +107,14 @@ docs(readme): 更新本地启动说明
 
 更多协作约定见 [AGENTS.md](./AGENTS.md)。
 
+## 待办
+
+- [ ] 接入 DeepSeek 直连模型
+- [ ] 增加知识库功能：AI 回答可添加入库，入库内容可编辑
+- [ ] 引用源展示交互改造
+- [ ] 图片生成增强：接入 Flux Art 国外模型
+- [ ] 个性化主题定制
+
 ## 相关文档
 
 - [Next.js 文档](https://nextjs.org/docs)
