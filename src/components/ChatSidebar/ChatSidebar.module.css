@@ -1,5 +1,7 @@
 .sidebarShell {
   --sidebar-width: 260px;
+  --color-bg-container: #f9fafb;
+  --color-border-secondary: rgba(0, 0, 0, 0.04);
 
   flex-shrink: 0;
   width: var(--sidebar-width);
@@ -18,8 +20,8 @@
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
   height: 100%;
-  border-right: 1px solid var(--ant-color-border-secondary, #f0f0f0);
-  background: var(--ant-color-bg-container, #fff);
+  border-right: 1px solid var(--color-border-secondary, #f0f0f0);
+  background: var(--color-bg-container, #fff);
   transform: translateX(0);
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
