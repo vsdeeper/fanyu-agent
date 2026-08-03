@@ -12,7 +12,8 @@
   flex-shrink: 0;
 }
 
-.image :global(.ant-image-img, .ant-skeleton-image) {
+.image :global(.ant-image-img),
+.image :global(.ant-skeleton-image) {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover;
