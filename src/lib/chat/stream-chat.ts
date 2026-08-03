@@ -54,7 +54,7 @@ export async function streamChatResponse({
   const result = streamText({
     model: ark.responses(modelId),
     // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-    system: `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${IMAGE_SYSTEM_HINT}`,
+    instructions: `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${IMAGE_SYSTEM_HINT}`,
     messages: modelMessages,
     tools,
     // 修复：无 stopWhen 时 tool 执行后不会继续汇总；生图+说明需多步
