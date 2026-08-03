@@ -9,6 +9,7 @@ import {
   saveImageAsset,
 } from '@/lib/images/assets';
 import { generateImageViaRouter, resolveImageModelId } from './router';
+import { ARK_SEEDREAM_SIZE_PRESETS, isValidSeedreamSize } from './size';
 import type { ImageToolResult } from './types';
 
 const IMAGE_SYSTEM_HINT = `生图工具使用规则：
@@ -16,7 +17,8 @@ const IMAGE_SYSTEM_HINT = `生图工具使用规则：
 - 用户要求修改刚生成的图（更亮、换背景等）时调用 generate_image，mode=edit
 - 仅讨论如何画、不请求出图时不要调用
 - edit 时尽量传 sourceAssetIds；未传则服务端使用 working image
-- 生图成功后界面会自动展示图片；汇总回复时只用文字说明，勿在正文中插入 Markdown 图片或 URL`;
+- 生图成功后界面会自动展示图片；汇总回复时只用文字说明，勿在正文中插入 Markdown 图片或 URL
+- 生图尺寸只传 2K/4K 或满足像素下限的 WxH（如 2048x2048、2560x1440），勿传 1024x1024 等过小尺寸`;
 
 export { IMAGE_SYSTEM_HINT };
 
@@ -32,7 +34,18 @@ export function createGenerateImageTool(chatId: string) {
         .array(z.string())
         .optional()
         .describe('edit 时源图 assetId；可省略以使用 working image'),
-      size: z.string().optional().describe('可选尺寸，如 2K、1024x1024'),
+      size: z
+        .union([
+          z.enum(ARK_SEEDREAM_SIZE_PRESETS),
+          z.string().regex(/^\d+x\d+$/i, '自定义尺寸须为 宽x高 像素格式，如 2048x2048'),
+        ])
+        .optional()
+        .refine((v) => v === undefined || isValidSeedreamSize(v), {
+          message: '尺寸总像素须在 3,686,400 ~ 16,777,216 之间，或使用 2K/4K；勿使用 1024x1024',
+        })
+        .describe(
+          '可选尺寸：2K（默认）或 4K，或自定义 WIDTHxHEIGHT（如 2048x2048、2560x1440）；勿使用 1024x1024',
+        ),
     }),
     execute: async ({ mode, prompt, model, sourceAssetIds, size }): Promise<ImageToolResult> => {
       try {
