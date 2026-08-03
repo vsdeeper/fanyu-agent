@@ -80,9 +80,15 @@
   flex-direction: column;
   pointer-events: none;
   /* 与 scroll-box（含 scrollbar-gutter）内容区对齐 */
-  padding-left: calc((100% - var(--message-list-max-width) - var(--scrollbar-size)) / 2) !important;
-  padding-right: calc(
-    (100% - var(--message-list-max-width) - var(--scrollbar-size)) / 2 + var(--scrollbar-size)
+  padding-left: max(
+    calc((100% - var(--message-list-max-width) - var(--scrollbar-size)) / 2),
+    16px
+  ) !important;
+  padding-right: max(
+    calc(
+      (100% - var(--message-list-max-width) - var(--scrollbar-size)) / 2 + var(--scrollbar-size)
+    ),
+    16px
   ) !important;
   padding-bottom: 10px;
 }
