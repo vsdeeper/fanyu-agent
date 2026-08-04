@@ -91,7 +91,7 @@ src/
       store.ts             # 会话 CRUD（Drizzle + SQLite）
       group.ts             # 侧栏时间分组（可客户端用）
       route.ts             # [[...id]] params 归一化
-      parse-request.ts / handle-post.ts / handle-chats.ts / handle-chat-by-id.ts / stream-chat.ts
+      parse-request.ts / handle-post.ts / handle-chats.ts / handle-chat-by-id.ts / stream-chat.ts / select-model.ts
       providers/ark/       # 对话模型 Provider 适配（出站 patch、入站 SSE、client）
     db/
       client.ts            # better-sqlite3 连接、WAL、migrate、清理旧 JSON

@@ -12,7 +12,7 @@ import {
 import type { UserLocation } from '@/lib/geo/types';
 import { dropIncompleteToolParts } from '@/lib/chat/sanitize-messages';
 import { saveChat } from '@/lib/chat/store';
-import { requireEnv } from '@/lib/shared/env';
+import { selectModel } from '@/lib/chat/select-model';
 import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/images/generate-image-tool';
 import { ark } from './providers/ark/client';
 
@@ -33,7 +33,8 @@ export async function streamChatResponse({
   abortSignal,
   sendStart = true,
 }: StreamChatOptions) {
-  const modelId = requireEnv('ARK_MODEL_ID');
+  // 修复：按场景复杂度自动选择模型（Doubao-Seed-2.0 pro/lite/mini）
+  const modelId = selectModel(messages);
 
   // 修复：始终注册 web_search tool，由模型根据用户意图自动判断是否需要搜索
   const tools = {
