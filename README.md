@@ -95,6 +95,48 @@ src/
     Chat.tsx            # 对话 UI（useChat + Bubble / Sender）
 ```
 
+## 生图功能
+
+`generate_image` 工具支持文生图（`generate`）和改图（`edit`）两种模式。模型选择由 `resolveImageModelId` 按三级优先级决定：
+
+1. **LLM 显式指定**（最高优先级）— 用户在对话中要求的模型
+2. **继承父图模型** — 多轮改图时沿用上一张图所用模型，保持风格一致
+3. **全局默认** — 环境变量 `ARK_IMAGE_MODEL_ID`（Seedream）
+
+### 对话示例
+
+**不指定模型，走默认：**
+
+```
+用户：帮我画一只猫
+LLM → generate_image({ mode: "generate", prompt: "一只可爱的橘猫" })
+      ↑ 未传 model → resolveImageModelId 返回默认 Seedream
+```
+
+**用户指定模型：**
+
+```
+用户：用 Flux 画一只猫
+LLM → generate_image({ mode: "generate", prompt: "一只可爱的橘猫", model: "flux-kontext-pro" })
+      ↑ model 已传 → resolveImageModelId 直接返回 "flux-kontext-pro"
+```
+
+**多轮改图，自动继承父图模型：**
+
+```
+第 1 轮：
+用户：用 Flux 画一只猫
+LLM → generate_image({ mode: "generate", prompt: "猫", model: "flux-kontext-pro" })
+结果：assetId="abc123"，modelId="flux-kontext-pro"
+
+第 2 轮：
+用户：把猫改成黑色
+LLM → generate_image({ mode: "edit", prompt: "把猫改成黑色", sourceAssetIds: ["abc123"] })
+      ↑ 未传 model，但 parentId="abc123"
+        → resolveParentModelId 读到 "flux-kontext-pro"
+        → 自动沿用，不会跳回 Seedream
+```
+
 ## 提交规范
 
 采用 [Conventional Commits](https://www.conventionalcommits.org/)，description 使用中文简体：
