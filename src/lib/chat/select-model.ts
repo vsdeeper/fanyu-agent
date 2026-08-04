@@ -129,7 +129,7 @@ export function classifyTier(text: string): ModelTier {
  * - 按 classifyTier 分类，返回对应档位的环境变量值；未配置时用默认模型 ID。
  * - 长会话中的短追问不会降级到 mini，保证上下文不丢失。
  */
-export function selectModel(messages: UIMessage[]): string {
+export function selectModel(messages: UIMessage[]): { modelId: string; tier: ModelTier } {
   let tier = classifyTier(getLastUserText(messages));
 
   // 修复：多轮会话里"继续/嗯"这类短追问若掉到 mini，可能因上下文过长而丢前文
@@ -138,5 +138,5 @@ export function selectModel(messages: UIMessage[]): string {
     tier = 'lite';
   }
 
-  return requireEnv(MODEL_TIER_ENV[tier]);
+  return { modelId: requireEnv(MODEL_TIER_ENV[tier]), tier };
 }

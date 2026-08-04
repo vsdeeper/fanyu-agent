@@ -34,7 +34,7 @@ export async function streamChatResponse({
   sendStart = true,
 }: StreamChatOptions) {
   // 修复：按场景复杂度自动选择模型（Doubao-Seed-2.0 pro/lite/mini）
-  const modelId = selectModel(messages);
+  const { modelId, tier } = selectModel(messages);
 
   // 修复：始终注册 web_search tool，由模型根据用户意图自动判断是否需要搜索
   const tools = {
@@ -66,9 +66,28 @@ export async function streamChatResponse({
     abortSignal,
   });
 
+  // 修复：往 reasoning 流注入模型档位，确保 Think 块一定显示当前执行模型
+  const tierId = 'model-tier';
+  const wrappedStream = result.stream.pipeThrough(
+    new TransformStream({
+      transform(part, controller) {
+        controller.enqueue(part);
+        if (part.type === 'start') {
+          controller.enqueue({ type: 'reasoning-start', id: tierId });
+          controller.enqueue({
+            type: 'reasoning-delta',
+            id: tierId,
+            text: `当前执行模型: ${tier}......`,
+          });
+          controller.enqueue({ type: 'reasoning-end', id: tierId });
+        }
+      },
+    }),
+  );
+
   return createUIMessageStreamResponse({
     stream: toUIMessageStream({
-      stream: result.stream,
+      stream: wrappedStream,
       sendSources: true,
       sendStart,
       originalMessages: messages,
