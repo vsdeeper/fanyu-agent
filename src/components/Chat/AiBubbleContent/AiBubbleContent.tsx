@@ -51,7 +51,7 @@ function AiBubbleContent({
       {sourceItems.length > 0 && !streaming ? (
         <Sources
           className={styles.sources}
-          title={`引用 ${sourceItems.length} 个来源`}
+          title={`参考 ${sourceItems.length} 个来源`}
           defaultExpanded={false}
           items={sourceItems.map((item) => ({
             ...item,

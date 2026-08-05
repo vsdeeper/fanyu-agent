@@ -36,4 +36,8 @@ export const seedTokens: ThemeConfig['token'] = {
 
   // ===== 动效 =====
   motion: true,
+
+  // ===== 阴影 =====
+  boxShadowTertiary:
+    '0 1px 4px 0 rgba(0,0,0,0.03), 0 1px 6px -1px rgba(0,0,0,0.01), 0 2px 4px 0 rgba(0,0,0,0.02)',
 };

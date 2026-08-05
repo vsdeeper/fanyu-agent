@@ -35,8 +35,10 @@
 }
 
 .bubbleList :global(.ant-bubble-list-scroll-content) {
-  padding-left: max(calc((100% - var(--message-list-max-width)) / 2), 16px) !important;
-  padding-right: max(calc((100% - var(--message-list-max-width)) / 2), 16px) !important;
+  padding-left: calc(max(calc((100% - var(--message-list-max-width)) / 2), 16px) + 12px) !important;
+  padding-right: calc(
+    max(calc((100% - var(--message-list-max-width)) / 2), 16px) + 12px
+  ) !important;
   padding-bottom: var(--composer-height, 148px) !important;
 }
 
@@ -100,7 +102,6 @@
 .disclaimer {
   flex-shrink: 0;
   text-align: center;
-  width: 100%;
   font-size: 12px !important;
   margin-bottom: -10px;
   margin-top: -12px;

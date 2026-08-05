@@ -1,0 +1,12 @@
+.image {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.image :global(.ant-image-img),
+.image :global(.ant-skeleton-image) {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  object-position: center;
+}

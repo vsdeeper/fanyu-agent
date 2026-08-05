@@ -1,7 +1,8 @@
 'use client';
 
 import { type ComponentProps } from '@ant-design/x-markdown';
-import { Image, Skeleton } from 'antd';
+import Skeleton from 'antd/es/skeleton';
+import AiImage from '../AiImage';
 import styles from './MarkdownImage.module.css';
 
 export default function MarkdownImage(props: ComponentProps) {
@@ -11,7 +12,12 @@ export default function MarkdownImage(props: ComponentProps) {
   if (!src) return null;
 
   return (
-    <Image classNames={{ root: styles.image }} src={src} alt={alt} preview={{ mask: '预览' }} />
+    <AiImage
+      size={80}
+      src={src}
+      alt={alt}
+      styles={{ root: { margin: '4px 0', verticalAlign: 'middle' } }}
+    />
   );
 }
 

@@ -3,19 +3,3 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-
-.image {
-  width: 120px !important;
-  height: 120px !important;
-  border-radius: 8px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.image :global(.ant-image-img),
-.image :global(.ant-skeleton-image) {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover;
-  object-position: center;
-}

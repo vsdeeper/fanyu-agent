@@ -1,6 +1,7 @@
 'use client';
 
 import { Image, Skeleton } from 'antd';
+import AiImage from '../AiImage';
 import type { MessagePart } from '../utils';
 import styles from './GenerateImageBlock.module.css';
 import {
@@ -28,14 +29,7 @@ function GenerateImageItem({ part }: { part: MessagePart }) {
   }
 
   if (output && isGenerateImageReady(output)) {
-    return (
-      <Image
-        classNames={{ root: styles.image }}
-        src={getImageSrc(output)}
-        alt="生成的图片"
-        preview={{ mask: '预览' }}
-      />
-    );
+    return <AiImage src={getImageSrc(output)} alt="生成的图片" />;
   }
 
   if (isGenerateImagePending(state)) {
