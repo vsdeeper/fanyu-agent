@@ -34,12 +34,18 @@ export async function streamChatResponse({
   sendStart = true,
 }: StreamChatOptions) {
   // 修复：按场景复杂度自动选择模型（Doubao-Seed-2.0 pro/lite/mini）
-  const { modelId, tier } = selectModel(messages);
+  const { modelId, tier } = await selectModel(messages);
 
-  // 修复：始终注册 web_search tool，由模型根据用户意图自动判断是否需要搜索
+  // 修复：仅在开通联网搜索后注册 web_search tool，未开通时注册会导致 ToolNotOpen 报错
   const tools = {
     generate_image: createGenerateImageTool(chatId),
-    web_search: ark.tools.webSearch(userLocation?.type === 'approximate' ? { userLocation } : {}),
+    ...(process.env.ARK_WEB_SEARCH_ENABLED === 'true'
+      ? {
+          web_search: ark.tools.webSearch(
+            userLocation?.type === 'approximate' ? { userLocation } : {},
+          ),
+        }
+      : {}),
   };
 
   // 修复：勿把历史 reasoning/itemId 回传方舟；磁盘仍保留完整 UIMessage 供刷新展示 Think
