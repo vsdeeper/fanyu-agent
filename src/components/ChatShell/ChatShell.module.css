@@ -28,10 +28,10 @@
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  border: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+  border: 1px solid var(--one-color-border-secondary, #f0f0f0);
   border-radius: 999px;
   padding: 2px;
-  background: var(--ant-color-bg-container, #fff);
+  background: var(--one-color-bg-container);
 }
 
 .collapsedBarEnter {

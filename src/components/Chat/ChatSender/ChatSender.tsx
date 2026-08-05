@@ -184,57 +184,58 @@ export default function ChatSender({
   );
 
   return (
-    <div className={[styles.root, variant === 'welcome' ? styles.welcome : ''].join(' ')}>
-      <Sender
-        ref={senderRef}
-        value={input}
-        onChange={setInput}
-        loading={loading}
-        onCancel={onCancel}
-        placeholder="给 AI Agent 发送消息"
-        suffix={false}
-        autoSize={{ minRows: 2, maxRows: 8 }}
-        header={senderHeader}
-        onPasteFile={(files) => {
-          for (const file of files) {
-            attachmentsRef.current?.upload(file);
-          }
-        }}
-        footer={(actionNode) => (
-          <Flex justify="space-between" align="center">
-            <Badge dot={hasAttachments && !attachmentsOpen}>
-              <Button
-                type="text"
-                aria-label="上传附件"
-                icon={<LinkOutlined />}
-                disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
-                onClick={() => {
-                  attachmentsRef.current?.select({
-                    accept: ATTACHMENT_ACCEPT,
-                    multiple: true,
-                  });
-                }}
-              />
-            </Badge>
-            {actionNode}
-          </Flex>
-        )}
-        onSubmit={(value) => {
-          const text = value.trim();
-          const files = createFileListFromAttachments(attachmentItems);
-          if (!text && !files?.length) return;
+    <Sender
+      ref={senderRef}
+      classNames={{
+        root: styles.root,
+      }}
+      value={input}
+      onChange={setInput}
+      loading={loading}
+      onCancel={onCancel}
+      placeholder="给 AI Agent 发送消息"
+      suffix={false}
+      autoSize={{ minRows: 2, maxRows: 8 }}
+      header={senderHeader}
+      onPasteFile={(files) => {
+        for (const file of files) {
+          attachmentsRef.current?.upload(file);
+        }
+      }}
+      footer={(actionNode) => (
+        <Flex justify="space-between" align="center">
+          <Badge dot={hasAttachments && !attachmentsOpen}>
+            <Button
+              type="text"
+              aria-label="上传附件"
+              icon={<LinkOutlined />}
+              disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
+              onClick={() => {
+                attachmentsRef.current?.select({
+                  accept: ATTACHMENT_ACCEPT,
+                  multiple: true,
+                });
+              }}
+            />
+          </Badge>
+          {actionNode}
+        </Flex>
+      )}
+      onSubmit={(value) => {
+        const text = value.trim();
+        const files = createFileListFromAttachments(attachmentItems);
+        if (!text && !files?.length) return;
 
-          onSend({ text, files });
-          // 修复：草稿首条发送后立即 replace 到 /chat/[id]，须在本组件 remount 前触发
-          if (isDraft && !firstMessageSentRef.current) {
-            firstMessageSentRef.current = true;
-            onFirstMessageSent?.();
-          }
-          revokeBlobUrls(attachmentItems);
-          setAttachmentScope((prev) => ({ ...prev, items: [], open: false }));
-          setInput('');
-        }}
-      />
-    </div>
+        onSend({ text, files });
+        // 修复：草稿首条发送后立即 replace 到 /chat/[id]，须在本组件 remount 前触发
+        if (isDraft && !firstMessageSentRef.current) {
+          firstMessageSentRef.current = true;
+          onFirstMessageSent?.();
+        }
+        revokeBlobUrls(attachmentItems);
+        setAttachmentScope((prev) => ({ ...prev, items: [], open: false }));
+        setInput('');
+      }}
+    />
   );
 }

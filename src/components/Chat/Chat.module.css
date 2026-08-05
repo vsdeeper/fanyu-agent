@@ -103,6 +103,7 @@
   width: 100%;
   font-size: 12px !important;
   margin-bottom: -10px;
-  padding: 10px 0;
-  background-color: #fff;
+  margin-top: -12px;
+  padding: 22px 0 10px;
+  background-color: var(--one-color-bg-container);
 }
