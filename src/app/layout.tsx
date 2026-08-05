@@ -4,7 +4,7 @@ import Providers from '@/components/Providers';
 import './global.css';
 
 export const metadata: Metadata = {
-  title: 'AI Agent',
+  title: 'OneAgent',
   description: 'Vercel AI SDK + Next.js + @ant-design/x',
 };
 

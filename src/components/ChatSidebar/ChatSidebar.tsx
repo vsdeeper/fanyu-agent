@@ -103,7 +103,7 @@ export default function ChatSidebar({
       >
         <div className={styles.header}>
           <Typography.Text strong className={styles.brand}>
-            AI Agent
+            OneAgent
           </Typography.Text>
           <Button
             type="text"

@@ -193,7 +193,7 @@ export default function ChatSender({
       onChange={setInput}
       loading={loading}
       onCancel={onCancel}
-      placeholder="给 AI Agent 发送消息"
+      placeholder="给 OneAgent 发送消息"
       suffix={false}
       autoSize={{ minRows: 2, maxRows: 8 }}
       header={senderHeader}
