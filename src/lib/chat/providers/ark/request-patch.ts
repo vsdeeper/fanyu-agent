@@ -1,7 +1,7 @@
 import { ARK_UNSUPPORTED_INCLUDES } from './constants';
 
 export type ArkRequestBody = {
-  input?: Array<{ role?: string; type?: string; status?: string }>;
+  input?: Array<{ role?: string; type?: string; status?: string; phase?: unknown }>;
   include?: string[];
 };
 
@@ -20,7 +20,12 @@ export function patchArkRequestBody(body: ArkRequestBody): boolean {
         type?: string;
         status?: string;
         partial?: boolean;
+        phase?: unknown;
       };
+
+      // 修复：Ark 不认 input item 的 phase 字段（phase 仅存在于 output item；
+      // @ai-sdk/openai 从历史 providerMetadata 回灌到 input 导致 Ark 报 unknown field "phase"）
+      delete next.phase;
 
       // 修复：有 role 无 type 时方舟报 MissingParameter input.type
       if (item.role && item.type == null) {

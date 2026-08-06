@@ -67,8 +67,9 @@ export async function streamChatResponse({
     tools,
     // 修复：无 stopWhen 时 tool 执行后不会继续汇总；生图+说明需多步
     stopWhen: stepCountIs(5),
-    // 修复：避免 store 默认 true 产生 item_reference（仅 Ark 需要，DeepSeek 无需此选项）
-    ...(provider === 'ark' ? { providerOptions: { openai: { store: false } } } : {}),
+    // 修复：第三方 Provider（DeepSeek / Ark）均不支持服务端存储，store 默认 true 产生 item_reference
+    // 导致 DeepSeek 重复回答、Ark 报 <nil>；统一 store: false 消除 item_reference
+    providerOptions: { openai: { store: false } },
     // 修复：stop/续写须随客户端 abort 同步中止并落盘半截；勿再用 consumeStream 后台跑完覆盖
     abortSignal,
   });
