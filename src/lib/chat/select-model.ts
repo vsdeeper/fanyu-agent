@@ -2,17 +2,11 @@ import type { UIMessage } from 'ai';
 import { generateText } from 'ai';
 import { z } from 'zod';
 
-import { requireEnv } from '@/lib/shared/env';
-import { ark } from '@/lib/chat/providers/ark/client';
+import { getArkClient } from '@/lib/chat/providers/ark/client';
+import { type ChatProvider, type ModelTier, getModelId } from '@/lib/chat/providers/config';
+import { getDeepseekClient } from '@/lib/chat/providers/deepseek/client';
 
-/** 模型档次：pro（复杂推理/代码/长文）、lite（通用均衡）、mini（简单问候/短查询） */
-export type ModelTier = 'pro' | 'lite' | 'mini';
-
-const MODEL_TIER_ENV: Record<ModelTier, string> = {
-  pro: 'ARK_MODEL_PRO',
-  lite: 'ARK_MODEL_LITE',
-  mini: 'ARK_MODEL_MINI',
-};
+export type { ModelTier };
 
 // ---- fast-path 阈值 ----
 
@@ -111,21 +105,25 @@ function buildClassifierPrompt(messages: UIMessage[]): string {
 // ---- LLM 分类器 ----
 
 /**
- * 用 mini 模型做复杂度二分类（pro vs simple）。
+ * 用模型做复杂度二分类（pro vs simple）。
  * 失败（网络/超时/解析异常）返回 null，由调用方回退 lite。
  */
 async function classifyWithLLM(
   text: string,
   messages: UIMessage[],
+  provider: ChatProvider,
 ): Promise<'pro' | 'simple' | null> {
   try {
     const context = buildClassifierPrompt(messages);
     const prompt = `${context}\n\n用户最新消息：\n${text}\n\n请判断复杂度。`;
 
+    const client = provider === 'deepseek' ? getDeepseekClient() : getArkClient();
+    const classifierModel = client.chat(getModelId(provider, 'mini'));
+
     const result = await generateText({
       // 修复：方舟 Responses API 非流式响应缺 annotations 字段 → schema 校验失败；
-      // 改用 Chat Completions API（ark.chat），schema 更宽松，所有模型均支持
-      model: ark.chat(requireEnv(MODEL_TIER_ENV.mini)),
+      // 改用 Chat Completions API，schema 更宽松，所有模型均支持
+      model: classifierModel,
       // 修复：AI SDK v7 使用 instructions 而非已废弃的 system
       instructions: CLASSIFIER_INSTRUCTIONS,
       prompt,
@@ -161,6 +159,7 @@ async function classifyWithLLM(
  */
 export async function selectModel(
   messages: UIMessage[],
+  provider: ChatProvider = 'deepseek',
 ): Promise<{ modelId: string; tier: ModelTier }> {
   const lastUserText = getLastUserText(messages);
   const userTurnCount = messages.reduce((count, m) => (m.role === 'user' ? count + 1 : count), 0);
@@ -177,7 +176,7 @@ export async function selectModel(
     tier = 'pro';
   } else {
     // 修复：LLM 语义分类替代关键词匹配，理解隐含复杂度
-    const llmResult = await classifyWithLLM(lastUserText, messages);
+    const llmResult = await classifyWithLLM(lastUserText, messages, provider);
     if (llmResult === 'pro') {
       tier = 'pro';
     } else if (llmResult === 'simple') {
@@ -193,5 +192,5 @@ export async function selectModel(
     tier = 'lite';
   }
 
-  return { modelId: requireEnv(MODEL_TIER_ENV[tier]), tier };
+  return { modelId: getModelId(provider, tier), tier };
 }

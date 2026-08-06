@@ -14,7 +14,9 @@ import { dropIncompleteToolParts } from '@/lib/chat/sanitize-messages';
 import { saveChat } from '@/lib/chat/store';
 import { selectModel } from '@/lib/chat/select-model';
 import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/images/generate-image-tool';
-import { ark } from './providers/ark/client';
+import { getArkClient } from './providers/ark/client';
+import { getChatProvider } from './providers/config';
+import { getDeepseekClient } from './providers/deepseek/client';
 
 const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });
 
@@ -33,19 +35,18 @@ export async function streamChatResponse({
   abortSignal,
   sendStart = true,
 }: StreamChatOptions) {
-  // 修复：按场景复杂度自动选择模型（Doubao-Seed-2.0 pro/lite/mini）
-  const { modelId, tier } = await selectModel(messages);
+  // 修复：按场景复杂度自动选择模型；DeepSeek 三档同模型（deepseek-v4-flash），Ark 按 tier 路由
+  const provider = getChatProvider();
+  const { modelId, tier } = await selectModel(messages, provider);
 
-  // 修复：仅在开通联网搜索后注册 web_search tool，未开通时注册会导致 ToolNotOpen 报错
+  // 修复：统一获取当前 Provider 客户端与模型，避免到处分支
+  const client = provider === 'deepseek' ? getDeepseekClient() : getArkClient();
+
   const tools = {
     generate_image: createGenerateImageTool(chatId),
-    ...(process.env.ARK_WEB_SEARCH_ENABLED === 'true'
-      ? {
-          web_search: ark.tools.webSearch(
-            userLocation?.type === 'approximate' ? { userLocation } : {},
-          ),
-        }
-      : {}),
+    web_search: client.tools.webSearch(
+      userLocation?.type === 'approximate' ? { userLocation } : {},
+    ),
   };
 
   // 修复：勿把历史 reasoning/itemId 回传方舟；磁盘仍保留完整 UIMessage 供刷新展示 Think
@@ -59,15 +60,15 @@ export async function streamChatResponse({
   });
 
   const result = streamText({
-    model: ark.responses(modelId),
+    model: client.responses(modelId),
     // 修复：明确要求思考过程使用中文简体，避免中英文混杂
     instructions: `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${IMAGE_SYSTEM_HINT}`,
     messages: modelMessages,
     tools,
     // 修复：无 stopWhen 时 tool 执行后不会继续汇总；生图+说明需多步
     stopWhen: stepCountIs(5),
-    // 修复：避免 store 默认 true 产生 item_reference
-    providerOptions: { openai: { store: false } },
+    // 修复：避免 store 默认 true 产生 item_reference（仅 Ark 需要，DeepSeek 无需此选项）
+    ...(provider === 'ark' ? { providerOptions: { openai: { store: false } } } : {}),
     // 修复：stop/续写须随客户端 abort 同步中止并落盘半截；勿再用 consumeStream 后台跑完覆盖
     abortSignal,
   });
