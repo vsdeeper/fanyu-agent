@@ -16,6 +16,7 @@ import { selectModel } from '@/lib/chat/select-model';
 import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/images/generate-image-tool';
 import { getArkClient } from './providers/ark/client';
 import { getChatProvider } from './providers/config';
+import { getDeepseekReasoningEffort } from './providers/deepseek/constants';
 import { getDeepseekClient } from './providers/deepseek/client';
 
 const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });
@@ -69,7 +70,21 @@ export async function streamChatResponse({
     stopWhen: stepCountIs(5),
     // 修复：第三方 Provider（DeepSeek / Ark）均不支持服务端存储，store 默认 true 产生 item_reference
     // 导致 DeepSeek 重复回答、Ark 报 <nil>；统一 store: false 消除 item_reference
-    providerOptions: { openai: { store: false } },
+    // 修复：DeepSeek 模型不在 OpenAI 能力清单内，SDK 默认按非推理模型处理 → 不发 reasoning 块；
+    // forceReasoning 强制按推理模型处理 + reasoningEffort 下发思考；systemMessageMode 钉死 system，
+    // 避免推理模型默认改用 developer role 不被 DeepSeek 接受；Ark 维持原状（不要求思考）
+    providerOptions: {
+      openai: {
+        store: false,
+        ...(provider === 'deepseek'
+          ? {
+              forceReasoning: true,
+              reasoningEffort: getDeepseekReasoningEffort(),
+              systemMessageMode: 'system' as const,
+            }
+          : {}),
+      },
+    },
     // 修复：stop/续写须随客户端 abort 同步中止并落盘半截；勿再用 consumeStream 后台跑完覆盖
     abortSignal,
   });
