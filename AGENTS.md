@@ -206,14 +206,14 @@ Button/
 
 ## 主题系统（浅色/深色）
 
-- 主题状态由 `src/components/theme/` 提供：`ThemeProvider` + `useThemeMode()`（`mode: 'light' | 'dark'`、`setMode`/`toggle`）；`ThemedConfigProvider` 把模式接入 antd `ConfigProvider`
+- 主题状态由 `src/components/theme/` 提供：`ThemeProvider` + `useThemeMode()`；`mode: 'light' | 'dark'` 为**实际生效主题**，`preference: 'light' | 'dark' | 'system'` 为用户选择，`setMode` / `toggle`（三态循环 light→dark→system→light）；`ThemedConfigProvider` 按 `mode === 'dark'` 接入 antd `ConfigProvider`
 - 主题配置在 `src/lib/theme/`：`appTheme`（浅色）与 `darkTheme`（`algorithm: theme.darkAlgorithm` + `darkSeedTokens`，见 `tokens.ts`）；两者共用 `cssVar.prefix: 'one'`，切换 algorithm 时 antd 在 `:root` 重新输出暗色 `--one-*`，走 token 的样式（含 `@ant-design/x` 组件）自动跟随
-- 模式持久化键 **`one-theme`**（localStorage），`ThemeProvider` 写入 `html[data-theme]` 与 `color-scheme`；`src/app/layout.tsx` 的预挂载内联脚本也内联了该键并先行设置 `data-theme`（**改键需两处同步**）
+- 模式持久化键 **`one-theme`**（localStorage）存**偏好**（可含 `'system'`）；`html[data-theme]` / `color-scheme` 永远写解析后的 `'light' | 'dark'`（`'system'` 由 `matchMedia('(prefers-color-scheme: dark)')` 实时解析，preference 为 `'system'` 时挂 `change` 监听实时跟随、离开即移除）；首次无记录默认跟随系统；`src/app/layout.tsx` 的预挂载内联脚本也内联了该键并先行解析 `'system'` 后设置 `data-theme`（**改键需两处同步**）
 - CSS Module 引用 `--one-*` 即可自动换肤；**antd 无对应 token 的自定义颜色变量**（滚动条、侧栏边框、侧栏按钮阴影）需在 `src/app/global.css` 的 `html[data-theme='dark']` 下覆盖
 - **布局壳必须用 antd `Layout` 组件**（`ChatShell` 的 `Layout`/`Layout.Header`/`Layout.Content`、`ChatSidebar` 的 `Layout.Sider`）：antd 组件级 token 是惰性输出的，只有组件实际渲染才会把 `--one-layout-*` flush 到 `:root` 并注入 `.ant-layout-*` 规则；若改用原生 `div`/`aside` 布局，`src/lib/theme/components.ts` 里的 `Layout.*` 配置（`siderBg`/`bodyBg`/`headerBg`/`headerHeight` 等）将完全不生效（详见该文件注释）
 - **XMarkdown 双主题规则**：同时引入 `@ant-design/x-markdown/themes/light.css` 与 `dark.css`，在组件内用 `useThemeMode()` 切换 `className` 的 `x-markdown-light` / `x-markdown-dark`（例：`AiBubbleContent.tsx`）；XMarkdown 无 `theme` prop，主题靠 className 作用域下的 CSS 变量驱动
 - **XMarkdown 主题变量覆写层**：XMarkdown 主题色为硬编码默认值，不随应用主题。在 [`AiBubbleContent/XMarkdownTheme.css`](src/components/Chat/AiBubbleContent/XMarkdownTheme.css) 里把其主题变量重映射到 antd `--one-*`（如 `--text-color→--one-color-text`、`--heading-color→--one-color-text-base`、`--border-color→--one-color-border`、code 背景 `--light-bg`/`--dark-bg→--one-color-fill-tertiary`，详见该文件注释）；**引入顺序契约**：该文件必须在 `AiBubbleContent.tsx` 紧跟 `light.css`/`dark.css` 之后导入，**勿放 `global.css`**（根布局先加载，会被深层组件的主题 CSS 以同优先级反压而失效）；浅/深 code 背景变量名不同（`--light-bg`/`--dark-bg`），须在 `.x-markdown-light`/`.x-markdown-dark` 两个作用域分别覆写，code 背景以 `!important` 消费，靠重定义变量接管
-- 切换按钮：`src/components/ModeSwitch/`，置于 `ChatShell` 顶部栏右侧
+- 切换按钮：`src/components/ModeSwitch/`，置于 `ChatShell` 顶部栏右侧；单按钮三态循环（浅色→深色→跟随系统→浅色），图标随当前偏好切换（SunOutlined/MoonOutlined/MonitorOutlined），Tooltip 与 aria-label 描述下一步
 
 ## 编码约定
 

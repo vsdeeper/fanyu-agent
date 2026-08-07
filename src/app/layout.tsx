@@ -16,10 +16,10 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
-        {/* 预挂载设主题：避免首帧浅色闪烁；键值与 theme/constants.ts 同步（脚本无法 import） */}
+        {/* 预挂载设主题：避免首帧浅色闪烁；键值与 theme/constants.ts 同步（脚本无法 import）。'system'（或缺失/非法）用 matchMedia 解析为 light|dark 再写 data-theme */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var m=localStorage.getItem('one-theme');if(m!=='light'&&m!=='dark'){m=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}var d=document.documentElement;d.dataset.theme=m;d.style.colorScheme=m;}catch(e){}})();`,
+            __html: `(function(){try{var m=localStorage.getItem('one-theme');if(m!=='light'&&m!=='dark'&&m!=='system'){m='system';}if(m==='system'){m=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}var d=document.documentElement;d.dataset.theme=m;d.style.colorScheme=m;}catch(e){}})();`,
           }}
         />
       </head>
