@@ -31,7 +31,7 @@ export default function ChatSidebar({
   busy = false,
 }: ChatSidebarProps) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [deleting, setDeleting] = useState(false);
   const conversationsRef = useRef<{ nativeElement: HTMLDivElement }>(null);
 
@@ -91,7 +91,7 @@ export default function ChatSidebar({
     }
   };
 
-  const actionsDisabled = busy || pending || deleting;
+  const actionsDisabled = busy;
 
   return (
     // 修复：侧栏必须用 antd Layout.Sider——组件级 token 惰性输出，布局壳用原生元素时 Layout.* 配置失效。

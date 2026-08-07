@@ -20,13 +20,13 @@
   --sender-radius: 12px;
 
   /* ===== 侧栏按钮阴影（当修改品牌色时需同步调整）===== */
-  --sidebar-btn-shadow-1: rgba(72, 104, 178, 0.04);
-  --sidebar-btn-shadow-2: rgba(72, 104, 178, 0.08);
-  --sidebar-btn-shadow-3: rgba(106, 111, 117, 0.09);
-  --sidebar-btn-shadow-4: rgba(106, 111, 117, 0.1);
-  --sidebar-btn-shadow-5: rgba(72, 104, 178, 0.04); /* hover */
-  --sidebar-btn-shadow-6: rgba(72, 104, 178, 0.04); /* hover */
-  --sidebar-btn-shadow-7: rgba(106, 111, 117, 0.1); /* hover */
+  --sidebar-btn-shadow-1: rgba(72, 104, 178, 0.02);
+  --sidebar-btn-shadow-2: rgba(72, 104, 178, 0.06);
+  --sidebar-btn-shadow-3: rgba(106, 111, 117, 0.07);
+  --sidebar-btn-shadow-4: rgba(106, 111, 117, 0.08);
+  --sidebar-btn-shadow-5: rgba(72, 104, 178, 0.02); /* hover */
+  --sidebar-btn-shadow-6: rgba(72, 104, 178, 0.02); /* hover */
+  --sidebar-btn-shadow-7: rgba(106, 111, 117, 0.08); /* hover */
 }
 
 /*

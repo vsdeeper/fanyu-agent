@@ -60,12 +60,14 @@
     0 1px 2px var(--sidebar-btn-shadow-2) !important;
 }
 
-.newChatBtn:hover {
+/* 修复：disabled 时不应用 hover 高亮——busy 期间按钮禁用但仍可 hover，会误导用户可点。
+   用 :not(:global(.ant-btn-disabled)) 排除 antd 禁用态。 */
+.newChatBtn:hover:not(button[disabled]) {
   color: var(--one-color-primary) !important;
   box-shadow:
     0 4px 4px var(--sidebar-btn-shadow-5),
     0 -3px 4px var(--sidebar-btn-shadow-6),
-    0 6px 6px var(--sidebar-btn-shadow-7) !important;
+    0 4px 4px var(--sidebar-btn-shadow-7) !important;
 }
 
 /* 唯一纵向滚动区：会话列表 */
