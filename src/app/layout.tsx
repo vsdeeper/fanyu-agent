@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import Providers from '@/components/Providers';
+import { THEME_RESOLVED_COOKIE_KEY } from '@/components/theme/constants';
+import type { ResolvedThemeMode } from '@/components/theme/constants';
 import './global.css';
 
 export const metadata: Metadata = {
@@ -8,11 +11,18 @@ export const metadata: Metadata = {
   description: 'Vercel AI SDK + Next.js + @ant-design/x',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 服务端无法读 localStorage，从 cookie 取「解析后主题」作为 SSR 初始 antd 主题，
+  // 避免深色模式刷新时 antd 先输出浅色 CSS 造成整页浅→深 FOUC
+  const cookieStore = await cookies();
+  const resolvedCookie = cookieStore.get(THEME_RESOLVED_COOKIE_KEY)?.value;
+  const ssrInitialMode: ResolvedThemeMode | undefined =
+    resolvedCookie === 'light' || resolvedCookie === 'dark' ? resolvedCookie : undefined;
+
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
@@ -25,7 +35,7 @@ export default function RootLayout({
       </head>
       <body>
         <AntdRegistry>
-          <Providers>{children}</Providers>
+          <Providers ssrInitialMode={ssrInitialMode}>{children}</Providers>
         </AntdRegistry>
       </body>
     </html>

@@ -1,5 +1,6 @@
 import {
   DEFAULT_THEME_PREFERENCE,
+  THEME_RESOLVED_COOKIE_KEY,
   THEME_STORAGE_KEY,
   type ResolvedThemeMode,
   type ThemeMode,
@@ -47,6 +48,9 @@ export function applyThemeMode(pref: ThemeMode): void {
   root.style.colorScheme = resolved;
   try {
     window.localStorage.setItem(THEME_STORAGE_KEY, pref);
+    // 服务端读不到 localStorage，把「解析后主题」写入 cookie 供 layout.tsx 做 SSR 初始 antd 主题
+    // （存 resolved 而非 preference：'system' 用户的 OS 明暗变化也会随 applyThemeMode 更新 cookie）
+    document.cookie = `${THEME_RESOLVED_COOKIE_KEY}=${resolved}; path=/; max-age=31536000; samesite=lax`;
   } catch {
     // 忽略隐私模式写入失败
   }

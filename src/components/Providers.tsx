@@ -2,11 +2,19 @@
 
 import { XProvider } from '@ant-design/x';
 import zhCN from 'antd/locale/zh_CN';
+import type { ResolvedThemeMode } from '@/components/theme';
 import { ThemedConfigProvider, ThemeProvider } from '@/components/theme';
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+/** ssrInitialMode：layout 从 cookie 解析出的 SSR 初始主题，供 ThemeProvider 在 hydrated 前使用，避免深色 FOUC */
+export default function Providers({
+  children,
+  ssrInitialMode,
+}: {
+  children: React.ReactNode;
+  ssrInitialMode?: ResolvedThemeMode;
+}) {
   return (
-    <ThemeProvider>
+    <ThemeProvider ssrInitialMode={ssrInitialMode}>
       <ThemedConfigProvider locale={zhCN}>
         <XProvider>{children}</XProvider>
       </ThemedConfigProvider>
