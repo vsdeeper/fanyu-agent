@@ -1,8 +1,9 @@
+/* 修复：布局壳为 antd Layout 后，高度/内边距/背景改由 Layout 组件 token 提供（components.ts）；
+   此处只保留 antd 未设置的布局属性，勿再写 height/padding/min-height 与 antd 竞争 */
 .shell {
   display: flex;
   width: 100%;
   height: 100%;
-  min-height: 100%;
   overflow: hidden;
 }
 
@@ -20,8 +21,6 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 24px;
-  min-height: 40px;
 }
 
 .collapsedBar {
@@ -70,9 +69,8 @@
   flex: 1;
 }
 
+/* flex/min-height 由 antd Content 提供（flex:auto; min-height:0），这里只补 display 与裁切 */
 .content {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;

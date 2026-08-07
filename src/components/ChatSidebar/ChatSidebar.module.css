@@ -1,36 +1,30 @@
-.sidebarShell {
-  flex-shrink: 0;
-  width: var(--sidebar-width);
-  height: 100%;
+/* 修复：宽度裁切改由 antd Sider 自带（collapsedWidth=0 + all .2s 过渡）；
+   .sider 补 overflow:hidden，动画期间裁切内层，防重排压缩。
+   背景不再写在这里，由 Layout.siderBg token（=--one-color-bg-layout）驱动，明暗自跟随。 */
+.sider {
   overflow: hidden;
-  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebarShellCollapsed {
-  width: 0;
-}
-
-.sidebar {
+.panel {
   display: flex;
   flex-direction: column;
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
   height: 100%;
   border-right: 1px solid var(--sidebar-border, #f0f0f0);
-  background: var(--one-color-bg-layout, #f9fafb);
   transform: translateX(0);
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
 }
 
-.sidebarCollapsed {
+.panelCollapsed {
   transform: translateX(-100%);
   pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebarShell,
-  .sidebar {
+  .sider,
+  .panel {
     transition: none;
   }
 }

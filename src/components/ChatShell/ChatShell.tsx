@@ -12,7 +12,7 @@ import {
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { generateId, type UIMessage } from 'ai';
 import { MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Spin, Typography } from 'antd';
+import { Button, Layout, Spin, Typography } from 'antd';
 import type { ChatListItem, ChatRecord } from '@/lib/chat/store';
 import { apiGet } from '@/lib/shared/api-client';
 import { resolveChatRouteId } from '@/lib/chat/route';
@@ -111,7 +111,9 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
   const chatReady = isDraftRoute || hydratedMessages !== null;
 
   return (
-    <div className={styles.shell}>
+    // 修复：布局壳必须用 antd Layout（Header/Content/Sider），组件级 token 才惰性输出为
+    // --one-layout-* 并作用到 .ant-layout-*；改用原生 div 会让 components.ts 的 Layout 配置失效
+    <Layout hasSider className={styles.shell}>
       <ChatSidebar
         chats={chats}
         activeChatId={activeChatId}
@@ -121,8 +123,8 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
         onCreateChat={handleCreateChat}
         busy={busy}
       />
-      <div className={styles.main}>
-        <div className={styles.mainHeader}>
+      <Layout className={styles.main}>
+        <Layout.Header className={styles.mainHeader}>
           {collapsed ? (
             <div
               className={`${styles.collapsedBar} ${styles.collapsedBarEnter}`}
@@ -157,8 +159,8 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
           ) : null}
           <div className={styles.headerSpacer} />
           <ModeSwitch />
-        </div>
-        <div className={styles.content}>
+        </Layout.Header>
+        <Layout.Content className={styles.content}>
           {!chatReady || loadingChat ? (
             <div className={styles.loading}>
               <Spin />
@@ -173,8 +175,8 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
             />
           )}
           {children}
-        </div>
-      </div>
-    </div>
+        </Layout.Content>
+      </Layout>
+    </Layout>
   );
 }

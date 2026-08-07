@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Conversations } from '@ant-design/x';
 import type { ConversationItemType } from '@ant-design/x/es/conversations/interface';
 import { DeleteOutlined, MenuFoldOutlined, MessageOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Button, Layout, Typography } from 'antd';
 import { getChatGroupLabel } from '@/lib/chat/group';
 import type { ChatListItem } from '@/lib/chat/store';
 import { apiDelete } from '@/lib/shared/api-client';
@@ -94,13 +94,19 @@ export default function ChatSidebar({
   const actionsDisabled = busy || pending || deleting;
 
   return (
-    // 修复：width 动画勿加在内容容器上，否则内层会重排压缩；shell 占位裁切 + panel translateX 滑出
-    <div className={`${styles.sidebarShell} ${collapsed ? styles.sidebarShellCollapsed : ''}`}>
-      <aside
-        className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}
-        aria-hidden={collapsed}
-        inert={collapsed || undefined}
-      >
+    // 修复：侧栏必须用 antd Layout.Sider——组件级 token 惰性输出，布局壳用原生元素时 Layout.* 配置失效。
+    // 折叠交互保留原方案：Sider 自带 width 裁切（collapsedWidth=0），内层 .panel 固定宽 + translateX 滑出，
+    // width 动画勿加在内容容器上，否则内层会重排压缩。
+    <Layout.Sider
+      width={260}
+      collapsedWidth={0}
+      collapsed={collapsed}
+      trigger={null}
+      className={styles.sider}
+      aria-hidden={collapsed}
+      inert={collapsed || undefined}
+    >
+      <div className={`${styles.panel} ${collapsed ? styles.panelCollapsed : ''}`}>
         <div className={styles.header}>
           <Typography.Text strong className={styles.brand}>
             OneAgent
@@ -163,7 +169,7 @@ export default function ChatSidebar({
             },
           })}
         />
-      </aside>
-    </div>
+      </div>
+    </Layout.Sider>
   );
 }
