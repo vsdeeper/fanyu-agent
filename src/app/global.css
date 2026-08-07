@@ -29,6 +29,29 @@
   --sidebar-btn-shadow-7: rgba(106, 111, 117, 0.1); /* hover */
 }
 
+/*
+ * 暗色主题
+ * antd 的 --one-* 由 algorithm 切换时自动重发暗色值，无需覆盖；
+ * 这里只覆盖 antd 无对应 token 的自定义颜色变量（滚动条 / 侧栏边框 / 按钮阴影）。
+ * data-theme 由 ThemeProvider 与 layout 预挂载脚本写入 <html>。
+ */
+html[data-theme='dark'] {
+  color-scheme: dark;
+
+  --scrollbar-color: #2b2b2b;
+  --scrollbar-hover-color: #3c3c3c;
+
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+
+  --sidebar-btn-shadow-1: rgba(0, 0, 0, 0.35);
+  --sidebar-btn-shadow-2: rgba(0, 0, 0, 0.45);
+  --sidebar-btn-shadow-3: rgba(0, 0, 0, 0.5);
+  --sidebar-btn-shadow-4: rgba(0, 0, 0, 0.55);
+  --sidebar-btn-shadow-5: rgba(0, 0, 0, 0.45); /* hover */
+  --sidebar-btn-shadow-6: rgba(0, 0, 0, 0.45); /* hover */
+  --sidebar-btn-shadow-7: rgba(0, 0, 0, 0.55); /* hover */
+}
+
 html,
 body {
   height: 100%;

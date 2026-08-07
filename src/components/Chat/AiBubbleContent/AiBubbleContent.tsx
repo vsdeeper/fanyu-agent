@@ -4,7 +4,9 @@ import { memo, useMemo } from 'react';
 import { Sources } from '@ant-design/x';
 import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
+import '@ant-design/x-markdown/themes/dark.css';
 import styles from './AiBubbleContent.module.css';
+import { useThemeMode } from '@/components/theme';
 import GenerateImageBlock from './GenerateImageBlock';
 import { markdownComponents } from './MarkdownImage';
 import ReasoningThink from './ReasoningThink';
@@ -27,6 +29,7 @@ function AiBubbleContent({
   thinking,
   messageParts,
 }: AiBubbleContentProps) {
+  const { mode } = useThemeMode();
   const sourceItems = useMemo(() => getSourceItems(messageParts, text), [messageParts, text]);
   const imageParts = useMemo(() => getGenerateImageParts(messageParts), [messageParts]);
   // 修复：裁切末尾「参考来源」区块后再渲染 Markdown，避免与 Sources 组件重复展示
@@ -37,7 +40,7 @@ function AiBubbleContent({
       {reasoning ? <ReasoningThink thinking={thinking}>{reasoning}</ReasoningThink> : null}
       {text ? (
         <XMarkdown
-          className={`x-markdown-light ${styles.markdown}`}
+          className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
           content={displayText}
           components={markdownComponents}
           paragraphTag="div"

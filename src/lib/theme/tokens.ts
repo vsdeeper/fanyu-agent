@@ -41,3 +41,15 @@ export const seedTokens: ThemeConfig['token'] = {
   boxShadowTertiary:
     '0 1px 4px 0 rgba(0,0,0,0.03), 0 1px 6px -1px rgba(0,0,0,0.01), 0 2px 4px 0 rgba(0,0,0,0.02)',
 };
+
+/**
+ * 暗色种子 Token
+ * 仅覆盖极性反转的背景/前景种子色，其余复用 light，别名 token 由 darkAlgorithm 派生
+ * （colorBgContainer / colorBgElevated / colorTextSecondary / border 等会自动变暗）。
+ */
+export const darkSeedTokens: ThemeConfig['token'] = {
+  ...seedTokens,
+  colorBgBase: '#141414',
+  colorTextBase: '#ffffff',
+  colorBgLayout: '#0d0d0d', // 侧栏背景
+};

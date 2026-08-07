@@ -204,6 +204,15 @@ Button/
 - `generate_image` 的 `execute` 返回完整 output（含 `assetId`/`url`）供 `tool-generate_image` part 落盘与 `GenerateImageBlock` 渲染；`toModelOutput` 向主模型返回不含 `url` 的文本摘要，避免汇总正文重复插入 Markdown 图片
 - 历史已落盘消息若正文含 `/api/images/` Markdown，仍可能与 `GenerateImageBlock` 重复展示（未做前端过滤）
 
+## 主题系统（浅色/深色）
+
+- 主题状态由 `src/components/theme/` 提供：`ThemeProvider` + `useThemeMode()`（`mode: 'light' | 'dark'`、`setMode`/`toggle`）；`ThemedConfigProvider` 把模式接入 antd `ConfigProvider`
+- 主题配置在 `src/lib/theme/`：`appTheme`（浅色）与 `darkTheme`（`algorithm: theme.darkAlgorithm` + `darkSeedTokens`，见 `tokens.ts`）；两者共用 `cssVar.prefix: 'one'`，切换 algorithm 时 antd 在 `:root` 重新输出暗色 `--one-*`，走 token 的样式（含 `@ant-design/x` 组件）自动跟随
+- 模式持久化键 **`one-theme`**（localStorage），`ThemeProvider` 写入 `html[data-theme]` 与 `color-scheme`；`src/app/layout.tsx` 的预挂载内联脚本也内联了该键并先行设置 `data-theme`（**改键需两处同步**）
+- CSS Module 引用 `--one-*` 即可自动换肤；**antd 无对应 token 的自定义颜色变量**（滚动条、侧栏边框、侧栏按钮阴影）需在 `src/app/global.css` 的 `html[data-theme='dark']` 下覆盖
+- **XMarkdown 双主题规则**：同时引入 `@ant-design/x-markdown/themes/light.css` 与 `dark.css`，在组件内用 `useThemeMode()` 切换 `className` 的 `x-markdown-light` / `x-markdown-dark`（例：`AiBubbleContent.tsx`）；XMarkdown 无 `theme` prop，主题靠 className 作用域下的 CSS 变量驱动
+- 切换按钮：`src/components/ModeSwitch/`，置于 `ChatShell` 顶部栏右侧
+
 ## 编码约定
 
 - 与用户/AI 对话默认使用中文简体

@@ -18,6 +18,7 @@ import { apiGet } from '@/lib/shared/api-client';
 import { resolveChatRouteId } from '@/lib/chat/route';
 import Chat from '@/components/Chat';
 import ChatSidebar from '@/components/ChatSidebar';
+import ModeSwitch from '@/components/ModeSwitch';
 import styles from './ChatShell.module.css';
 
 type ChatShellProps = {
@@ -154,6 +155,8 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
               {title}
             </Typography.Title>
           ) : null}
+          <div className={styles.headerSpacer} />
+          <ModeSwitch />
         </div>
         <div className={styles.content}>
           {!chatReady || loadingChat ? (

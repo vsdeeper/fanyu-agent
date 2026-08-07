@@ -1,5 +1,5 @@
-import type { ThemeConfig } from 'antd';
-import { seedTokens } from './tokens';
+import { theme, type ThemeConfig } from 'antd';
+import { darkSeedTokens, seedTokens } from './tokens';
 import { componentTokens } from './components';
 
 /**
@@ -14,4 +14,15 @@ export const appTheme: ThemeConfig = {
   components: componentTokens,
   // 启用 CSS 变量模式，全局可用 --one-color-primary 等
   cssVar: { prefix: 'one' },
+};
+
+/**
+ * 暗色主题
+ * 与 appTheme 共用同一 cssVar.prefix，切换 algorithm 后 antd 在 :root 重新输出暗色 --one-*，
+ * 走 token 的样式（含 @ant-design/x 组件）整体自动换肤。
+ */
+export const darkTheme: ThemeConfig = {
+  ...appTheme,
+  algorithm: theme.darkAlgorithm,
+  token: darkSeedTokens,
 };

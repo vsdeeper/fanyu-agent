@@ -65,6 +65,11 @@
   min-width: 0;
 }
 
+/* 顶部栏右侧主题开关的弹性占位，保证标题左置、开关右对齐（草稿态无标题也可见） */
+.headerSpacer {
+  flex: 1;
+}
+
 .content {
   flex: 1;
   min-height: 0;
