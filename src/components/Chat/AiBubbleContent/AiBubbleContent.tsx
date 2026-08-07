@@ -5,6 +5,8 @@ import { Sources } from '@ant-design/x';
 import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
+// 修复：XMarkdown 主题变量覆写层，必须紧跟主题 CSS 之后引入保证覆盖；勿移入 global.css（会被深层主题 CSS 反压失效）
+import './XMarkdownTheme.css';
 import styles from './AiBubbleContent.module.css';
 import { useThemeMode } from '@/components/theme';
 import GenerateImageBlock from './GenerateImageBlock';
