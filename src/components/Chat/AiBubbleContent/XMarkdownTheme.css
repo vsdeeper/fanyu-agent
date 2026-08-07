@@ -33,7 +33,7 @@
   --table-body-bg: var(--one-color-bg-container, #ffffff);
   --cite-bg: var(--one-color-fill-secondary, rgba(0, 0, 0, 0.1));
   --cite-hover-bg: var(--one-color-fill, rgba(0, 0, 0, 0.2));
-  --margin-block: var(--one-margin) 0;
+  --margin-block: var(--one-margin-xl) 0 var(--one-margin) 0;
 }
 
 /* 代码背景：浅/深两主题的变量名不同（浅色 --light-bg / 深色 --dark-bg），
