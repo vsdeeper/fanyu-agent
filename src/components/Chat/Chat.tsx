@@ -222,6 +222,11 @@ export default function Chat({
   }, [hasMessages]);
 
   const handleSend = ({ text, files }: { text: string; files?: FileList }) => {
+    // 修复：发送新消息时若用户上滑未贴底（滚动到底部按钮可见），自动滚回底部；
+    // autoScroll 只在已贴底时跟随，上滑后不会主动拉回
+    if (showScrollBottom) {
+      listRef.current?.scrollTo({ top: 'bottom', behavior: 'smooth' });
+    }
     const userLocation = getCachedUserLocation();
     // 修复：附件经 SDK 转 data URL 写入 UIMessage 落盘；勿像 reasoning 一样 prune 历史 file parts
     sendMessage(files?.length ? { text, files } : { text }, {
