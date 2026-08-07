@@ -9,40 +9,21 @@ import { DefaultChatTransport, type UIMessage } from 'ai';
 import { CommentOutlined, DownOutlined } from '@ant-design/icons';
 import { Button, Flex, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
-import { getCachedUserLocation, getUserLocation } from '@/lib/geo/client';
+import { getUserLocation } from '@/lib/geo/client';
 import AiBubbleContent from './AiBubbleContent';
 import ChatSender from './ChatSender';
 import UserBubbleContent from './UserBubbleContent';
 import styles from './Chat.module.css';
-import { continueAssistantMessage, shouldShowContinueButton } from './utils';
-
-function getPartsText(
-  message: { parts?: ReadonlyArray<{ type: string; [key: string]: unknown }> },
-  type: 'text' | 'reasoning',
-): string {
-  if (!message.parts?.length) return '';
-  return message.parts
-    .filter((part) => part.type === type && typeof part.text === 'string')
-    .map((part) => (part.text as string) ?? '')
-    .join('');
-}
-
-const bubbleRole = {
-  user: {
-    placement: 'end' as const,
-    shape: 'corner' as const,
-    // variant 默认即为 filled，与文档「filled - corner right」一致
-  },
-  ai: {
-    placement: 'start' as const,
-    variant: 'borderless' as const,
-  },
-};
-
-/** autoScroll 下贴底时 scrollTop≈0；不做正/倒序双分支 */
-function isNearBottom(el: HTMLElement, threshold = 40) {
-  return Math.abs(el.scrollTop) <= threshold;
-}
+import { bubbleRole } from './constants';
+import {
+  cancelGeneration,
+  continueGeneration,
+  getPartsText,
+  isNearBottom,
+  prepareSendMessagesRequest,
+  shouldShowContinueButton,
+  submitChatMessage,
+} from './utils';
 
 type ChatProps = {
   id: string;
@@ -72,42 +53,12 @@ export default function Chat({
     setShowScrollBottom(false);
   }
 
-  // 修复：transport 只建一次；userLocation 经 sendMessage body 传入 prepareSendMessagesRequest
+  // 修复：transport 只建一次；请求组装见 utils.prepareSendMessagesRequest
   const [transport] = useState(
     () =>
       new DefaultChatTransport({
         api: '/api/chat',
-        prepareSendMessagesRequest({ messages, id: requestChatId, body }) {
-          if (
-            body &&
-            typeof body === 'object' &&
-            'trigger' in body &&
-            body.trigger === 'continue-message'
-          ) {
-            const continueBody = body as {
-              trigger: 'continue-message';
-              messageId: string;
-              userLocation?: unknown;
-            };
-            return {
-              body: {
-                id: requestChatId,
-                trigger: 'continue-message',
-                messageId: continueBody.messageId,
-                ...(continueBody.userLocation ? { userLocation: continueBody.userLocation } : {}),
-              },
-            };
-          }
-
-          return {
-            body: {
-              id: requestChatId,
-              trigger: 'submit-message',
-              message: messages[messages.length - 1],
-              ...body,
-            },
-          };
-        },
+        prepareSendMessagesRequest,
       }),
   );
 
@@ -130,28 +81,20 @@ export default function Chat({
   const loading = status === 'submitted' || status === 'streaming' || isContinuing;
 
   const handleContinue = useCallback(() => {
-    if (loading) return;
-
-    void continueAssistantMessage({
+    continueGeneration({
+      loading,
       transport,
       chatId: id,
       messages,
       setMessages,
-      body: {
-        userLocation: getCachedUserLocation(),
-      },
+      routerRefresh: () => router.refresh(),
       abortControllerRef: continueAbortRef,
       onStatusChange: setIsContinuing,
-      onFinish: () => router.refresh(),
     });
   }, [id, loading, messages, router, setMessages, transport]);
 
   const handleCancel = useCallback(() => {
-    if (continueAbortRef.current) {
-      continueAbortRef.current.abort();
-      return;
-    }
-    void stop();
+    cancelGeneration(continueAbortRef, stop);
   }, [stop]);
 
   const bubbleItems = useMemo<BubbleItemType[]>(() => {
@@ -222,17 +165,12 @@ export default function Chat({
   }, [hasMessages]);
 
   const handleSend = ({ text, files }: { text: string; files?: FileList }) => {
-    // 修复：发送新消息时若用户上滑未贴底（滚动到底部按钮可见），自动滚回底部；
-    // autoScroll 只在已贴底时跟随，上滑后不会主动拉回
-    if (showScrollBottom) {
-      listRef.current?.scrollTo({ top: 'bottom', behavior: 'smooth' });
-    }
-    const userLocation = getCachedUserLocation();
-    // 修复：附件经 SDK 转 data URL 写入 UIMessage 落盘；勿像 reasoning 一样 prune 历史 file parts
-    sendMessage(files?.length ? { text, files } : { text }, {
-      body: {
-        ...(userLocation ? { userLocation } : {}),
-      },
+    submitChatMessage({
+      text,
+      files,
+      showScrollBottom,
+      listRef,
+      sendMessage,
     });
   };
 

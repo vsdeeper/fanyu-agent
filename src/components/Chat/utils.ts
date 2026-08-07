@@ -4,9 +4,70 @@ import {
   isReasoningUIPart,
   isTextUIPart,
   isToolUIPart,
+  type ChatRequestOptions,
+  type PrepareSendMessagesRequest,
   type UIMessage,
 } from 'ai';
+import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
+import { getCachedUserLocation } from '@/lib/geo/client';
 import type { UserLocation } from '@/lib/geo/types';
+
+/** 提取消息 parts 中指定类型（text / reasoning）的文本 */
+export function getPartsText(
+  message: { parts?: ReadonlyArray<{ type: string; [key: string]: unknown }> },
+  type: 'text' | 'reasoning',
+): string {
+  if (!message.parts?.length) return '';
+  return message.parts
+    .filter((part) => part.type === type && typeof part.text === 'string')
+    .map((part) => (part.text as string) ?? '')
+    .join('');
+}
+
+/** autoScroll 下贴底时 scrollTop≈0；不做正/倒序双分支 */
+export function isNearBottom(el: HTMLElement, threshold = 40) {
+  return Math.abs(el.scrollTop) <= threshold;
+}
+
+/**
+ * DefaultChatTransport 的请求预处理：区分「继续生成」与普通提交，组装服务端 body。
+ * 修复：transport 只建一次，userLocation 经 sendMessage body 传入本函数再带出。
+ */
+export const prepareSendMessagesRequest: PrepareSendMessagesRequest<UIMessage> = ({
+  messages,
+  id: requestChatId,
+  body,
+}) => {
+  if (
+    body &&
+    typeof body === 'object' &&
+    'trigger' in body &&
+    body.trigger === 'continue-message'
+  ) {
+    const continueBody = body as {
+      trigger: 'continue-message';
+      messageId: string;
+      userLocation?: unknown;
+    };
+    return {
+      body: {
+        id: requestChatId,
+        trigger: 'continue-message',
+        messageId: continueBody.messageId,
+        ...(continueBody.userLocation ? { userLocation: continueBody.userLocation } : {}),
+      },
+    };
+  }
+
+  return {
+    body: {
+      id: requestChatId,
+      trigger: 'submit-message',
+      message: messages[messages.length - 1],
+      ...body,
+    },
+  };
+};
 
 /**
  * 是否展示「继续生成」按钮（仅 assistant 且为最后一条消息）。
@@ -94,4 +155,86 @@ export async function continueAssistantMessage({
     abortControllerRef.current = null;
     onStatusChange(false);
   }
+}
+
+export type ContinueGenerationParams = {
+  loading: boolean;
+  transport: DefaultChatTransport<UIMessage>;
+  chatId: string;
+  messages: UIMessage[];
+  setMessages: (messages: UIMessage[] | ((prev: UIMessage[]) => UIMessage[])) => void;
+  routerRefresh: () => void;
+  abortControllerRef: { current: AbortController | null };
+  onStatusChange: (continuing: boolean) => void;
+};
+
+/** 「继续生成」按钮：负载中不重复触发，带上定位后交给 continueAssistantMessage 续流 */
+export function continueGeneration({
+  loading,
+  transport,
+  chatId,
+  messages,
+  setMessages,
+  routerRefresh,
+  abortControllerRef,
+  onStatusChange,
+}: ContinueGenerationParams): void {
+  if (loading) return;
+
+  void continueAssistantMessage({
+    transport,
+    chatId,
+    messages,
+    setMessages,
+    body: {
+      userLocation: getCachedUserLocation(),
+    },
+    abortControllerRef,
+    onStatusChange,
+    onFinish: routerRefresh,
+  });
+}
+
+/** 取消：优先 abort 续写请求（保留半截），否则 stop 当前流 */
+export function cancelGeneration(
+  continueAbortRef: { current: AbortController | null },
+  stop: () => void,
+): void {
+  if (continueAbortRef.current) {
+    continueAbortRef.current.abort();
+    return;
+  }
+  stop();
+}
+
+export type SubmitChatMessageParams = {
+  text: string;
+  files?: FileList;
+  showScrollBottom: boolean;
+  listRef: { current: BubbleListRef | null };
+  sendMessage: (message: { text: string; files?: FileList }, options?: ChatRequestOptions) => void;
+};
+
+/**
+ * 发送新消息：
+ * - 若用户上滑未贴底（「滚动到底部」按钮可见），先自动滚回底部；
+ *   autoScroll 只在已贴底时跟随，上滑后不会主动拉回
+ * - 附件经 SDK 转 data URL 写入 UIMessage 落盘；勿像 reasoning 一样 prune 历史 file parts
+ */
+export function submitChatMessage({
+  text,
+  files,
+  showScrollBottom,
+  listRef,
+  sendMessage,
+}: SubmitChatMessageParams): void {
+  if (showScrollBottom) {
+    listRef.current?.scrollTo({ top: 'bottom', behavior: 'smooth' });
+  }
+  const userLocation = getCachedUserLocation();
+  sendMessage(files?.length ? { text, files } : { text }, {
+    body: {
+      ...(userLocation ? { userLocation } : {}),
+    },
+  });
 }
