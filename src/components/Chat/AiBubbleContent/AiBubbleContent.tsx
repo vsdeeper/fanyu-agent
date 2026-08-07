@@ -15,6 +15,7 @@ import {
   getGenerateImageParts,
   getSourceItems,
   openSourceUrl,
+  stripReferenceSection,
 } from './utils';
 
 export type { AiBubbleContentProps };
@@ -28,6 +29,8 @@ function AiBubbleContent({
 }: AiBubbleContentProps) {
   const sourceItems = useMemo(() => getSourceItems(messageParts, text), [messageParts, text]);
   const imageParts = useMemo(() => getGenerateImageParts(messageParts), [messageParts]);
+  // 修复：裁切末尾「参考来源」区块后再渲染 Markdown，避免与 Sources 组件重复展示
+  const displayText = useMemo(() => stripReferenceSection(text), [text]);
 
   return (
     <div className={styles.bubbleContent}>
@@ -35,7 +38,7 @@ function AiBubbleContent({
       {text ? (
         <XMarkdown
           className={`x-markdown-light ${styles.markdown}`}
-          content={text}
+          content={displayText}
           components={markdownComponents}
           paragraphTag="div"
           openLinksInNewTab

@@ -8,6 +8,7 @@
 
 /** DeepSeek Responses 不认的 OpenAI include 值（与方舟同款坑） */
 export const DEEPSEEK_UNSUPPORTED_INCLUDES = new Set([
+  // 修复：include 参数 DeepSeek 不支持（文档标注），SDK 自动加的 web_search_call.action.sources 须剥离
   'web_search_call.action.sources',
   'reasoning.encrypted_content',
 ]);

@@ -27,6 +27,14 @@ export function getSourceItems(
     });
   };
 
+  // 修复：Markdown 链接先于 source-url parts 执行，确保模型明确标注的标题优先生效
+  // （source-url parts 的 title 可能回退为裸 URL，先执行会在 Map 中抢占位置）
+  const mdLinkRe = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = mdLinkRe.exec(text)) !== null) {
+    add(match[2], match[1] || match[2]);
+  }
+
   for (const part of messageParts ?? []) {
     // 1. AI SDK source-url（后端 SSE 注入 annotation.added 后的主路径）
     if (part.type === 'source-url' && typeof part.url === 'string') {
@@ -48,13 +56,6 @@ export function getSourceItems(
         }
       }
     }
-  }
-
-  // 3. 兜底：正文 Markdown 链接 [title](url)
-  const mdLinkRe = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
-  let match: RegExpExecArray | null;
-  while ((match = mdLinkRe.exec(text)) !== null) {
-    add(match[2], match[1] || match[2]);
   }
 
   return Array.from(byUrl.values());
@@ -97,6 +98,32 @@ export function getGenerateImageParts(
 
 export function openSourceUrl(item: { url?: string }) {
   if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer');
+}
+
+/**
+ * 裁切正文末尾的「参考来源」区块。
+ * 模型受 prompt 引导在回答末尾附加 Markdown 链接形式的引用列表，
+ * 该区块由 Sources 组件统一展示，正文中不应重复渲染。
+ *
+ * 不用正则精确匹配标题格式（实测模型输出 `**参考来源：**`，冒号在加粗标记内，
+ * 旧正则无法匹配「先冒号后两个星号」的结尾）。改为逐行归一化后比对：
+ * 去掉 markdown 标记（#、*、>、反引号）、空白、全半角冒号，剩余恰好是「参考来源」即标题行。
+ * 对 `## 参考来源` / `**参考来源**` / `**参考来源：**` / `参考来源：` / `> **参考来源**` 全部生效。
+ *
+ * 只裁最后一个「参考来源」行及之后内容，防止正文中间误现该词时误删主文。
+ */
+export function stripReferenceSection(text: string): string {
+  const lines = text.split('\n');
+  let cutIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    // 修复：逐行归一化后比对，避免硬编码标题格式变体
+    const normalized = lines[i].replace(/[#*>`\s：:]/g, '').trim();
+    if (normalized === '参考来源') {
+      cutIndex = i; // 取最后一个匹配
+    }
+  }
+  if (cutIndex === -1) return text;
+  return lines.slice(0, cutIndex).join('\n').trimEnd();
 }
 
 export function aiBubbleContentPropsAreEqual(
