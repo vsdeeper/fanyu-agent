@@ -231,6 +231,7 @@ Button/
   - `streamText` / `generateText` 使用 **`instructions`**（provider-agnostic），**勿用已废弃的 `system`** 属性；`system` 仅为 OpenAI 兼容层，v7 中已标记 deprecated
   - 调用方舟 Responses API 时**必须**传 `providerOptions: { openai: { store: false } }`，否则 `store:true`（默认）会发 `item_reference`，方舟报 `<nil>` 错误（详见 `src/lib/chat/providers/ark/constants.ts`）
 - **修复 BUG 后须标注修复**：在相关代码处用简短注释标明「为何容易出错 / 为何这样改 / 以后勿再踩」，必要时同步更新本文件或 README 中的约定说明；仅修代码不留说明视为未完成
+- **函数/方法说明注释**：定义函数、方法时须有基本说明注释，写清职责，以及与调用方相关的入参、返回值要点；显而易见的单行包装或框架生命周期回调（如 React 组件、Next.js Route Handler 入口）可从简，但业务逻辑函数不可省略
 
 ### 环境变量约定
 
