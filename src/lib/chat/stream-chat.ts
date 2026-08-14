@@ -10,7 +10,7 @@ import {
 } from 'ai';
 
 import type { UserLocation } from '@/lib/geo/types';
-import { dropIncompleteToolParts } from '@/lib/chat/sanitize-messages';
+import { dropIncompleteToolParts, sanitizeFilePartsForModel } from '@/lib/chat/sanitize-messages';
 import { saveChat } from '@/lib/chat/store';
 import { selectModel } from '@/lib/chat/select-model';
 import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/images/generate-image-tool';
@@ -56,8 +56,10 @@ export async function streamChatResponse({
 
   // 修复：勿把历史 reasoning/itemId 回传方舟；磁盘仍保留完整 UIMessage 供刷新展示 Think
   // 修复：stop 在 tool 阶段中断时末条仅有 tool-call 无 result，须 ignoreIncompleteToolCalls
+  // 修复：text/* 与 .docx 附件在转模型入参前解码为 text part，否则方舟 Responses 对非
+  // application/pdf 内联文件抛 UnsupportedFunctionalityError（AI SDK 转换阶段硬抛，fetch 拦不到）
   const modelMessages = pruneMessages({
-    messages: await convertToModelMessages(messages, {
+    messages: await convertToModelMessages(await sanitizeFilePartsForModel(messages), {
       tools,
       ignoreIncompleteToolCalls: true,
     }),

@@ -11,7 +11,9 @@ import styles from './ChatSender.module.css';
 
 const MAX_ATTACHMENT_COUNT = 5;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
-const ATTACHMENT_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,.pdf,.txt,.md,.doc,.docx';
+// 修复：收窄到后端可解析的类型。.doc（OLE 二进制）无可靠解析库、方舟仅接受 application/pdf
+// 内联文件，若放行只会「入库但模型读不到」，故从选择器入口拦截，避免异常数据落库
+const ATTACHMENT_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,.pdf,.txt,.md,.docx';
 
 type AttachmentItem = NonNullable<GetProp<AttachmentsProps, 'items'>>[number];
 
