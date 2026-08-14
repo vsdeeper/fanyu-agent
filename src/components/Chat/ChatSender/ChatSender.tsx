@@ -83,8 +83,6 @@ export type ChatSenderProps = {
   id: string;
   loading: boolean;
   isDraft?: boolean;
-  /** default：composer 内；welcome：空态欢迎页 */
-  variant?: 'default' | 'welcome';
   onCancel: () => void;
   onSend: (payload: { text: string; files?: FileList }) => void;
 };
@@ -93,7 +91,6 @@ export default function ChatSender({
   id,
   loading,
   isDraft = false,
-  variant = 'default',
   onCancel,
   onSend,
 }: ChatSenderProps) {

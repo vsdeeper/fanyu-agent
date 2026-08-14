@@ -242,7 +242,7 @@ export default function Chat({
             title="开始对话"
             description="基于 Vercel AI SDK 与 @ant-design/x 的聊天脚手架"
           />
-          <ChatSender {...senderProps} variant="welcome" />
+          <ChatSender {...senderProps} />
         </div>
       )}
     </div>
