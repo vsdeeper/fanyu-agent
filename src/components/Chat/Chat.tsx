@@ -46,6 +46,7 @@ export default function Chat({
   const composerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<BubbleListRef>(null);
   const continueAbortRef = useRef<AbortController | null>(null);
+  const sentOnceRef = useRef(false);
 
   // 切换会话：贴底隐藏「滚动到底部」
   if (id !== chatId) {
@@ -77,6 +78,20 @@ export default function Chat({
   useEffect(() => {
     void getUserLocation();
   }, []);
+
+  const hasUserMessage = messages.some((message) => message.role === 'user');
+
+  // 修复：草稿首条发送后等到服务端开始流式（saveChat 已提交）再导航 /chat/[id]，
+  // 否则乐观 replace 与 saveChat 竞态：带大附件时 POST 体大、服务端解析慢，页面先到
+  // → chatExists 为 false → 404；刷新后落库完成才正常。hasUserMessage 确认已发送，
+  // status streaming/ready 确认服务端已开始流式（saveChat 必已 await 提交）。
+  useEffect(() => {
+    if (!isDraft || sentOnceRef.current || !hasUserMessage) return;
+    if (status === 'streaming' || status === 'ready') {
+      sentOnceRef.current = true;
+      onFirstMessageSent?.();
+    }
+  }, [hasUserMessage, status, isDraft, onFirstMessageSent]);
 
   const loading = status === 'submitted' || status === 'streaming' || isContinuing;
 
@@ -179,7 +194,6 @@ export default function Chat({
     loading,
     isDraft,
     onCancel: handleCancel,
-    onFirstMessageSent,
     onSend: handleSend,
   };
 

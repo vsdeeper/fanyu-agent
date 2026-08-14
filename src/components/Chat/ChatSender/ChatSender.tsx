@@ -86,7 +86,6 @@ export type ChatSenderProps = {
   /** default：composer 内；welcome：空态欢迎页 */
   variant?: 'default' | 'welcome';
   onCancel: () => void;
-  onFirstMessageSent?: () => void;
   onSend: (payload: { text: string; files?: FileList }) => void;
 };
 
@@ -96,7 +95,6 @@ export default function ChatSender({
   isDraft = false,
   variant = 'default',
   onCancel,
-  onFirstMessageSent,
   onSend,
 }: ChatSenderProps) {
   const [input, setInput] = useState('');
@@ -109,7 +107,6 @@ export default function ChatSender({
   const senderRef = useRef<SenderRef>(null);
   const attachmentsRef = useRef<AttachmentsRef>(null);
   const latestAttachmentItemsRef = useRef<AttachmentItem[]>([]);
-  const firstMessageSentRef = useRef(false);
 
   const attachmentItems = attachmentScope.items;
   const attachmentsOpen = attachmentScope.open;
@@ -229,11 +226,8 @@ export default function ChatSender({
         if (!text && !files?.length) return;
 
         onSend({ text, files });
-        // 修复：草稿首条发送后立即 replace 到 /chat/[id]，须在本组件 remount 前触发
-        if (isDraft && !firstMessageSentRef.current) {
-          firstMessageSentRef.current = true;
-          onFirstMessageSent?.();
-        }
+        // 修复：草稿首条发送后的导航改由 Chat 在流式开始后触发（避免与落库竞态 404），
+        // 此处不再同步 replace
         revokeBlobUrls(attachmentItems);
         setAttachmentScope((prev) => ({ ...prev, items: [], open: false }));
         setInput('');
