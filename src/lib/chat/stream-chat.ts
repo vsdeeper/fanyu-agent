@@ -14,6 +14,8 @@ import { dropIncompleteToolParts, sanitizeFilePartsForModel } from '@/lib/chat/s
 import { saveChat } from '@/lib/chat/store';
 import { selectModel } from '@/lib/chat/select-model';
 import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/images/generate-image-tool';
+import { resolveActiveSkills } from '@/lib/skills/context';
+import { expandSkillTokensInText } from '@/lib/skills/expand';
 import { getArkClient } from './providers/ark/client';
 import { getChatProvider } from './providers/config';
 import { getDeepseekReasoningEffort } from './providers/deepseek/constants';
@@ -66,20 +68,49 @@ export async function streamChatResponse({
     reasoning: 'all',
   });
 
+  // 修复：skill 令牌原位展开——把模型入参副本里用户文本的 /<skillId> 在原位置替换为指令块，
+  // 让约束与用户意图的位置对应（勿只堆在系统提示词末尾）。展开发生在 convert/prune 副本上，
+  // saveChat 仍落盘原文（含 /skill 令牌与 metadata.skillIds），历史可读且刷新后依旧。
+  const expandedMessages = modelMessages.map((message) => {
+    if (message.role !== 'user') return message;
+    const content = message.content;
+    if (typeof content === 'string') {
+      return { ...message, content: expandSkillTokensInText(content) };
+    }
+    if (Array.isArray(content)) {
+      return {
+        ...message,
+        content: content.map((part) =>
+          part.type === 'text' ? { ...part, text: expandSkillTokensInText(part.text) } : part,
+        ),
+      };
+    }
+    return message;
+  });
+
+  // 修复：skill 激活集合作为会话上下文——用原始 messages（含本次新消息）推导最近一次写入的集合，
+  // 指令并入 baseInstructions，保证「继续生成」与后续消息持续受约束；与令牌原位展开互补。
+  const activeSkills = resolveActiveSkills(messages);
+
   // 修复：明确要求思考过程使用中文简体，避免中英文混杂
   const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${IMAGE_SYSTEM_HINT}`;
+  const withSkill = activeSkills.length
+    ? `${baseInstructions}\n\n【当前生效 Skills：${activeSkills
+        .map((skill) => skill.name)
+        .join('、')}】\n${activeSkills.map((skill) => skill.instructions).join('\n\n')}`
+    : baseInstructions;
 
   // 修复：DeepSeek 兼容处理（定位注入 + 引用引导）抽到 providers/deepseek/instructions.ts，
   // stream-chat.ts 只保留 provider 无关的 baseInstructions 与统一分支调用
   const instructions =
     provider === 'deepseek'
-      ? getDeepseekInstructions({ userLocation, baseInstructions })
-      : baseInstructions;
+      ? getDeepseekInstructions({ userLocation, baseInstructions: withSkill })
+      : withSkill;
 
   const result = streamText({
     model: client.responses(modelId),
     instructions,
-    messages: modelMessages,
+    messages: expandedMessages,
     tools,
     // 修复：无 stopWhen 时 tool 执行后不会继续汇总；生图+说明需多步
     stopWhen: stepCountIs(5),

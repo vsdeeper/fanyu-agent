@@ -10,6 +10,7 @@ import { CommentOutlined, DownOutlined } from '@ant-design/icons';
 import { Button, Flex, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { getUserLocation } from '@/lib/geo/client';
+import { resolveActiveSkillIds } from '@/lib/skills/context';
 import AiBubbleContent from './AiBubbleContent';
 import ChatSender from './ChatSender';
 import UserBubbleContent from './UserBubbleContent';
@@ -42,6 +43,11 @@ export default function Chat({
   const [chatId, setChatId] = useState(id);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [isContinuing, setIsContinuing] = useState(false);
+  // 修复：激活 skill 集合作为会话上下文——挂载时从历史（messages.data 已落盘 metadata.skillIds）恢复，
+  // 刷新后 Tags 仍显示；chat 切换靠 key remount 自然重置
+  const [activeSkillIds, setActiveSkillIds] = useState<string[]>(
+    () => resolveActiveSkillIds(initialMessages) ?? [],
+  );
   const chatRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<BubbleListRef>(null);
@@ -183,6 +189,7 @@ export default function Chat({
     submitChatMessage({
       text,
       files,
+      skillIds: activeSkillIds,
       showScrollBottom,
       listRef,
       sendMessage,
@@ -193,6 +200,8 @@ export default function Chat({
     id,
     loading,
     isDraft,
+    activeSkillIds,
+    onSkillChange: setActiveSkillIds,
     onCancel: handleCancel,
     onSend: handleSend,
   };

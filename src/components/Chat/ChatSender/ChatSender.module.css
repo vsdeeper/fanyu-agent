@@ -1,3 +1,38 @@
 .root {
   background-color: var(--one-color-bg-container);
 }
+
+/* 激活 skill 集合条：多个 Tag 可叠加，逐个 closable */
+.skillBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 8px;
+}
+
+/* antd Tag 自带 margin-inline-end，在 flex gap 下会多出间距，置零 */
+.skillTag {
+  margin-inline-end: 0;
+}
+
+.skillHint {
+  font-size: 12px;
+  color: var(--one-color-text-tertiary);
+}
+
+/* Suggestion 根元素（Cascader），保证包裹内容全宽 */
+.suggestion :global(.ant-suggestion-item) {
+  display: flex;
+  flex-direction: column;
+  font-weight: normal;
+}
+
+.suggestion :global(.ant-suggestion-item-extra) {
+  font-size: 12px;
+  margin-inline-start: unset !important;
+}
+
+.suggestionContent {
+  width: 100%;
+}
