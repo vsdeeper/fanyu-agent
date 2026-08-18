@@ -73,15 +73,18 @@ export async function streamChatResponse({
   // saveChat 仍落盘原文（含 /skill 令牌与 metadata.skillIds），历史可读且刷新后依旧。
   const expandedMessages = modelMessages.map((message) => {
     if (message.role !== 'user') return message;
+    const seenIds = new Set<string>();
     const content = message.content;
     if (typeof content === 'string') {
-      return { ...message, content: expandSkillTokensInText(content) };
+      return { ...message, content: expandSkillTokensInText(content, seenIds) };
     }
     if (Array.isArray(content)) {
       return {
         ...message,
         content: content.map((part) =>
-          part.type === 'text' ? { ...part, text: expandSkillTokensInText(part.text) } : part,
+          part.type === 'text'
+            ? { ...part, text: expandSkillTokensInText(part.text, seenIds) }
+            : part,
         ),
       };
     }
