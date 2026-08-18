@@ -16,6 +16,7 @@ import {
   getSenderHeaderReady,
   getSenderHeaderReadyServer,
   hasSkillToken,
+  stopCascaderSwallowingInputKeys,
   subscribeSenderHeaderReady,
   toSkillSuggestionItems,
 } from './utils';
@@ -253,7 +254,7 @@ export default function ChatSender({
               // 修复：Suggestion 不自识别前缀，须自行在行首/空格后的 / 时唤起；无 skill 注册时不弹空菜单
               onTrigger(skillItems.length > 0 && hasSkillToken(value));
             }}
-            onKeyDown={onKeyDown}
+            onKeyDown={(event) => stopCascaderSwallowingInputKeys(event, open, onKeyDown)}
             loading={loading}
             onCancel={onCancel}
             placeholder="给 OneAgent 发送消息"

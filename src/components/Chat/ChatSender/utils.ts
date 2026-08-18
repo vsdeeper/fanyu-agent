@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react';
 import type { SuggestionItem } from '@ant-design/x/es/suggestion';
 import { getSkill } from '@/lib/skills/registry';
 import type { SkillSummary } from '@/lib/skills/types';
@@ -75,4 +76,23 @@ export function getSenderHeaderReady(): boolean {
 /** 服务端 snapshot：SSR / hydrate 首帧不挂 Header，避免 CSSMotion forceRender 错位 */
 export function getSenderHeaderReadyServer(): boolean {
   return false;
+}
+
+type SuggestionKeyDown = (event: KeyboardEvent) => void | false;
+
+/**
+ * 先交给 Suggestion 处理方向键/Escape/打开态 Enter，再拦住空格与关闭态 Enter 冒泡。
+ * Suggestion 底层 Cascader 非 combobox，会把 Space/Enter 当打开下拉的控制键并 preventDefault，
+ * 导致 Sender textarea 无法插入空格与换行；菜单打开时 Enter 仍须冒泡以便选中项。
+ */
+export function stopCascaderSwallowingInputKeys(
+  event: KeyboardEvent,
+  suggestionOpen: boolean,
+  suggestionOnKeyDown: SuggestionKeyDown,
+): void | false {
+  const result = suggestionOnKeyDown(event);
+  if (event.key === ' ' || (event.key === 'Enter' && !suggestionOpen)) {
+    event.stopPropagation();
+  }
+  return result;
 }
