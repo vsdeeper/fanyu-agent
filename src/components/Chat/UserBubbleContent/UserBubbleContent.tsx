@@ -1,6 +1,9 @@
 'use client';
 
 import { FileCard } from '@ant-design/x';
+import { Tag } from 'antd';
+import { formatSkillTagLabel } from '@/lib/skills/format-tag-label';
+import { parseSkillTokensInText } from '@/lib/skills/parse-tokens';
 import styles from './UserBubbleContent.module.css';
 
 type MessagePart = { type: string; [key: string]: unknown };
@@ -28,6 +31,25 @@ function getFileCardIcon(mediaType: string): 'pdf' | 'word' | 'markdown' | 'defa
   }
   if (mediaType === 'text/markdown' || mediaType === 'text/plain') return 'markdown';
   return 'default';
+}
+
+function renderMessageText(text: string) {
+  const segments = parseSkillTokensInText(text);
+  if (segments.length === 1 && segments[0]?.type === 'text') {
+    return segments[0].value;
+  }
+
+  return segments.map((segment, index) => {
+    if (segment.type === 'text') {
+      return <span key={`text-${index}`}>{segment.value}</span>;
+    }
+    const label = formatSkillTagLabel(segment);
+    return (
+      <Tag key={`skill-${segment.id}-${index}`} className={styles.skillTag} color="processing">
+        {label}
+      </Tag>
+    );
+  });
 }
 
 export default function UserBubbleContent({ text, parts }: UserBubbleContentProps) {
@@ -69,7 +91,7 @@ export default function UserBubbleContent({ text, parts }: UserBubbleContentProp
           })}
         </div>
       ) : null}
-      {text ? <div className={styles.text}>{text}</div> : null}
+      {text ? <div className={styles.text}>{renderMessageText(text)}</div> : null}
     </div>
   );
 }

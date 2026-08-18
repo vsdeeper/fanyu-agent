@@ -2,23 +2,19 @@
   background-color: var(--one-color-bg-container);
 }
 
-/* 激活 skill 集合条：多个 Tag 可叠加，逐个 closable */
-.skillBar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 0 4px 8px;
+/* 间距只靠插入的那一格空格；antd slot 默认左右 margin 会叠成两格宽 */
+.root :global(.ant-sender-slot) {
+  margin-inline: 0 !important;
 }
 
-/* antd Tag 自带 margin-inline-end，在 flex gap 下会多出间距，置零 */
-.skillTag {
-  margin-inline-end: 0;
-}
-
-.skillHint {
-  font-size: 12px;
-  color: var(--one-color-text-tertiary);
+/* Sender slot tag：贴近 skill chip 浅蓝样式 */
+.root :global(.ant-sender-slot-tag) {
+  background-color: var(--one-color-primary-bg);
+  border: none;
+  color: var(--one-color-primary);
+  font-weight: 500;
+  padding-inline: var(--one-padding-xs);
+  border-radius: var(--one-border-radius);
 }
 
 /* Suggestion 根元素（Cascader），保证包裹内容全宽 */

@@ -8,14 +8,15 @@ import type { SuggestionItem } from '@ant-design/x/es/suggestion';
 import type { SenderRef } from '@ant-design/x/es/sender/interface';
 import { LinkOutlined } from '@ant-design/icons';
 import type { GetProp } from 'antd';
-import { Badge, Button, Flex, Tag, Upload, message } from 'antd';
+import { Badge, Button, Flex, Upload, message } from 'antd';
 import { listSkillSummaries } from '@/lib/skills/registry';
+import { EMPTY_SLOT_CONFIG } from './constants';
 import styles from './ChatSender.module.css';
 import {
-  completeSkillToken,
   getSenderHeaderReady,
   getSenderHeaderReadyServer,
-  hasSkillToken,
+  insertSkillTag,
+  shouldOpenSkillSuggestion,
   stopCascaderSwallowingInputKeys,
   subscribeSenderHeaderReady,
   toSkillSuggestionItems,
@@ -208,101 +209,91 @@ export default function ChatSender({
   );
 
   return (
-    <>
-      {activeSkillIds.length > 0 ? (
-        <div className={styles.skillBar}>
-          {activeSkillIds.map((skillId) => {
-            const summary = skillSummaryById.get(skillId);
-            return (
-              <Tag
-                key={skillId}
-                className={styles.skillTag}
-                closable
-                onClose={(event) => {
-                  event.preventDefault();
-                  onSkillChange(activeSkillIds.filter((item) => item !== skillId));
-                }}
-              >
-                {summary?.icon ? `${summary.icon} ${summary.name}` : (summary?.name ?? skillId)}
-              </Tag>
-            );
-          })}
-          <span className={styles.skillHint}>本次按这些 skill 约束输出</span>
-        </div>
-      ) : null}
-      <Suggestion
-        items={skillItems}
-        onSelect={(value) => {
-          // 修复：选中 skill 只补全输入里的 /令牌（保留正文其余文字），并把 skill 追加进激活集合；
-          // 令牌保留在文本里，位置语义由服务端原位展开实现
-          setInput((prev) => completeSkillToken(prev, value));
-          onSkillChange(
-            activeSkillIds.includes(value) ? activeSkillIds : [...activeSkillIds, value],
-          );
-        }}
-        classNames={{ root: styles.suggestion, content: styles.suggestionContent }}
-      >
-        {({ onTrigger, onKeyDown, open }) => (
-          <Sender
-            ref={senderRef}
-            classNames={{
-              root: styles.root,
-            }}
-            value={input}
-            onChange={(value) => {
-              setInput(value);
-              // 修复：Suggestion 不自识别前缀，须自行在行首/空格后的 / 时唤起；无 skill 注册时不弹空菜单
-              onTrigger(skillItems.length > 0 && hasSkillToken(value));
-            }}
-            onKeyDown={(event) => stopCascaderSwallowingInputKeys(event, open, onKeyDown)}
-            loading={loading}
-            onCancel={onCancel}
-            placeholder="给 OneAgent 发送消息"
-            suffix={false}
-            autoSize={{ minRows: 2, maxRows: 8 }}
-            header={headerReady ? senderHeader : undefined}
-            onPasteFile={(files) => {
-              for (const file of files) {
-                attachmentsRef.current?.upload(file);
-              }
-            }}
-            footer={(actionNode) => (
-              <Flex justify="space-between" align="center">
-                <Badge dot={hasAttachments && !attachmentsOpen}>
-                  <Button
-                    type="text"
-                    aria-label="上传附件"
-                    icon={<LinkOutlined />}
-                    disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
-                    onClick={() => {
-                      attachmentsRef.current?.select({
-                        accept: ATTACHMENT_ACCEPT,
-                        multiple: true,
-                      });
-                    }}
-                  />
-                </Badge>
-                {actionNode}
-              </Flex>
-            )}
-            onSubmit={(value) => {
-              // 修复：菜单打开时 Enter 用于选择 skill，勿触发发送（Suggestion 的 onKeyDown 已
-              // preventDefault 并返回 false，此处再拦一道双保险）
-              if (open) return;
-              const text = value.trim();
-              const files = createFileListFromAttachments(attachmentItems);
-              if (!text && !files?.length) return;
+    <Suggestion
+      items={skillItems}
+      onSelect={(value) => {
+        const summary = skillSummaryById.get(value);
+        if (!summary) return;
 
-              onSend({ text, files });
-              // 修复：草稿首条发送后的导航改由 Chat 在流式开始后触发（避免与落库竞态 404），
-              // 此处不再同步 replace
-              revokeBlobUrls(attachmentItems);
-              setAttachmentScope((prev) => ({ ...prev, items: [], open: false }));
-              setInput('');
-            }}
-          />
-        )}
-      </Suggestion>
-    </>
+        const current = senderRef.current?.getValue()?.value ?? input;
+        insertSkillTag(senderRef, summary, current);
+
+        onSkillChange(activeSkillIds.includes(value) ? activeSkillIds : [...activeSkillIds, value]);
+      }}
+      classNames={{ root: styles.suggestion, content: styles.suggestionContent }}
+    >
+      {({ onTrigger, onKeyDown, open }) => (
+        <Sender
+          ref={senderRef}
+          classNames={{
+            root: styles.root,
+          }}
+          slotConfig={EMPTY_SLOT_CONFIG}
+          onChange={(value, event) => {
+            setInput(value);
+            if (skillItems.length === 0) {
+              onTrigger(false);
+              return;
+            }
+            const nativeEvent = event?.nativeEvent;
+            const inputData =
+              nativeEvent instanceof InputEvent ? nativeEvent.data : undefined;
+            onTrigger(shouldOpenSkillSuggestion(value, inputData));
+          }}
+          onKeyDown={(event) => {
+            if (event.key === ' ' && open) {
+              onTrigger(false);
+            }
+            return stopCascaderSwallowingInputKeys(event, open, onKeyDown);
+          }}
+          loading={loading}
+          onCancel={onCancel}
+          placeholder="给 OneAgent 发送消息"
+          suffix={false}
+          autoSize={{ minRows: 2, maxRows: 8 }}
+          header={headerReady ? senderHeader : undefined}
+          onPasteFile={(files) => {
+            for (const file of files) {
+              attachmentsRef.current?.upload(file);
+            }
+          }}
+          footer={(actionNode) => (
+            <Flex justify="space-between" align="center">
+              <Badge dot={hasAttachments && !attachmentsOpen}>
+                <Button
+                  type="text"
+                  aria-label="上传附件"
+                  icon={<LinkOutlined />}
+                  disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
+                  onClick={() => {
+                    attachmentsRef.current?.select({
+                      accept: ATTACHMENT_ACCEPT,
+                      multiple: true,
+                    });
+                  }}
+                />
+              </Badge>
+              {actionNode}
+            </Flex>
+          )}
+          onSubmit={(value) => {
+            // 修复：菜单打开时 Enter 用于选择 skill，勿触发发送（Suggestion 的 onKeyDown 已
+            // preventDefault 并返回 false，此处再拦一道双保险）
+            if (open) return;
+            const text = value.trim();
+            const files = createFileListFromAttachments(attachmentItems);
+            if (!text && !files?.length) return;
+
+            onSend({ text, files });
+            // 修复：草稿首条发送后的导航改由 Chat 在流式开始后触发（避免与落库竞态 404），
+            // 此处不再同步 replace
+            revokeBlobUrls(attachmentItems);
+            setAttachmentScope((prev) => ({ ...prev, items: [], open: false }));
+            setInput('');
+            senderRef.current?.clear();
+          }}
+        />
+      )}
+    </Suggestion>
   );
 }

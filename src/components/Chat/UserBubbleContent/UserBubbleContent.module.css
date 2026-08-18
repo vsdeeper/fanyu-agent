@@ -10,6 +10,11 @@
   word-break: break-word;
 }
 
+.skillTag {
+  margin-inline-end: 0;
+  vertical-align: baseline;
+}
+
 .files {
   display: flex;
   flex-direction: column;
