@@ -124,7 +124,7 @@ let skillTagKeyCounter = 0;
 export { formatSkillTagLabel } from '@/lib/skills/format-tag-label';
 
 /**
- * 生成 Sender slotConfig tag：界面展示 /id，formatResult 序列化为 /id 供提交与 expand。
+ * 生成 Sender slotConfig tag：界面展示中文 name，formatResult 序列化为 /id 供提交与 expand。
  */
 export function toSkillTagSlot(summary: SkillSummary): SlotConfigType {
   skillTagKeyCounter += 1;

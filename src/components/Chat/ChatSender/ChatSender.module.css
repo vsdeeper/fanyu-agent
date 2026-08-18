@@ -7,14 +7,9 @@
   margin-inline: 0 !important;
 }
 
-/* Sender slot tag：贴近 skill chip 浅蓝样式 */
+/* Sender slot tag：小号字体 */
 .root :global(.ant-sender-slot-tag) {
-  background-color: var(--one-color-primary-bg);
-  border: none;
-  color: var(--one-color-primary);
-  font-weight: 500;
-  padding-inline: var(--one-padding-xs);
-  border-radius: var(--one-border-radius);
+  font-size: 12px !important;
 }
 
 /* Suggestion 根元素（Cascader），保证包裹内容全宽 */

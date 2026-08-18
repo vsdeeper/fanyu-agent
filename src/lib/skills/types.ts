@@ -5,7 +5,7 @@
 export type Skill = {
   /** 唯一标识，作为 Suggestion 菜单的 value 与消息 metadata.skillIds 的元素；须为 [a-z0-9-]+ */
   id: string;
-  /** 菜单与指令块中展示的名称 */
+  /** 菜单、输入区 / 气泡 tag 与指令块中展示的名称 */
   name: string;
   /** 菜单副标题，一句话说明用途 */
   description: string;
