@@ -218,8 +218,8 @@ Button/
 
 ## 编码约定
 
-- 与用户/AI 对话默认使用中文简体
-- 提交说明使用中文 description 的 Conventional Commits
+- 对话、注释、提交说明默认中文简体
+- 目录与页面/组件开发遵循上文「组件目录约定」「App Router 与 lib 分层约定」
 - **不引入 Tailwind**；样式优先 CSS Modules 与 Ant Design / Ant Design X
 - 组件目录遵循上文「组件目录约定」（子组件拆离并同步带走样式/方法/常量、主文件不定义方法与专属常量、`utils.ts` / `constants.ts` 维护、`ComponentName.tsx` + 同名 `.module.css`）
 - **App Router 与 lib 分层**遵循上文「App Router 与 lib 分层约定」：`app/` 仅路由壳，业务在 `lib/<域>/`，`app/api/<域>` 对应 `lib/<域>`
@@ -258,3 +258,9 @@ Button/
 - 业务码（`ApiErrorCode`）：`40001` 参数无效、`40401` 会话不存在、`50201` 高德上游失败；`50301` / `50302` 保留码位，环境变量缺省改由 `requireEnv` 抛错
 - **例外**：`POST /api/chat` 成功为 AI SDK SSE 流（`createUIMessageStreamResponse`），非 JSON 信封；其 400 错误仍走信封
 - 服务端组件直调 `lib/chat/store`（如 `chat/layout` 的 `listChats()`）不经 HTTP，无需信封
+
+## 应做与不应做
+
+**应做**：改动前对齐相邻文件习惯；新功能先判断落点；冲突时先询问再改；新增函数/方法补基本说明注释。
+
+**不应做**：多职责堆单文件或过度抽象；未要求时 commit/push；覆盖更细规范；默认沿用冲突的项目命名；业务函数无说明注释。
