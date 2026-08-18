@@ -1,4 +1,4 @@
-import type { Skill } from './types';
+import type { Skill } from '../types';
 
 /**
  * brandkit：高端品牌视觉规范板生图 skill。

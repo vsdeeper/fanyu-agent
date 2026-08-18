@@ -1,7 +1,7 @@
 import type { Skill, SkillSummary } from './types';
-import { brandkit } from './brandkit';
+import { brandkit } from './catalog/brandkit';
 
-// 新增 skill：复制 _template.ts 为 <id>.ts 填写（完整示例见 brandkit.ts），再在 SKILLS 数组 import 追加。
+// 新增 skill：复制 catalog/_template.ts 为 catalog/<id>.ts 填写（完整示例见 catalog/brandkit.ts），再在 SKILLS 数组 import 追加。
 const SKILLS: Skill[] = [brandkit];
 
 /** 全部 skill 定义（含指令正文，供服务端注入） */

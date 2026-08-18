@@ -236,8 +236,7 @@ export default function ChatSender({
               return;
             }
             const nativeEvent = event?.nativeEvent;
-            const inputData =
-              nativeEvent instanceof InputEvent ? nativeEvent.data : undefined;
+            const inputData = nativeEvent instanceof InputEvent ? nativeEvent.data : undefined;
             onTrigger(shouldOpenSkillSuggestion(value, inputData));
           }}
           onKeyDown={(event) => {

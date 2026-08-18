@@ -106,6 +106,9 @@ src/
       regeo.ts             # 高德逆地理编码
       handle-regeo.ts      # POST /api/geo/regeo 业务逻辑
       client.ts            # 浏览器定位与缓存（调用 regeo API）
+    skills/
+      types.ts / registry.ts / expand.ts / parse-tokens.ts / context.ts / format-tag-label.ts
+      catalog/             # skill 定义（每条 skill 一个文件；新增时复制 catalog/_template.ts）
     shared/
       api-client.ts / api-response.ts / env.ts  # 横切基础设施
 public/
