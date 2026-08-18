@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Attachments, Sender } from '@ant-design/x';
 import type { AttachmentsProps, AttachmentsRef } from '@ant-design/x/es/attachments';
 import Suggestion from '@ant-design/x/es/suggestion';
@@ -11,7 +11,14 @@ import type { GetProp } from 'antd';
 import { Badge, Button, Flex, Tag, Upload, message } from 'antd';
 import { listSkillSummaries } from '@/lib/skills/registry';
 import styles from './ChatSender.module.css';
-import { completeSkillToken, hasSkillToken, toSkillSuggestionItems } from './utils';
+import {
+  completeSkillToken,
+  getSenderHeaderReady,
+  getSenderHeaderReadyServer,
+  hasSkillToken,
+  subscribeSenderHeaderReady,
+  toSkillSuggestionItems,
+} from './utils';
 
 const MAX_ATTACHMENT_COUNT = 5;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
@@ -104,6 +111,14 @@ export default function ChatSender({
 }: ChatSenderProps) {
   const [input, setInput] = useState('');
   const [chatId, setChatId] = useState(id);
+  // 修复：Sender.Header + forceRender 让 CSSMotion 在 SSR 输出 display:none 的 header，
+  // 客户端首帧不输出，草稿 /chat 刷新 Hydration failed（header 对上 textarea）。
+  // 用 useSyncExternalStore 在 hydrate 后再挂 Header，避免 effect 内同步 setState。
+  const headerReady = useSyncExternalStore(
+    subscribeSenderHeaderReady,
+    getSenderHeaderReady,
+    getSenderHeaderReadyServer,
+  );
   const [attachmentScope, setAttachmentScope] = useState<{
     items: AttachmentItem[];
     open: boolean;
@@ -244,7 +259,7 @@ export default function ChatSender({
             placeholder="给 OneAgent 发送消息"
             suffix={false}
             autoSize={{ minRows: 2, maxRows: 8 }}
-            header={senderHeader}
+            header={headerReady ? senderHeader : undefined}
             onPasteFile={(files) => {
               for (const file of files) {
                 attachmentsRef.current?.upload(file);

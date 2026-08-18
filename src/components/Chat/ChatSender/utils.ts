@@ -58,3 +58,21 @@ export function completeSkillToken(input: string, skillId: string): string {
 
   return `${before}${boundary}/${skillId}${after}`;
 }
+
+/**
+ * Sender.Header 延后挂载：无外部 store，subscribe 为空。
+ * 配合 useSyncExternalStore，hydrate 后从服务端 snapshot 切到客户端 snapshot。
+ */
+export function subscribeSenderHeaderReady(): () => void {
+  return () => {};
+}
+
+/** 客户端 snapshot：hydrate 完成后挂 Header */
+export function getSenderHeaderReady(): boolean {
+  return true;
+}
+
+/** 服务端 snapshot：SSR / hydrate 首帧不挂 Header，避免 CSSMotion forceRender 错位 */
+export function getSenderHeaderReadyServer(): boolean {
+  return false;
+}
