@@ -10,6 +10,7 @@
 /* Sender slot tag：小号字体 */
 .root :global(.ant-sender-slot-tag) {
   font-size: 12px !important;
+  padding: 2px var(--one-padding-xxs) !important;
 }
 
 /* Suggestion 根元素（Cascader），保证包裹内容全宽 */
