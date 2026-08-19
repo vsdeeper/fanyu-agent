@@ -56,3 +56,10 @@
 .x-markdown-dark {
   --dark-bg: var(--one-color-fill-tertiary, rgba(255, 255, 255, 0.1));
 }
+
+.x-markdown p,
+.x-markdown div,
+.x-markdown span,
+.x-markdown li {
+  margin: var(--one-margin-xs) 0;
+}

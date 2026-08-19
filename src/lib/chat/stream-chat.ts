@@ -21,6 +21,10 @@ import { getChatProvider } from './providers/config';
 import { getDeepseekReasoningEffort } from './providers/deepseek/constants';
 import { getDeepseekClient } from './providers/deepseek/client';
 import { getDeepseekInstructions } from './providers/deepseek/instructions';
+import {
+  encodeReasoningPassback,
+  extractReasoningTexts,
+} from './providers/deepseek/reasoning-passback';
 
 const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });
 
@@ -60,11 +64,15 @@ export async function streamChatResponse({
   // 修复：stop 在 tool 阶段中断时末条仅有 tool-call 无 result，须 ignoreIncompleteToolCalls
   // 修复：text/* 与 .docx 附件在转模型入参前解码为 text part，否则方舟 Responses 对非
   // application/pdf 内联文件抛 UnsupportedFunctionalityError（AI SDK 转换阶段硬抛，fetch 拦不到）
-  const modelMessages = pruneMessages({
-    messages: await convertToModelMessages(await sanitizeFilePartsForModel(messages), {
+  const convertedMessages = await convertToModelMessages(
+    await sanitizeFilePartsForModel(messages),
+    {
       tools,
       ignoreIncompleteToolCalls: true,
-    }),
+    },
+  );
+  const modelMessages = pruneMessages({
+    messages: convertedMessages,
     reasoning: 'all',
   });
 
@@ -105,10 +113,16 @@ export async function streamChatResponse({
 
   // 修复：DeepSeek 兼容处理（定位注入 + 引用引导）抽到 providers/deepseek/instructions.ts，
   // stream-chat.ts 只保留 provider 无关的 baseInstructions 与统一分支调用
-  const instructions =
+  const instructionsBase =
     provider === 'deepseek'
       ? getDeepseekInstructions({ userLocation, baseInstructions: withSkill })
       : withSkill;
+  // 修复：DeepSeek 思考模式续写/带 tools 多轮必须回传 reasoning_text；
+  // prune + store:false 会把它丢掉，先编码进 instructions，出站 fetch 再还原
+  const instructions =
+    provider === 'deepseek'
+      ? encodeReasoningPassback(instructionsBase, extractReasoningTexts(convertedMessages))
+      : instructionsBase;
 
   const result = streamText({
     model: client.responses(modelId),

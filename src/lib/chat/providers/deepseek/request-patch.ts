@@ -1,15 +1,26 @@
 import { DEEPSEEK_UNSUPPORTED_INCLUDES } from './constants';
+import { applyReasoningPassback } from './reasoning-passback';
+
+export type DeepSeekInputItem = {
+  type?: string;
+  role?: string;
+  content?: unknown;
+  summary?: unknown;
+  encrypted_content?: unknown;
+  [key: string]: unknown;
+};
 
 export type DeepSeekRequestBody = {
   include?: string[];
   /** 如 DeepSeek 报 reasoning.summary 未知，扩展此类型后剥离 */
   reasoning?: { summary?: string; [k: string]: unknown };
+  instructions?: string;
+  input?: DeepSeekInputItem[];
 };
 
 /**
  * 修补出站请求体以兼容 DeepSeek Responses API；有改动时返回 true。
- * 目前仅剥离 OpenAI 专有 include（web_search_call.action.sources / reasoning.encrypted_content），
- * 无需 Ark 的 input item phase/type/status 修正或 SSE 归一化。
+ * 剥离 OpenAI 专有 include，并把思考内容还原为 reasoning_text item。
  */
 export function patchDeepSeekRequestBody(body: DeepSeekRequestBody): boolean {
   let patched = false;
@@ -24,6 +35,10 @@ export function patchDeepSeekRequestBody(body: DeepSeekRequestBody): boolean {
       body.include = nextInclude;
     }
 
+    patched = true;
+  }
+
+  if (applyReasoningPassback(body)) {
     patched = true;
   }
 

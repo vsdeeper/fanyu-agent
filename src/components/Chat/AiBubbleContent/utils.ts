@@ -105,25 +105,40 @@ export function openSourceUrl(item: { url?: string }) {
  * 模型受 prompt 引导在回答末尾附加 Markdown 链接形式的引用列表，
  * 该区块由 Sources 组件统一展示，正文中不应重复渲染。
  *
- * 不用正则精确匹配标题格式（实测模型输出 `**参考来源：**`，冒号在加粗标记内，
- * 旧正则无法匹配「先冒号后两个星号」的结尾）。改为逐行归一化后比对：
- * 去掉 markdown 标记（#、*、>、反引号）、空白、全半角冒号，剩余恰好是「参考来源」即标题行。
- * 对 `## 参考来源` / `**参考来源**` / `**参考来源：**` / `参考来源：` / `> **参考来源**` 全部生效。
- *
- * 只裁最后一个「参考来源」行及之后内容，防止正文中间误现该词时误删主文。
+ * 不用正则精确匹配标题格式（实测模型输出 `**参考来源：**`，冒号在加粗标记内）。
+ * 整行归一化后恰好是「参考来源」，或标题粘在行尾（如「尽量减少**参考来源：**」），都从该处切开。
+ * 只裁最后一个标题及之后内容，防止正文中间误现该词时误删主文。
  */
 export function stripReferenceSection(text: string): string {
   const lines = text.split('\n');
   let cutIndex = -1;
+  let cutCol = 0;
   for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     // 修复：逐行归一化后比对，避免硬编码标题格式变体
-    const normalized = lines[i].replace(/[#*>`\s：:]/g, '').trim();
+    const normalized = line.replace(/[#*>`\s：:]/g, '').trim();
     if (normalized === '参考来源') {
-      cutIndex = i; // 取最后一个匹配
+      cutIndex = i;
+      cutCol = 0;
+      continue;
+    }
+    // 修复：标题粘在末句行尾时（尽量减少**参考来源：**）仍须切开
+    const trailing = /[*#>`_\s]*参考来源[*#>`_：:\s]*$/.exec(line);
+    if (trailing && trailing.index != null) {
+      cutIndex = i;
+      cutCol = trailing.index;
     }
   }
+
   if (cutIndex === -1) return text;
-  return lines.slice(0, cutIndex).join('\n').trimEnd();
+
+  const kept = lines.slice(0, cutIndex);
+  const prefix = lines[cutIndex]
+    .slice(0, cutCol)
+    .replace(/[\s\-*>#]+$/u, '')
+    .trimEnd();
+  if (prefix) kept.push(prefix);
+  return kept.join('\n').trimEnd();
 }
 
 export function aiBubbleContentPropsAreEqual(

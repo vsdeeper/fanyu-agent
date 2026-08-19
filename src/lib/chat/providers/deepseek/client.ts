@@ -8,7 +8,7 @@ let instance: ReturnType<typeof createOpenAI> | undefined;
 
 /**
  * 惰性构造 DeepSeek 客户端：仅当 CHAT_PROVIDER=deepseek 时才读取 DEEPSEEK_* 环境变量。
- * 自定义 fetch 负责出站剥离 OpenAI 专有 include，入站 SSE 归一化（reasoning + web_search 事件名翻译）。
+ * 自定义 fetch 负责出站剥离 OpenAI 专有 include、回传 reasoning_text，入站 SSE 归一化。
  */
 export function getDeepseekClient() {
   if (!instance) {
