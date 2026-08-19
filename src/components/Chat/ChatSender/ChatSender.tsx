@@ -2,95 +2,37 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Attachments, Sender } from '@ant-design/x';
-import type { AttachmentsProps, AttachmentsRef } from '@ant-design/x/es/attachments';
+import type { AttachmentsRef } from '@ant-design/x/es/attachments';
 import Suggestion from '@ant-design/x/es/suggestion';
 import type { SuggestionItem } from '@ant-design/x/es/suggestion';
 import type { SenderRef } from '@ant-design/x/es/sender/interface';
 import { LinkOutlined } from '@ant-design/icons';
-import type { GetProp } from 'antd';
 import { Badge, Button, Flex, Upload, message } from 'antd';
 import { listSkillSummaries } from '@/lib/skills/registry';
-import { EMPTY_SLOT_CONFIG } from './constants';
+import AttachmentPreviewList from './AttachmentPreviewList';
+import {
+  ATTACHMENT_ACCEPT,
+  EMPTY_SLOT_CONFIG,
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENT_COUNT,
+} from './constants';
 import styles from './ChatSender.module.css';
 import {
+  type AttachmentScope,
+  createFileListFromAttachments,
   getSenderHeaderReady,
   getSenderHeaderReadyServer,
   insertSkillTag,
+  mergeAttachmentFileList,
+  removeAttachmentItem,
+  revokeBlobUrls,
+  selectAttachments,
   shouldOpenSkillSuggestion,
   stopCascaderSwallowingInputKeys,
   subscribeSenderHeaderReady,
   toSkillSuggestionItems,
+  withPreviewUrls,
 } from './utils';
-
-const MAX_ATTACHMENT_COUNT = 5;
-const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
-// 修复：收窄到后端可解析的类型。.doc（OLE 二进制）无可靠解析库、方舟仅接受 application/pdf
-// 内联文件，若放行只会「入库但模型读不到」，故从选择器入口拦截，避免异常数据落库
-const ATTACHMENT_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,.pdf,.txt,.md,.docx';
-
-type AttachmentItem = NonNullable<GetProp<AttachmentsProps, 'items'>>[number];
-
-function isImageAttachment(item: AttachmentItem) {
-  const type = item.type ?? item.originFileObj?.type;
-  return type?.startsWith('image/') ?? false;
-}
-
-function revokeBlobUrls(items: AttachmentItem[]) {
-  for (const item of items) {
-    const blobUrls = new Set<string>();
-    if (item.url?.startsWith('blob:')) blobUrls.add(item.url);
-    if (item.thumbUrl?.startsWith('blob:')) blobUrls.add(item.thumbUrl);
-    for (const url of blobUrls) {
-      URL.revokeObjectURL(url);
-    }
-  }
-}
-
-// 修复：previewImage 会压到约 200px；图片用原图 blob 作预览，状态仍保留 originFileObj 供发送。
-function withPreviewUrls(
-  fileList: AttachmentItem[],
-  prevItems: AttachmentItem[],
-): AttachmentItem[] {
-  const nextUids = new Set(fileList.map((item) => item.uid));
-  for (const prev of prevItems) {
-    if (!nextUids.has(prev.uid)) {
-      revokeBlobUrls([prev]);
-    }
-  }
-
-  return fileList.map((item) => {
-    if (!isImageAttachment(item) || !item.originFileObj) {
-      return item;
-    }
-
-    const hasBlobPreview = item.thumbUrl?.startsWith('blob:') || item.url?.startsWith('blob:');
-    if (hasBlobPreview) {
-      const blobUrl = item.thumbUrl?.startsWith('blob:') ? item.thumbUrl : item.url;
-      return { ...item, thumbUrl: blobUrl, url: blobUrl };
-    }
-
-    const blobUrl = URL.createObjectURL(item.originFileObj);
-    return { ...item, thumbUrl: blobUrl, url: blobUrl };
-  });
-}
-
-// 修复：传给 Attachments 的 items 去掉 originFileObj，跳过 FileList 内 previewImage 压缩与真空期。
-function toDisplayItems(items: AttachmentItem[]): AttachmentItem[] {
-  return items.map(({ originFileObj, ...rest }) => {
-    void originFileObj;
-    return rest;
-  });
-}
-
-function createFileListFromAttachments(items: AttachmentItem[]): FileList | undefined {
-  const dataTransfer = new DataTransfer();
-  for (const item of items) {
-    if (item.originFileObj) {
-      dataTransfer.items.add(item.originFileObj);
-    }
-  }
-  return dataTransfer.files.length > 0 ? dataTransfer.files : undefined;
-}
 
 export type ChatSenderProps = {
   id: string;
@@ -121,14 +63,14 @@ export default function ChatSender({
     getSenderHeaderReady,
     getSenderHeaderReadyServer,
   );
-  const [attachmentScope, setAttachmentScope] = useState<{
-    items: AttachmentItem[];
-    open: boolean;
-  }>(() => ({ items: [], open: false }));
+  const [attachmentScope, setAttachmentScope] = useState<AttachmentScope>(() => ({
+    items: [],
+    open: false,
+  }));
 
   const senderRef = useRef<SenderRef>(null);
   const attachmentsRef = useRef<AttachmentsRef>(null);
-  const latestAttachmentItemsRef = useRef<AttachmentItem[]>([]);
+  const latestAttachmentItemsRef = useRef(attachmentScope.items);
 
   const attachmentItems = attachmentScope.items;
   const attachmentsOpen = attachmentScope.open;
@@ -182,6 +124,16 @@ export default function ChatSender({
         },
       }}
     >
+      <AttachmentPreviewList
+        items={attachmentItems}
+        disabled={loading}
+        canAdd={!loading && attachmentItems.length < MAX_ATTACHMENT_COUNT}
+        onRemove={(uid) => {
+          setAttachmentScope((prev) => removeAttachmentItem(prev, uid));
+        }}
+        onAdd={() => selectAttachments(attachmentsRef)}
+      />
+      {/* children 走 SilentUploader，避开内部 FileList 首帧空列表；列表由 PreviewList 直出 */}
       <Attachments
         ref={attachmentsRef}
         accept={ATTACHMENT_ACCEPT}
@@ -194,17 +146,18 @@ export default function ChatSender({
           }
           return false;
         }}
-        items={toDisplayItems(attachmentItems)}
+        items={attachmentItems}
         onChange={({ fileList }) => {
-          const next = withPreviewUrls(fileList, attachmentItems);
-          setAttachmentScope((prev) => ({
-            ...prev,
-            items: next,
-            open: next.length > 0,
-          }));
+          setAttachmentScope((prev) => {
+            const next = withPreviewUrls(mergeAttachmentFileList(fileList, prev.items), prev.items);
+            return { items: next, open: next.length > 0 };
+          });
         }}
         getDropContainer={() => senderRef.current?.nativeElement ?? null}
-      />
+        styles={{ root: { display: 'none' } }}
+      >
+        <span />
+      </Attachments>
     </Sender.Header>
   );
 
@@ -264,12 +217,7 @@ export default function ChatSender({
                   aria-label="上传附件"
                   icon={<LinkOutlined />}
                   disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
-                  onClick={() => {
-                    attachmentsRef.current?.select({
-                      accept: ATTACHMENT_ACCEPT,
-                      multiple: true,
-                    });
-                  }}
+                  onClick={() => selectAttachments(attachmentsRef)}
                 />
               </Badge>
               {actionNode}

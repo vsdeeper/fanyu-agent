@@ -1,9 +1,19 @@
 import type { KeyboardEvent, RefObject } from 'react';
+import type { AttachmentsProps, AttachmentsRef } from '@ant-design/x/es/attachments';
 import type { SlotConfigType, SenderRef } from '@ant-design/x/es/sender/interface';
 import type { SuggestionItem } from '@ant-design/x/es/suggestion';
+import type { GetProp } from 'antd';
 import { getSkill } from '@/lib/skills/registry';
 import type { SkillSummary } from '@/lib/skills/types';
 import { formatSkillTagLabel } from '@/lib/skills/format-tag-label';
+import { ATTACHMENT_ACCEPT } from './constants';
+
+export type AttachmentItem = NonNullable<GetProp<AttachmentsProps, 'items'>>[number];
+
+export type AttachmentScope = {
+  items: AttachmentItem[];
+  open: boolean;
+};
 
 /** 把 skill 精简视图映射为 Suggestion 菜单项（label=图标+名称，extra=描述） */
 export function toSkillSuggestionItems(summaries: SkillSummary[]): SuggestionItem[] {
@@ -197,4 +207,100 @@ export function stopCascaderSwallowingInputKeys(
     event.stopPropagation();
   }
   return result;
+}
+
+/** 是否为图片附件（按 mime，供预览卡片选型与 blob 预览） */
+export function isImageAttachment(item: AttachmentItem): boolean {
+  const type = item.type ?? item.originFileObj?.type;
+  return type?.startsWith('image/') ?? false;
+}
+
+/** 释放附件上的 blob 预览 URL，避免滞留 object URL */
+export function revokeBlobUrls(items: AttachmentItem[]) {
+  for (const item of items) {
+    const blobUrls = new Set<string>();
+    if (item.url?.startsWith('blob:')) blobUrls.add(item.url);
+    if (item.thumbUrl?.startsWith('blob:')) blobUrls.add(item.thumbUrl);
+    for (const url of blobUrls) {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
+/**
+ * 受控回传的 fileList 可能丢掉 originFileObj / blob，按 uid 从上一轮补回。
+ */
+export function mergeAttachmentFileList(
+  fileList: AttachmentItem[],
+  prevItems: AttachmentItem[],
+): AttachmentItem[] {
+  const prevByUid = new Map(prevItems.map((item) => [item.uid, item]));
+  return fileList.map((item) => {
+    const prev = prevByUid.get(item.uid);
+    if (!prev) return item;
+    return {
+      ...item,
+      originFileObj: item.originFileObj ?? prev.originFileObj,
+      thumbUrl: item.thumbUrl ?? prev.thumbUrl,
+      url: item.url ?? prev.url,
+    };
+  });
+}
+
+/**
+ * 图片用原图 blob 作预览（避免 previewImage 压到约 200px），状态仍保留 originFileObj 供发送。
+ * 同时释放已移除项的 blob URL。
+ */
+export function withPreviewUrls(
+  fileList: AttachmentItem[],
+  prevItems: AttachmentItem[],
+): AttachmentItem[] {
+  const nextUids = new Set(fileList.map((item) => item.uid));
+  for (const prev of prevItems) {
+    if (!nextUids.has(prev.uid)) {
+      revokeBlobUrls([prev]);
+    }
+  }
+
+  return fileList.map((item) => {
+    if (!isImageAttachment(item) || !item.originFileObj) {
+      return item;
+    }
+
+    const hasBlobPreview = item.thumbUrl?.startsWith('blob:') || item.url?.startsWith('blob:');
+    if (hasBlobPreview) {
+      const blobUrl = item.thumbUrl?.startsWith('blob:') ? item.thumbUrl : item.url;
+      return { ...item, thumbUrl: blobUrl, url: blobUrl };
+    }
+
+    const blobUrl = URL.createObjectURL(item.originFileObj);
+    return { ...item, thumbUrl: blobUrl, url: blobUrl };
+  });
+}
+
+/** 按 uid 移除附件并释放其 blob 预览；列表空则收起 Header */
+export function removeAttachmentItem(prev: AttachmentScope, uid: string): AttachmentScope {
+  const removed = prev.items.filter((item) => item.uid === uid);
+  revokeBlobUrls(removed);
+  const items = prev.items.filter((item) => item.uid !== uid);
+  return { items, open: items.length > 0 };
+}
+
+/** 从附件列表还原 FileList，供 sendMessage 转 FileUIPart */
+export function createFileListFromAttachments(items: AttachmentItem[]): FileList | undefined {
+  const dataTransfer = new DataTransfer();
+  for (const item of items) {
+    if (item.originFileObj) {
+      dataTransfer.items.add(item.originFileObj);
+    }
+  }
+  return dataTransfer.files.length > 0 ? dataTransfer.files : undefined;
+}
+
+/** 打开附件选择器（回形针与列表「+」共用） */
+export function selectAttachments(ref: RefObject<AttachmentsRef | null>) {
+  ref.current?.select({
+    accept: ATTACHMENT_ACCEPT,
+    multiple: true,
+  });
 }

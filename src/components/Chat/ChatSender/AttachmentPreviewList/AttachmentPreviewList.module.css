@@ -1,0 +1,51 @@
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--one-margin-xs, 8px);
+  padding: var(--one-padding-sm, 12px) var(--one-padding, 16px);
+}
+
+.item {
+  position: relative;
+  display: flex;
+}
+
+.item :global(.ant-file-card-image img),
+.item :global(.ant-skeleton-image) {
+  width: 68px;
+  height: 68px;
+  object-fit: cover;
+}
+
+.remove {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  transform: translate(50%, -50%);
+  font-size: var(--one-font-size-lg, 16px);
+  color: var(--one-color-text-secondary, rgba(0, 0, 0, 0.45));
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.item:hover .remove,
+.remove:focus-visible {
+  opacity: 1;
+}
+
+.remove:disabled {
+  cursor: not-allowed;
+}
+
+.addBtn {
+  color: var(--one-color-text-secondary, rgba(0, 0, 0, 0.45));
+}
