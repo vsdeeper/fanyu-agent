@@ -1,7 +1,16 @@
 import { ARK_UNSUPPORTED_INCLUDES } from './constants';
 
 export type ArkRequestBody = {
-  input?: Array<{ role?: string; type?: string; status?: string; phase?: unknown }>;
+  instructions?: string;
+  input?: Array<{
+    role?: string;
+    type?: string;
+    status?: string;
+    phase?: unknown;
+    partial?: boolean;
+    content?: unknown;
+    summary?: unknown;
+  }>;
   include?: string[];
 };
 
@@ -10,9 +19,7 @@ export function patchArkRequestBody(body: ArkRequestBody): boolean {
   let patched = false;
 
   if (Array.isArray(body.input)) {
-    const lastInputIndex = body.input.length - 1;
-
-    body.input = body.input.map((item, index) => {
+    body.input = body.input.map((item) => {
       if (!item || typeof item !== 'object') return item;
 
       const next = { ...item } as {
@@ -32,15 +39,7 @@ export function patchArkRequestBody(body: ArkRequestBody): boolean {
         next.type = 'message';
       }
 
-      const isLast = index === lastInputIndex;
-
-      // 修复：断点续写时末条 assistant/reasoning 须 partial+incomplete；勿标 completed（方舟报 MissingParameter partial）
-      if (isLast && (next.role === 'assistant' || next.type === 'reasoning')) {
-        if (next.status == null || next.status === 'completed') {
-          next.partial = true;
-          next.status = 'incomplete';
-        }
-      } else if (item.role === 'assistant' && item.status == null) {
+      if (item.role === 'assistant' && item.status == null) {
         // 修复：回放历史 assistant 缺 status 时方舟报 MissingParameter input.status
         next.status = 'completed';
       }

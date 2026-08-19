@@ -2,9 +2,8 @@ import type { UIMessage } from 'ai';
 import { generateText } from 'ai';
 import { z } from 'zod';
 
-import { getArkClient } from '@/lib/chat/providers/ark/client';
 import { type ChatProvider, type ModelTier, getModelId } from '@/lib/chat/providers/config';
-import { getDeepseekClient } from '@/lib/chat/providers/deepseek/client';
+import { getChatProviderRuntimeFor } from '@/lib/chat/providers/resolve';
 
 export type { ModelTier };
 
@@ -117,7 +116,7 @@ async function classifyWithLLM(
     const context = buildClassifierPrompt(messages);
     const prompt = `${context}\n\n用户最新消息：\n${text}\n\n请判断复杂度。`;
 
-    const client = provider === 'deepseek' ? getDeepseekClient() : getArkClient();
+    const client = getChatProviderRuntimeFor(provider).getClient();
     const classifierModel = client.chat(getModelId(provider, 'mini'));
 
     const result = await generateText({

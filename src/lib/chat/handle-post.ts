@@ -14,36 +14,6 @@ type HandleChatPostOptions = {
   abortSignal: AbortSignal;
 };
 
-async function handleContinueMessage({ body, userLocation, abortSignal }: HandleChatPostOptions) {
-  const { id, messageId } = body;
-
-  if (!messageId || typeof messageId !== 'string') {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, '缺少会话或消息内容', 400);
-  }
-
-  let messages: UIMessage[];
-
-  try {
-    messages = (await loadChat(id)).messages;
-  } catch {
-    return jsonFail(ApiErrorCode.CHAT_NOT_FOUND, '会话不存在', 404);
-  }
-
-  const lastMessage = messages.at(-1);
-
-  if (!lastMessage || lastMessage.role !== 'assistant' || lastMessage.id !== messageId) {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, '无法继续生成该回复', 400);
-  }
-
-  return streamChatResponse({
-    chatId: id,
-    messages,
-    userLocation,
-    abortSignal,
-    sendStart: false,
-  });
-}
-
 async function handleSubmitMessage({ body, userLocation, abortSignal }: HandleChatPostOptions) {
   const { id, message } = body;
 
@@ -73,17 +43,7 @@ async function handleSubmitMessage({ body, userLocation, abortSignal }: HandleCh
   });
 }
 
-export async function handleChatPost({ body, userLocation, abortSignal }: HandleChatPostOptions) {
-  const trigger = body.trigger ?? 'submit-message';
-
-  if (trigger === 'continue-message') {
-    return handleContinueMessage({ body, userLocation, abortSignal });
-  }
-
-  return handleSubmitMessage({ body, userLocation, abortSignal });
-}
-
-/** POST /api/chat 入口：解析请求体并分发 submit / continue */
+/** POST /api/chat 入口：解析请求体并发起流式对话 */
 export async function handleChatApiPost(req: Request): Promise<Response> {
   const body = await parseChatPostBody(req);
 
@@ -93,7 +53,7 @@ export async function handleChatApiPost(req: Request): Promise<Response> {
 
   const userLocation = parseUserLocation(body.userLocation);
 
-  return handleChatPost({
+  return handleSubmitMessage({
     body,
     userLocation,
     abortSignal: req.signal,

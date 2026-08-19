@@ -56,8 +56,8 @@ function decodeDataUrl(url: string): Buffer {
  *
  * 修复：方舟 Responses 只接受 application/pdf 的内联 file part，text/markdown 等会抛
  * UnsupportedFunctionalityError（AI SDK 在消息→请求体转换阶段硬抛，早于 fetch，request-patch 拦不到）。
- * 转换必须发生在 convertToModelMessages 之前；submit 与 continue 均经 streamChatResponse 覆盖，
- * 历史消息里的 file part 也会被转换，避免「继续生成」重放报错。
+ * 转换必须发生在 convertToModelMessages 之前；所有流式对话均经 streamChatResponse 覆盖，
+ * 历史消息里的 file part 也会被转换，避免重放报错。
  *
  * 兜底：损坏/不可解析的文件降级为剔除该 part，绝不抛错中断流式；落盘 UIMessage 不变，
  * 聊天气泡仍按原 file part 渲染附件卡片。

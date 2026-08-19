@@ -8,7 +8,7 @@ const PASSBACK_SUFFIX = '[[/DS_REASONING_PASSBACK]]';
 
 /**
  * 从模型消息中抽出 assistant 的 reasoning 文本（保持出现顺序）。
- * 供 DeepSeek 思考模式在后续请求（含继续生成、带 tools 的多轮）回传 reasoning_text。
+ * 供 DeepSeek 思考模式在后续请求（含带 tools 的多轮）回传 reasoning_text。
  */
 export function extractReasoningTexts(messages: ModelMessage[]): string[] {
   const texts: string[] = [];
@@ -17,7 +17,8 @@ export function extractReasoningTexts(messages: ModelMessage[]): string[] {
     if (message.role !== 'assistant' || !Array.isArray(message.content)) continue;
 
     for (const part of message.content) {
-      if (part.type === 'reasoning' && part.text) {
+      // 修复：档位前缀是 UI 注入，不是模型思考；回传会污染 reasoning_text
+      if (part.type === 'reasoning' && part.text && !part.text.startsWith('当前执行模型:')) {
         texts.push(part.text);
       }
     }
@@ -105,14 +106,16 @@ function extractPassbackTexts(body: DeepSeekRequestBody): string[] | null {
   return null;
 }
 
-function hasReasoningText(input: DeepSeekInputItem[]): boolean {
-  return input.some((item) => {
-    if (item.type !== 'reasoning' || !Array.isArray(item.content)) return false;
-    return item.content.some(
-      (part) =>
-        part && typeof part === 'object' && (part as { type?: string }).type === 'reasoning_text',
-    );
-  });
+/** 移除 input 中 SDK 留下的 reasoning item，避免空占位挡住 passback 注入 */
+function removeReasoningItems(input: DeepSeekInputItem[]): boolean {
+  let removed = false;
+  for (let index = input.length - 1; index >= 0; index -= 1) {
+    if (input[index]?.type === 'reasoning') {
+      input.splice(index, 1);
+      removed = true;
+    }
+  }
+  return removed;
 }
 
 function findLastAssistantIndex(input: DeepSeekInputItem[]): number {
@@ -157,7 +160,7 @@ function rewriteOpenAIReasoningItems(input: DeepSeekInputItem[]): boolean {
 
 /**
  * 出站时把思考内容还原为 DeepSeek reasoning item（content[].type = reasoning_text）。
- * 原现象：继续生成 / 带 tools 多轮时 API 报 reasoning_text must be passed back。
+ * 原现象：带 tools 多轮时 API 报 reasoning_text must be passed back。
  * 根因：pruneMessages 去掉 reasoning，且 store:false 时 SDK 丢弃无 encrypted_content 的 reasoning。
  * 勿改回只 prune 不回传。
  */
@@ -170,8 +173,12 @@ export function applyReasoningPassback(body: DeepSeekRequestBody): boolean {
     patched = true;
   }
 
-  if (!texts?.length || !Array.isArray(body.input) || hasReasoningText(body.input)) {
+  if (!texts?.length || !Array.isArray(body.input)) {
     return patched;
+  }
+
+  if (removeReasoningItems(body.input)) {
+    patched = true;
   }
 
   const reasoningItem: DeepSeekInputItem = {

@@ -7,7 +7,7 @@ import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { CommentOutlined, DownOutlined } from '@ant-design/icons';
-import { Button, Flex, Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { getUserLocation } from '@/lib/geo/client';
 import { resolveActiveSkillIds } from '@/lib/skills/context';
@@ -17,12 +17,10 @@ import UserBubbleContent from './UserBubbleContent';
 import styles from './Chat.module.css';
 import { bubbleRole } from './constants';
 import {
-  cancelGeneration,
-  continueGeneration,
   getPartsText,
+  isMessageStopped,
   isNearBottom,
   prepareSendMessagesRequest,
-  shouldShowContinueButton,
   submitChatMessage,
 } from './utils';
 
@@ -42,7 +40,6 @@ export default function Chat({
   const router = useRouter();
   const [chatId, setChatId] = useState(id);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
-  const [isContinuing, setIsContinuing] = useState(false);
   // 修复：激活 skill 集合作为会话上下文——挂载时从历史（messages.data 已落盘 metadata.skillIds）恢复，
   // 刷新后 Tags 仍显示；chat 切换靠 key remount 自然重置
   const [activeSkillIds, setActiveSkillIds] = useState<string[]>(
@@ -51,13 +48,28 @@ export default function Chat({
   const chatRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<BubbleListRef>(null);
-  const continueAbortRef = useRef<AbortController | null>(null);
   const sentOnceRef = useRef(false);
+  const [stoppedMessageIds, setStoppedMessageIds] = useState<ReadonlySet<string>>(() => {
+    const detected = new Set<string>();
+    for (const message of initialMessages) {
+      if (isMessageStopped(message)) {
+        detected.add(message.id);
+      }
+    }
+    return detected;
+  });
 
-  // 切换会话：贴底隐藏「滚动到底部」
+  // 切换会话：贴底隐藏「滚动到底部」，并从历史消息恢复终止标记
   if (id !== chatId) {
     setChatId(id);
     setShowScrollBottom(false);
+    const detected = new Set<string>();
+    for (const message of initialMessages) {
+      if (isMessageStopped(message)) {
+        detected.add(message.id);
+      }
+    }
+    setStoppedMessageIds(detected);
   }
 
   // 修复：transport 只建一次；请求组装见 utils.prepareSendMessagesRequest
@@ -69,7 +81,7 @@ export default function Chat({
       }),
   );
 
-  const { messages, sendMessage, setMessages, status, stop } = useChat({
+  const { messages, sendMessage, status, stop } = useChat({
     id,
     messages: initialMessages,
     transport,
@@ -99,38 +111,30 @@ export default function Chat({
     }
   }, [hasUserMessage, status, isDraft, onFirstMessageSent]);
 
-  const loading = status === 'submitted' || status === 'streaming' || isContinuing;
-
-  const handleContinue = useCallback(() => {
-    continueGeneration({
-      loading,
-      transport,
-      chatId: id,
-      messages,
-      setMessages,
-      routerRefresh: () => router.refresh(),
-      abortControllerRef: continueAbortRef,
-      onStatusChange: setIsContinuing,
-    });
-  }, [id, loading, messages, router, setMessages, transport]);
+  const loading = status === 'submitted' || status === 'streaming';
 
   const handleCancel = useCallback(() => {
-    cancelGeneration(continueAbortRef, stop);
-  }, [stop]);
+    const lastMessage = messages.at(-1);
+    if (lastMessage?.role === 'assistant') {
+      setStoppedMessageIds((prev) => new Set(prev).add(lastMessage.id));
+    }
+    stop();
+  }, [messages, stop]);
 
   const bubbleItems = useMemo<BubbleItemType[]>(() => {
     // 修复：loading 延续到有可见 text/reasoning，避免 submitted→streaming 首包空 parts 时的真空期
-    const isAwaitingAi = status === 'submitted' || status === 'streaming' || isContinuing;
+    const isAwaitingAi = status === 'submitted' || status === 'streaming';
 
     const items = messages.map((message, index) => {
       const isLast = index === messages.length - 1;
       const isAi = message.role !== 'user';
-      const streaming = isAi && isLast && (status === 'streaming' || isContinuing);
+      const streaming = isAi && isLast && status === 'streaming';
       const text = getPartsText(message, 'text');
       const reasoning = isAi ? getPartsText(message, 'reasoning') : '';
       const hasVisibleAiContent = Boolean(text || reasoning);
       const thinking = streaming && !text;
-      const showContinueButton = shouldShowContinueButton(message, index === messages.length - 1);
+      const stopped =
+        isAi && !streaming && (stoppedMessageIds.has(message.id) || isMessageStopped(message));
 
       return {
         key: message.id,
@@ -151,19 +155,16 @@ export default function Chat({
         classNames: {
           body: isAi ? styles.aiBubbleBody : undefined,
         },
-        footer:
-          !isAwaitingAi && showContinueButton ? (
-            <Flex justify="end" flex={1}>
-              <Button shape="round" disabled={loading} onClick={() => void handleContinue()}>
-                继续生成
-              </Button>
-            </Flex>
-          ) : null,
+        footer: stopped ? (
+          <Typography.Text type="secondary" className={styles.stoppedHint}>
+            这条消息已停止
+          </Typography.Text>
+        ) : null,
       };
     });
 
     return items;
-  }, [handleContinue, isContinuing, loading, messages, status]);
+  }, [messages, status, stoppedMessageIds]);
 
   const hasMessages = messages.length > 0;
 
@@ -224,7 +225,7 @@ export default function Chat({
             {showScrollBottom ? (
               <Button
                 className={styles.scrollBottom}
-                shape="circle"
+                shape="round"
                 icon={<DownOutlined />}
                 aria-label="滚动到底部"
                 onClick={() => {

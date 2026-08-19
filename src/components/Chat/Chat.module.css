@@ -29,6 +29,12 @@
   width: 100%;
 }
 
+.stoppedHint {
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 /* 预留滚动条槽，避免出现滚动条时内容区变窄导致与 composer 错位 */
 .bubbleList :global(.ant-bubble-list-scroll-box) {
   scrollbar-gutter: stable;

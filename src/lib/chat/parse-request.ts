@@ -1,12 +1,8 @@
 import type { UIMessage } from 'ai';
 
-export type ChatTrigger = 'submit-message' | 'continue-message';
-
 export type ChatPostBody = {
   id: string;
   message?: UIMessage;
-  trigger?: ChatTrigger;
-  messageId?: string;
   userLocation?: unknown;
 };
 

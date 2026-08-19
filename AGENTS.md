@@ -121,12 +121,12 @@ drizzle/                   # SQL migrations（drizzle-kit generate）
 
 业务逻辑一律抽到 **`src/lib/<域>/`**，并与 API 路径对齐：
 
-| API Route                               | lib 目录      | 说明                           |
-| --------------------------------------- | ------------- | ------------------------------ |
-| `app/api/chat/`                         | `lib/chat/`   | 流式对话、会话 submit/continue |
-| `app/api/chats/`、`app/api/chats/[id]/` | `lib/chat/`   | 会话列表 / 新建 / 读取 / 删除  |
-| `app/api/geo/`                          | `lib/geo/`    | 逆地理、UserLocation           |
-| `app/api/images/`                       | `lib/images/` | 生图资源、tool、Provider       |
+| API Route                               | lib 目录      | 说明                          |
+| --------------------------------------- | ------------- | ----------------------------- |
+| `app/api/chat/`                         | `lib/chat/`   | 流式对话、会话提交            |
+| `app/api/chats/`、`app/api/chats/[id]/` | `lib/chat/`   | 会话列表 / 新建 / 读取 / 删除 |
+| `app/api/geo/`                          | `lib/geo/`    | 逆地理、UserLocation          |
+| `app/api/images/`                       | `lib/images/` | 生图资源、tool、Provider      |
 
 **Route Handler（`route.ts`）职责上限：**
 
