@@ -55,7 +55,7 @@ function AiBubbleContent({
           disableDefaultStyles={['code', 'img']}
         />
       ) : null}
-      <GenerateImageBlock parts={imageParts} />
+      {imageParts.length > 0 ? <GenerateImageBlock parts={imageParts} /> : null}
       {sourceItems.length > 0 && !streaming ? (
         <Sources
           className={styles.sources}
