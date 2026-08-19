@@ -10,6 +10,8 @@
     "format": "prettier --write .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "sync:chats:push": "node scripts/sync-chats.mjs push",
+    "sync:chats:pull": "node scripts/sync-chats.mjs pull",
     "prepare": "husky"
   },
   "pnpm": {

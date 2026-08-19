@@ -48,6 +48,8 @@ pnpm run dev
 | `pnpm run format`      | Prettier 格式化               |
 | `pnpm run db:generate` | 根据 schema 生成迁移 SQL 文件 |
 | `pnpm run db:migrate`  | 用 CLI 将迁移应用到数据库     |
+| `pnpm sync:chats:push` | 将会话数据镜像同步到云盘备份  |
+| `pnpm sync:chats:pull` | 从云盘备份拉取并覆盖本地数据  |
 
 ## 数据库迁移
 
@@ -80,7 +82,22 @@ pnpm run dev
 pnpm run db:migrate
 ```
 
-`db:generate` 与 `db:migrate` 均读取 `CHAT_STORE_DIR`（未配置时与运行时相同，默认为 `D:/华为云盘/ai-agent/chats`），请保证与 `.env.local` 一致，避免迁错库文件。
+`db:generate` 与 `db:migrate` 均读取 `CHAT_STORE_DIR`（见 `.env.example`，默认为 `./data/chats`），请保证与 `.env.local` 一致，避免迁错库文件。
+
+## 会话数据备份
+
+会话 SQLite 与图片默认落在项目内 `data/chats`（已 git 忽略）。云盘路径 `CHAT_SYNC_REMOTE_DIR` 仅作手动备份对端：
+
+```bash
+# 本地 → 云盘
+pnpm sync:chats:push
+
+# 云盘 → 本地（会覆盖本地 data/chats，需确认）
+pnpm sync:chats:pull
+pnpm sync:chats:pull -- --yes   # 跳过确认
+```
+
+同步前建议先关闭应用，避免 WAL 文件未 checkpoint 导致不一致。
 
 ## 目录结构
 

@@ -190,9 +190,10 @@ Button/
 
 ## 会话持久化约定
 
-- 存储目录由环境变量 **`CHAT_STORE_DIR`** 指定（示例：`D:/华为云盘/ai-agent/chats`，Windows 建议正斜杠）；库文件为目录内 **`chats.db`**（Drizzle + better-sqlite3，`journal_mode=WAL`，运行中可能另有 `chats.db-wal` / `chats.db-shm`）
+- 存储目录由环境变量 **`CHAT_STORE_DIR`** 指定（默认项目内 `./data/chats`，git 忽略）；库文件为目录内 **`chats.db`**（Drizzle + better-sqlite3，`journal_mode=WAL`，运行中可能另有 `chats.db-wal` / `chats.db-shm`）
+- 云盘备份路径 **`CHAT_SYNC_REMOTE_DIR`**（默认 `D:/华为云盘/ai-agent/chats`）仅作手动同步对端，非运行时目录；`pnpm sync:chats:push` 本地→云盘，`pnpm sync:chats:pull` 云盘→本地（镜像同步，pull 会覆盖本地）
 - 表：`chats` + `messages`（`messages.data` 存完整 **`UIMessage` JSON**，含 reasoning / source-url）；刷新可还原 Think 与引用
-- 换机前建议先关闭应用，便于 WAL checkpoint 回主库后再靠云盘同步
+- 同步前建议先关闭应用，便于 WAL checkpoint 回主库
 - **修复**：调方舟前仍用 `pruneMessages` 去掉历史 reasoning；持久化与模型入参解耦，勿把落盘也 prune 掉
 - 路由：`/` 有历史则进最近会话，否则 `/chat`；`chat/[[...id]]` 单页承载 `/chat`（草稿欢迎态不写库）与 `/chat/[id]`（多段路径 `notFound`）；侧栏「开启新对话」→ `/chat`；首条发送 → `replace('/chat/[id]')` 并侧栏锚定；Chat 在 `ChatShell` 渲染以免首条发送 remount 丢流；侧栏在 `chat/layout`，切换 id 不卸载
 - 明文落盘 + 云盘同步不适合高敏感内容
