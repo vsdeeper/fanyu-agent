@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Attachments, Sender } from '@ant-design/x';
 import type { AttachmentsRef } from '@ant-design/x/es/attachments';
 import Suggestion from '@ant-design/x/es/suggestion';
-import type { SuggestionItem } from '@ant-design/x/es/suggestion';
 import type { SenderRef } from '@ant-design/x/es/sender/interface';
 import { LinkOutlined } from '@ant-design/icons';
 import { Badge, Button, Flex, Upload, message } from 'antd';
@@ -19,15 +18,17 @@ import {
 import styles from './ChatSender.module.css';
 import {
   type AttachmentScope,
+  type SkillTokenAtCaret,
   createFileListFromAttachments,
+  filterSkillSummaries,
   getSenderHeaderReady,
   getSenderHeaderReadyServer,
   insertSkillTag,
   mergeAttachmentFileList,
   removeAttachmentItem,
+  resolveSkillSuggestionTrigger,
   revokeBlobUrls,
   selectAttachments,
-  shouldOpenSkillSuggestion,
   stopCascaderSwallowingInputKeys,
   subscribeSenderHeaderReady,
   toSkillSuggestionItems,
@@ -53,7 +54,6 @@ export default function ChatSender({
   onCancel,
   onSend,
 }: ChatSenderProps) {
-  const [input, setInput] = useState('');
   const [chatId, setChatId] = useState(id);
   // 修复：Sender.Header + forceRender 让 CSSMotion 在 SSR 输出 display:none 的 header，
   // 客户端首帧不输出，草稿 /chat 刷新 Hydration failed（header 对上 textarea）。
@@ -71,13 +71,14 @@ export default function ChatSender({
   const senderRef = useRef<SenderRef>(null);
   const attachmentsRef = useRef<AttachmentsRef>(null);
   const latestAttachmentItemsRef = useRef(attachmentScope.items);
+  const pendingSkillTokenRef = useRef<SkillTokenAtCaret | null>(null);
+  const syncSkillSuggestionRef = useRef<(inputData?: string | null) => void>(() => {});
 
   const attachmentItems = attachmentScope.items;
   const attachmentsOpen = attachmentScope.open;
   const hasAttachments = attachmentItems.length > 0;
 
   const skillSummaries = listSkillSummaries();
-  const skillItems: SuggestionItem[] = toSkillSuggestionItems(skillSummaries);
   const skillSummaryById = new Map(skillSummaries.map((summary) => [summary.id, summary]));
 
   // 切换会话：清空附件，避免跨会话误发
@@ -107,6 +108,26 @@ export default function ChatSender({
     });
     return () => cancelAnimationFrame(frame);
   }, [isDraft, id]);
+
+  // 方向键 / 鼠标点选会移动光标但不触发 onChange，需监听选区变化重算菜单
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const editable = senderRef.current?.inputElement ?? null;
+      if (!editable) {
+        return;
+      }
+
+      const selection = document.getSelection();
+      if (!selection?.anchorNode || !editable.contains(selection.anchorNode)) {
+        return;
+      }
+
+      syncSkillSuggestionRef.current();
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, []);
 
   const senderHeader = (
     <Sender.Header
@@ -163,84 +184,102 @@ export default function ChatSender({
 
   return (
     <Suggestion
-      items={skillItems}
+      items={(keyword) =>
+        toSkillSuggestionItems(filterSkillSummaries(skillSummaries, keyword ?? ''))
+      }
       onSelect={(value) => {
         const summary = skillSummaryById.get(value);
         if (!summary) return;
 
-        const current = senderRef.current?.getValue()?.value ?? input;
-        insertSkillTag(senderRef, summary, current);
+        insertSkillTag(senderRef, summary, pendingSkillTokenRef.current);
+        pendingSkillTokenRef.current = null;
 
         onSkillChange(activeSkillIds.includes(value) ? activeSkillIds : [...activeSkillIds, value]);
       }}
       classNames={{ root: styles.suggestion, content: styles.suggestionContent }}
     >
-      {({ onTrigger, onKeyDown, open }) => (
-        <Sender
-          ref={senderRef}
-          classNames={{
-            root: styles.root,
-          }}
-          slotConfig={EMPTY_SLOT_CONFIG}
-          onChange={(value, event) => {
-            setInput(value);
-            if (skillItems.length === 0) {
-              onTrigger(false);
-              return;
-            }
+      {({ onTrigger, onKeyDown, open }) => {
+        syncSkillSuggestionRef.current = (inputData?: string | null) => {
+          if (skillSummaries.length === 0) {
+            pendingSkillTokenRef.current = null;
+            onTrigger(false);
+            return;
+          }
+
+          const editable = senderRef.current?.inputElement ?? null;
+          const result = resolveSkillSuggestionTrigger(editable, skillSummaries, inputData);
+          if (result === false) {
+            pendingSkillTokenRef.current = null;
+            onTrigger(false);
+            return;
+          }
+
+          pendingSkillTokenRef.current = result.token;
+          onTrigger(result.keyword);
+        };
+
+        return (
+          <Sender
+            ref={senderRef}
+            classNames={{
+              root: styles.root,
+            }}
+            slotConfig={EMPTY_SLOT_CONFIG}
+          onChange={(_value, event) => {
             const nativeEvent = event?.nativeEvent;
             const inputData = nativeEvent instanceof InputEvent ? nativeEvent.data : undefined;
-            onTrigger(shouldOpenSkillSuggestion(value, inputData));
+            syncSkillSuggestionRef.current(inputData);
           }}
-          onKeyDown={(event) => {
-            if (event.key === ' ' && open) {
-              onTrigger(false);
-            }
-            return stopCascaderSwallowingInputKeys(event, open, onKeyDown);
-          }}
-          loading={loading}
-          onCancel={onCancel}
-          placeholder="给 OneAgent 发送消息"
-          suffix={false}
-          autoSize={{ minRows: 2, maxRows: 8 }}
-          header={headerReady ? senderHeader : undefined}
-          onPasteFile={(files) => {
-            for (const file of files) {
-              attachmentsRef.current?.upload(file);
-            }
-          }}
-          footer={(actionNode) => (
-            <Flex justify="space-between" align="center">
-              <Badge dot={hasAttachments && !attachmentsOpen}>
-                <Button
-                  type="text"
-                  aria-label="上传附件"
-                  icon={<LinkOutlined />}
-                  disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
-                  onClick={() => selectAttachments(attachmentsRef)}
-                />
-              </Badge>
-              {actionNode}
-            </Flex>
-          )}
-          onSubmit={(value) => {
-            // 修复：菜单打开时 Enter 用于选择 skill，勿触发发送（Suggestion 的 onKeyDown 已
-            // preventDefault 并返回 false，此处再拦一道双保险）
-            if (open) return;
-            const text = value.trim();
-            const files = createFileListFromAttachments(attachmentItems);
-            if (!text && !files?.length) return;
+            onKeyDown={(event) => {
+              if (event.key === ' ' && open) {
+                onTrigger(false);
+                pendingSkillTokenRef.current = null;
+              }
+              return stopCascaderSwallowingInputKeys(event, open, onKeyDown);
+            }}
+            loading={loading}
+            onCancel={onCancel}
+            placeholder="给 OneAgent 发送消息"
+            suffix={false}
+            autoSize={{ minRows: 2, maxRows: 8 }}
+            header={headerReady ? senderHeader : undefined}
+            onPasteFile={(files) => {
+              for (const file of files) {
+                attachmentsRef.current?.upload(file);
+              }
+            }}
+            footer={(actionNode) => (
+              <Flex justify="space-between" align="center">
+                <Badge dot={hasAttachments && !attachmentsOpen}>
+                  <Button
+                    type="text"
+                    aria-label="上传附件"
+                    icon={<LinkOutlined />}
+                    disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
+                    onClick={() => selectAttachments(attachmentsRef)}
+                  />
+                </Badge>
+                {actionNode}
+              </Flex>
+            )}
+            onSubmit={(value) => {
+              // 修复：菜单打开时 Enter 用于选择 skill，勿触发发送（Suggestion 的 onKeyDown 已
+              // preventDefault 并返回 false，此处再拦一道双保险）
+              if (open) return;
+              const text = value.trim();
+              const files = createFileListFromAttachments(attachmentItems);
+              if (!text && !files?.length) return;
 
-            onSend({ text, files });
-            // 修复：草稿首条发送后的导航改由 Chat 在流式开始后触发（避免与落库竞态 404），
-            // 此处不再同步 replace
-            revokeBlobUrls(attachmentItems);
-            setAttachmentScope((prev) => ({ ...prev, items: [], open: false }));
-            setInput('');
-            senderRef.current?.clear();
-          }}
-        />
-      )}
+              onSend({ text, files });
+              // 修复：草稿首条发送后的导航改由 Chat 在流式开始后触发（避免与落库竞态 404），
+              // 此处不再同步 replace
+              revokeBlobUrls(attachmentItems);
+              setAttachmentScope((prev) => ({ ...prev, items: [], open: false }));
+              senderRef.current?.clear();
+            }}
+          />
+        );
+      }}
     </Suggestion>
   );
 }

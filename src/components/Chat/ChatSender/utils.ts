@@ -3,7 +3,6 @@ import type { AttachmentsProps, AttachmentsRef } from '@ant-design/x/es/attachme
 import type { SlotConfigType, SenderRef } from '@ant-design/x/es/sender/interface';
 import type { SuggestionItem } from '@ant-design/x/es/suggestion';
 import type { GetProp } from 'antd';
-import { getSkill } from '@/lib/skills/registry';
 import type { SkillSummary } from '@/lib/skills/types';
 import { formatSkillTagLabel } from '@/lib/skills/format-tag-label';
 import { ATTACHMENT_ACCEPT } from './constants';
@@ -24,63 +23,169 @@ export function toSkillSuggestionItems(summaries: SkillSummary[]): SuggestionIte
   }));
 }
 
-// 修复：id 用 [a-z0-9-]* 而非 [^\s]*，避免把令牌后紧跟的中文/标点吞进 id（如「/brandkit用暖色」只匹配 /brandkit）。
-const SKILL_TOKEN_RE = /(^|\s)\/([a-z0-9-]*)/g;
-
-type SkillTokenSpan = {
-  slashPos: number;
-  tokenEnd: number;
+/** contenteditable 内可编辑 Text 节点上的光标位置 */
+export type EditableCaret = {
+  node: Text;
+  offset: number;
 };
 
-/** 已补全令牌：注册表有 id，且后接空白、结尾或下一个 `/` */
-function isCompleteSkillToken(id: string, next: string | undefined): boolean {
-  return id.length > 0 && !!getSkill(id) && (!next || /\s/.test(next) || next === '/');
-}
+/** 光标处正在输入的 skill 令牌（`/关键词` 整段，供删除与过滤） */
+export type SkillTokenAtCaret = {
+  node: Text;
+  slashPos: number;
+  tokenEnd: number;
+  keyword: string;
+};
+
+/** Suggestion 唤起结果：`false` 关闭；字符串为传给 `onTrigger` 的过滤关键词（裸 `/` 时为 `''`） */
+export type SkillSuggestionTriggerResult =
+  | false
+  | {
+      keyword: string;
+      token: SkillTokenAtCaret;
+    };
 
 /**
- * 取文本里最后一个未完成的 / 令牌（行首或空格后），供唤起菜单与原位替换。
+ * 从 window.getSelection 读取编辑器内光标；选区不在 editable 或落在 slot 内时返回 null。
  */
-export function findLastIncompleteSkillToken(text: string): SkillTokenSpan | null {
-  let last: SkillTokenSpan | null = null;
-  for (const match of text.matchAll(SKILL_TOKEN_RE)) {
-    const id = match[2] ?? '';
-    const matchStart = match.index ?? 0;
-    const boundary = match[1] ?? '';
-    const slashPos = matchStart + boundary.length;
-    const tokenEnd = slashPos + 1 + id.length;
-    if (!isCompleteSkillToken(id, text[tokenEnd])) {
-      last = { slashPos, tokenEnd };
-    }
+export function getEditableCaret(editable: HTMLElement | null): EditableCaret | null {
+  if (!editable || typeof window === 'undefined') {
+    return null;
   }
-  return last;
+
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) {
+    return null;
+  }
+
+  const { startContainer, startOffset } = selection.getRangeAt(0);
+  if (!editable.contains(startContainer)) {
+    return null;
+  }
+
+  if (startContainer.nodeType !== Node.TEXT_NODE) {
+    return null;
+  }
+
+  const node = startContainer as Text;
+  if (node.parentElement?.closest('[data-slot-key]')) {
+    return null;
+  }
+
+  return { node, offset: startOffset };
 }
 
 /**
- * 是否含「可唤起菜单」的 / 令牌：行首或空格后的 /（前面紧贴普通文字的 / 不算）。
- * 已补全的完整 skill 令牌不再触发。
+ * 按 skill 中文 name 过滤菜单项；keyword 为空时返回全部。
  */
-export function hasSkillToken(value: string): boolean {
-  return findLastIncompleteSkillToken(value) !== null;
+export function filterSkillSummaries(summaries: SkillSummary[], keyword: string): SkillSummary[] {
+  const trimmed = keyword.trim();
+  if (!trimmed) {
+    return summaries;
+  }
+
+  const lower = trimmed.toLowerCase();
+  return summaries.filter((summary) => summary.name.toLowerCase().includes(lower));
 }
 
 /**
- * 根据本次输入字符决定是否打开 Suggestion：空格只关菜单，其余看 hasSkillToken。
+ * 根据光标处 `/` 令牌与 name 过滤结果，决定 Suggestion 开关与关键词。
+ * 修复：原先用全文扫描未完成令牌，粘贴含「 / 」的正文也会弹菜单；现仅光标落在行首或前置空格后的 `/关键词` 内才打开。
  */
-export function shouldOpenSkillSuggestion(
-  value: string,
+export function resolveSkillSuggestionTrigger(
+  editable: HTMLElement | null,
+  summaries: SkillSummary[],
   inputData: string | null | undefined,
-): boolean {
-  if (inputData === ' ') return false;
-  return hasSkillToken(value);
+): SkillSuggestionTriggerResult {
+  if (inputData === ' ') {
+    return false;
+  }
+
+  const caret = getEditableCaret(editable);
+  const token = findSkillTokenAtCaret(editable, caret);
+  if (!token) {
+    return false;
+  }
+
+  if (filterSkillSummaries(summaries, token.keyword).length === 0) {
+    return false;
+  }
+
+  return { keyword: token.keyword, token };
 }
 
 /**
- * 替换未完成令牌后是否须在 tag 后补空格：后续无内容或非空白开头时补。
+ * 光标是否落在行首或前置空格后的 `/` 与关键词之间；keyword 为 `/` 到光标之间的非空白原文。
  */
-export function needsSpaceAfterLastSkillToken(input: string): boolean {
-  const token = findLastIncompleteSkillToken(input);
-  if (!token) return true;
-  const afterRaw = input.slice(token.tokenEnd);
+export function findSkillTokenAtCaret(
+  editable: HTMLElement | null,
+  caret: EditableCaret | null,
+): SkillTokenAtCaret | null {
+  if (!editable || !caret) {
+    return null;
+  }
+
+  const { node, offset: caretOffset } = caret;
+  const text = node.textContent ?? '';
+
+  for (let slashPos = caretOffset - 1; slashPos >= 0; slashPos -= 1) {
+    if (text[slashPos] !== '/') {
+      continue;
+    }
+
+    if (!hasSkillSlashBoundary(editable, node, slashPos)) {
+      continue;
+    }
+
+    const keyword = text.slice(slashPos + 1, caretOffset);
+    if (/\s/.test(keyword) || caretOffset <= slashPos) {
+      continue;
+    }
+
+    return {
+      node,
+      slashPos,
+      tokenEnd: caretOffset,
+      keyword,
+    };
+  }
+
+  return null;
+}
+
+/** `/` 前须为行首或空白；节点以 `/` 开头时看前一个可编辑文本节点末字符 */
+function hasSkillSlashBoundary(editable: HTMLElement, node: Text, slashPos: number): boolean {
+  if (slashPos > 0) {
+    const text = node.textContent ?? '';
+    return /\s/.test(text[slashPos - 1] ?? '');
+  }
+
+  const prevNode = getPreviousEditableTextNode(editable, node);
+  if (!prevNode) {
+    return true;
+  }
+
+  const prevText = prevNode.textContent ?? '';
+  if (!prevText) {
+    return true;
+  }
+
+  return /\s/.test(prevText[prevText.length - 1] ?? '');
+}
+
+function getPreviousEditableTextNode(editable: HTMLElement, node: Text): Text | null {
+  const nodes = collectEditableTextNodes(editable);
+  const index = nodes.indexOf(node);
+  if (index <= 0) {
+    return null;
+  }
+  return nodes[index - 1] ?? null;
+}
+
+/** 删除令牌后 tag 后是否须补空格：看该 span 之后是否已有空白 */
+function needsSpaceAfterSkillToken(token: SkillTokenAtCaret): boolean {
+  const text = token.node.textContent ?? '';
+  const afterRaw = text.slice(token.tokenEnd);
   return !afterRaw || !/^\s/.test(afterRaw);
 }
 
@@ -103,29 +208,22 @@ function collectEditableTextNodes(editable: HTMLElement): Text[] {
 }
 
 /**
- * 从 contenteditable 里最后一个未完成 / 令牌处删掉该令牌（可在正文中间）。
- * 只删 `/xxx`，令牌前用户已输入的空格原样保留。
+ * 从 contenteditable 删掉唤起菜单时记录的光标处 `/关键词` 整段；令牌前的空格原样保留。
  */
-export function removeIncompleteSkillTokenFromEditor(editable: HTMLElement | null): boolean {
-  if (!editable) return false;
-
-  const textNodes = collectEditableTextNodes(editable);
-  for (let i = textNodes.length - 1; i >= 0; i--) {
-    const node = textNodes[i];
-    const text = node.textContent ?? '';
-    if (!text) continue;
-
-    const token = findLastIncompleteSkillToken(text);
-    if (!token) continue;
-
-    node.deleteData(token.slashPos, token.tokenEnd - token.slashPos);
-
-    if (!node.textContent) {
-      node.remove();
-    }
-    return true;
+export function removeSkillTokenFromEditor(
+  editable: HTMLElement | null,
+  token: SkillTokenAtCaret | null,
+): boolean {
+  if (!editable || !token) {
+    return false;
   }
-  return false;
+
+  token.node.deleteData(token.slashPos, token.tokenEnd - token.slashPos);
+
+  if (!token.node.textContent) {
+    token.node.remove();
+  }
+  return true;
 }
 
 let skillTagKeyCounter = 0;
@@ -151,7 +249,7 @@ export function toSkillTagSlot(summary: SkillSummary): SlotConfigType {
 }
 
 /**
- * 选中 Suggestion 项后：在未完成 / 令牌原位删掉令牌并插入 tag。
+ * 选中 Suggestion 项后：在唤起菜单时记录的 `/关键词` 原位删掉并插入 tag。
  * 不调用 focus()（默认 cursor=end 会把插入点拽到末尾）；
  * 用 cursor + 失焦时保存的 lastSelection，把 tag 插回正文中间。
  * 不依赖 insert 的 replaceCharacters（Cascader 抢焦点时删字失败）。
@@ -159,13 +257,14 @@ export function toSkillTagSlot(summary: SkillSummary): SlotConfigType {
 export function insertSkillTag(
   senderRef: RefObject<SenderRef | null>,
   summary: SkillSummary,
-  currentValue: string,
+  pendingToken: SkillTokenAtCaret | null,
 ): void {
   const editable = senderRef.current?.inputElement ?? null;
-  removeIncompleteSkillTokenFromEditor(editable);
+  const needsSpace = pendingToken ? needsSpaceAfterSkillToken(pendingToken) : true;
+  removeSkillTokenFromEditor(editable, pendingToken);
 
   const insertItems: SlotConfigType[] = [toSkillTagSlot(summary)];
-  if (needsSpaceAfterLastSkillToken(currentValue)) {
+  if (needsSpace) {
     insertItems.push({ type: 'text', value: ' ' });
   }
 
