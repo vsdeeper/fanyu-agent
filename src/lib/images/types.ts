@@ -2,6 +2,13 @@ export type ImageCapability = 't2i' | 'i2i';
 
 export type ImageProviderId = 'ark' | 'flux-art';
 
+export type ImageSizeSpec = {
+  presets: readonly string[];
+  minPixels?: number;
+  maxPixels?: number;
+  defaultSize: string;
+};
+
 export type ImageModelProfile = {
   id: string;
   provider: ImageProviderId;

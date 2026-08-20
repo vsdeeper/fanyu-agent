@@ -1,4 +1,4 @@
-import { getDefaultImageModelId, getImageModelProfile } from './registry';
+import { getCurrentImageModelId, getImageModelProfile } from './registry';
 import { arkSeedreamProvider } from './providers/ark-seedream';
 import { fluxArtProvider } from './providers/flux-art';
 import type { ImageProvider } from './types';
@@ -24,7 +24,7 @@ export function resolveImageModelId({
   if (parentModelId?.trim()) {
     return parentModelId.trim();
   }
-  return getDefaultImageModelId();
+  return getCurrentImageModelId();
 }
 
 export async function generateImageViaRouter(

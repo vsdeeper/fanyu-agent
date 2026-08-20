@@ -1,6 +1,6 @@
 import { requireEnv } from '@/lib/shared/env';
 import type { ImageProvider } from '../types';
-import { normalizeSeedreamSize } from '../size';
+import { getSizeSpec, normalizeImageSize } from '../size';
 
 type ArkImageResponse = {
   data?: Array<{ url?: string; b64_json?: string }>;
@@ -71,7 +71,7 @@ export const arkSeedreamProvider: ImageProvider = {
     const baseURL = requireEnv('ARK_BASE_URL').replace(/\/$/, '');
 
     // 修复：归一化 size，避免 `1024x1024` 等低于最小像素限制的值透传给上游导致 400
-    const size = normalizeSeedreamSize(req.size);
+    const size = normalizeImageSize(req.size, getSizeSpec(req.modelId));
     if (req.size && req.size.trim() !== size) {
       console.warn(`[ark-seedream] size 已归一化: "${req.size}" -> "${size}"`);
     }

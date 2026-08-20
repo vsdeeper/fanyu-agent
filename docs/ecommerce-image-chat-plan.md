@@ -65,7 +65,7 @@
 - **`platforms.ts`**：平台→尺寸映射，全部落在 Seedream 像素区间 [3,686,400, 16,777,216]：taobao/jd 主图 1:1=2048x2048、详情 3:4=1728x2304；douyin 9:16=1600x2848；pdd 1:1/9:16；amazon 1:1/16:9=2560x1440。`resolveCommerceSize(platform, aspectRatio)` 缺省 2048x2048。
 - **`prompt.ts`**：`buildCommercePrompt(input)` 结构化拼装，核心措辞「以参考图产品为唯一主体，形状/颜色/材质/细节 100% 不变，仅更换背景、场景与打光」+ 场景/风格/用途画幅/卖点文案/是否预留文字区 + 负向「禁止改变主体、禁止添加不存在的部件」。
 - **`tool.ts`**：`createGenerateCommerceImageTool(chatId)`。`inputSchema: { mode: 'from_product'|'from_previous', productAssetId?, category?, platform?, aspectRatio?, style?, scene?, sellingPoints?, textArea?, size? }`（MVP 单主图；多图时扩为可选 `productAssetIds?: string[]`，缺省用默认指针，向后兼容）。execute：`from_product` 取产品图（productAssetId → 当前产品图 → working image），`from_previous` 取 working image → 复用 `generateImageViaRouter({ modelId: 默认 Seedream, prompt, mode:'edit', referenceImageDataUrls:[assetToDataUrl(sourceAsset)], size })` → `saveImageAsset`（parentId=源图）→ 返回 `{ok, assetId, url, parentId}`，`toModelOutput` 复用「已生成，界面自动展示」文案。
-- **`hint.ts`**：`IMAGE_COMMERCE_HINT` 指令文本（进入条件、先 analyze、分步一次一问、生成前一句话复核、from_product vs from_previous 策略、平台画幅规范、正文勿插 Markdown 图）。注入 `stream-chat.ts` 的 `baseInstructions`（`${IMAGE_SYSTEM_HINT}\n\n${IMAGE_COMMERCE_HINT}`）。
+- **`hint.ts`**：`IMAGE_COMMERCE_HINT` 指令文本（进入条件、先 analyze、分步一次一问、生成前一句话复核、from_product vs from_previous 策略、平台画幅规范、正文勿插 Markdown 图）。注入 `stream-chat.ts` 的 `baseInstructions`（`${getImageSystemHint()}\n\n${IMAGE_COMMERCE_HINT}`）。
 - 注册 `generate_commerce_image` 进 tools；`stopWhen: stepCountIs(5)` 不够可升 `stepCountIs(8)`。
 
 **验收**：端到端「上传 → 识图 → 分步追问 → 一句话复核 → 出图 → 改图 → 刷新还原」；`image_assets` 生成行 `parent_id` 串成链（upload → commerce1 → commerce2…）。
@@ -103,7 +103,7 @@ Phase 1a（schema+桥接）→ Phase 1b/1c（analyze tool，单独验收识图�
 
 ## 验证（本地 `pnpm dev`）
 
-1. `.env.local` 确认 `ARK_API_KEY/ARK_BASE_URL/ARK_IMAGE_MODEL_ID` 已配；可选加 `ARK_VISION_MODEL_ID`。
+1. `.env.local` 确认 `ARK_API_KEY/ARK_BASE_URL` 已配；可选加 `ARK_VISION_MODEL_ID`。
 2. 改 schema 后 `pnpm db:generate && pnpm db:migrate`，`pnpm dev`。
 3. 新会话上传一张产品图 → 发「帮我做张淘宝主图」。
 4. 观察：先 `analyze_image`（Think 可见 tool-call）→ 一次一问（品类/平台/风格/卖点/文字区）→ 一句话复核 → `generate_commerce_image` 出图。

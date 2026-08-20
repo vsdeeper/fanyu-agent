@@ -16,7 +16,7 @@ import { selectModel } from '@/lib/chat/select-model';
 import {
   createGenerateImageTool,
   getLatestUserImageDataUrl,
-  IMAGE_SYSTEM_HINT,
+  getImageSystemHint,
   PASTE_IMAGE_EDIT_HINT,
 } from '@/lib/images/generate-image-tool';
 import { resolveActiveSkills } from '@/lib/skills/context';
@@ -104,7 +104,7 @@ export async function streamChatResponse({
   const imageContextHint = pastedImageDataUrl ? `\n\n${PASTE_IMAGE_EDIT_HINT}` : '';
 
   // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${IMAGE_SYSTEM_HINT}${imageContextHint}`;
+  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${getImageSystemHint()}${imageContextHint}`;
   const withSkill = activeSkills.length
     ? `${baseInstructions}\n\n【当前生效 Skills：${activeSkills
         .map((skill) => skill.name)

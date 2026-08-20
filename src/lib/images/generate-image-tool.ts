@@ -8,11 +8,24 @@ import {
   resolveParentModelId,
   saveImageAsset,
 } from '@/lib/images/assets';
+import { getCurrentImageModelId } from './registry';
 import { generateImageViaRouter, resolveImageModelId } from './router';
-import { ARK_SEEDREAM_SIZE_PRESETS, isValidSeedreamSize } from './size';
+import { describeImageSize, getSizeSpec, isValidImageSize } from './size';
 import { IMAGE_TOOL_PASTE_SOURCE_ERROR, type ImageToolResult } from './types';
 
-const IMAGE_SYSTEM_HINT = `生图工具使用规则：
+const SIZE_FORMAT_PATTERN = /^\d+(?:\.\d+)?K$|^\d+x\d+$/i;
+
+/**
+ * 按当前生图模型的尺寸规格生成工具使用规则。
+ */
+export function getImageSystemHint(): string {
+  const spec = getSizeSpec(getCurrentImageModelId());
+  const presets = spec.presets.join('/');
+  const sizeLine =
+    spec.minPixels != null && spec.maxPixels != null
+      ? `- 生图尺寸只传 ${presets} 或总像素 ${spec.minPixels} ~ ${spec.maxPixels} 的 WxH（如 2048x2048），勿传 1024x1024 等过小尺寸`
+      : `- 生图尺寸只传 ${presets}（默认 ${spec.defaultSize}）`;
+  return `生图工具使用规则：
 - 用户明确要求生成/绘制/出图时调用 generate_image，mode=generate
 - 用户要求修改图片时调用 generate_image，mode=edit
 - 仅讨论如何画、不请求出图时不要调用
@@ -21,11 +34,12 @@ const IMAGE_SYSTEM_HINT = `生图工具使用规则：
 - 用户说「改上面那张 / 第二张」且无法对应到已知 assetId、用户也未贴图时：不要猜测、不要调用 edit，请用户将要修改的图复制粘贴到对话框后再试
 - 生图成功后界面会自动展示图片；汇总回复时只用文字说明，勿在正文中插入 Markdown 图片或 URL
 - 用户明确要求透明背景、去底、抠图或 PNG alpha 时：transparent=true；未要求时不要传 true
-- 生图尺寸只传 2K/4K 或满足像素下限的 WxH（如 2048x2048、2560x1440），勿传 1024x1024 等过小尺寸`;
+${sizeLine}`;
+}
 
 const PASTE_IMAGE_EDIT_HINT = '本轮用户消息含图片附件，edit 将使用该附件作为源图。';
 
-export { IMAGE_SYSTEM_HINT, PASTE_IMAGE_EDIT_HINT };
+export { PASTE_IMAGE_EDIT_HINT };
 
 /**
  * 从消息历史取最新一条 user 消息里第一张 image/* 附件的 data URL（粘贴/上传/拖拽）。
@@ -65,17 +79,10 @@ export function createGenerateImageTool(chatId: string, pastedImageDataUrl?: str
         .optional()
         .describe('edit 时源图 assetId；可省略以使用 working image'),
       size: z
-        .union([
-          z.enum(ARK_SEEDREAM_SIZE_PRESETS),
-          z.string().regex(/^\d+x\d+$/i, '自定义尺寸须为 宽x高 像素格式，如 2048x2048'),
-        ])
+        .string()
+        .regex(SIZE_FORMAT_PATTERN, '尺寸须为档位（如 2K、4K）或宽x高像素（如 2048x2048）')
         .optional()
-        .refine((v) => v === undefined || isValidSeedreamSize(v), {
-          message: '尺寸总像素须在 3,686,400 ~ 16,777,216 之间，或使用 2K/4K；勿使用 1024x1024',
-        })
-        .describe(
-          '可选尺寸：2K（默认）或 4K，或自定义 WIDTHxHEIGHT（如 2048x2048、2560x1440）；勿使用 1024x1024',
-        ),
+        .describe(describeImageSize(getSizeSpec(getCurrentImageModelId()))),
       transparent: z
         .boolean()
         .optional()
@@ -118,12 +125,19 @@ export function createGenerateImageTool(chatId: string, pastedImageDataUrl?: str
           parentModelId: parentId ? resolveParentModelId(parentId) : undefined,
         });
 
+        const spec = getSizeSpec(modelId);
+        const resolvedSize =
+          size && isValidImageSize(size, spec) ? size.trim() : size ? spec.defaultSize : undefined;
+        if (size && resolvedSize !== size.trim()) {
+          console.warn(`[generate_image] size 已按模型规格回退: "${size}" -> "${resolvedSize}"`);
+        }
+
         const result = await generateImageViaRouter({
           modelId,
           prompt,
           mode,
           referenceImageDataUrls,
-          size,
+          size: resolvedSize,
           transparent,
         });
 

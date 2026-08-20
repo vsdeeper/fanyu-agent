@@ -1,9 +1,11 @@
-import { requireEnv } from '@/lib/shared/env';
 import type { ImageModelProfile } from './types';
+import { CURRENT_IMAGE_MODEL_ID } from './size';
 
-/** 首版默认方舟 Seedream；Flux Art 模型仅注册，Provider 二期实现 */
-export function getDefaultImageModelId(): string {
-  return requireEnv('ARK_IMAGE_MODEL_ID');
+export { CURRENT_IMAGE_MODEL_ID };
+
+/** 当前生图模型；换接入点改 CURRENT_IMAGE_MODEL_ID */
+export function getCurrentImageModelId(): string {
+  return CURRENT_IMAGE_MODEL_ID;
 }
 
 const FLUX_ART_MODELS: ImageModelProfile[] = [
@@ -24,7 +26,7 @@ const FLUX_ART_MODELS: ImageModelProfile[] = [
 export function listImageModels(): ImageModelProfile[] {
   return [
     {
-      id: getDefaultImageModelId(),
+      id: CURRENT_IMAGE_MODEL_ID,
       provider: 'ark',
       capabilities: ['t2i', 'i2i'],
       label: 'Seedream（方舟）',

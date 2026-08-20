@@ -99,7 +99,7 @@ src/
     images/
       assets.ts            # 生图资源落盘与元数据
       serve-asset.ts       # GET /api/images/[assetId] 业务逻辑
-      generate-image-tool.ts / router.ts / registry.ts / providers/
+      generate-image-tool.ts / router.ts / registry.ts / size.ts / providers/
     geo/
       types.ts             # UserLocation 类型
       parse-request.ts     # 请求体 / userLocation 校验
@@ -201,7 +201,7 @@ Button/
 ## 生图与主 Agent 约定
 
 - 主对话模型在 [`src/app/api/chat/route.ts`](src/app/api/chat/route.ts) 通过 `generate_image` tool 出图/改图；`stopWhen: stepCountIs(5)` 保证 tool 后主模型可汇总说明
-- 首版生图 Provider 为方舟 Seedream（`ARK_IMAGE_MODEL_ID`，`POST /images/generations`）；Flux Art 仅注册 Provider 接口，二期接入
+- 首版生图 Provider 为方舟 Seedream（`CURRENT_IMAGE_MODEL_ID` 写死在 [`src/lib/images/size.ts`](src/lib/images/size.ts)，`POST /images/generations`）；尺寸见 `IMAGE_SIZE_BY_MODEL_ID`；Flux Art 仅注册 Provider 接口，二期接入
 - 图片文件落盘于 `CHAT_STORE_DIR/images/{chatId}/`；元数据表 `image_assets`；`chats.working_image_asset_id` 为多轮改图默认源图
 - 前端经 `GET /api/images/[assetId]` 展示；气泡内使用 antd `Image`，勿用临时上游 CDN URL 直接渲染
 - 改图时 Provider 入参使用本地 data URL/base64，避免方舟返回 URL 过期导致下一轮 edit 失败
