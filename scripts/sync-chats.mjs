@@ -10,7 +10,6 @@ import { spawnSync } from 'child_process';
 import { createInterface } from 'readline';
 
 const DEFAULT_LOCAL = './data/chats';
-const DEFAULT_REMOTE = 'D:/华为云盘/ai-agent/chats';
 
 /** 读取 .env.local 中的键值（不覆盖已有 process.env） */
 function loadEnvLocal() {
@@ -34,10 +33,14 @@ function getLocalDir() {
   return resolve(process.cwd(), raw);
 }
 
-/** 解析云盘备份目录 */
+/** 解析云盘备份目录；必须配置 CHAT_SYNC_REMOTE_DIR，仓库不内置个人路径 */
 function getRemoteDir() {
   const envLocal = loadEnvLocal();
-  const raw = process.env.CHAT_SYNC_REMOTE_DIR ?? envLocal.CHAT_SYNC_REMOTE_DIR ?? DEFAULT_REMOTE;
+  const raw = (process.env.CHAT_SYNC_REMOTE_DIR ?? envLocal.CHAT_SYNC_REMOTE_DIR)?.trim();
+  if (!raw) {
+    console.error('未配置 CHAT_SYNC_REMOTE_DIR，请在 .env.local 中填写云盘备份路径');
+    process.exit(1);
+  }
   return resolve(raw);
 }
 
