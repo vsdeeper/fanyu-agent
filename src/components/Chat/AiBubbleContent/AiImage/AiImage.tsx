@@ -2,7 +2,7 @@
 
 import { Image, Skeleton } from 'antd';
 import type { ImageProps } from 'antd';
-import styles from './AiImage.module.css';
+import { AI_IMAGE_CLASS_NAMES } from './constants';
 
 interface AiImageProps extends ImageProps {
   size?: number;
@@ -17,7 +17,7 @@ export default function AiImage({
 }: AiImageProps) {
   return (
     <Image
-      classNames={{ root: styles.image }}
+      classNames={AI_IMAGE_CLASS_NAMES}
       width={size}
       height={size}
       alt={alt}

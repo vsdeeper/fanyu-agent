@@ -20,6 +20,7 @@ const IMAGE_SYSTEM_HINT = `生图工具使用规则：
 - 改刚生成的图：mode=edit，尽量传 sourceAssetIds（上一轮 tool 结果已含 assetId）；未传则服务端使用 working image
 - 用户说「改上面那张 / 第二张」且无法对应到已知 assetId、用户也未贴图时：不要猜测、不要调用 edit，请用户将要修改的图复制粘贴到对话框后再试
 - 生图成功后界面会自动展示图片；汇总回复时只用文字说明，勿在正文中插入 Markdown 图片或 URL
+- 用户明确要求透明背景、去底、抠图或 PNG alpha 时：transparent=true；未要求时不要传 true
 - 生图尺寸只传 2K/4K 或满足像素下限的 WxH（如 2048x2048、2560x1440），勿传 1024x1024 等过小尺寸`;
 
 const PASTE_IMAGE_EDIT_HINT = '本轮用户消息含图片附件，edit 将使用该附件作为源图。';
@@ -75,8 +76,19 @@ export function createGenerateImageTool(chatId: string, pastedImageDataUrl?: str
         .describe(
           '可选尺寸：2K（默认）或 4K，或自定义 WIDTHxHEIGHT（如 2048x2048、2560x1440）；勿使用 1024x1024',
         ),
+      transparent: z
+        .boolean()
+        .optional()
+        .describe('仅当用户明确要求透明背景、去底、抠图或 PNG alpha 时为 true'),
     }),
-    execute: async ({ mode, prompt, model, sourceAssetIds, size }): Promise<ImageToolResult> => {
+    execute: async ({
+      mode,
+      prompt,
+      model,
+      sourceAssetIds,
+      size,
+      transparent,
+    }): Promise<ImageToolResult> => {
       try {
         let parentId: string | null = null;
         let referenceImageDataUrls: string[] | undefined;
@@ -112,6 +124,7 @@ export function createGenerateImageTool(chatId: string, pastedImageDataUrl?: str
           mode,
           referenceImageDataUrls,
           size,
+          transparent,
         });
 
         const first = result.images[0];

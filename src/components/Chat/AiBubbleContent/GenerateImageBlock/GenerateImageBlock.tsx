@@ -1,7 +1,7 @@
 'use client';
 
 import { Image, Skeleton } from 'antd';
-import AiImage from '../AiImage';
+import AiImage, { AI_IMAGE_PREVIEW_GROUP_CLASS_NAMES } from '../AiImage';
 import type { MessagePart } from '../utils';
 import styles from './GenerateImageBlock.module.css';
 import {
@@ -59,7 +59,7 @@ export default function GenerateImageBlock({ parts }: GenerateImageBlockProps) {
 
   return (
     <div className={styles.list}>
-      <Image.PreviewGroup>
+      <Image.PreviewGroup classNames={AI_IMAGE_PREVIEW_GROUP_CLASS_NAMES}>
         {visibleParts.map((part, index) => (
           <GenerateImageItem key={`generate-image-${index}`} part={part} />
         ))}

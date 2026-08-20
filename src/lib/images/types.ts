@@ -15,6 +15,8 @@ export type ImageGenerateRequest = {
   mode: 'generate' | 'edit';
   referenceImageDataUrls?: string[];
   size?: string;
+  /** 用户明确要求透明背景时为 true；上游改走 PNG + 透明 prompt */
+  transparent?: boolean;
 };
 
 export type GeneratedImagePayload = {
