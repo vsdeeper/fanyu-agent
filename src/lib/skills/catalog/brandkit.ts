@@ -21,7 +21,7 @@ export const brandkit: Skill = {
 
 【视觉模式】按品牌选一种：Dark Developer（近黑面板 + 等宽 + 命令行线索，青 / 蓝 / 珊瑚点缀）；Dark Product（黑 / 暗红 / 琥珀 + 发光 UI chip + 分段流程）；Dark Nature（深绿 + 青柠 + 雾景，宁静可信）；Dark Security（黑 / 藏青 + 盾 + 雷达线 + 红蓝告警 chip）；Light Editorial（暖象牙 + 纸纹理 + 衬线小标 + 印章徽章）；Luxury（象牙 / 石材 / 浓缩咖啡 + 衬线 wordmark + 纸纹 + 压印）；Voice（深靛蓝 + 淡紫光 + 波形 / 麦克风）；Cultural（半调 + CRT + 粗印 + 大胆强调色）。
 
-【文本】文字极少：品牌名 + 一句 tagline + 一个 URL + 一条命令 + 2–5 个分区标签 + 短 UI chip。禁止长段落、假小字、lorem ipsum、密集菜单。tagline 短而具体（如 "Build better."），禁口号堆砌。
+【文本】文字极少：品牌名 + 一句 tagline + 一个 URL + 一条命令 + 2–5 个分区标签 + 短 UI chip。禁止长段落、假小字、lorem ipsum、密集菜单。说明文字（分区标签、tagline、页脚小标、色彩/字体标注、UI chip 文案等）默认中文简体，用户明确要求其他语言时再切换；品牌名、URL、命令行可保留原文。tagline 短而具体（如「把事情做得更好。」），禁口号堆砌。
 
 【色彩】单一主导色板：基色 + 主强调 + 次强调 + 中性；强调色跨 panel 重复；无彩虹、无泛化 AI 紫蓝光。
 
