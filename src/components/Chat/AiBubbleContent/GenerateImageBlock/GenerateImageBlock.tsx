@@ -10,11 +10,16 @@ import {
   isGenerateImageFailed,
   isGenerateImagePending,
   isGenerateImageReady,
+  isGenerateImageSourceMissing,
 } from './utils';
 
 function GenerateImageItem({ part }: { part: MessagePart }) {
   const state = typeof part.state === 'string' ? part.state : '';
   const output = part.output as GenerateImageOutput | undefined;
+
+  if (isGenerateImageSourceMissing(output)) {
+    return null;
+  }
 
   if (isGenerateImageFailed(state, output)) {
     return (
@@ -46,10 +51,16 @@ export type GenerateImageBlockProps = {
 };
 
 export default function GenerateImageBlock({ parts }: GenerateImageBlockProps) {
+  const visibleParts = parts.filter((part) => {
+    const output = part.output as GenerateImageOutput | undefined;
+    return !isGenerateImageSourceMissing(output);
+  });
+  if (visibleParts.length === 0) return null;
+
   return (
     <div className={styles.list}>
       <Image.PreviewGroup>
-        {parts.map((part, index) => (
+        {visibleParts.map((part, index) => (
           <GenerateImageItem key={`generate-image-${index}`} part={part} />
         ))}
       </Image.PreviewGroup>

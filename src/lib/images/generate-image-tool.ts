@@ -10,7 +10,7 @@ import {
 } from '@/lib/images/assets';
 import { generateImageViaRouter, resolveImageModelId } from './router';
 import { ARK_SEEDREAM_SIZE_PRESETS, isValidSeedreamSize } from './size';
-import type { ImageToolResult } from './types';
+import { IMAGE_TOOL_PASTE_SOURCE_ERROR, type ImageToolResult } from './types';
 
 const IMAGE_SYSTEM_HINT = `生图工具使用规则：
 - 用户明确要求生成/绘制/出图时调用 generate_image，mode=generate
@@ -89,7 +89,7 @@ export function createGenerateImageTool(chatId: string, pastedImageDataUrl?: str
             if (!sourceId) {
               return {
                 ok: false,
-                error: '请将要修改的图复制粘贴到对话框后再试',
+                error: IMAGE_TOOL_PASTE_SOURCE_ERROR,
               };
             }
             const sourceAsset = getAsset(sourceId);
