@@ -225,11 +225,11 @@ export default function ChatSender({
               root: styles.root,
             }}
             slotConfig={EMPTY_SLOT_CONFIG}
-          onChange={(_value, event) => {
-            const nativeEvent = event?.nativeEvent;
-            const inputData = nativeEvent instanceof InputEvent ? nativeEvent.data : undefined;
-            syncSkillSuggestionRef.current(inputData);
-          }}
+            onChange={(_value, event) => {
+              const nativeEvent = event?.nativeEvent;
+              const inputData = nativeEvent instanceof InputEvent ? nativeEvent.data : undefined;
+              syncSkillSuggestionRef.current(inputData);
+            }}
             onKeyDown={(event) => {
               if (event.key === ' ' && open) {
                 onTrigger(false);

@@ -1,7 +1,5 @@
 import {
-  isReasoningUIPart,
   isTextUIPart,
-  isToolUIPart,
   type ChatRequestOptions,
   type PrepareSendMessagesRequest,
   type UIMessage,
@@ -23,27 +21,16 @@ export function getPartsText(
 
 /**
  * 判断 assistant 消息是否为用户终止的未完成回复。
- * stop 时末 part 常保留 state=streaming；首包前终止则 parts 为空。
+ * 完整消息须同时满足：非空正文 text（reasoning 不算）且最后一条 text part 的 state 为 done。
+ * 修复：旧逻辑只认末 part 仍 streaming，reasoning 已 done、尚无正文时刷新会丢「已停止」标记。
  */
 export function isMessageStopped(message: UIMessage): boolean {
   if (message.role !== 'assistant') return false;
 
-  const parts = message.parts;
-  if (!parts?.length) return true;
+  const lastText = message.parts?.findLast(isTextUIPart);
+  const body = getPartsText(message, 'text').trim();
 
-  const lastPart = parts.at(-1);
-  if (!lastPart) return true;
-
-  if (isReasoningUIPart(lastPart) && lastPart.state === 'streaming') return true;
-  if (isTextUIPart(lastPart) && lastPart.state === 'streaming') return true;
-  if (
-    isToolUIPart(lastPart) &&
-    (lastPart.state === 'input-streaming' || lastPart.state === 'input-available')
-  ) {
-    return true;
-  }
-
-  return false;
+  return !(body && lastText?.state === 'done');
 }
 
 /** autoScroll 下贴底时 scrollTop≈0；不做正/倒序双分支 */
