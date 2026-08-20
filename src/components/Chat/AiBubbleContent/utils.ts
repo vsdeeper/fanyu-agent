@@ -10,6 +10,64 @@ export type AiBubbleContentProps = {
   messageParts: ReadonlyArray<MessagePart> | undefined;
 };
 
+/** 「参考来源」标题在正文中的起始位置（取最后一个匹配） */
+type ReferenceSectionStart = { lineIndex: number; col: number };
+
+const MD_LINK_LINE_RE = /^\s*(?:[-*]|\d+\.)?\s*\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)\s*$/;
+
+/**
+ * 定位全文最后一个「参考来源」标题的起始位置。
+ * 与 stripReferenceSection 共用同一套标题识别规则。
+ */
+function findReferenceSectionStart(text: string): ReferenceSectionStart | null {
+  const lines = text.split('\n');
+  let cutIndex = -1;
+  let cutCol = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const normalized = line.replace(/[#*>`\s：:]/g, '').trim();
+    if (normalized === '参考来源') {
+      cutIndex = i;
+      cutCol = 0;
+      continue;
+    }
+    const trailing = /[*#>`_\s]*参考来源[*#>`_：:\s]*$/.exec(line);
+    if (trailing && trailing.index != null) {
+      cutIndex = i;
+      cutCol = trailing.index;
+    }
+  }
+
+  if (cutIndex === -1) return null;
+  return { lineIndex: cutIndex, col: cutCol };
+}
+
+/**
+ * 从「参考来源」标题之后抽取连续 Markdown 链接行（空行可跳过，遇非链接正文即停）。
+ */
+function extractMarkdownLinksFromReferenceSection(
+  text: string,
+): Array<{ title: string; url: string }> {
+  const start = findReferenceSectionStart(text);
+  if (!start) return [];
+
+  const lines = text.split('\n');
+  const links: Array<{ title: string; url: string }> = [];
+
+  for (let i = start.lineIndex + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+
+    const match = MD_LINK_LINE_RE.exec(line);
+    if (!match) break;
+
+    links.push({ title: match[1] || match[2], url: match[2] });
+  }
+
+  return links;
+}
+
 export function getSourceItems(
   messageParts: ReadonlyArray<MessagePart> | undefined,
   text: string,
@@ -27,12 +85,13 @@ export function getSourceItems(
     });
   };
 
-  // 修复：Markdown 链接先于 source-url parts 执行，确保模型明确标注的标题优先生效
-  // （source-url parts 的 title 可能回退为裸 URL，先执行会在 Map 中抢占位置）
-  const mdLinkRe = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
-  let match: RegExpExecArray | null;
-  while ((match = mdLinkRe.exec(text)) !== null) {
-    add(match[2], match[1] || match[2]);
+  const hasReferenceSection = findReferenceSectionStart(text) != null;
+
+  if (hasReferenceSection) {
+    for (const link of extractMarkdownLinksFromReferenceSection(text)) {
+      add(link.url, link.title);
+    }
+    return Array.from(byUrl.values());
   }
 
   for (const part of messageParts ?? []) {
@@ -110,31 +169,13 @@ export function openSourceUrl(item: { url?: string }) {
  * 只裁最后一个标题及之后内容，防止正文中间误现该词时误删主文。
  */
 export function stripReferenceSection(text: string): string {
+  const start = findReferenceSectionStart(text);
+  if (!start) return text;
+
   const lines = text.split('\n');
-  let cutIndex = -1;
-  let cutCol = 0;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    // 修复：逐行归一化后比对，避免硬编码标题格式变体
-    const normalized = line.replace(/[#*>`\s：:]/g, '').trim();
-    if (normalized === '参考来源') {
-      cutIndex = i;
-      cutCol = 0;
-      continue;
-    }
-    // 修复：标题粘在末句行尾时（尽量减少**参考来源：**）仍须切开
-    const trailing = /[*#>`_\s]*参考来源[*#>`_：:\s]*$/.exec(line);
-    if (trailing && trailing.index != null) {
-      cutIndex = i;
-      cutCol = trailing.index;
-    }
-  }
-
-  if (cutIndex === -1) return text;
-
-  const kept = lines.slice(0, cutIndex);
-  const prefix = lines[cutIndex]
-    .slice(0, cutCol)
+  const kept = lines.slice(0, start.lineIndex);
+  const prefix = lines[start.lineIndex]
+    .slice(0, start.col)
     .replace(/[\s\-*>#]+$/u, '')
     .trimEnd();
   if (prefix) kept.push(prefix);

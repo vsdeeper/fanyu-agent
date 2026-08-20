@@ -2,4 +2,5 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin: var(--one-margin-xs) 0;
 }

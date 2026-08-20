@@ -9,7 +9,7 @@ export const brandkit: Skill = {
   id: 'brandkit',
   name: '品牌规范板',
   description: '生成高端品牌视觉规范板：logo 系统、版式、暗色科技 / 奢侈 / 文化风',
-  icon: '🎨',
+  // icon: '🎨',
   instructions: `以资深品牌艺术指导身份生成品牌视觉规范板（brand-guidelines deck）。整体必须：有意图、高级、克制、连贯、策略性、可直接上稿；不生成泛化 logo、随机 mockup、AI 拼贴 moodboard。
 
 【先定品牌策略】动笔前推断：品类 / 受众 / 产品功能 / 情感承诺 / 文化定位 / 信任层级 / 视觉世界 / 象征隐喻 / 品牌应避免什么。视觉系统必须基于意义，符号不可随机挑选。

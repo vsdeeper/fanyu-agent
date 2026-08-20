@@ -87,8 +87,15 @@ export async function streamChatResponse({
   // 指令并入 baseInstructions，保证后续消息持续受约束；与令牌原位展开互补。
   const activeSkills = resolveActiveSkills(messages);
 
+  const stoppedTaskHint = [
+    '对话规则：',
+    '- 只回答用户最新一条消息所问的问题',
+    '- 历史中若存在用户已停止的未完成助手回复，视为该轮任务已取消',
+    '- 不要续写、补答或总结那些已停止的任务，也不要在回复末尾询问是否继续执行旧任务',
+  ].join('\n');
+
   // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${IMAGE_SYSTEM_HINT}`;
+  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${IMAGE_SYSTEM_HINT}`;
   const withSkill = activeSkills.length
     ? `${baseInstructions}\n\n【当前生效 Skills：${activeSkills
         .map((skill) => skill.name)
