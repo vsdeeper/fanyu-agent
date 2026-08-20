@@ -13,7 +13,12 @@ import type { UserLocation } from '@/lib/geo/types';
 import { dropIncompleteToolParts, sanitizeFilePartsForModel } from '@/lib/chat/sanitize-messages';
 import { saveChat } from '@/lib/chat/store';
 import { selectModel } from '@/lib/chat/select-model';
-import { createGenerateImageTool, IMAGE_SYSTEM_HINT } from '@/lib/images/generate-image-tool';
+import {
+  createGenerateImageTool,
+  getLatestUserImageDataUrl,
+  IMAGE_SYSTEM_HINT,
+  PASTE_IMAGE_EDIT_HINT,
+} from '@/lib/images/generate-image-tool';
 import { resolveActiveSkills } from '@/lib/skills/context';
 import { expandSkillTokensInText } from '@/lib/skills/expand';
 import { getChatProvider } from './providers/config';
@@ -39,8 +44,10 @@ export async function streamChatResponse({
   const { modelId, tier } = await selectModel(messages, provider);
   const client = runtime.getClient();
 
+  const pastedImageDataUrl = getLatestUserImageDataUrl(messages);
+
   const tools = {
-    generate_image: createGenerateImageTool(chatId),
+    generate_image: createGenerateImageTool(chatId, pastedImageDataUrl),
     web_search: client.tools.webSearch(runtime.getWebSearchArgs(userLocation)),
   };
 
@@ -94,8 +101,10 @@ export async function streamChatResponse({
     '- 不要续写、补答或总结那些已停止的任务，也不要在回复末尾询问是否继续执行旧任务',
   ].join('\n');
 
+  const imageContextHint = pastedImageDataUrl ? `\n\n${PASTE_IMAGE_EDIT_HINT}` : '';
+
   // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${IMAGE_SYSTEM_HINT}`;
+  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${IMAGE_SYSTEM_HINT}${imageContextHint}`;
   const withSkill = activeSkills.length
     ? `${baseInstructions}\n\n【当前生效 Skills：${activeSkills
         .map((skill) => skill.name)
