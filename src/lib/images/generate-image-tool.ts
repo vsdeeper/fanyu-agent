@@ -111,8 +111,7 @@ export function createGenerateImageTool(chatId: string) {
       }
       return {
         type: 'text',
-        value:
-          '图片已生成，界面会自动展示。请用简短文字向用户说明，不要在正文中插入 Markdown 图片、图片 URL 或 /api/images 链接。',
+        value: `图片已生成，assetId 为 ${output.assetId}。改图时请将该 id 放入 sourceAssetIds。界面会自动展示，请用简短文字向用户说明，不要在正文中插入 Markdown 图片、图片 URL 或 /api/images 链接。`,
       };
     },
   });
