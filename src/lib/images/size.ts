@@ -1,13 +1,13 @@
 import type { ImageSizeSpec } from './types';
 
-/** 当前生图模型；换接入点改此处并同步 IMAGE_SIZE_BY_MODEL_ID 的 key */
+/** 当前生图模型；换接入点改此 ID，并更新本表对应规格（presets / 像素上下限） */
 export const CURRENT_IMAGE_MODEL_ID = 'doubao-seedream-5-0-lite-260128';
 
-/** 模型 ID → 尺寸规格。新增模型须同时改 registry 与本表。 */
+/** 模型 ID → 尺寸规格。新增模型须同时改 registry 与本表，勿只改一处。 */
 export const IMAGE_SIZE_BY_MODEL_ID: Record<string, ImageSizeSpec> = {
   [CURRENT_IMAGE_MODEL_ID]: {
     presets: ['2K', '4K'],
-    minPixels: 3_686_400,
+    minPixels: 3_686_400, // 1920×1920，Seedream 可出图下限
     maxPixels: 4096 * 4096,
     defaultSize: '2K',
   },
@@ -17,7 +17,7 @@ export const IMAGE_SIZE_BY_MODEL_ID: Record<string, ImageSizeSpec> = {
 };
 
 /**
- * 查模型尺寸规格；未登记则抛错，避免漏配时套用错误档位。
+ * 按模型 ID 取尺寸规格。未登记则抛错，避免漏配时套用其他模型档位。
  */
 export function getSizeSpec(modelId: string): ImageSizeSpec {
   const spec = IMAGE_SIZE_BY_MODEL_ID[modelId.trim()];
@@ -27,7 +27,7 @@ export function getSizeSpec(modelId: string): ImageSizeSpec {
   return spec;
 }
 
-/** 解析 `WIDTHxHEIGHT` 像素尺寸；格式非法返回 null */
+/** 解析 WIDTHxHEIGHT；非法或非正整数返回 null */
 export function parsePixelSize(value: string): { width: number; height: number } | null {
   const match = /^(\d+)x(\d+)$/i.exec(value.trim());
   if (!match) return null;
@@ -39,13 +39,16 @@ export function parsePixelSize(value: string): { width: number; height: number }
   return { width, height };
 }
 
-/** 是否为该 spec 允许的预设档位（大小写不敏感） */
+/** 匹配 spec 预设档位；大小写不敏感，返回 spec 中的规范写法 */
 function matchPreset(value: string, spec: ImageSizeSpec): string | undefined {
   const upper = value.trim().toUpperCase();
   return spec.presets.find((preset) => preset.toUpperCase() === upper);
 }
 
-/** 该 size 是否符合 spec：预设档位，或（有像素上下限时）区间内的 WxH */
+/**
+ * 校验 size 是否可出站：预设档位，或 spec 有像素上下限时落在区间内的 WxH。
+ * 无像素区间的模型只接受预设，自定义 WxH 视为非法。
+ */
 export function isValidImageSize(value: string, spec: ImageSizeSpec): boolean {
   const trimmed = value.trim();
   if (matchPreset(trimmed, spec)) return true;
@@ -57,7 +60,7 @@ export function isValidImageSize(value: string, spec: ImageSizeSpec): boolean {
 }
 
 /**
- * 归一化 size：合法则原样（预设统一成 spec 中的写法），否则回退 spec.defaultSize。
+ * 将 size 规范为可出站值：预设统一成 spec 写法，合法 WxH 原样，否则 defaultSize。
  * 修复：过小尺寸（如 1024x1024）透传上游会 400，非法值不得出站。
  */
 export function normalizeImageSize(size: string | undefined, spec: ImageSizeSpec): string {
@@ -69,7 +72,7 @@ export function normalizeImageSize(size: string | undefined, spec: ImageSizeSpec
   return spec.defaultSize;
 }
 
-/** 供工具 schema / HINT 使用的尺寸说明 */
+/** 生成工具 schema / HINT 用的尺寸说明文案 */
 export function describeImageSize(spec: ImageSizeSpec): string {
   const presets = spec.presets.join('、');
   if (spec.minPixels != null && spec.maxPixels != null) {

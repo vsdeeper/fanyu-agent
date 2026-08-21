@@ -51,8 +51,9 @@ function decodeDataUrl(url: string): Buffer {
 }
 
 /**
- * 归一化模型入参里的 file part：text/* 与 .docx 解码为 text part 供模型阅读，
- * 其余不支持类型（.doc 等二进制）从入参剔除；image/*、application/pdf 原样保留。
+ * 归一化模型入参里的 file part：text/* 与 .docx 解码为 text part 供模型阅读；
+ * image/* 换成短文本占位（主模型无视觉，像素只走 analyze_image / generate_image）；
+ * application/pdf 原样保留；其余不支持类型（.doc 等二进制）从入参剔除。
  *
  * 修复：方舟 Responses 只接受 application/pdf 的内联 file part，text/markdown 等会抛
  * UnsupportedFunctionalityError（AI SDK 在消息→请求体转换阶段硬抛，早于 fetch，request-patch 拦不到）。
@@ -76,7 +77,11 @@ export async function sanitizeFilePartsForModel(messages: UIMessage[]): Promise<
           }
 
           const mediaType = part.mediaType;
-          const keepable = mediaType.startsWith('image/') || mediaType === 'application/pdf';
+          if (mediaType.startsWith('image/')) {
+            return imageFilePartToPlaceholder(part.filename);
+          }
+
+          const keepable = mediaType === 'application/pdf';
           const inlinable = mediaType.startsWith('text/') || mediaType === DOCX_MEDIA_TYPE;
 
           if (!inlinable) {
@@ -95,8 +100,8 @@ export async function sanitizeFilePartsForModel(messages: UIMessage[]): Promise<
                 : bytes.toString('utf-8');
             const filename = part.filename?.trim();
             return filename
-              ? { type: 'text', text: `附件「${filename}」：\n${text}` }
-              : { type: 'text', text };
+              ? { type: 'text' as const, text: `附件「${filename}」：\n${text}` }
+              : { type: 'text' as const, text };
           } catch {
             return null; // 损坏/不可解析 → 从模型入参剔除，勿抛错中断流式
           }
@@ -110,4 +115,15 @@ export async function sanitizeFilePartsForModel(messages: UIMessage[]): Promise<
       return { ...message, parts: cleaned };
     }),
   );
+}
+
+/** 主模型入参中的图片占位：保留「有图」信号，不发送像素 */
+function imageFilePartToPlaceholder(filename: string | undefined): { type: 'text'; text: string } {
+  const name = filename?.trim();
+  return {
+    type: 'text',
+    text: name
+      ? `本轮含图片附件「${name}」，请用 analyze_image 查看`
+      : '本轮含图片附件，请用 analyze_image 查看',
+  };
 }

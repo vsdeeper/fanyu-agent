@@ -7,7 +7,7 @@ import { normalizeArkResponsesSse } from './sse';
 let instance: ReturnType<typeof createOpenAI> | undefined;
 
 /**
- * 惰性构造方舟客户端：仅当 CHAT_PROVIDER=ark 时才读取 ARK_* 环境变量。
+ * 惰性构造方舟客户端：主对话 CHAT_PROVIDER=ark、以及识图 analyze_image（始终走方舟视觉模型）时读取 ARK_*。
  * 自定义 fetch 负责出站请求修补（兼容方舟 Responses API）与入站 SSE 归一化（注入 annotation.added）。
  */
 export function getArkClient() {

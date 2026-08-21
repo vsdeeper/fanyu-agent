@@ -1,4 +1,4 @@
-import { IMAGE_TOOL_PASTE_SOURCE_ERROR } from '@/lib/images/types';
+import { IMAGE_TOOL_PASTE_SOURCE_ERROR } from '@/lib/tools/types';
 
 export type GenerateImageOutput = {
   ok?: boolean;

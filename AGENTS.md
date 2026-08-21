@@ -99,7 +99,7 @@ src/
     images/
       assets.ts            # 生图资源落盘与元数据
       serve-asset.ts       # GET /api/images/[assetId] 业务逻辑
-      generate-image-tool.ts / router.ts / registry.ts / size.ts / providers/
+      vision.ts / router.ts / registry.ts / size.ts / providers/
     geo/
       types.ts             # UserLocation 类型
       parse-request.ts     # 请求体 / userLocation 校验
@@ -109,6 +109,9 @@ src/
     skills/
       types.ts / registry.ts / expand.ts / parse-tokens.ts / context.ts / format-tag-label.ts
       catalog/             # skill 定义（每条 skill 一个文件；新增时复制 catalog/_template.ts）
+    tools/
+      types.ts / registry.ts / pasted-image.ts
+      catalog/             # 每条 tool 一个文件；新增时对照已有条目实现 AgentToolDefinition，再在 registry TOOLS 追加
     shared/
       api-client.ts / api-response.ts / env.ts  # 横切基础设施
 public/
@@ -126,7 +129,7 @@ drizzle/                   # SQL migrations（drizzle-kit generate）
 | `app/api/chat/`                         | `lib/chat/`   | 流式对话、会话提交            |
 | `app/api/chats/`、`app/api/chats/[id]/` | `lib/chat/`   | 会话列表 / 新建 / 读取 / 删除 |
 | `app/api/geo/`                          | `lib/geo/`    | 逆地理、UserLocation          |
-| `app/api/images/`                       | `lib/images/` | 生图资源、tool、Provider      |
+| `app/api/images/`                       | `lib/images/` | 生图资源、Provider            |
 
 **Route Handler（`route.ts`）职责上限：**
 
