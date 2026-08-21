@@ -110,7 +110,7 @@ src/
       types.ts / registry.ts / expand.ts / parse-tokens.ts / context.ts / format-tag-label.ts
       catalog/             # skill 定义（每条 skill 一个文件；新增时复制 catalog/_template.ts）
     tools/
-      types.ts / registry.ts / pasted-image.ts
+      types.ts / constants.ts / registry.ts / pasted-image.ts
       catalog/             # 每条 tool 一个文件；新增时对照已有条目实现 AgentToolDefinition，再在 registry TOOLS 追加
     shared/
       api-client.ts / api-response.ts / env.ts  # 横切基础设施
@@ -145,11 +145,13 @@ drizzle/                   # SQL migrations（drizzle-kit generate）
 - `store.ts` / `assets.ts` — 持久化与领域存储
 - `providers/<name>/` — 第三方模型/SDK 适配（client、request-patch、sse 等）；后期新 Provider 增同级目录
 - `client.ts` — 仅浏览器端调用该域 API 的封装（如 `lib/geo/client.ts`）
+- `types.ts` — **仅**类型（`type` / `interface` / `enum` 作类型用）；**勿**在此放运行时常量、文案字符串、配置值
+- `constants.ts` — 域内运行时常量（错误文案、魔法字符串、配置默认值、Set/Map 常量等）；与 `types.ts` 分离，跨文件从本域 `constants` 导入
 
 **跨域复用：**
 
 - 横切工具放 `lib/shared/`（`env`、`api-response`、`api-client`）
-- 某域类型/校验被其他域引用时，从 **`lib/<域>/types.ts`** 或 **`lib/<域>/parse-request.ts`** 导入，勿再塞回 `lib/shared/` 除非 truly 全局
+- 某域类型/校验被其他域引用时，从 **`lib/<域>/types.ts`** 或 **`lib/<域>/parse-request.ts`** 导入；域内常量从 **`lib/<域>/constants.ts`** 导入；勿再塞回 `lib/shared/` 除非 truly 全局
 
 **页面路由（非 API）：**
 
@@ -230,6 +232,7 @@ Button/
 - **不引入 Tailwind**；样式优先 CSS Modules 与 Ant Design / Ant Design X
 - 组件目录遵循上文「组件目录约定」（子组件拆离并同步带走样式/方法/常量、主文件不定义方法与专属常量、`utils.ts` / `constants.ts` 维护、`ComponentName.tsx` + 同名 `.module.css`）
 - **App Router 与 lib 分层**遵循上文「App Router 与 lib 分层约定」：`app/` 仅路由壳，业务在 `lib/<域>/`，`app/api/<域>` 对应 `lib/<域>`
+- **`lib/<域>/types.ts` 与 `constants.ts` 分离**：`types.ts` 只导出类型；运行时常量、错误/提示文案、配置默认值放同域 `constants.ts`（与组件目录的 `constants.ts` 约定一致）；勿在 `types.ts` 写 `export const`
 - App Router 下避免 `Bubble.List` 这类点号子组件写法，改为从独立路径导入（如 `@ant-design/x/es/bubble/BubbleList`）
 - 完成修改后对改动文件执行格式化（`pnpm run format` 或依赖 lint-staged）
 - 提交前由 lint-staged 检查暂存文件

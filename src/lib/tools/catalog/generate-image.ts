@@ -12,11 +12,8 @@ import {
 import { getCurrentImageModelId } from '@/lib/images/registry';
 import { generateImageViaRouter, resolveImageModelId } from '@/lib/images/router';
 import { describeImageSize, getSizeSpec, isValidImageSize } from '@/lib/images/size';
-import {
-  IMAGE_TOOL_INTERRUPTED_ERROR,
-  IMAGE_TOOL_PASTE_SOURCE_ERROR,
-  type AgentToolDefinition,
-} from '@/lib/tools/types';
+import { IMAGE_TOOL_INTERRUPTED_ERROR, IMAGE_TOOL_PASTE_SOURCE_ERROR } from '@/lib/tools/constants';
+import type { AgentToolDefinition } from '@/lib/tools/types';
 
 const SIZE_FORMAT_PATTERN = /^\d+(?:\.\d+)?K$|^\d+x\d+$/i;
 

@@ -1,6 +1,6 @@
 import { isFileUIPart, isToolUIPart, type UIMessage } from 'ai';
 import mammoth from 'mammoth';
-import { IMAGE_TOOL_INTERRUPTED_ERROR } from '@/lib/tools/types';
+import { IMAGE_TOOL_INTERRUPTED_ERROR } from '@/lib/tools/constants';
 
 const GENERIC_TOOL_INTERRUPTED_ERROR = '已中断';
 
