@@ -6,7 +6,7 @@
 
 <!-- END:nextjs-agent-rules -->
 
-# OneAgent
+# FanyuAgent
 
 > AI 对话语言默认使用中文简体。
 

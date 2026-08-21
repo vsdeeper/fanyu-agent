@@ -7,7 +7,7 @@ import type { ResolvedThemeMode } from '@/components/theme/constants';
 import './global.css';
 
 export const metadata: Metadata = {
-  title: 'OneAgent',
+  title: 'FanyuAgent',
   description: 'Vercel AI SDK + Next.js + @ant-design/x',
 };
 
