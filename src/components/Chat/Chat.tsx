@@ -4,11 +4,10 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { BubbleItemType, Welcome } from '@ant-design/x';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
-import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport, type UIMessage } from 'ai';
+import { useChat, type Chat as ChatInstance } from '@ai-sdk/react';
+import type { UIMessage } from 'ai';
 import { CommentOutlined, DownOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
-import { useRouter } from 'next/navigation';
 import { getUserLocation } from '@/lib/geo/client';
 import { resolveActiveSkillIds } from '@/lib/skills/context';
 import AiBubbleContent from './AiBubbleContent';
@@ -17,79 +16,38 @@ import UserBubbleContent from './UserBubbleContent';
 import styles from './Chat.module.css';
 import { bubbleRole } from './constants';
 import {
+  collectStoppedMessageIds,
   getPartsText,
   isMessageStopped,
   isNearBottom,
-  prepareSendMessagesRequest,
   submitChatMessage,
 } from './utils';
 
 type ChatProps = {
-  id: string;
-  initialMessages: UIMessage[];
+  chat: ChatInstance<UIMessage>;
   isDraft?: boolean;
   onFirstMessageSent?: () => void;
 };
 
-export default function Chat({
-  id,
-  initialMessages,
-  isDraft = false,
-  onFirstMessageSent,
-}: ChatProps) {
-  const router = useRouter();
-  const [chatId, setChatId] = useState(id);
+export default function Chat({ chat, isDraft = false, onFirstMessageSent }: ChatProps) {
+  const id = chat.id;
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   // 修复：激活 skill 集合作为会话上下文——挂载时从历史（messages.data 已落盘 metadata.skillIds）恢复，
   // 刷新后 Tags 仍显示；chat 切换靠 key remount 自然重置
   const [activeSkillIds, setActiveSkillIds] = useState<string[]>(
-    () => resolveActiveSkillIds(initialMessages) ?? [],
+    () => resolveActiveSkillIds(chat.messages) ?? [],
   );
   const chatRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<BubbleListRef>(null);
   const sentOnceRef = useRef(false);
-  const [stoppedMessageIds, setStoppedMessageIds] = useState<ReadonlySet<string>>(() => {
-    const detected = new Set<string>();
-    for (const message of initialMessages) {
-      if (isMessageStopped(message)) {
-        detected.add(message.id);
-      }
-    }
-    return detected;
-  });
-
-  // 切换会话：贴底隐藏「滚动到底部」，并从历史消息恢复终止标记
-  if (id !== chatId) {
-    setChatId(id);
-    setShowScrollBottom(false);
-    const detected = new Set<string>();
-    for (const message of initialMessages) {
-      if (isMessageStopped(message)) {
-        detected.add(message.id);
-      }
-    }
-    setStoppedMessageIds(detected);
-  }
-
-  // 修复：transport 只建一次；请求组装见 utils.prepareSendMessagesRequest
-  const [transport] = useState(
-    () =>
-      new DefaultChatTransport({
-        api: '/api/chat',
-        prepareSendMessagesRequest,
-      }),
+  const [stoppedMessageIds, setStoppedMessageIds] = useState<ReadonlySet<string>>(() =>
+    collectStoppedMessageIds(chat.messages),
   );
 
   const { messages, sendMessage, status, stop } = useChat({
-    id,
-    messages: initialMessages,
-    transport,
+    chat,
     throttle: 100,
-    onFinish: () => {
-      // 落盘后刷新 layout，侧栏标题/分组才会更新（含 stop 半截落盘）
-      router.refresh();
-    },
   });
 
   // 进页后台预取定位（浏览器原生授权）；提交只读缓存，避免 await 阻塞发送

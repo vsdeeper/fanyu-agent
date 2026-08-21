@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition, type ReactNode } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { generateId, type UIMessage } from 'ai';
 import { MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
@@ -19,6 +11,7 @@ import { resolveChatRouteId } from '@/lib/chat/route';
 import Chat from '@/components/Chat';
 import ChatSidebar from '@/components/ChatSidebar';
 import ModeSwitch from '@/components/ModeSwitch';
+import { peekChat, resolveRouteChat } from './chat-registry';
 import styles from './ChatShell.module.css';
 
 type ChatShellProps = {
@@ -35,28 +28,28 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
 
   const [draftChatId, setDraftChatId] = useState(() => generateId());
   const [hydratedMessages, setHydratedMessages] = useState<UIMessage[] | null>(null);
-  const [loadingChat, setLoadingChat] = useState(false);
+  const [hydratedChatId, setHydratedChatId] = useState<string | undefined>();
   const [collapsed, setCollapsed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [anchorChatId, setAnchorChatId] = useState<string | undefined>();
   const [, startTransition] = useTransition();
 
-  const promotedFromDraftRef = useRef(false);
-
   const effectiveChatId = isDraftRoute ? draftChatId : routeChatId;
 
-  // 非草稿路由 hydrate；draft→同 id 晋升时跳过 refetch，避免打断 useChat 流
+  // 路由已变且目标不在缓存时，立刻丢掉上一会话的 hydrate，避免用错消息新建 Chat
+  if (!isDraftRoute && routeChatId !== hydratedChatId) {
+    setHydratedChatId(routeChatId);
+    if (!routeChatId || !peekChat(routeChatId)) {
+      setHydratedMessages(null);
+    }
+  }
+
+  // 非草稿路由 hydrate；registry 已有实例（含 draft→同 id 晋升、切回进行中流）时跳过 refetch
   useEffect(() => {
     if (isDraftRoute || !routeChatId) return;
-
-    if (promotedFromDraftRef.current) {
-      promotedFromDraftRef.current = false;
-      return;
-    }
+    if (peekChat(routeChatId)) return;
 
     let cancelled = false;
-    setLoadingChat(true);
-    setHydratedMessages(null);
 
     void apiGet<ChatRecord>(`/api/chats/${routeChatId}`)
       .then((data) => {
@@ -64,15 +57,21 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
       })
       .catch(() => {
         if (!cancelled) setHydratedMessages([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingChat(false);
       });
 
     return () => {
       cancelled = true;
     };
   }, [isDraftRoute, routeChatId]);
+
+  const chat = resolveRouteChat({
+    chatId: effectiveChatId,
+    isDraft: isDraftRoute,
+    hydratedMessages,
+    onFinish: () => {
+      router.refresh();
+    },
+  });
 
   const activeChatId = routeChatId ?? '';
 
@@ -100,15 +99,12 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
 
   const handleFirstMessageSent = useCallback(() => {
     if (!isDraftRoute) return;
-    promotedFromDraftRef.current = true;
     setAnchorChatId(effectiveChatId);
     startTransition(() => {
       router.replace(`/chat/${effectiveChatId}`);
       router.refresh();
     });
   }, [effectiveChatId, isDraftRoute, router]);
-
-  const chatReady = isDraftRoute || hydratedMessages !== null;
 
   return (
     // 修复：布局壳必须用 antd Layout（Header/Content/Sider），组件级 token 才惰性输出为
@@ -161,15 +157,14 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
           <ModeSwitch />
         </Layout.Header>
         <Layout.Content className={styles.content}>
-          {!chatReady || loadingChat ? (
+          {!chat ? (
             <div className={styles.loading}>
               <Spin />
             </div>
           ) : (
             <Chat
               key={effectiveChatId}
-              id={effectiveChatId}
-              initialMessages={isDraftRoute ? [] : hydratedMessages!}
+              chat={chat}
               isDraft={isDraftRoute}
               onFirstMessageSent={handleFirstMessageSent}
             />

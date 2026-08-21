@@ -38,6 +38,17 @@ export function isMessageStopped(message: UIMessage): boolean {
   return !(body && lastText?.state === 'done');
 }
 
+/** 从消息列表收集已停止的 assistant 消息 id */
+export function collectStoppedMessageIds(messages: ReadonlyArray<UIMessage>): Set<string> {
+  const detected = new Set<string>();
+  for (const message of messages) {
+    if (isMessageStopped(message)) {
+      detected.add(message.id);
+    }
+  }
+  return detected;
+}
+
 /** autoScroll 下贴底时 scrollTop≈0；不做正/倒序双分支 */
 export function isNearBottom(el: HTMLElement, threshold = 40) {
   return Math.abs(el.scrollTop) <= threshold;
