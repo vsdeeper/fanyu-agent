@@ -28,9 +28,8 @@ function GenerateImageItem({ part }: { part: MessagePart }) {
   if (isGenerateImageFailed(state, output)) {
     return (
       <AiImage
-        src="error"
+        src={FALLBACK_ICON_SRC}
         size={120}
-        fallback={FALLBACK_ICON_SRC}
         alt="图片生成失败"
         preview={false}
         classNames={AI_IMAGE_FAILED_CLASS_NAMES}

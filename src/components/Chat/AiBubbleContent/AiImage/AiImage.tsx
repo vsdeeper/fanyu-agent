@@ -2,7 +2,7 @@
 
 import { Image, Skeleton } from 'antd';
 import type { ImageProps } from 'antd';
-import { AI_IMAGE_CLASS_NAMES } from './constants';
+import { AI_IMAGE_CLASS_NAMES, FALLBACK_ICON_SRC } from './constants';
 
 export type AiImageProps = ImageProps & {
   size?: number;
@@ -25,6 +25,7 @@ export default function AiImage({
       alt={alt}
       preview={preview ?? { mask: '预览' }}
       placeholder={placeholder ?? <Skeleton.Image active style={{ width: size, height: size }} />}
+      fallback={FALLBACK_ICON_SRC}
       styles={imageStyles}
       {...rest}
     />
