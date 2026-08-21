@@ -12,7 +12,11 @@ import {
 import { getCurrentImageModelId } from '@/lib/images/registry';
 import { generateImageViaRouter, resolveImageModelId } from '@/lib/images/router';
 import { describeImageSize, getSizeSpec, isValidImageSize } from '@/lib/images/size';
-import { IMAGE_TOOL_PASTE_SOURCE_ERROR, type AgentToolDefinition } from '@/lib/tools/types';
+import {
+  IMAGE_TOOL_INTERRUPTED_ERROR,
+  IMAGE_TOOL_PASTE_SOURCE_ERROR,
+  type AgentToolDefinition,
+} from '@/lib/tools/types';
 
 const SIZE_FORMAT_PATTERN = /^\d+(?:\.\d+)?K$|^\d+x\d+$/i;
 
@@ -80,15 +84,15 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrl?: string) {
         .optional()
         .describe('仅当用户明确要求透明背景、去底、抠图或 PNG alpha 时为 true'),
     }),
-    execute: async ({
-      mode,
-      prompt,
-      model,
-      sourceAssetIds,
-      size,
-      transparent,
-    }): Promise<ImageToolResult> => {
+    execute: async (
+      { mode, prompt, model, sourceAssetIds, size, transparent },
+      { abortSignal },
+    ): Promise<ImageToolResult> => {
       try {
+        if (abortSignal?.aborted) {
+          return { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR };
+        }
+
         let parentId: string | null = null;
         let referenceImageDataUrls: string[] | undefined;
 
@@ -133,6 +137,11 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrl?: string) {
           transparent,
         });
 
+        // 请求已中断则不落盘，避免无消息引用的孤儿图
+        if (abortSignal?.aborted) {
+          return { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR };
+        }
+
         const first = result.images[0];
         if (!first) {
           return { ok: false, error: '生图服务未返回图片' };
@@ -155,6 +164,9 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrl?: string) {
           parentId: asset.parentId,
         };
       } catch (err) {
+        if (abortSignal?.aborted) {
+          return { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR };
+        }
         console.error('[generate_image]', err);
         return { ok: false, error: '生图服务暂不可用，请稍后重试' };
       }

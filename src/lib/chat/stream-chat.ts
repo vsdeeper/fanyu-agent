@@ -10,7 +10,11 @@ import {
 } from 'ai';
 
 import type { UserLocation } from '@/lib/geo/types';
-import { dropIncompleteToolParts, sanitizeFilePartsForModel } from '@/lib/chat/sanitize-messages';
+import {
+  finalizeIncompleteToolParts,
+  markLastAssistantStopped,
+  sanitizeFilePartsForModel,
+} from '@/lib/chat/sanitize-messages';
 import { saveChat } from '@/lib/chat/store';
 import { selectModel } from '@/lib/chat/select-model';
 import { getLatestUserImageDataUrl } from '@/lib/tools/pasted-image';
@@ -155,8 +159,12 @@ export async function streamChatResponse({
       sendSources: true,
       originalMessages: messages,
       generateMessageId,
-      onEnd: ({ messages: nextMessages }) => {
-        void saveChat({ chatId, messages: dropIncompleteToolParts(nextMessages) });
+      onEnd: async ({ messages: nextMessages, isAborted }) => {
+        let toSave = finalizeIncompleteToolParts(nextMessages);
+        if (isAborted) {
+          toSave = markLastAssistantStopped(toSave);
+        }
+        await saveChat({ chatId, messages: toSave });
       },
     }),
   });

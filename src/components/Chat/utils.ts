@@ -21,11 +21,16 @@ export function getPartsText(
 
 /**
  * 判断 assistant 消息是否为用户终止的未完成回复。
- * 完整消息须同时满足：非空正文 text（reasoning 不算）且最后一条 text part 的 state 为 done。
+ * 优先认落盘的 metadata.stopped（stop/刷新中断 tool）；
+ * 否则完整消息须同时满足：非空正文 text（reasoning 不算）且最后一条 text part 的 state 为 done。
  * 修复：旧逻辑只认末 part 仍 streaming，reasoning 已 done、尚无正文时刷新会丢「已停止」标记。
  */
 export function isMessageStopped(message: UIMessage): boolean {
   if (message.role !== 'assistant') return false;
+
+  if ((message.metadata as { stopped?: boolean } | undefined)?.stopped) {
+    return true;
+  }
 
   const lastText = message.parts?.findLast(isTextUIPart);
   const body = getPartsText(message, 'text').trim();

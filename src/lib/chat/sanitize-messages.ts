@@ -1,28 +1,69 @@
 import { isFileUIPart, isToolUIPart, type UIMessage } from 'ai';
 import mammoth from 'mammoth';
+import { IMAGE_TOOL_INTERRUPTED_ERROR } from '@/lib/tools/types';
+
+const GENERIC_TOOL_INTERRUPTED_ERROR = '已中断';
 
 /**
- * 去掉 assistant 上未完成的 tool part（input-streaming / input-available）。
- * 修复：stop/abort 在 tool 阶段落盘后，下一条请求 convertToModelMessages 会因缺 tool result 抛 MissingToolResultsError。
+ * 把未完成 tool part 收尾为 output-available 失败结果，避免下次 convert 缺 result。
+ * 修复：原先直接删除这些 part，刷新后生图像从未调用，且正文已 done 时无「已停止」提示。
  */
-export function dropIncompleteToolParts(messages: UIMessage[]): UIMessage[] {
+export function finalizeIncompleteToolParts(messages: UIMessage[]): UIMessage[] {
   return messages.map((message) => {
     if (message.role !== 'assistant' || !message.parts?.length) {
       return message;
     }
 
-    const parts = message.parts.filter(
-      (part) =>
+    let finalized = false;
+    const parts = message.parts.map((part) => {
+      if (
         !isToolUIPart(part) ||
-        (part.state !== 'input-streaming' && part.state !== 'input-available'),
-    );
+        (part.state !== 'input-streaming' && part.state !== 'input-available')
+      ) {
+        return part;
+      }
 
-    if (parts.length === message.parts.length) {
+      finalized = true;
+      return {
+        ...part,
+        state: 'output-available' as const,
+        input: part.input,
+        output:
+          part.type === 'tool-generate_image'
+            ? { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR }
+            : { ok: false, error: GENERIC_TOOL_INTERRUPTED_ERROR },
+      };
+    });
+
+    if (!finalized) {
       return message;
     }
 
-    return { ...message, parts };
+    return withStoppedMetadata({ ...message, parts: parts as UIMessage['parts'] });
   });
+}
+
+/**
+ * 给末条 assistant 写入 metadata.stopped，供刷新后展示「这条消息已停止」。
+ */
+export function markLastAssistantStopped(messages: UIMessage[]): UIMessage[] {
+  const last = messages.at(-1);
+  if (!last || last.role !== 'assistant') {
+    return messages;
+  }
+  const next = withStoppedMetadata(last);
+  if (next === last) {
+    return messages;
+  }
+  return [...messages.slice(0, -1), next];
+}
+
+function withStoppedMetadata(message: UIMessage): UIMessage {
+  const metadata = (message.metadata ?? {}) as Record<string, unknown>;
+  if (metadata.stopped === true) {
+    return message;
+  }
+  return { ...message, metadata: { ...metadata, stopped: true } };
 }
 
 const DOCX_MEDIA_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
