@@ -12,7 +12,7 @@ import AiBubbleContent from './AiBubbleContent';
 import ChatSender from './ChatSender';
 import UserBubbleContent from './UserBubbleContent';
 import styles from './Chat.module.css';
-import { bubbleRole } from './constants';
+import { AWAITING_ASSISTANT_BUBBLE_KEY, bubbleRole } from './constants';
 import {
   collectStoppedMessageIds,
   getPartsText,
@@ -91,6 +91,7 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
       const thinking = streaming && !text;
       const stopped =
         isAi && !streaming && (stoppedMessageIds.has(message.id) || isMessageStopped(message));
+      const bubbleLoading = isAwaitingAi && isAi && isLast && !hasVisibleAiContent;
 
       return {
         key: message.id,
@@ -107,7 +108,7 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
           <UserBubbleContent text={text} parts={message.parts} />
         ),
         streaming,
-        loading: isAwaitingAi && isAi && isLast && !hasVisibleAiContent,
+        loading: bubbleLoading,
         classNames: {
           body: isAi ? styles.aiBubbleBody : undefined,
         },
@@ -118,6 +119,30 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
         ) : null,
       };
     });
+
+    const lastMessage = messages.at(-1);
+    // submitted 阶段 SDK 尚未追加 assistant 消息，占位气泡承载 loading
+    if (isAwaitingAi && lastMessage?.role === 'user') {
+      items.push({
+        key: AWAITING_ASSISTANT_BUBBLE_KEY,
+        role: 'ai' as const,
+        content: (
+          <AiBubbleContent
+            text=""
+            reasoning=""
+            streaming={false}
+            thinking={false}
+            messageParts={[]}
+          />
+        ),
+        streaming: false,
+        loading: true,
+        classNames: {
+          body: styles.aiBubbleBody,
+        },
+        footer: null,
+      });
+    }
 
     return items;
   }, [messages, status, stoppedMessageIds]);
