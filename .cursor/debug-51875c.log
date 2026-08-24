@@ -1,0 +1,2 @@
+{"sessionId":"51875c","runId":"post-fix","hypothesisId":"D","location":"ChatShell.tsx:fetch-done","message":"hydrate fetch completed","data":{"routeChatId":"6zHy27TSFl6Gsf0A","messageCount":2,"firstMessageId":"LnSmfmKkkQXjSwNA"},"timestamp":1787554557133}
+{"sessionId":"51875c","runId":"post-fix","hypothesisId":"A","location":"chat-registry.ts:resolveRouteChat","message":"create chat from hydratedMessages","data":{"chatId":"6zHy27TSFl6Gsf0A","hydratedMessageCount":2,"firstMessageId":"LnSmfmKkkQXjSwNA"},"timestamp":1787554557528}

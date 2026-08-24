@@ -36,13 +36,10 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
 
   const effectiveChatId = isDraftRoute ? draftChatId : routeChatId;
 
-  // 路由已变且目标不在缓存时，立刻丢掉上一会话的 hydrate，避免用错消息新建 Chat
-  if (!isDraftRoute && routeChatId !== hydratedChatId) {
-    setHydratedChatId(routeChatId);
-    if (!routeChatId || !peekChat(routeChatId)) {
-      setHydratedMessages(null);
-    }
-  }
+  // 修复：render 内 setState 无法同步清空 hydrate，同帧 resolveRouteChat 仍会读到上一会话消息。
+  // 用派生值同步判定「当前路由是否可消费 hydratedMessages」。
+  const messagesForRoute =
+    isDraftRoute || !routeChatId || routeChatId === hydratedChatId ? hydratedMessages : null;
 
   // 非草稿路由 hydrate；registry 已有实例（含 draft→同 id 晋升、切回进行中流）时跳过 refetch
   useEffect(() => {
@@ -53,10 +50,16 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
 
     void apiGet<ChatRecord>(`/api/chats/${routeChatId}`)
       .then((data) => {
-        if (!cancelled) setHydratedMessages(data.messages);
+        if (!cancelled) {
+          setHydratedChatId(routeChatId);
+          setHydratedMessages(data.messages);
+        }
       })
       .catch(() => {
-        if (!cancelled) setHydratedMessages([]);
+        if (!cancelled) {
+          setHydratedChatId(routeChatId);
+          setHydratedMessages([]);
+        }
       });
 
     return () => {
@@ -67,7 +70,7 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
   const chat = resolveRouteChat({
     chatId: effectiveChatId,
     isDraft: isDraftRoute,
-    hydratedMessages,
+    hydratedMessages: messagesForRoute,
     onFinish: () => {
       router.refresh();
     },
