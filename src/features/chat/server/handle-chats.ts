@@ -1,4 +1,4 @@
-import { createChat, listChats } from '@/lib/chat/server/store';
+import { createChat, listChats } from '@/features/chat/server/store';
 import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
 
 export async function handleListChats(): Promise<Response> {

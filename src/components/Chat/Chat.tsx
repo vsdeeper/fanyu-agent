@@ -6,7 +6,7 @@ import { useChat, type Chat as ChatInstance } from '@ai-sdk/react';
 import type { UIMessage } from 'ai';
 import { CommentOutlined, DownOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
-import { getUserLocation } from '@/lib/geo/client/location';
+import { getUserLocation } from '@/features/geo/client/location';
 import { resolveActiveSkillIds } from '@/lib/skills/context';
 import AiBubbleContent from './AiBubbleContent';
 import ChatSender from './ChatSender';

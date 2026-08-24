@@ -1,12 +1,12 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 
-import { assetToDataUrl, getAsset, getWorkingAsset } from '@/lib/images/assets';
+import { assetToDataUrl, getAsset, getWorkingAsset } from '@/features/images/server/assets';
 import {
   analyzeImage as runAnalyzeImage,
   formatVisionAnalysisText,
   type VisionAnalysis,
-} from '@/lib/images/vision';
+} from '@/features/images/server/vision';
 import type { AgentToolDefinition } from '@/lib/tools/types';
 
 /**

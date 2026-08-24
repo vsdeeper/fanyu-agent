@@ -1,7 +1,7 @@
 import type { createOpenAI } from '@ai-sdk/openai';
 import type { ModelMessage } from 'ai';
 
-import type { UserLocation } from '@/lib/geo/types';
+import type { UserLocation } from '@/features/geo/types';
 
 /** @ai-sdk/openai 客户端实例（Ark / DeepSeek 共用） */
 export type ChatOpenAIClient = ReturnType<typeof createOpenAI>;

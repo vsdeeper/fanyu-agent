@@ -1,6 +1,6 @@
 import { requireEnv } from '@/lib/shared/server/env';
-import type { ImageProvider } from '../types';
-import { getSizeSpec, normalizeImageSize } from '../size';
+import type { ImageProvider } from '../../types';
+import { getSizeSpec, normalizeImageSize } from '../../size';
 
 type ArkImageResponse = {
   data?: Array<{ url?: string; b64_json?: string }>;

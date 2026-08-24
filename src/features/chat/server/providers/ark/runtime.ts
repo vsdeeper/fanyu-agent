@@ -1,4 +1,4 @@
-import type { UserLocation } from '@/lib/geo/types';
+import type { UserLocation } from '@/features/geo/types';
 
 import { getArkClient } from './client';
 import { getArkInstructions } from './instructions';

@@ -1,8 +1,8 @@
 import type { UIMessage } from 'ai';
 
-import { parseUserLocation } from '@/lib/geo/server/parse-request';
-import type { UserLocation } from '@/lib/geo/types';
-import { loadChat, saveChat } from '@/lib/chat/server/store';
+import { parseUserLocation } from '@/features/geo/server/parse-request';
+import type { UserLocation } from '@/features/geo/types';
+import { loadChat, saveChat } from '@/features/chat/server/store';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 import type { ChatPostBody } from './parse-request';
 import { parseChatPostBody } from './parse-request';

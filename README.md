@@ -118,7 +118,7 @@ src/
 
 1. **LLM 显式指定**（最高优先级）— 用户在对话中要求的模型
 2. **继承父图模型** — 多轮改图时沿用上一张图所用模型，保持风格一致
-3. **当前生图模型** — `CURRENT_IMAGE_MODEL_ID`（[`src/lib/images/size.ts`](src/lib/images/size.ts)）
+3. **当前生图模型** — `CURRENT_IMAGE_MODEL_ID`（[`src/features/images/size.ts`](src/features/images/size.ts)）
 
 ### 对话示例
 

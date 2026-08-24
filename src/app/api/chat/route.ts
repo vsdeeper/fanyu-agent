@@ -1,4 +1,4 @@
-import { handleChatApiPost } from '@/lib/chat/server/handle-post';
+import { handleChatApiPost } from '@/features/chat/server/handle-post';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 
 // globalThis.AI_SDK_LOG_WARNINGS = false;

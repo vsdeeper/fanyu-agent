@@ -1,4 +1,4 @@
-import type { UserLocation } from '@/lib/geo/types';
+import type { UserLocation } from '@/features/geo/types';
 
 /**
  * 构建 DeepSeek 专属 instructions（在 baseInstructions 之前追加前缀）。

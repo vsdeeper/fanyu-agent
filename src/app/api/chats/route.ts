@@ -1,4 +1,4 @@
-import { handleCreateChat, handleListChats } from '@/lib/chat/server/handle-chats';
+import { handleCreateChat, handleListChats } from '@/features/chat/server/handle-chats';
 
 export const runtime = 'nodejs';
 

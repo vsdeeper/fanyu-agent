@@ -1,4 +1,4 @@
-import { deleteChat, loadChat } from '@/lib/chat/server/store';
+import { deleteChat, loadChat } from '@/features/chat/server/store';
 import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
 
 export async function handleGetChat(id: string): Promise<Response> {

@@ -9,14 +9,14 @@ import {
   type UIMessage,
 } from 'ai';
 
-import type { UserLocation } from '@/lib/geo/types';
+import type { UserLocation } from '@/features/geo/types';
 import {
   finalizeIncompleteToolParts,
   markLastAssistantStopped,
   sanitizeFilePartsForModel,
-} from '@/lib/chat/server/sanitize-messages';
-import { saveChat } from '@/lib/chat/server/store';
-import { selectModel } from '@/lib/chat/server/select-model';
+} from '@/features/chat/server/sanitize-messages';
+import { saveChat } from '@/features/chat/server/store';
+import { selectModel } from '@/features/chat/server/select-model';
 import { getLatestUserImageDataUrl } from '@/lib/tools/server/pasted-image';
 import { createCatalogTools, getToolHints } from '@/lib/tools/server/registry';
 import { resolveActiveSkills } from '@/lib/skills/server/context';

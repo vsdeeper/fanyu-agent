@@ -75,100 +75,104 @@ commit-msg 由 commitlint（`@commitlint/config-conventional`）校验；pre-com
 src/
   app/                     # 仅 Next.js 路由壳：route / page / layout / 静态资源
     api/
-      chat/route.ts        # → lib/chat/server
-      chats/route.ts       # → lib/chat/server
-      chats/[id]/route.ts  # → lib/chat/server
-      geo/regeo/route.ts   # → lib/geo/server
-      images/[assetId]/route.ts  # → lib/images
+      chat/route.ts        # → features/chat/server
+      chats/route.ts       # → features/chat/server
+      chats/[id]/route.ts  # → features/chat/server
+      geo/regeo/route.ts   # → features/geo/server
+      images/[assetId]/route.ts  # → features/images/server
     chat/layout.tsx
     chat/[[...id]]/page.tsx
     page.tsx
     layout.tsx
     global.css
   components/              # 跨路由 UI；见「组件目录约定」
-  lib/                     # 业务逻辑与领域实现；与 app/api/<域> 一一对应
+  features/                # 面向用户的产品域（对话 / 生图 / 定位）
     chat/
       types.ts / constants.ts / group.ts / route.ts   # 同构：类型、常量、纯函数
       server/              # Node / DB / Provider；入口 import 'server-only'
         store.ts           # 会话 CRUD（Drizzle + SQLite）
         parse-request.ts / handle-post.ts / handle-chats.ts / handle-chat-by-id.ts / stream-chat.ts / select-model.ts
-        providers/ark/     # SDK 出站适配（勿与 lib/<域>/client/ 浏览器封装混淆）
-    db/
-      client.ts            # better-sqlite3 连接、WAL、migrate；import 'server-only'
-      schema.ts            # chats / messages 表
-    images/                # 整域服务端；assets.ts 加 server-only
-      assets.ts            # 生图资源落盘与元数据
-      serve-asset.ts       # GET /api/images/[assetId] 业务逻辑
-      vision.ts / router.ts / registry.ts / size.ts / providers/
+        providers/ark/     # SDK 出站适配（勿与 <域>/client/ 浏览器封装混淆）
+    images/
+      types.ts / size.ts / registry.ts   # 同构：类型、尺寸与模型清单
+      server/              # assets / serve-asset / vision / router / providers
     geo/
       types.ts             # UserLocation 类型（同构）
       server/              # parse-request / regeo / handle-regeo
       client/location.ts   # 浏览器定位与缓存（import 'client-only'）
+  lib/                     # 基础设施 + Agent 能力目录（无独立产品面）
+    db/
+      client.ts            # better-sqlite3 连接、WAL、migrate；import 'server-only'
+      schema.ts            # chats / messages 表
     skills/
       types.ts / summaries.ts / parse-tokens.ts / context.ts / format-tag-label.ts  # 同构（无指令正文）
       server/              # catalog / registry / expand / context（含 instructions）；新增 skill 时复制 catalog/_template.ts，并在 summaries.ts 追加摘要
     tools/
       types.ts / constants.ts   # 同构
-      server/              # registry / pasted-image / catalog
+      server/              # registry / pasted-image / catalog（execute 再调 features）
     shared/
       client/api-client.ts      # 浏览器 fetch 信封；import 'client-only'
       server/env.ts / api-response.ts   # env 供 Next 服务端与 drizzle-kit CLI 共用，故不加 server-only
+    theme/
 public/
 drizzle/                   # SQL migrations（drizzle-kit generate）
 ```
 
-### App Router 与 lib 分层约定
+### App Router 与 features / lib 分层约定
 
 **`src/app/` 保持 Next.js 规范下的「路由壳」**：只放框架识别的入口文件（`route.ts`、`page.tsx`、`layout.tsx`、`loading.tsx`、`error.tsx`、样式与静态资源等），**不在 `app/api/*` 下堆 `utils/`、Provider 适配、业务方法或领域类型**。
 
-业务逻辑一律抽到 **`src/lib/<域>/`**，并与 API 路径对齐。域内再按运行时拆：
+**产品域放 `src/features/<域>/`**（chat / images / geo），与面向用户的 API 路径对齐。**`src/lib/` 只放没有独立产品面的平台层**：基础设施（`db` / `shared` / `theme`）和跨域 Agent 能力目录（`skills` / `tools`）。skills、tools 不绑定任何产品域；tools 的 `execute` 再调用 `features/images` 等能力层。
+
+域内再按运行时拆：
 
 - **域根**：同构模块（`types.ts`、`constants.ts`、无 Node API 的纯函数）。Client 与 Server 都可引用。
 - **`server/`**：Node、DB、密钥、上游 SDK。入口文件 `import 'server-only'`。
 - **`client/`**：仅浏览器（`navigator`、antd `message` 等）。入口文件 `import 'client-only'`。
 - **禁止**域级 `index.ts` 把 `server/` 与 `client/` 再导出到一起。
-- 无浏览器代码的域（如 `db/`、`images/`）不造空 `client/`，只在 DAL 入口加 `server-only`。
+- 无浏览器代码的域（如 `lib/db/`、`features/images/`）不造空 `client/`，只在 DAL 入口加 `server-only`。
 
-| API Route                               | lib 目录           | 说明                          |
-| --------------------------------------- | ------------------ | ----------------------------- |
-| `app/api/chat/`                         | `lib/chat/server/` | 流式对话、会话提交            |
-| `app/api/chats/`、`app/api/chats/[id]/` | `lib/chat/server/` | 会话列表 / 新建 / 读取 / 删除 |
-| `app/api/geo/`                          | `lib/geo/server/`  | 逆地理、UserLocation          |
-| `app/api/images/`                       | `lib/images/`      | 生图资源、Provider            |
+| API Route                               | 实现目录                  | 说明                          |
+| --------------------------------------- | ------------------------- | ----------------------------- |
+| `app/api/chat/`                         | `features/chat/server/`   | 流式对话、会话提交            |
+| `app/api/chats/`、`app/api/chats/[id]/` | `features/chat/server/`   | 会话列表 / 新建 / 读取 / 删除 |
+| `app/api/geo/`                          | `features/geo/server/`    | 逆地理、UserLocation          |
+| `app/api/images/`                       | `features/images/server/` | 生图资源、Provider            |
 
 **Route Handler（`route.ts`）职责上限：**
 
 - 导出 Route 段配置（`runtime`、`maxDuration`、`dynamic` 等）
 - 读取 `params` / `req` 等 HTTP 边界参数
-- 调用 `lib/<域>/handle-*.ts`（或 `serve-*.ts` 等）并 `return` 其结果
-- 最外层 `try/catch` 与统一错误信封（若 lib 未包）
+- 调用 `features/<域>/server/handle-*.ts`（或 `serve-*.ts` 等）并 `return` 其结果
+- 最外层 `try/catch` 与统一错误信封（若领域层未包）
 
-**`lib/<域>/` 典型文件命名：**
+**域内典型文件命名：**
 
 - `handle-<动作>.ts` — 对应 HTTP 方法或 Route 入口（如 `handle-post.ts`、`handle-regeo.ts`、`handle-chats.ts`），放在 **`server/`**
 - `parse-request.ts` — 请求体解析与 zod/手工校验（服务端校验放 `server/`）
 - `store.ts` / `assets.ts` — 持久化与领域存储（DAL，`import 'server-only'`）
 - `server/providers/<name>/` — 第三方模型/SDK 适配（出站 client、request-patch、sse 等）；`providers/*/client.ts` 是 SDK 客户端，**不是**浏览器模块
-- `client/` — 仅浏览器端调用该域 API 的封装（如 `lib/geo/client/location.ts`），`import 'client-only'`
-- `types.ts` — **仅**类型（`type` / `interface` / `enum` 作类型用）；**勿**在此放运行时常量、文案字符串、配置值；Client 需要的会话类型从 `lib/chat/types.ts` 导入，**勿**从 `store.ts` 再导出
+- `client/` — 仅浏览器端调用该域 API 的封装（如 `features/geo/client/location.ts`），`import 'client-only'`
+- `types.ts` — **仅**类型（`type` / `interface` / `enum` 作类型用）；**勿**在此放运行时常量、文案字符串、配置值；Client 需要的会话类型从 `features/chat/types.ts` 导入，**勿**从 `store.ts` 再导出
 - `constants.ts` — 域内运行时常量（错误文案、魔法字符串、配置默认值、Set/Map 常量等）；与 `types.ts` 分离，跨文件从本域 `constants` 导入
 
 **跨域复用：**
 
 - 横切工具放 `lib/shared/`：浏览器走 `shared/client/`，服务端走 `shared/server/`（`env`、`api-response`）
-- 某域类型/校验被其他域引用时，从 **`lib/<域>/types.ts`** 或 **`lib/<域>/server/parse-request.ts`** 导入；域内常量从 **`lib/<域>/constants.ts`** 导入；勿再塞回 `lib/shared/` 除非 truly 全局
+- Agent skill / tool 注册表放 `lib/skills`、`lib/tools`（跨域、无独立产品面）
+- 某域类型/校验被其他域引用时，从该域 **`types.ts`** 或 **`server/parse-request.ts`** 导入；域内常量从该域 **`constants.ts`** 导入；勿再塞回 `lib/shared/` 除非 truly 全局
 
 **页面路由（非 API）：**
 
-- `page.tsx` / `layout.tsx` 可直调 `lib/<域>/server/*`（如 `listChats()`），复杂校验抽到 `lib/chat/route.ts` 等
+- `page.tsx` / `layout.tsx` 可直调 `features/<域>/server/*`（如 `listChats()`），复杂校验抽到 `features/chat/route.ts` 等
 - 路由私有 UI 放 `app/<route>/_components/`；跨路由 UI 放 `src/components/`
 - **`'use client'` 只打在被 Server Component 直接 import 的入口**（当前为 `Providers`、`ChatShell`）。子树内组件不要重复标注。
 
 **新增 API 时 checklist：**
 
 1. 在 `app/api/<域>/.../route.ts` 建薄壳
-2. 在 `lib/<域>/server/` 实现 `handle-*` / 领域模块（DAL 加 `server-only`）
-3. 多 Provider 时放 `lib/<域>/server/providers/<name>/`
+2. 产品域在 `features/<域>/server/` 实现 `handle-*` / 领域模块（DAL 加 `server-only`）；平台能力放 `lib/`
+3. 多 Provider 时放 `features/<域>/server/providers/<name>/`
 4. 不在 `app/` 留业务实现文件
 5. 不要加跨 server/client 的域级 barrel `index.ts`
 
@@ -213,7 +217,7 @@ Button/
 ## 生图与主 Agent 约定
 
 - 主对话模型在 [`src/app/api/chat/route.ts`](src/app/api/chat/route.ts) 通过 `generate_image` tool 出图/改图；`stopWhen: stepCountIs(5)` 保证 tool 后主模型可汇总说明
-- 首版生图 Provider 为方舟 Seedream（`CURRENT_IMAGE_MODEL_ID` 写死在 [`src/lib/images/size.ts`](src/lib/images/size.ts)，`POST /images/generations`）；尺寸见 `IMAGE_SIZE_BY_MODEL_ID`；Flux Art 仅注册 Provider 接口，二期接入
+- 首版生图 Provider 为方舟 Seedream（`CURRENT_IMAGE_MODEL_ID` 写死在 [`src/features/images/size.ts`](src/features/images/size.ts)，`POST /images/generations`）；尺寸见 `IMAGE_SIZE_BY_MODEL_ID`；Flux Art 仅注册 Provider 接口，二期接入
 - 图片文件落盘于 `CHAT_STORE_DIR/images/{chatId}/`；元数据表 `image_assets`；`chats.working_image_asset_id` 为多轮改图默认源图
 - 前端经 `GET /api/images/[assetId]` 展示；气泡内使用 antd `Image`，勿用临时上游 CDN URL 直接渲染
 - 改图时 Provider 入参使用本地 data URL/base64，避免方舟返回 URL 过期导致下一轮 edit 失败
@@ -235,18 +239,18 @@ Button/
 ## 编码约定
 
 - 对话、注释、提交说明默认中文简体
-- 目录与页面/组件开发遵循上文「组件目录约定」「App Router 与 lib 分层约定」
+- 目录与页面/组件开发遵循上文「组件目录约定」「App Router 与 features / lib 分层约定」
 - **不引入 Tailwind**；样式优先 CSS Modules 与 Ant Design / Ant Design X
 - 组件目录遵循上文「组件目录约定」（子组件拆离并同步带走样式/方法/常量、主文件不定义方法与专属常量、`utils.ts` / `constants.ts` 维护、`ComponentName.tsx` + 同名 `.module.css`）
-- **App Router 与 lib 分层**遵循上文「App Router 与 lib 分层约定」：`app/` 仅路由壳，业务在 `lib/<域>/`，`app/api/<域>` 对应 `lib/<域>`
-- **`lib/<域>/types.ts` 与 `constants.ts` 分离**：`types.ts` 只导出类型；运行时常量、错误/提示文案、配置默认值放同域 `constants.ts`（与组件目录的 `constants.ts` 约定一致）；勿在 `types.ts` 写 `export const`
+- **App Router 与 features / lib 分层**遵循上文约定：`app/` 仅路由壳；产品域在 `features/<域>/`；`lib/` 为基础设施与 Agent 能力目录
+- **域内 `types.ts` 与 `constants.ts` 分离**：`types.ts` 只导出类型；运行时常量、错误/提示文案、配置默认值放同域 `constants.ts`（与组件目录的 `constants.ts` 约定一致）；勿在 `types.ts` 写 `export const`
 - App Router 下避免 `Bubble.List` 这类点号子组件写法，改为从独立路径导入（如 `@ant-design/x/es/bubble/BubbleList`）
 - 完成修改后对改动文件执行格式化（`pnpm run format` 或依赖 lint-staged）
 - 提交前由 lint-staged 检查暂存文件
 - 编写 Next.js 相关代码前先查阅 `node_modules/next/dist/docs/`
 - **AI SDK v7 API 约定**：
   - `streamText` / `generateText` 使用 **`instructions`**（provider-agnostic），**勿用已废弃的 `system`** 属性；`system` 仅为 OpenAI 兼容层，v7 中已标记 deprecated
-  - 调用方舟 Responses API 时**必须**传 `providerOptions: { openai: { store: false } }`，否则 `store:true`（默认）会发 `item_reference`，方舟报 `<nil>` 错误（详见 `src/lib/chat/server/providers/ark/constants.ts`）
+  - 调用方舟 Responses API 时**必须**传 `providerOptions: { openai: { store: false } }`，否则 `store:true`（默认）会发 `item_reference`，方舟报 `<nil>` 错误（详见 `src/features/chat/server/providers/ark/constants.ts`）
 - **代码注释按「目的」分两类，勿混淆**：
   - **防回归注释（仅限真实修复）**：只在**确实改错了的代码**上打。写明「原现象 / 根因 / 为何现在这样写，勿改回」。**新功能、新文件、从未出错的代码一律不打**——没历史包袱却写「勿再踩」，会误导后来者以为这里有坑
   - **意图注释（新功能/重构）**：代码反直觉、易被重构误改、或隐藏关键约束时，写一条「为什么」说明取舍；显而易见的代码不注释
@@ -274,7 +278,7 @@ Button/
 - 工具：[`src/lib/shared/server/api-response.ts`](src/lib/shared/server/api-response.ts) — `jsonOk(data)` / `jsonFail(code, message, status)` / `readApiData<T>(res)`
 - 业务码（`ApiErrorCode`）：`40001` 参数无效、`40401` 会话不存在、`50201` 高德上游失败；`50301` / `50302` 保留码位，环境变量缺省改由 `requireEnv` 抛错
 - **例外**：`POST /api/chat` 成功为 AI SDK SSE 流（`createUIMessageStreamResponse`），非 JSON 信封；其 400 错误仍走信封
-- 服务端组件直调 `lib/chat/server/store`（如 `chat/layout` 的 `listChats()`）不经 HTTP，无需信封
+- 服务端组件直调 `features/chat/server/store`（如 `chat/layout` 的 `listChats()`）不经 HTTP，无需信封
 
 ## 应做与不应做
 

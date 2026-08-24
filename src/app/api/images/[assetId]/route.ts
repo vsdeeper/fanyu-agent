@@ -1,4 +1,4 @@
-import { serveImageAsset } from '@/lib/images/serve-asset';
+import { serveImageAsset } from '@/features/images/server/serve-asset';
 
 export const runtime = 'nodejs';
 

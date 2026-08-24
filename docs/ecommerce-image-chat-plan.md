@@ -1,7 +1,7 @@
 # 对话式电商商品图生成 · 分阶段实施方案
 
 > 状态：设计草案（2026-08）· 待实现 · 保存于项目内供日后使用
-> 关联：`src/lib/images/`（生图管线）、`src/lib/chat/stream-chat.ts`（工具注册与指令）
+> 关联：`src/features/images/`（生图管线）、`src/features/chat/server/stream-chat.ts`（工具注册与指令）
 
 ## Context
 
@@ -38,17 +38,17 @@
 - `src/lib/db/schema.ts`：`chats` 加 `productImageAssetId: text('product_image_asset_id')`（「最近一张上传产品图」默认指针，O(1) 查询，与 `workingImageAssetId` 同构）；`imageAssets` 加 `source: text('source')`（上传图溯源 `message:<messageId>:<partIndex>`，幂等去重；生成图为 null）。
 - 跑 `drizzle-kit generate` + `migrate`（`getDb()` 初始化自动执行）。
 
-**1b. 桥接函数** `src/lib/images/commerce/product-asset.ts`：
+**1b. 桥接函数** `src/features/images/commerce/product-asset.ts`：
 
 - `dataUrlToBytes(dataUrl)`：切逗号后 base64 解码。
 - `ensureProductImageAsset(chatId, messages)`：**遍历最新 user 消息里的全部 image `file` part、逐个落盘**（多图上传一并落盘；前端已支持最多 5 张附件）。每张拼 `source` 标记（`message:<messageId>:<partIndex>`）查 `image_assets` 去重；不存在则 `saveImageAsset({ chatId, parentId: null, modelId: 'user-upload', prompt: '用户上传的产品图（桥接自对话消息）', bytes, mimeType, source })`；落盘后把**最近一张** `setProductImageAsset` 为默认指针。
 - **多图溯源与回查**：`image_assets` 里 `chat_id=? AND source IS NOT NULL` 即本会话全部上传图（**无需新表**）；`product_image_asset_id` 仅是「最近一张」快捷指针，工具可另传 `productAssetIds[]` 指定多张（见 Phase 2 / 3）。
-- **哨兵 modelId `'user-upload'`**（定义在 `src/lib/images/types.ts` 共享）保持 `image_assets.modelId` 非空约束且语义真实。
-- **必做 guard**：`src/lib/images/router.ts` 的 `resolveImageModelId` 里，`parentModelId` 为 `'user-upload'` 时跳过（否则用户直接对产品图 `generate_image mode=edit` 会继承哨兵而报「不支持的生图模型」）。
+- **哨兵 modelId `'user-upload'`**（定义在 `src/features/images/types.ts` 共享）保持 `image_assets.modelId` 非空约束且语义真实。
+- **必做 guard**：`src/features/images/server/router.ts` 的 `resolveImageModelId` 里，`parentModelId` 为 `'user-upload'` 时跳过（否则用户直接对产品图 `generate_image mode=edit` 会继承哨兵而报「不支持的生图模型」）。
 - `assets.ts` 增 `getProductImageAsset(chatId)` / `setProductImageAsset(chatId, assetId)`（读写 `chats.product_image_asset_id`）；`saveImageAsset` 加可选 `source` 参数。
-- **调用点**：`src/lib/chat/stream-chat.ts` 的 `streamChatResponse`，在 `selectModel` 之后、`convertToModelMessages` 之前 `await ensureProductImageAsset(chatId, messages)` —— 一处覆盖 submit + continue + 改图全部路径；`source` 去重保证不重复落盘。
+- **调用点**：`src/features/chat/server/stream-chat.ts` 的 `streamChatResponse`，在 `selectModel` 之后、`convertToModelMessages` 之前 `await ensureProductImageAsset(chatId, messages)` —— 一处覆盖 submit + continue + 改图全部路径；`source` 去重保证不重复落盘。
 
-**1c. 识图工具** `src/lib/images/commerce/analyze-tool.ts` + `src/lib/images/vision/vision.ts`：
+**1c. 识图工具** `src/features/images/commerce/analyze-tool.ts` + `src/features/images/server/vision.ts`：
 
 - env：新增 `ARK_VISION_MODEL_ID`（可选，缺省回退 `ARK_MODEL_PRO`=doubao-seed-2-0-pro，本身多模态）。
 - `analyzeProductImage(dataUrl, question?)`：复刻 `select-model.ts` 的 `getArkClient().chat(modelId)` + `generateText` 模式（**Chat Completions**，勿用 Responses——非流式缺 annotations 会 schema 校验失败），`messages` 传 `[{ type:'image', image:dataUrl }, { type:'text', text:... }]`，`instructions` 要求输出严格 JSON（品类/材质/主色/形状/原背景/卖点/是否适合电商图/建议），容错 `extractJsonObject` + zod 校验，失败返回 `{ok:false,error}` 不阻塞主对话。
@@ -59,7 +59,7 @@
 
 ### Phase 2 — 电商生图工具 + 对话收集流程（核心）
 
-新增 `src/lib/images/commerce/`：`tool.ts`、`scenes.ts`、`platforms.ts`、`prompt.ts`、`hint.ts`、`types.ts`（`product-asset.ts` 已在 Phase 1）。
+新增 `src/features/images/commerce/`：`tool.ts`、`scenes.ts`、`platforms.ts`、`prompt.ts`、`hint.ts`、`types.ts`（`product-asset.ts` 已在 Phase 1）。
 
 - **`scenes.ts`**：品类→场景模板（美妆→高级感梳妆台柔光、3C→深色霓虹科技感、服饰→幕布/模特自然光、食品→暖木餐桌、家居→北欧客厅；未命中回退「干净高级电商棚拍」）。
 - **`platforms.ts`**：平台→尺寸映射，全部落在 Seedream 像素区间 [3,686,400, 16,777,216]：taobao/jd 主图 1:1=2048x2048、详情 3:4=1728x2304；douyin 9:16=1600x2848；pdd 1:1/9:16；amazon 1:1/16:9=2560x1440。`resolveCommerceSize(platform, aspectRatio)` 缺省 2048x2048。
@@ -83,16 +83,16 @@
 **改动**：
 
 - `src/lib/db/schema.ts`（两列）+ 新 migration
-- `src/lib/images/assets.ts`（`saveImageAsset` 加 `source`、`get/setProductImageAsset`）
-- `src/lib/images/router.ts`（哨兵 guard）
-- `src/lib/chat/stream-chat.ts`（桥接调用 + 两个工具注册 + HINT 注入）
-- `src/lib/chat/providers/config.ts`（`getVisionModelId`）
+- `src/features/images/server/assets.ts`（`saveImageAsset` 加 `source`、`get/setProductImageAsset`）
+- `src/features/images/server/router.ts`（哨兵 guard）
+- `src/features/chat/server/stream-chat.ts`（桥接调用 + 两个工具注册 + HINT 注入）
+- `src/features/chat/server/providers/config.ts`（`getVisionModelId`）
 - `.env.example`（新增 `ARK_VISION_MODEL_ID` 说明）
 
 **新增**：
 
-- `src/lib/images/commerce/{tool,scenes,platforms,prompt,hint,types,product-asset}.ts`
-- `src/lib/images/commerce/analyze-tool.ts`、`src/lib/images/vision/vision.ts`
+- `src/features/images/commerce/{tool,scenes,platforms,prompt,hint,types,product-asset}.ts`
+- `src/features/images/commerce/analyze-tool.ts`、`src/features/images/server/vision.ts`
 - （Phase 3 可选）`src/app/api/images/[assetId]/activate/route.ts`
 
 **复用**：`generateImageViaRouter`/`resolveImageModelId`（router.ts）、`saveImageAsset`/`assetToDataUrl`/`getWorkingAsset`/`setWorkingAsset`/`buildImageAssetUrl`（assets.ts）、`createGenerateImageTool` 工厂与 `toModelOutput` 模式（generate-image-tool.ts）、`size.ts` 校验、`getArkClient().chat()+generateText` 一次性视觉调用范式（select-model.ts）、`getDeepseekInstructions` 注入结构（deepseek/instructions.ts）。

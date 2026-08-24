@@ -1,8 +1,7 @@
-import { getCurrentImageModelId, getImageModelProfile } from './registry';
+import { getCurrentImageModelId, getImageModelProfile } from '../registry';
 import { arkSeedreamProvider } from './providers/ark-seedream';
 import { fluxArtProvider } from './providers/flux-art';
-import type { ImageProvider } from './types';
-import type { ImageGenerateRequest, ImageGenerateResult } from './types';
+import type { ImageGenerateRequest, ImageGenerateResult, ImageProvider } from '../types';
 
 function getProvider(providerId: string): ImageProvider {
   if (providerId === 'ark') return arkSeedreamProvider;

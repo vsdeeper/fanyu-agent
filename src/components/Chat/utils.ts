@@ -5,7 +5,7 @@ import {
   type UIMessage,
 } from 'ai';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
-import { getCachedUserLocation } from '@/lib/geo/client/location';
+import { getCachedUserLocation } from '@/features/geo/client/location';
 
 /** 提取消息 parts 中指定类型（text / reasoning）的文本 */
 export function getPartsText(
