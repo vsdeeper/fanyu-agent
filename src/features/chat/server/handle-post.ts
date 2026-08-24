@@ -4,6 +4,7 @@ import { parseUserLocation } from '@/features/geo/server/parse-request';
 import type { UserLocation } from '@/features/geo/types';
 import { loadChat, saveChat } from '@/features/chat/server/store';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { resolveTurnSkills } from '@/lib/skills/server/resolve-turn';
 import type { ChatPostBody } from './parse-request';
 import { parseChatPostBody } from './parse-request';
 import { streamChatResponse } from './stream-chat';
@@ -30,7 +31,14 @@ async function handleSubmitMessage({ body, userLocation, abortSignal }: HandleCh
     /* 新草稿 */
   }
 
-  const messages = [...previousMessages, message];
+  const previousMeta =
+    typeof message.metadata === 'object' && message.metadata !== null ? message.metadata : {};
+  const { mergedSkillIds } = resolveTurnSkills([...previousMessages, message]);
+  const nextMessage: UIMessage = {
+    ...message,
+    metadata: { ...previousMeta, skillIds: mergedSkillIds },
+  };
+  const messages = [...previousMessages, nextMessage];
 
   // 修复：流式前先落盘用户消息，侧栏 refresh 即可见新会话与标题
   await saveChat({ chatId: id, messages });

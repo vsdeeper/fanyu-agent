@@ -4,21 +4,24 @@ import type { SkillSummary } from './types';
 export const brandkitSummary: SkillSummary = {
   id: 'brandkit',
   name: '品牌规范板',
-  description: '生成高端品牌视觉规范板：标志系统、版式、暗色科技 / 奢侈 / 文化风',
+  description:
+    '生成高端品牌视觉规范板：标志系统、版式、暗色科技 / 奢侈 / 文化风。适用于品牌 VI、logo 规范、品牌识别与品牌板',
 };
 
 /** mobile-design 菜单摘要；指令正文只存在 server catalog，避免打进浏览器包 */
 export const mobileDesignSummary: SkillSummary = {
   id: 'mobile-design',
   name: '移动端设计',
-  description: '生成高端移动端 App 界面概念图：单屏 / 引导 / 多屏流程，iOS / Android / 跨平台',
+  description:
+    '生成高端移动端 App 界面概念图：单屏 / 引导 / 多屏流程，iOS / Android / 跨平台。适用于手机 App、移动应用界面与多屏流程设计',
 };
 
 /** web-design 菜单摘要；指令正文只存在 server catalog，避免打进浏览器包 */
 export const webDesignSummary: SkillSummary = {
   id: 'web-design',
   name: 'Web 端设计',
-  description: '生成高端网站/落地页设计参考图：一区块一图，Hero / 功能 / 证言 / CTA 等横向构图',
+  description:
+    '生成高端网站/落地页设计参考图：一区块一图，Hero / 功能 / 证言 / CTA 等横向构图。适用于官网、营销站、landing page 与 Web 端设计',
 };
 
 // 隐藏菜单：在对应 Summary 上设 userInvocable: false（默认省略即为可调用）

@@ -8,6 +8,21 @@ import type { Skill } from '../../types';
  */
 export const mobileDesign: Skill = {
   ...mobileDesignSummary,
+  activationKeywords: [
+    '移动端设计',
+    '移动端',
+    'app 界面',
+    'App 界面',
+    '手机 app',
+    '手机 App',
+    'iOS App',
+    'Android App',
+    '移动应用',
+    '多屏流程',
+    'app 设计',
+    'mobile app',
+    'mobile-design',
+  ],
   instructions: `以资深移动产品视觉艺术指导身份生成高端、可读、可当真的 App 界面概念图。只出图、不写代码（勿 SwiftUI / React Native / Flutter / HTML）；不做网站落地页、桌面后台。输出须：原生感、克制高级、层级清晰、字号可读、流程可信、跨屏一致、非泛化 AI 模板风。
 
 【流程：先澄清 → 提示词确认 → 再出图】激活本技能不等于已要求出图。默认路径：有可识别的 App 概念 → 展示拟用生图提示词 → 确认后再调用 generate_image。以下章节用于起草 generate_image 的提示词；默认先展示提示词供确认，用户明确要求直接出图时可跳过。

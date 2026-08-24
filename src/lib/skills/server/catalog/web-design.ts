@@ -8,6 +8,18 @@ import type { Skill } from '../../types';
  */
 export const webDesign: Skill = {
   ...webDesignSummary,
+  activationKeywords: [
+    'Web 端设计',
+    'web 端设计',
+    '落地页',
+    '网站设计',
+    'landing page',
+    '营销站',
+    '官网设计',
+    '官网',
+    'Hero 区块',
+    'web-design',
+  ],
   instructions: `以资深 Web 前端视觉艺术指导身份生成高端、可读、可当真的网站/落地页设计参考图。只出图、不写代码（勿 HTML / CSS / React / Vue）；不做移动端 App 界面、不做品牌规范板拼贴。输出须：艺术指导感、克制高级、层级清晰、字号可读、转化路径可信、跨区块一致、非泛化 AI 模板风。
 
 【硬规则：一区块一图】每个页面区块单独生成一张横向构图图，禁止合并。1 区块→1 图；4 区块→4 图；8 区块→8 图。禁止把整页压进一张竖长图或拼贴 collage。若步数受限需分批，按序标注「区块 X / N：名称」逐张交付，直至全部区块完成。画布横向（16:9 / 16:10 / 21:9）；Hero 常用 16:9 或 21:9，内容区可用 16:10。

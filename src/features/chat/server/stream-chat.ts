@@ -19,8 +19,10 @@ import { saveChat } from '@/features/chat/server/store';
 import { selectModel } from '@/features/chat/server/select-model';
 import { getLatestUserImageDataUrl } from '@/lib/tools/server/pasted-image';
 import { createCatalogTools, getToolHints } from '@/lib/tools/server/registry';
-import { resolveActiveSkills } from '@/lib/skills/server/context';
+import { buildSkillCatalogPrompt } from '@/lib/skills/server/catalog-prompt';
 import { expandSkillTokensInText } from '@/lib/skills/server/expand';
+import { listSkills } from '@/lib/skills/server/registry';
+import { resolveTurnSkills } from '@/lib/skills/server/resolve-turn';
 import { getChatProvider } from './providers/config';
 import { getChatProviderRuntime } from './providers/resolve';
 
@@ -67,12 +69,23 @@ export async function streamChatResponse({
     reasoning: 'all',
   });
 
-  // 修复：skill 令牌原位展开——把模型入参副本里用户文本的 /<skillId> 在原位置替换为指令块，
-  // 让约束与用户意图的位置对应（勿只堆在系统提示词末尾）。展开发生在 convert/prune 副本上，
-  // saveChat 仍落盘原文（含 /skill 令牌与 metadata.skillIds），历史可读且刷新后依旧。
-  const expandedMessages = modelMessages.map((message) => {
+  const { turnActivatedSkills } = resolveTurnSkills(messages, { log: false });
+  const activatedIds = new Set(turnActivatedSkills.map((skill) => skill.id));
+  const allSkillIds = new Set(listSkills().map((skill) => skill.id));
+
+  // skill 令牌：历史消息一律短引用，避免把过期 instructions 再塞进上下文；
+  // 本轮已 Activation 的 id 同样短引用（正文只出现在 instructions 块）。
+  let lastUserIndex = -1;
+  for (let i = modelMessages.length - 1; i >= 0; i--) {
+    if (modelMessages[i]?.role === 'user') {
+      lastUserIndex = i;
+      break;
+    }
+  }
+
+  const expandedMessages = modelMessages.map((message, index) => {
     if (message.role !== 'user') return message;
-    const seenIds = new Set<string>();
+    const seenIds = index === lastUserIndex ? new Set(activatedIds) : new Set(allSkillIds);
     const content = message.content;
     if (typeof content === 'string') {
       return { ...message, content: expandSkillTokensInText(content, seenIds) };
@@ -90,10 +103,6 @@ export async function streamChatResponse({
     return message;
   });
 
-  // 修复：skill 激活集合作为会话上下文——用原始 messages（含本次新消息）推导最近一次写入的集合，
-  // 指令并入 baseInstructions，保证后续消息持续受约束；与令牌原位展开互补。
-  const activeSkills = resolveActiveSkills(messages);
-
   const stoppedTaskHint = [
     '对话规则：',
     '- 只回答用户最新一条消息所问的问题',
@@ -101,17 +110,19 @@ export async function streamChatResponse({
     '- 不要续写、补答或总结那些已停止的任务，也不要在回复末尾询问是否继续执行旧任务',
   ].join('\n');
 
-  // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${getToolHints(Boolean(pastedImageDataUrl))}`;
-  const withSkill = activeSkills.length
-    ? `${baseInstructions}\n\n【当前生效 Skills：${activeSkills
+  const catalogPrompt = buildSkillCatalogPrompt();
+  const activationBlock = turnActivatedSkills.length
+    ? `\n\n【本轮激活 Skills：${turnActivatedSkills
         .map((skill) => skill.name)
-        .join('、')}】\n${activeSkills.map((skill) => skill.instructions).join('\n\n')}`
-    : baseInstructions;
+        .join('、')}】\n${turnActivatedSkills.map((skill) => skill.instructions).join('\n\n')}`
+    : '';
+
+  // 修复：明确要求思考过程使用中文简体，避免中英文混杂
+  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}\n\n${getToolHints(Boolean(pastedImageDataUrl))}`;
 
   const instructions = runtime.getInstructions({
     userLocation,
-    baseInstructions: withSkill,
+    baseInstructions,
     convertedMessages,
   });
 

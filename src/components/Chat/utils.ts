@@ -89,8 +89,8 @@ export type SubmitChatMessageParams = {
  * - 若用户上滑未贴底（「滚动到底部」按钮可见），先自动滚回底部；
  *   autoScroll 只在已贴底时跟随，上滑后不会主动拉回
  * - 附件经 SDK 转 data URL 写入 UIMessage 落盘；勿像 reasoning 一样 prune 历史 file parts
- * - 修复：激活 skill 集合写入 UIMessage.metadata.skillIds（每次发送都写当前集合，可为 []），
- *   随 messages.data 落盘成为会话上下文；服务端据此推导集合注入与令牌原位展开
+ * - 激活 skill 集合写入 UIMessage.metadata.skillIds（每次发送都写当前集合，可为 []）；
+ *   服务端会与意图匹配结果只增不减地合并后落盘（粘滞记录 ≠ 每轮注入正文）
  */
 export function submitChatMessage({
   text,

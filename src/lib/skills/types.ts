@@ -17,7 +17,12 @@ export type Skill = {
    * 历史消息气泡仍可通过 getSkillSummary 解析 tag。
    */
   userInvocable?: boolean;
-  /** 注入模型的指令正文；令牌原位展开与激活集合注入都使用它 */
+  /**
+   * 服务端意图匹配用触发词（子串命中）。只在 server/catalog 填写，勿写入 summaries，
+   * 避免打进浏览器包。
+   */
+  activationKeywords?: string[];
+  /** 注入模型的指令正文；仅本轮 Activation 时加载（Discovery 只放 name + description） */
   instructions: string;
   /** 可选：建议 prompt 模板（预留，默认不自动填入输入框） */
   samplePrompt?: string;

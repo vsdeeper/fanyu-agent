@@ -7,11 +7,11 @@ import { getSkill } from './registry';
 const SKILL_TOKEN_RE = /(^|\s)\/([a-z0-9-]*)/g;
 
 /**
- * 把用户文本里的 /<skillId> 令牌在原位置展开为 skill 指令块（IDE slash 命令式原位展开），
- * 使模型能感知约束与用户意图的位置对应，而非所有指令堆在系统提示词末尾。
+ * 把用户文本里的 /<skillId> 令牌在原位置展开。
+ * 完整 instructions 优先由本轮 Activation 块注入；已出现在 `seenIds` 的 id 只保留短引用 `【Skill：{name}】`。
  * - id 在注册表不存在时保留原文，优雅降级；
- * - 同一文本内重复 id：首次展开完整 instructions，后续仅保留短引用 `【Skill：{name}】`；
- * - 可选 `seenIds` 供同一条 user 消息的多个 text part 共享去重状态；
+ * - 同一文本内重复 id：首次若未在 seenIds 中则展开完整 instructions，后续仅短引用；
+ * - 可选 `seenIds` 供同一条 user 消息的多个 text part 以及 Activation 块共享去重状态；
  * - 纯函数、不依赖 AI SDK 消息类型，供 stream-chat 对模型入参副本调用（落盘仍是原文）。
  */
 export function expandSkillTokensInText(text: string, seenIds: Set<string> = new Set()): string {

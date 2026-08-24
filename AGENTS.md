@@ -106,7 +106,7 @@ src/
       schema.ts            # chats / messages 表
     skills/
       types.ts / summaries.ts / parse-tokens.ts / context.ts / format-tag-label.ts  # 同构（无指令正文）
-      server/              # catalog / registry / expand / context（含 instructions）；新增 skill 时复制 catalog/_template.ts，并在 summaries.ts 追加摘要
+      server/              # catalog / registry / expand / context / catalog-prompt / match-intent / resolve-turn（含 instructions）；新增 skill 时复制 catalog/_template.ts，summaries.ts 追加摘要，catalog 填写 activationKeywords
     tools/
       types.ts / constants.ts   # 同构
       server/              # registry / pasted-image / catalog（execute 再调 features）
@@ -223,6 +223,17 @@ Button/
 - 改图时 Provider 入参使用本地 data URL/base64，避免方舟返回 URL 过期导致下一轮 edit 失败
 - `generate_image` 的 `execute` 返回完整 output（含 `assetId`/`url`）供 `tool-generate_image` part 落盘与 `GenerateImageBlock` 渲染；`toModelOutput` 向主模型返回不含 `url` 的文本摘要，避免汇总正文重复插入 Markdown 图片
 - 历史已落盘消息若正文含 `/api/images/` Markdown，仍可能与 `GenerateImageBlock` 重复展示（未做前端过滤）
+
+## Skills 渐进披露与意图加载
+
+Agent Skills 采用 Discovery → Activation 两层注入（Execution / references 预留）：
+
+- **Discovery**：每轮 `instructions` 常驻 skill 目录（`id` + `name` + `description`），见 `buildSkillCatalogPrompt`；不含指令正文
+- **Activation**：仅本轮加载完整 `instructions`。来源为手动 `/<id>`（跳过阈值）与意图匹配达阈值的自动结果，二者取并集
+- **信度阈值**（`src/lib/skills/server/constants.ts`）：High ≥ 0.70 激活；Medium 0.55–0.69 默认不激活；Low < 0.55 不激活。sticky 短 follow-up（≤40 字且含修订线索、且无其它 skill 达 High）可降阈再激活
+- **粘滞**：`metadata.skillIds` 只增不减，记录本会话曾激活过的 skill，供 Tags 恢复与 follow-up 加权；**不等于**每轮注入正文
+- **去重**：已激活 skill 在用户文本 `/token` 处只保留 `【Skill：name】` 短引用；历史消息中的令牌不再展开正文
+- **观测**：服务端日志 `[skills] intent-match`，字段 `{ id, score, band, activated, reason }`，不返回客户端
 
 ## 主题系统（浅色/深色）
 
