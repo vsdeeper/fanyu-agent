@@ -4,7 +4,7 @@ import { MODE_ICON, nextModeLabel } from './constants';
 
 /**
  * 浅色/深色/跟随系统 三态循环切换按钮；
- * 图标反映当前偏好（☀/☾/🖥），Tooltip 与 aria-label 描述点击后的下一步动作。
+ * 图标反映当前偏好（☀/☾/日夜），Tooltip 与 aria-label 描述点击后的下一步动作。
  */
 export default function ModeSwitch() {
   const { preference, toggle, hydrated } = useThemeMode();

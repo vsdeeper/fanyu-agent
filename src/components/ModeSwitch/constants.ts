@@ -1,5 +1,6 @@
-import { DesktopOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons';
+import { MoonOutlined, SunOutlined } from '@ant-design/icons';
 import type { ComponentType, CSSProperties } from 'react';
+import { DayNightIcon } from '@/components/CustomIcon';
 import { THEME_MODE_CYCLE, type ThemeMode } from '@/components/theme';
 
 /** 各偏好显示名（用于派生「下一步」动作文案） */
@@ -13,7 +14,7 @@ export const MODE_NAME: Record<ThemeMode, string> = {
 export const MODE_ICON: Record<ThemeMode, ComponentType<{ style?: CSSProperties }>> = {
   light: SunOutlined,
   dark: MoonOutlined,
-  system: DesktopOutlined,
+  system: DayNightIcon,
 };
 
 /** 循环顺序中的下一偏好（与 store.toggle 共用 THEME_MODE_CYCLE，防漂移） */
