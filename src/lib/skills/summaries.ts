@@ -14,7 +14,14 @@ export const mobileDesignSummary: SkillSummary = {
   description: '生成高端移动端 App 界面概念图：单屏 / 引导 / 多屏流程，iOS / Android / 跨平台',
 };
 
-const SKILL_SUMMARIES: SkillSummary[] = [brandkitSummary, mobileDesignSummary];
+/** web-design 菜单摘要；指令正文只存在 server catalog，避免打进浏览器包 */
+export const webDesignSummary: SkillSummary = {
+  id: 'web-design',
+  name: 'Web 端设计',
+  description: '生成高端网站/落地页设计参考图：一区块一图，Hero / 功能 / 证言 / CTA 等横向构图',
+};
+
+const SKILL_SUMMARIES: SkillSummary[] = [brandkitSummary, mobileDesignSummary, webDesignSummary];
 
 /** 全部 skill 的精简视图（不含指令正文，供前端 Suggestion 菜单） */
 export function listSkillSummaries(): SkillSummary[] {
