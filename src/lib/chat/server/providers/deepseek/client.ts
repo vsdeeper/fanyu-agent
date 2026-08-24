@@ -1,6 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai';
 
-import { requireEnv } from '@/lib/shared/env';
+import { requireEnv } from '@/lib/shared/server/env';
 import { patchDeepSeekRequestBody, type DeepSeekRequestBody } from './request-patch';
 import { normalizeDeepseekSse } from './sse';
 

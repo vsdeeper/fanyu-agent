@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { GlobalOutlined } from '@ant-design/icons';
 import styles from './SourceFavicon.module.css';

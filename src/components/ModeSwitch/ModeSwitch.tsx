@@ -1,5 +1,3 @@
-'use client';
-
 import { Button, Tooltip } from 'antd';
 import { useThemeMode } from '@/components/theme';
 import { MODE_ICON, nextModeLabel } from './constants';

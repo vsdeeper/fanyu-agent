@@ -1,7 +1,9 @@
-import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/api-response';
-import { requireEnv } from '@/lib/shared/env';
+import 'server-only';
 
-import type { UserLocation } from './types';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
+import { requireEnv } from '@/lib/shared/server/env';
+
+import type { UserLocation } from '../types';
 
 /** 高德中文国名 → ISO 3166-1 alpha-2；未知默认 CN（本项目主要服务国内） */
 const COUNTRY_TO_ISO: Record<string, string> = {

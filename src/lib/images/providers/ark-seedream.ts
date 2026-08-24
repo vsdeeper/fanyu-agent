@@ -1,4 +1,4 @@
-import { requireEnv } from '@/lib/shared/env';
+import { requireEnv } from '@/lib/shared/server/env';
 import type { ImageProvider } from '../types';
 import { getSizeSpec, normalizeImageSize } from '../size';
 

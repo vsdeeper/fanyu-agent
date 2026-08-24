@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { isFileUIPart, isToolUIPart, type UIMessage } from 'ai';
 import mammoth from 'mammoth';
 import { IMAGE_TOOL_INTERRUPTED_ERROR } from '@/lib/tools/constants';

@@ -1,25 +1,13 @@
+import 'server-only';
+
 import { generateId, type UIMessage } from 'ai';
 import { asc, desc, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
 import { chats, messages } from '@/lib/db/schema';
+import { DEFAULT_CHAT_TITLE } from '../constants';
+import type { ChatListItem, ChatRecord } from '../types';
 
-export const DEFAULT_CHAT_TITLE = '新对话';
 const TITLE_MAX_LENGTH = 30;
-
-export type ChatRecord = {
-  id: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  messages: UIMessage[];
-};
-
-export type ChatListItem = {
-  id: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-};
 
 function getPartsText(message: UIMessage): string {
   if (!message.parts?.length) return '';

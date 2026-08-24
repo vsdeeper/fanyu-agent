@@ -38,11 +38,13 @@
     "ai": "^7.0.34",
     "antd": "^6.5.1",
     "better-sqlite3": "^13.0.1",
+    "client-only": "^0.0.1",
     "drizzle-orm": "^0.45.2",
     "mammoth": "^1.12.1",
     "next": "16.2.11",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "server-only": "^0.0.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

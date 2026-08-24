@@ -1,5 +1,3 @@
-'use client';
-
 import { Image, Skeleton } from 'antd';
 import AiImage, {
   AI_IMAGE_FAILED_CLASS_NAMES,

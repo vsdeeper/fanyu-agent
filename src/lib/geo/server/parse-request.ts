@@ -1,6 +1,8 @@
-import { ApiErrorCode, jsonFail } from '@/lib/shared/api-response';
+import 'server-only';
 
-import type { UserLocation } from './types';
+import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+
+import type { UserLocation } from '../types';
 
 /** 仅接受 approximate + 已知可选字符串字段，忽略非法结构 */
 export function parseUserLocation(value: unknown): UserLocation | undefined {

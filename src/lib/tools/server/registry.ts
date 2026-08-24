@@ -1,6 +1,8 @@
+import 'server-only';
+
 import { analyzeImage } from './catalog/analyze-image';
 import { generateImage } from './catalog/generate-image';
-import type { AgentToolContext, AgentToolDefinition } from './types';
+import type { AgentToolContext, AgentToolDefinition } from '../types';
 
 // 新增 tool：对照已有 catalog 条目实现 AgentToolDefinition，再在 TOOLS 数组 import 追加。
 const TOOLS: AgentToolDefinition[] = [generateImage, analyzeImage];

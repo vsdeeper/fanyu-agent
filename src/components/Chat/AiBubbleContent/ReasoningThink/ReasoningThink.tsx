@@ -1,5 +1,3 @@
-'use client';
-
 import { type ReactNode, useState } from 'react';
 import { Think } from '@ant-design/x';
 import styles from './ReasoningThink.module.css';

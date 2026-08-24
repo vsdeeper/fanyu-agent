@@ -1,6 +1,8 @@
-import { apiPost } from '@/lib/shared/api-client';
+import 'client-only';
 
-import type { UserLocation } from './types';
+import { apiPost } from '@/lib/shared/client/api-client';
+
+import type { UserLocation } from '../types';
 
 /** 模块级缓存：仅成功获取城市级位置时写入 */
 let cached: UserLocation | null = null;

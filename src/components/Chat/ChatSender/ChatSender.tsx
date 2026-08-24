@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Attachments, Sender } from '@ant-design/x';
 import type { AttachmentsRef } from '@ant-design/x/es/attachments';
@@ -7,7 +5,7 @@ import Suggestion from '@ant-design/x/es/suggestion';
 import type { SenderRef } from '@ant-design/x/es/sender/interface';
 import { LinkOutlined } from '@ant-design/icons';
 import { Badge, Button, Flex, Upload, message } from 'antd';
-import { listSkillSummaries } from '@/lib/skills/registry';
+import { listSkillSummaries } from '@/lib/skills/summaries';
 import AttachmentPreviewList from './AttachmentPreviewList';
 import {
   ATTACHMENT_ACCEPT,

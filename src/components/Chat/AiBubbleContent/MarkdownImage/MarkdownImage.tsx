@@ -1,5 +1,3 @@
-'use client';
-
 import { type ComponentProps } from '@ant-design/x-markdown';
 import Skeleton from 'antd/es/skeleton';
 import AiImage from '../AiImage';

@@ -14,13 +14,13 @@ import {
   finalizeIncompleteToolParts,
   markLastAssistantStopped,
   sanitizeFilePartsForModel,
-} from '@/lib/chat/sanitize-messages';
-import { saveChat } from '@/lib/chat/store';
-import { selectModel } from '@/lib/chat/select-model';
-import { getLatestUserImageDataUrl } from '@/lib/tools/pasted-image';
-import { createCatalogTools, getToolHints } from '@/lib/tools/registry';
-import { resolveActiveSkills } from '@/lib/skills/context';
-import { expandSkillTokensInText } from '@/lib/skills/expand';
+} from '@/lib/chat/server/sanitize-messages';
+import { saveChat } from '@/lib/chat/server/store';
+import { selectModel } from '@/lib/chat/server/select-model';
+import { getLatestUserImageDataUrl } from '@/lib/tools/server/pasted-image';
+import { createCatalogTools, getToolHints } from '@/lib/tools/server/registry';
+import { resolveActiveSkills } from '@/lib/skills/server/context';
+import { expandSkillTokensInText } from '@/lib/skills/server/expand';
 import { getChatProvider } from './providers/config';
 import { getChatProviderRuntime } from './providers/resolve';
 

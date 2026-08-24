@@ -1,4 +1,4 @@
-import { requireEnv } from '@/lib/shared/env';
+import { requireEnv } from '@/lib/shared/server/env';
 
 /** 模型档次：pro（复杂推理/代码/长文）、lite（通用均衡）、mini（简单问候/短查询） */
 export type ModelTier = 'pro' | 'lite' | 'mini';

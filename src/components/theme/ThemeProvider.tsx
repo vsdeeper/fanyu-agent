@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import type { ResolvedThemeMode } from './constants';
 import {

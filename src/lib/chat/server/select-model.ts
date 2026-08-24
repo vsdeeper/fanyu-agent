@@ -2,8 +2,8 @@ import type { UIMessage } from 'ai';
 import { generateText } from 'ai';
 import { z } from 'zod';
 
-import { type ChatProvider, type ModelTier, getModelId } from '@/lib/chat/providers/config';
-import { getChatProviderRuntimeFor } from '@/lib/chat/providers/resolve';
+import { type ChatProvider, type ModelTier, getModelId } from '@/lib/chat/server/providers/config';
+import { getChatProviderRuntimeFor } from '@/lib/chat/server/providers/resolve';
 
 export type { ModelTier };
 

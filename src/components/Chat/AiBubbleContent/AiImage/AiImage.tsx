@@ -1,5 +1,3 @@
-'use client';
-
 import { Image, Skeleton } from 'antd';
 import type { ImageProps } from 'antd';
 import { AI_IMAGE_CLASS_NAMES, FALLBACK_ICON_SRC } from './constants';

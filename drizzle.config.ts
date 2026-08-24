@@ -1,5 +1,5 @@
 import { defineConfig } from 'drizzle-kit';
-import { requireEnv } from './src/lib/shared/env';
+import { requireEnv } from './src/lib/shared/server/env';
 
 const storeDir = requireEnv('CHAT_STORE_DIR');
 

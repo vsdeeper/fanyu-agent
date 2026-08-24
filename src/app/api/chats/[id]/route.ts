@@ -1,4 +1,4 @@
-import { handleDeleteChat, handleGetChat } from '@/lib/chat/handle-chat-by-id';
+import { handleDeleteChat, handleGetChat } from '@/lib/chat/server/handle-chat-by-id';
 
 export const runtime = 'nodejs';
 

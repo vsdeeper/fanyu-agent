@@ -1,5 +1,3 @@
-'use client';
-
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { BubbleItemType, Welcome } from '@ant-design/x';
 import BubbleList from '@ant-design/x/es/bubble/BubbleList';
@@ -8,7 +6,7 @@ import { useChat, type Chat as ChatInstance } from '@ai-sdk/react';
 import type { UIMessage } from 'ai';
 import { CommentOutlined, DownOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
-import { getUserLocation } from '@/lib/geo/client';
+import { getUserLocation } from '@/lib/geo/client/location';
 import { resolveActiveSkillIds } from '@/lib/skills/context';
 import AiBubbleContent from './AiBubbleContent';
 import ChatSender from './ChatSender';

@@ -1,5 +1,3 @@
-'use client';
-
 import { memo, useMemo } from 'react';
 import { Sources } from '@ant-design/x';
 import { XMarkdown } from '@ant-design/x-markdown';

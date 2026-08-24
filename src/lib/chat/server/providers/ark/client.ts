@@ -1,6 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai';
 
-import { requireEnv } from '@/lib/shared/env';
+import { requireEnv } from '@/lib/shared/server/env';
 import { patchArkRequestBody, type ArkRequestBody } from './request-patch';
 import { normalizeArkResponsesSse } from './sse';
 

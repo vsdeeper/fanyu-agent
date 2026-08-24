@@ -1,5 +1,5 @@
-import { deleteChat, loadChat } from '@/lib/chat/store';
-import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/api-response';
+import { deleteChat, loadChat } from '@/lib/chat/server/store';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
 
 export async function handleGetChat(id: string): Promise<Response> {
   try {

@@ -1,7 +1,7 @@
 import { generateText } from 'ai';
 import { z } from 'zod';
 
-import { getArkClient } from '@/lib/chat/providers/ark/client';
+import { getArkClient } from '@/lib/chat/server/providers/ark/client';
 
 /**
  * 视觉分析模块：调火山方舟视觉模型（Chat Completions）分析图片，输出结构化中文描述。

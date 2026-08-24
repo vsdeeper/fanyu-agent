@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Conversations } from '@ant-design/x';
@@ -7,8 +5,8 @@ import type { ConversationItemType } from '@ant-design/x/es/conversations/interf
 import { DeleteOutlined, MenuFoldOutlined, MessageOutlined } from '@ant-design/icons';
 import { Button, Layout, Typography } from 'antd';
 import { getChatGroupLabel } from '@/lib/chat/group';
-import type { ChatListItem } from '@/lib/chat/store';
-import { apiDelete } from '@/lib/shared/api-client';
+import type { ChatListItem } from '@/lib/chat/types';
+import { apiDelete } from '@/lib/shared/client/api-client';
 import styles from './ChatSidebar.module.css';
 
 type ChatSidebarProps = {

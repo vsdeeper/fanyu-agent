@@ -1,5 +1,3 @@
-'use client';
-
 import type { ReactNode } from 'react';
 import { ConfigProvider, type ConfigProviderProps } from 'antd';
 import { appTheme, darkTheme } from '@/lib/theme';

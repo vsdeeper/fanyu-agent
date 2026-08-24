@@ -1,5 +1,3 @@
-'use client';
-
 import FileCard from '@ant-design/x/es/file-card';
 import { CloseCircleFilled, PlusOutlined } from '@ant-design/icons';
 import { Button, Skeleton } from 'antd';

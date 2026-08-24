@@ -1,9 +1,11 @@
+import 'server-only';
+
 import { existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { requireEnv } from '@/lib/shared/env';
+import { requireEnv } from '@/lib/shared/server/env';
 import * as schema from './schema';
 
 export function getChatDir(): string {

@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { generateId } from 'ai';

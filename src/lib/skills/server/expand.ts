@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { getSkill } from './registry';
 
 // 修复：id 用 [a-z0-9-]* 而非 [^\s]*，避免把令牌后紧跟的中文/标点也吞进 id（如「/brandkit用暖色」只匹配 /brandkit）。

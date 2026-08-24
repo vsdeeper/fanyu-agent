@@ -1,5 +1,5 @@
-import { createChat, listChats } from '@/lib/chat/store';
-import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/api-response';
+import { createChat, listChats } from '@/lib/chat/server/store';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
 
 export async function handleListChats(): Promise<Response> {
   const chats = await listChats();

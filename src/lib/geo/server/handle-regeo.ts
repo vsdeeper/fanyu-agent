@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { parseRegeoBody } from './parse-request';
 import { regeoFromCoordinates } from './regeo';
 

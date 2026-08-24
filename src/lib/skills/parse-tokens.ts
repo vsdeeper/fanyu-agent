@@ -1,4 +1,4 @@
-import { getSkill } from './registry';
+import { getSkillSummary } from './summaries';
 
 // 与 expand.ts 同一套边界规则：行首或空格后的 /id
 const SKILL_TOKEN_RE = /(^|\s)\/([a-z0-9-]*)/g;
@@ -22,7 +22,7 @@ export function parseSkillTokensInText(text: string): SkillTextSegment[] {
     const matchStart = match.index ?? 0;
     const slashPos = matchStart + boundary.length;
     const tokenEnd = slashPos + 1 + id.length;
-    const skill = id.length > 0 ? getSkill(id) : undefined;
+    const skill = id.length > 0 ? getSkillSummary(id) : undefined;
 
     if (matchStart > lastIndex) {
       segments.push({ type: 'text', value: text.slice(lastIndex, matchStart) });

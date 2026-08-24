@@ -1,6 +1,6 @@
 /**
- * 跨域 skill 定义。所有 skill 统一在此域注册（src/lib/skills/），
- * 客户端 Suggestion 快捷菜单与服务端指令注入同源 import，不绑定任何业务域。
+ * 跨域 skill 定义。所有 skill 统一在此域注册（src/lib/skills/），不绑定任何业务域。
+ * 菜单摘要在 summaries.ts（可进浏览器包）；指令正文只在 server/catalog，经 server/registry 注入模型。
  */
 export type Skill = {
   /** 唯一标识，作为 Suggestion 菜单的 value 与消息 metadata.skillIds 的元素；须为 [a-z0-9-]+ */

@@ -1,5 +1,3 @@
-'use client';
-
 import { FileCard } from '@ant-design/x';
 import { Tag } from 'antd';
 import { formatSkillTagLabel } from '@/lib/skills/format-tag-label';

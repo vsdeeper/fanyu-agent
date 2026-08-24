@@ -1,4 +1,5 @@
-import type { Skill } from '../types';
+import { brandkitSummary } from '../../summaries';
+import type { Skill } from '../../types';
 
 /**
  * brandkit：高端品牌视觉规范板生图 skill。
@@ -6,10 +7,7 @@ import type { Skill } from '../types';
  * 保留其操作性约束、去掉重复表述后整理为指令正文；名称/描述面向中文菜单。
  */
 export const brandkit: Skill = {
-  id: 'brandkit',
-  name: '品牌规范板',
-  description: '生成高端品牌视觉规范板：标志系统、版式、暗色科技 / 奢侈 / 文化风',
-  // icon: '🎨',
+  ...brandkitSummary,
   instructions: `以资深品牌艺术指导身份生成品牌视觉规范板。整体必须：有意图、高级、克制、连贯、策略性、可直接上稿；不生成泛化标志、随机样机、人工智能拼贴情绪板。
 
 【流程：先澄清 → 提示词确认 → 再出图】激活本技能不等于已要求出图。默认路径：有品牌名 → 展示拟用生图提示词 → 确认后再调用 generate_image。以下章节用于起草 generate_image 的提示词；默认先展示提示词供确认，用户明确要求直接出图时可跳过。
