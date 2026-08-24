@@ -21,14 +21,16 @@ export const webDesignSummary: SkillSummary = {
   description: '生成高端网站/落地页设计参考图：一区块一图，Hero / 功能 / 证言 / CTA 等横向构图',
 };
 
+// 隐藏菜单：在对应 Summary 上设 userInvocable: false（默认省略即为可调用）
+
 const SKILL_SUMMARIES: SkillSummary[] = [brandkitSummary, mobileDesignSummary, webDesignSummary];
 
-/** 全部 skill 的精简视图（不含指令正文，供前端 Suggestion 菜单） */
+/** 用户可在界面调用的 skill（userInvocable !== false）；供 Suggestion 菜单 */
 export function listSkillSummaries(): SkillSummary[] {
-  return SKILL_SUMMARIES;
+  return SKILL_SUMMARIES.filter((skill) => skill.userInvocable !== false);
 }
 
-/** 按 id 查 skill 摘要；不存在返回 undefined（气泡令牌解析按「未知」保留原文） */
+/** 按 id 查 skill 摘要（含不可调用项）；不存在返回 undefined（气泡令牌解析按「未知」保留原文） */
 export function getSkillSummary(id: string): SkillSummary | undefined {
   return SKILL_SUMMARIES.find((skill) => skill.id === id);
 }
