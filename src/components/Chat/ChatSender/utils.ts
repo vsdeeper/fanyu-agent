@@ -1,4 +1,4 @@
-import type { KeyboardEvent, RefObject } from 'react';
+import { createElement, type KeyboardEvent, type RefObject } from 'react';
 import type { AttachmentsProps, AttachmentsRef } from '@ant-design/x/es/attachments';
 import type { SlotConfigType, SenderRef } from '@ant-design/x/es/sender/interface';
 import type { SuggestionItem } from '@ant-design/x/es/suggestion';
@@ -19,7 +19,7 @@ export function toSkillSuggestionItems(summaries: SkillSummary[]): SuggestionIte
   return summaries.map(({ id, name, description, icon }) => ({
     value: id,
     label: icon ? `${icon} ${name}` : name,
-    extra: description,
+    extra: createElement('span', { title: description }, description),
   }));
 }
 
