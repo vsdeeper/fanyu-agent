@@ -5,7 +5,7 @@ export const brandkitSummary: SkillSummary = {
   id: 'brandkit',
   name: '品牌规范板',
   description:
-    '生成高端品牌视觉规范板：标志系统、版式、暗色科技 / 奢侈 / 文化风。适用于品牌 VI、logo 规范、品牌识别与品牌板',
+    '生成高端品牌视觉规范板：标志系统、版式、暗色科技 / 奢侈 / 文化风；规范板交付后可按需输出商店用 App Icon 与反转 App Icon。适用于品牌 VI、logo 规范、品牌识别与品牌板',
 };
 
 /** mobile-design 菜单摘要；指令正文只存在 server catalog，避免打进浏览器包 */
