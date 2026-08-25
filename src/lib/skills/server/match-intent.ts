@@ -21,12 +21,21 @@ export type SkillMatchResult = {
   reason: SkillMatchReason;
 };
 
+/**
+ * 关键词主分：首命中 0.72，略高于 SKILL_SCORE_HIGH(0.70)，使「命中一个 activationKeywords」
+ * 即可单独过自动激活线，不依赖 description 辅分，也不受词表长度稀释（不用 命中数/总数 比例）。
+ */
 const KEYWORD_FIRST_HIT = 0.72;
+/** 每多命中一个关键词再 +0.08，表示意图更明确，但递减贡献，避免堆词爆表 */
 const KEYWORD_EXTRA_HIT = 0.08;
+/** 用户直接说出 skill 中文名或 id 时的加分；单独 0.2 不过线，常与关键词/description 叠加 */
 const NAME_BONUS = 0.2;
+/** description 词面辅分首命中；权重低，单独难以触发 High，减少泛化词误触 */
 const DESC_FIRST_HIT = 0.08;
+/** description 额外命中加分，最多再计 3 次，防止长 description 叠分过高 */
 const DESC_EXTRA_HIT = 0.04;
 
+/** description 切词后去掉的泛化片段，避免「生成」「高端」等拉高误触 */
 const DESC_STOPWORDS = new Set([
   '生成',
   '高端',
@@ -55,6 +64,9 @@ function extractDescTerms(description: string): string[] {
   return terms;
 }
 
+/**
+ * 将连续分数映射为三档信度，阈值见 constants.ts（High ≥0.70 / Medium ≥0.55）。
+ */
 function bandOf(score: number): SkillMatchBand {
   if (score >= SKILL_SCORE_HIGH) return 'high';
   if (score >= SKILL_SCORE_MEDIUM) return 'medium';
@@ -62,7 +74,17 @@ function bandOf(score: number): SkillMatchBand {
 }
 
 /**
- * 对单个 skill 打分：关键词主分 + description 辅分 + 名称/id 加分，封顶 1.0。
+ * 对单个 skill 做确定性意图打分（无 LLM），子串匹配、大小写不敏感，结果封顶 1.0。
+ *
+ * 合成公式（各项可叠加）：
+ * - name/id：命中 +0.20
+ * - activationKeywords：首命中 +0.72，第 n 个额外命中 +0.08×(n−1)
+ * - description 词面：首命中 +0.08，额外命中 +0.04×min(n−1, 3)
+ *
+ * 示例（仅关键词）：
+ * - 1 个关键词 → 0.72 → High，可自动激活
+ * - 2 个关键词 → 0.80 → High
+ * - 0 关键词、仅 description 若干词 → 通常 <0.70，不自动激活
  */
 export function scoreSkill(text: string, skill: Skill): number {
   const hay = text.toLowerCase();
@@ -80,6 +102,7 @@ export function scoreSkill(text: string, skill: Skill): number {
     }
   }
   if (keywordHits > 0) {
+    // 首命中承担主信号；后续命中边际递减，公式：0.72 + 0.08×(hits−1)
     score += KEYWORD_FIRST_HIT + KEYWORD_EXTRA_HIT * (keywordHits - 1);
   }
 
@@ -91,6 +114,7 @@ export function scoreSkill(text: string, skill: Skill): number {
     }
   }
   if (descHits > 0) {
+    // 辅分封顶：额外最多计 3 次，公式：0.08 + 0.04×min(hits−1, 3)
     score += DESC_FIRST_HIT + DESC_EXTRA_HIT * Math.min(descHits - 1, 3);
   }
 
@@ -110,9 +134,13 @@ function isStickyFollowup(text: string): boolean {
 }
 
 /**
- * 按用户文本对全部 skill 打分并分档。
- * High 直接激活；未达 High 时仅 sticky 短 follow-up（且无其它 High 新领域）可降阈激活；其余不激活。
- * 手动 /id 不走本函数（由 resolve-turn 合并）。
+ * 按用户文本对全部 skill 打分并决定是否自动 Activation。
+ *
+ * 激活规则（手动 /id 不走本函数，由 resolve-turn 直接并入 turnActivated）：
+ * 1. score ≥ High(0.70) → activated，reason: high
+ * 2. 否则若该 skill 已在 sticky，且本轮为短 follow-up（≤40 字 + 修订线索），
+ *    且没有「其它非 sticky skill 达 High」的新领域意图 → 降阈激活，reason: sticky-followup
+ * 3. 其余 → 不激活，reason: below-threshold（Discovery 目录仍常驻，但不注入正文）
  */
 export function matchSkillsByIntent(
   text: string,
@@ -137,6 +165,7 @@ export function matchSkillsByIntent(
       return { id: skill.id, score, band, activated: true, reason: 'high' };
     }
 
+    // 降阈路径：延续上一轮已激活 skill 的短句修订（如「改成 2×3」），避免 Medium/Low 分丢失上下文
     const stickyFollowup = stickySet.has(skill.id) && followup && !hasNewDomainIntent;
     if (stickyFollowup && (band === 'medium' || band === 'low')) {
       return { id: skill.id, score, band, activated: true, reason: 'sticky-followup' };
