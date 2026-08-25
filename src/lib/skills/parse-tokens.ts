@@ -1,4 +1,4 @@
-import { getSkillSummary } from './summaries';
+import { getSkillSummary, isSkillUserInvocable } from './summaries';
 
 // 与 expand.ts 同一套边界规则：行首或空格后的 /id
 const SKILL_TOKEN_RE = /(^|\s)\/([a-z0-9-]*)/g;
@@ -8,7 +8,7 @@ export type SkillTextSegment =
 
 /**
  * 把用户文本按 /skill 令牌切分为普通文本与已知 skill 段，供气泡内 tag 展示。
- * 注册表不存在的 id 保留为原文，不单独成段。
+ * 注册表不存在或 userInvocable === false 的 id 保留为原文，不单独成段。
  */
 export function parseSkillTokensInText(text: string): SkillTextSegment[] {
   if (!text) return [];
@@ -22,7 +22,8 @@ export function parseSkillTokensInText(text: string): SkillTextSegment[] {
     const matchStart = match.index ?? 0;
     const slashPos = matchStart + boundary.length;
     const tokenEnd = slashPos + 1 + id.length;
-    const skill = id.length > 0 ? getSkillSummary(id) : undefined;
+    const summary = id.length > 0 ? getSkillSummary(id) : undefined;
+    const skill = summary && isSkillUserInvocable(summary) ? summary : undefined;
 
     if (matchStart > lastIndex) {
       segments.push({ type: 'text', value: text.slice(lastIndex, matchStart) });

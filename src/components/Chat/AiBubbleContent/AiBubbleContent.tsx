@@ -7,6 +7,7 @@ import '@ant-design/x-markdown/themes/dark.css';
 import './XMarkdownTheme.css';
 import styles from './AiBubbleContent.module.css';
 import { useThemeMode } from '@/components/theme';
+import DesignMdBlock from './DesignMdBlock';
 import GenerateImageBlock from './GenerateImageBlock';
 import { markdownComponents } from './MarkdownImage';
 import ReasoningThink from './ReasoningThink';
@@ -14,6 +15,7 @@ import SourceFavicon from './SourceFavicon';
 import {
   type AiBubbleContentProps,
   aiBubbleContentPropsAreEqual,
+  getDesignMdParts,
   getGenerateImageParts,
   getSourceItems,
   openSourceUrl,
@@ -32,6 +34,7 @@ function AiBubbleContent({
   const { mode } = useThemeMode();
   const sourceItems = useMemo(() => getSourceItems(messageParts, text), [messageParts, text]);
   const imageParts = useMemo(() => getGenerateImageParts(messageParts), [messageParts]);
+  const designMdParts = useMemo(() => getDesignMdParts(messageParts), [messageParts]);
   // 修复：裁切末尾「参考来源」区块后再渲染 Markdown，避免与 Sources 组件重复展示
   const displayText = useMemo(() => stripReferenceSection(text), [text]);
 
@@ -54,6 +57,7 @@ function AiBubbleContent({
         />
       ) : null}
       {imageParts.length > 0 ? <GenerateImageBlock parts={imageParts} /> : null}
+      {designMdParts.length > 0 ? <DesignMdBlock parts={designMdParts} /> : null}
       {sourceItems.length > 0 && !streaming ? (
         <Sources
           className={styles.sources}

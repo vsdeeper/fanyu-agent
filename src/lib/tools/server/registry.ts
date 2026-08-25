@@ -2,10 +2,11 @@ import 'server-only';
 
 import { analyzeImage } from './catalog/analyze-image';
 import { generateImage } from './catalog/generate-image';
+import { saveDesignMd } from './catalog/save-design-md';
 import type { AgentToolContext, AgentToolDefinition } from '../types';
 
 // 新增 tool：对照已有 catalog 条目实现 AgentToolDefinition，再在 TOOLS 数组 import 追加。
-const TOOLS: AgentToolDefinition[] = [generateImage, analyzeImage];
+const TOOLS: AgentToolDefinition[] = [generateImage, analyzeImage, saveDesignMd];
 
 /** 按注册表创建本地 catalog tools（不含 Provider 侧 web_search） */
 export function createCatalogTools(ctx: AgentToolContext) {

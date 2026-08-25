@@ -86,7 +86,7 @@ src/
     layout.tsx
     global.css
   components/              # 跨路由 UI；见「组件目录约定」
-  features/                # 面向用户的产品域（对话 / 生图 / 定位）
+  features/                # 面向用户的产品域（对话 / 生图 / 定位 / 会话文档）
     chat/
       types.ts / constants.ts / group.ts / route.ts   # 同构：类型、常量、纯函数
       server/              # Node / DB / Provider；入口 import 'server-only'
@@ -96,6 +96,9 @@ src/
     images/
       types.ts / size.ts / registry.ts   # 同构：类型、尺寸与模型清单
       server/              # assets / serve-asset / vision / router / providers
+    docs/
+      types.ts / constants.ts / url.ts   # 同构：会话文档资产（DESIGN.md）
+      server/              # assets / serve-asset
     geo/
       types.ts             # UserLocation 类型（同构）
       server/              # parse-request / regeo / handle-regeo
@@ -106,7 +109,7 @@ src/
       schema.ts            # chats / messages 表
     skills/
       types.ts / summaries.ts / parse-tokens.ts / context.ts / format-tag-label.ts  # 同构（无指令正文）
-      server/              # catalog / registry / expand / context / catalog-prompt / match-intent / resolve-turn（含 instructions）；新增 skill 时复制 catalog/_template.ts，summaries.ts 追加摘要，catalog 填写 activationKeywords
+      server/              # catalog / registry / expand / context / catalog-prompt / match-intent / resolve-turn（含 instructions）；新增 skill 时复制 catalog/_template.ts，summaries.ts 追加摘要，catalog 填写 activationKeywords；知识库 skill 设 userInvocable: false 并可用 coActivateWith
     tools/
       types.ts / constants.ts   # 同构
       server/              # registry / pasted-image / catalog（execute 再调 features）
@@ -122,7 +125,7 @@ drizzle/                   # SQL migrations（drizzle-kit generate）
 
 **`src/app/` 保持 Next.js 规范下的「路由壳」**：只放框架识别的入口文件（`route.ts`、`page.tsx`、`layout.tsx`、`loading.tsx`、`error.tsx`、样式与静态资源等），**不在 `app/api/*` 下堆 `utils/`、Provider 适配、业务方法或领域类型**。
 
-**产品域放 `src/features/<域>/`**（chat / images / geo），与面向用户的 API 路径对齐。**`src/lib/` 只放没有独立产品面的平台层**：基础设施（`db` / `shared` / `theme`）和跨域 Agent 能力目录（`skills` / `tools`）。skills、tools 不绑定任何产品域；tools 的 `execute` 再调用 `features/images` 等能力层。
+**产品域放 `src/features/<域>/`**（chat / images / geo / docs），与面向用户的 API 路径对齐。**`src/lib/` 只放没有独立产品面的平台层**：基础设施（`db` / `shared` / `theme`）和跨域 Agent 能力目录（`skills` / `tools`）。skills、tools 不绑定任何产品域；tools 的 `execute` 再调用 `features/images` 等能力层。
 
 域内再按运行时拆：
 
@@ -138,6 +141,7 @@ drizzle/                   # SQL migrations（drizzle-kit generate）
 | `app/api/chats/`、`app/api/chats/[id]/` | `features/chat/server/`   | 会话列表 / 新建 / 读取 / 删除 |
 | `app/api/geo/`                          | `features/geo/server/`    | 逆地理、UserLocation          |
 | `app/api/images/`                       | `features/images/server/` | 生图资源、Provider            |
+| `app/api/docs/`                         | `features/docs/server/`   | DESIGN.md 等会话文档下载      |
 
 **Route Handler（`route.ts`）职责上限：**
 
@@ -219,6 +223,7 @@ Button/
 - 主对话模型在 [`src/app/api/chat/route.ts`](src/app/api/chat/route.ts) 通过 `generate_image` tool 出图/改图；`stopWhen: stepCountIs(5)` 保证 tool 后主模型可汇总说明
 - 首版生图 Provider 为方舟 Seedream（`CURRENT_IMAGE_MODEL_ID` 写死在 [`src/features/images/size.ts`](src/features/images/size.ts)，`POST /images/generations`）；尺寸见 `IMAGE_SIZE_BY_MODEL_ID`；Flux Art 仅注册 Provider 接口，二期接入
 - 图片文件落盘于 `CHAT_STORE_DIR/images/{chatId}/`；元数据表 `image_assets`；`chats.working_image_asset_id` 为多轮改图默认源图
+- DESIGN.md 落盘于 `CHAT_STORE_DIR/docs/{chatId}/`；经 `save_design_md` 写入，前端展示下载卡片，不在对话正文贴全文
 - 前端经 `GET /api/images/[assetId]` 展示；气泡内使用 antd `Image`，勿用临时上游 CDN URL 直接渲染
 - 改图时 Provider 入参使用本地 data URL/base64，避免方舟返回 URL 过期导致下一轮 edit 失败
 - `generate_image` 的 `execute` 返回完整 output（含 `assetId`/`url`）供 `tool-generate_image` part 落盘与 `GenerateImageBlock` 渲染；`toModelOutput` 向主模型返回不含 `url` 的文本摘要，避免汇总正文重复插入 Markdown 图片
@@ -228,8 +233,9 @@ Button/
 
 Agent Skills 采用 Discovery → Activation 两层注入（Execution / references 预留）：
 
-- **Discovery**：每轮 `instructions` 常驻 skill 目录（`id` + `name` + `description`），见 `buildSkillCatalogPrompt`；不含指令正文
-- **Activation**：仅本轮加载完整 `instructions`。来源为手动 `/<id>`（跳过阈值）与意图匹配达阈值的自动结果，二者取并集
+- **Discovery**：每轮 `instructions` 常驻 skill 目录（`id` + `name` + `description`），见 `buildSkillCatalogPrompt`；不含指令正文。目录区分「用户可调用」与「主模型知识库」（`userInvocable: false`）
+- **Activation**：仅本轮加载完整 `instructions`。来源为手动 `/<id>`（仅可调用 skill，跳过阈值）、意图匹配达阈值的自动结果、以及 `coActivateWith` 伴随激活（知识库 skill 随相关 skill 一并注入），取并集
+- **不可调用 skill**：`userInvocable: false` 不进 Suggestion 菜单、不识别 `/<id>` 令牌；仍可出现在 Discovery，经意图匹配或伴随激活注入正文（如 `design-md` 随 `mobile-design` / `web-design` 出图后按需引导输出 DESIGN.md）
 - **信度阈值**（`src/lib/skills/server/constants.ts`）：High ≥ 0.70 激活；Medium 0.55–0.69 默认不激活；Low < 0.55 不激活。sticky 短 follow-up（≤40 字且含修订线索、且无其它 skill 达 High）可降阈再激活
 - **粘滞**：`metadata.skillIds` 只增不减，记录本会话曾激活过的 skill，供 Tags 恢复与 follow-up 加权；**不等于**每轮注入正文
 - **去重**：已激活 skill 在用户文本 `/token` 处只保留 `【Skill：name】` 短引用；历史消息中的令牌不再展开正文

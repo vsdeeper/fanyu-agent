@@ -24,13 +24,32 @@ export const webDesignSummary: SkillSummary = {
     '生成高端网站/落地页设计参考图：一区块一图，Hero / 功能 / 证言 / CTA 等横向构图。适用于官网、营销站、landing page 与 Web 端设计',
 };
 
+/** design-md 知识库摘要：不进菜单，用户不可 /id 调用；指令正文只存在 server catalog */
+export const designMdSummary: SkillSummary = {
+  id: 'design-md',
+  name: '设计系统文档',
+  description:
+    '按产品意图与已出界面设计图，按需落盘语义化 DESIGN.md 并提供下载（氛围、色板、字阶、组件、布局、动效与反模式），供后续实现对齐。不直接出图、不在对话中贴全文',
+  userInvocable: false,
+};
+
 // 隐藏菜单：在对应 Summary 上设 userInvocable: false（默认省略即为可调用）
 
-const SKILL_SUMMARIES: SkillSummary[] = [brandkitSummary, mobileDesignSummary, webDesignSummary];
+const SKILL_SUMMARIES: SkillSummary[] = [
+  brandkitSummary,
+  mobileDesignSummary,
+  webDesignSummary,
+  designMdSummary,
+];
+
+/** 用户可从菜单或 /<id> 令牌调用（userInvocable !== false） */
+export function isSkillUserInvocable(skill: Pick<SkillSummary, 'userInvocable'>): boolean {
+  return skill.userInvocable !== false;
+}
 
 /** 用户可在界面调用的 skill（userInvocable !== false）；供 Suggestion 菜单 */
 export function listSkillSummaries(): SkillSummary[] {
-  return SKILL_SUMMARIES.filter((skill) => skill.userInvocable !== false);
+  return SKILL_SUMMARIES.filter(isSkillUserInvocable);
 }
 
 /** 按 id 查 skill 摘要（含不可调用项）；不存在返回 undefined（气泡令牌解析按「未知」保留原文） */

@@ -149,10 +149,29 @@ export function imagePartsKey(messageParts: ReadonlyArray<MessagePart> | undefin
   return keys.join('|');
 }
 
+/** memo 比较用：tool-save_design_md 状态与输出 */
+export function designMdPartsKey(messageParts: ReadonlyArray<MessagePart> | undefined): string {
+  if (!messageParts?.length) return '';
+
+  const keys: string[] = [];
+  for (const part of messageParts) {
+    if (part.type === 'tool-save_design_md') {
+      keys.push(`d:${String(part.state ?? '')}:${JSON.stringify(part.output ?? null)}`);
+    }
+  }
+  return keys.join('|');
+}
+
 export function getGenerateImageParts(
   messageParts: ReadonlyArray<MessagePart> | undefined,
 ): MessagePart[] {
   return (messageParts ?? []).filter((part) => part.type === 'tool-generate_image');
+}
+
+export function getDesignMdParts(
+  messageParts: ReadonlyArray<MessagePart> | undefined,
+): MessagePart[] {
+  return (messageParts ?? []).filter((part) => part.type === 'tool-save_design_md');
 }
 
 export function openSourceUrl(item: { url?: string }) {
@@ -192,6 +211,7 @@ export function aiBubbleContentPropsAreEqual(
     prev.streaming === next.streaming &&
     prev.thinking === next.thinking &&
     sourcePartsKey(prev.messageParts) === sourcePartsKey(next.messageParts) &&
-    imagePartsKey(prev.messageParts) === imagePartsKey(next.messageParts)
+    imagePartsKey(prev.messageParts) === imagePartsKey(next.messageParts) &&
+    designMdPartsKey(prev.messageParts) === designMdPartsKey(next.messageParts)
   );
 }

@@ -13,8 +13,9 @@ export type Skill = {
   icon?: string;
   /**
    * 用户是否可在界面调用；默认 true（可省略）。
-   * 为 false 时 Suggestion 菜单不展示；须写在 summaries.ts 的摘要上（catalog 经 spread 继承），
-   * 历史消息气泡仍可通过 getSkillSummary 解析 tag。
+   * 为 false 时 Suggestion 菜单不展示、用户文本中的 /<id> 不按令牌展开或激活；
+   * 须写在 summaries.ts 的摘要上（catalog 经 spread 继承）。仍可出现在 Discovery 目录，
+   * 经意图匹配或 coActivateWith 注入正文（主模型知识库）。
    */
   userInvocable?: boolean;
   /**
@@ -22,6 +23,12 @@ export type Skill = {
    * 避免打进浏览器包。
    */
   activationKeywords?: string[];
+  /**
+   * 当列出的 skill 本轮已激活时，一并注入本 skill 的 instructions。
+   * 供 userInvocable: false 的知识库 skill 挂到相关出图 skill 上。
+   * 只写在 catalog，勿写入 summaries。
+   */
+  coActivateWith?: string[];
   /** 注入模型的指令正文；仅本轮 Activation 时加载（Discovery 只放 name + description） */
   instructions: string;
   /** 可选：建议 prompt 模板（预留，默认不自动填入输入框） */

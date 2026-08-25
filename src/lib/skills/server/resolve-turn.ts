@@ -6,7 +6,7 @@ import { getMessageSkillIds, resolveActiveSkillIds } from '../context';
 import { parseSkillTokensInText } from '../parse-tokens';
 import type { Skill } from '../types';
 import { matchSkillsByIntent, type SkillMatchResult } from './match-intent';
-import { getSkill } from './registry';
+import { getSkill, listSkills } from './registry';
 
 export type ResolveTurnSkillsResult = {
   manualTokenIds: string[];
@@ -31,6 +31,19 @@ function uniqueKnownIds(...lists: string[][]): string[] {
     }
   }
   return out;
+}
+
+/**
+ * 将声明了 coActivateWith 的知识库 skill 并入本轮激活集合。
+ * 任一伴随目标已在 activatedIds 中即注入，便于出图 skill 激活时带上 DESIGN.md 写作规范。
+ */
+function appendCompanionIds(activatedIds: string[]): string[] {
+  if (activatedIds.length === 0) return activatedIds;
+  const activated = new Set(activatedIds);
+  const companions = listSkills()
+    .filter((skill) => skill.coActivateWith?.some((id) => activated.has(id)))
+    .map((skill) => skill.id);
+  return uniqueKnownIds(activatedIds, companions);
 }
 
 /** 抽取 UIMessage 文本 part */
@@ -59,8 +72,8 @@ const EMPTY_TURN: ResolveTurnSkillsResult = {
 };
 
 /**
- * 解析本轮 skill：手动 /token、达阈值的自动匹配、会话粘滞 metadata。
- * - turnActivated：仅本轮注入完整 instructions（手动 ∪ 自动）
+ * 解析本轮 skill：手动 /token、达阈值的自动匹配、伴随激活、会话粘滞 metadata。
+ * - turnActivated：仅本轮注入完整 instructions（手动 ∪ 自动 ∪ coActivateWith）
  * - mergedSkillIds：只增不减的粘滞记录，不等于每轮注入正文
  */
 export function resolveTurnSkills(
@@ -92,7 +105,7 @@ export function resolveTurnSkills(
     matches.filter((match) => match.activated).map((match) => match.id),
   );
 
-  const turnActivatedIds = uniqueKnownIds(manualTokenIds, autoIds);
+  const turnActivatedIds = appendCompanionIds(uniqueKnownIds(manualTokenIds, autoIds));
   const turnActivatedSkills = turnActivatedIds.flatMap((id) => {
     const skill = getSkill(id);
     return skill ? [skill] : [];
