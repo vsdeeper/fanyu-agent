@@ -1,6 +1,6 @@
 import { Chat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
-import { prepareSendMessagesRequest } from '@/components/Chat/utils';
+import { prepareSendMessagesRequest } from '../Chat/utils';
 
 const transport = new DefaultChatTransport({
   api: '/api/chat',

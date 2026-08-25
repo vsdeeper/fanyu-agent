@@ -8,9 +8,9 @@ import { Button, Layout, Spin, Typography } from 'antd';
 import type { ChatListItem, ChatRecord } from '@/features/chat/types';
 import { apiGet } from '@/lib/shared/client/api-client';
 import { resolveChatRouteId } from '@/features/chat/route';
-import Chat from '@/components/Chat';
-import ChatSidebar from '@/components/ChatSidebar';
 import ModeSwitch from '@/components/ModeSwitch';
+import Chat from '../Chat';
+import ChatSidebar from '../ChatSidebar';
 import { peekChat, resolveRouteChat } from './chat-registry';
 import styles from './ChatShell.module.css';
 

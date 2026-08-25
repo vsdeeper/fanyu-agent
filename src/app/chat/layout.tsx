@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import ChatShell from '@/components/ChatShell';
+import ChatShell from './_components/ChatShell';
 import { listChats } from '@/features/chat/server/store';
 
 export const runtime = 'nodejs';

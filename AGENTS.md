@@ -82,10 +82,11 @@ src/
       images/[assetId]/route.ts  # → features/images/server
     chat/layout.tsx
     chat/[[...id]]/page.tsx
+    chat/_components/      # 对话页私有 UI：ChatShell / ChatSidebar / Chat
     page.tsx
     layout.tsx
     global.css
-  components/              # 跨路由 UI；见「组件目录约定」
+  components/              # 全局通用 UI：theme / CustomIcon / ModeSwitch / Providers
   features/                # 面向用户的产品域（对话 / 生图 / 定位 / 会话文档）
     chat/
       types.ts / constants.ts / group.ts / route.ts   # 同构：类型、常量、纯函数
@@ -123,7 +124,7 @@ drizzle/                   # SQL migrations（drizzle-kit generate）
 
 ### App Router 与 features / lib 分层约定
 
-**`src/app/` 保持 Next.js 规范下的「路由壳」**：只放框架识别的入口文件（`route.ts`、`page.tsx`、`layout.tsx`、`loading.tsx`、`error.tsx`、样式与静态资源等），**不在 `app/api/*` 下堆 `utils/`、Provider 适配、业务方法或领域类型**。
+**`src/app/` 保持 Next.js 规范下的「路由壳」**：只放框架识别的入口文件（`route.ts`、`page.tsx`、`layout.tsx`、`loading.tsx`、`error.tsx`、样式与静态资源等），**不在 `app/api/*` 下堆 `utils/`、Provider 适配、业务方法或领域类型**。路由私有 UI 允许放同段 `_components/`（`_` 前缀为 Next.js 私有目录，不成为路由段），不算 API / features 业务实现。
 
 **产品域放 `src/features/<域>/`**（chat / images / geo / docs），与面向用户的 API 路径对齐。**`src/lib/` 只放没有独立产品面的平台层**：基础设施（`db` / `shared` / `theme`）和跨域 Agent 能力目录（`skills` / `tools`）。skills、tools 不绑定任何产品域；tools 的 `execute` 再调用 `features/images` 等能力层。
 
@@ -169,8 +170,8 @@ drizzle/                   # SQL migrations（drizzle-kit generate）
 **页面路由（非 API）：**
 
 - `page.tsx` / `layout.tsx` 可直调 `features/<域>/server/*`（如 `listChats()`），复杂校验抽到 `features/chat/route.ts` 等
-- 路由私有 UI 放 `app/<route>/_components/`；跨路由 UI 放 `src/components/`
-- **`'use client'` 只打在被 Server Component 直接 import 的入口**（当前为 `Providers`、`ChatShell`）。子树内组件不要重复标注。
+- UI 两层：全局通用放 `src/components/`；页面级放 `app/<route>/_components/`（见「组件目录约定」）
+- **`'use client'` 只打在被 Server Component 直接 import 的入口**（当前为 `src/components/Providers`、`app/chat/_components/ChatShell`）。子树内组件不要重复标注。
 
 **新增 API 时 checklist：**
 
@@ -181,6 +182,13 @@ drizzle/                   # SQL migrations（drizzle-kit generate）
 5. 不要加跨 server/client 的域级 barrel `index.ts`
 
 ### 组件目录约定
+
+| 层级     | 路径                       | 判定                                 | 现状示例                                                  |
+| -------- | -------------------------- | ------------------------------------ | --------------------------------------------------------- |
+| 全局通用 | `src/components/`          | 无业务耦合，可跨路由复用             | `theme/`、`CustomIcon/`、`ModeSwitch/`、`Providers.tsx`   |
+| 页面级   | `app/<route>/_components/` | 仅该路由段使用；`_` 前缀不成为路由段 | `app/chat/_components/`（ChatShell / ChatSidebar / Chat） |
+
+页面级可引用全局通用（如 Chat 用 `useThemeMode`）；反向禁止。不引入「通用业务」第三层，跨页领域逻辑放 `features/<域>/`，不放 UI 目录。
 
 有样式 / 测试 / 子文件时，**一个公开组件一个目录**（PascalCase，与主组件同名）；相关文件 colocation，勿单独堆 `styles/`：
 
@@ -206,7 +214,6 @@ Button/
 - **不在主组件文件内定义方法**：解析、归一化、memo 比较、事件处理等一律抽到同目录 `utils.ts`；主文件只保留组件函数与 JSX 组装
 - **不在主组件文件内定义专属常量**：枚举值、文案映射、默认配置等一律抽到同目录 `constants.ts`
 - **抽离子组件时同步抽离样式、方法与常量**：专属样式迁入子目录同名样式文件；专属方法迁入子目录 `utils.ts`；专属常量迁入子目录 `constants.ts`；勿继续依赖父级样式/utils/constants 中的专属部分（跨子组件共享类型/工具/常量可留在父级对应文件）
-- 路由私有组件可放 `app/<route>/_components/`；跨路由复用放 `src/components`
 
 ## 会话持久化约定
 
@@ -250,7 +257,7 @@ Agent Skills 采用 Discovery → Activation 两层注入（Execution / referenc
 - CSS Module 引用 `--one-*` 即可自动换肤；**antd 无对应 token 的自定义颜色变量**（滚动条、侧栏边框、侧栏按钮阴影）需在 `src/app/global.css` 的 `html[data-theme='dark']` 下覆盖
 - **布局壳必须用 antd `Layout` 组件**（`ChatShell` 的 `Layout`/`Layout.Header`/`Layout.Content`、`ChatSidebar` 的 `Layout.Sider`）：antd 组件级 token 是惰性输出的，只有组件实际渲染才会把 `--one-layout-*` flush 到 `:root` 并注入 `.ant-layout-*` 规则；若改用原生 `div`/`aside` 布局，`src/lib/theme/components.ts` 里的 `Layout.*` 配置（`siderBg`/`bodyBg`/`headerBg`/`headerHeight` 等）将完全不生效（详见该文件注释）
 - **XMarkdown 双主题规则**：同时引入 `@ant-design/x-markdown/themes/light.css` 与 `dark.css`，在组件内用 `useThemeMode()` 切换 `className` 的 `x-markdown-light` / `x-markdown-dark`（例：`AiBubbleContent.tsx`）；XMarkdown 无 `theme` prop，主题靠 className 作用域下的 CSS 变量驱动
-- **XMarkdown 主题变量覆写层**：XMarkdown 主题色为硬编码默认值，不随应用主题。在 [`AiBubbleContent/XMarkdownTheme.css`](src/components/Chat/AiBubbleContent/XMarkdownTheme.css) 里把其主题变量重映射到 antd `--one-*`（如 `--text-color→--one-color-text`、`--heading-color→--one-color-text-base`、`--border-color→--one-color-border`、code 背景 `--light-bg`/`--dark-bg→--one-color-fill-tertiary`，详见该文件注释）；**引入顺序契约**：该文件必须在 `AiBubbleContent.tsx` 紧跟 `light.css`/`dark.css` 之后导入，**勿放 `global.css`**（根布局先加载，会被深层组件的主题 CSS 以同优先级反压而失效）；浅/深 code 背景变量名不同（`--light-bg`/`--dark-bg`），须在 `.x-markdown-light`/`.x-markdown-dark` 两个作用域分别覆写，code 背景以 `!important` 消费，靠重定义变量接管
+- **XMarkdown 主题变量覆写层**：XMarkdown 主题色为硬编码默认值，不随应用主题。在 [`AiBubbleContent/XMarkdownTheme.css`](src/app/chat/_components/Chat/AiBubbleContent/XMarkdownTheme.css) 里把其主题变量重映射到 antd `--one-*`（如 `--text-color→--one-color-text`、`--heading-color→--one-color-text-base`、`--border-color→--one-color-border`、code 背景 `--light-bg`/`--dark-bg→--one-color-fill-tertiary`，详见该文件注释）；**引入顺序契约**：该文件必须在 `AiBubbleContent.tsx` 紧跟 `light.css`/`dark.css` 之后导入，**勿放 `global.css`**（根布局先加载，会被深层组件的主题 CSS 以同优先级反压而失效）；浅/深 code 背景变量名不同（`--light-bg`/`--dark-bg`），须在 `.x-markdown-light`/`.x-markdown-dark` 两个作用域分别覆写，code 背景以 `!important` 消费，靠重定义变量接管
 - 切换按钮：`src/components/ModeSwitch/`，置于 `ChatShell` 顶部栏右侧；单按钮三态循环（浅色→深色→跟随系统→浅色），图标随当前偏好切换（SunOutlined/MoonOutlined/MonitorOutlined），Tooltip 与 aria-label 描述下一步
 
 ## 编码约定
