@@ -136,11 +136,17 @@ function isStickyFollowup(text: string): boolean {
 /**
  * 按用户文本对全部 skill 打分并决定是否自动 Activation。
  *
+ * 入参：
+ * - `text`：本轮最新 user 消息正文（resolve-turn 已 trim）
+ * - `stickyIds`：历史 sticky ∪ 客户端 skillIds，供 follow-up 降阈与「新领域」判断
+ *
  * 激活规则（手动 /id 不走本函数，由 resolve-turn 直接并入 turnActivated）：
  * 1. score ≥ High(0.70) → activated，reason: high
  * 2. 否则若该 skill 已在 sticky，且本轮为短 follow-up（≤40 字 + 修订线索），
  *    且没有「其它非 sticky skill 达 High」的新领域意图 → 降阈激活，reason: sticky-followup
  * 3. 其余 → 不激活，reason: below-threshold（Discovery 目录仍常驻，但不注入正文）
+ *
+ * 返回每个 skill 的匹配结果（含未激活项），供 resolve-turn 筛 `activated` 与观测日志。
  */
 export function matchSkillsByIntent(
   text: string,
@@ -149,31 +155,45 @@ export function matchSkillsByIntent(
 ): SkillMatchResult[] {
   const skills = listSkills();
   const stickySet = new Set(stickyIds);
+
+  // 对每个 skill 独立打分；多 skill 可同时达 High（如同时提「品牌板」与「落地页」）
   const scores = skills.map((skill) => ({
     skill,
     score: scoreSkill(text, skill),
   }));
 
+  // 「新领域」：存在某个 skill 分数达 High，且它不在当前 sticky 里。
+  // 用于挡住 sticky follow-up 误续：例如已在 brandkit 会话里用户说「帮我做落地页」，
+  // web-design 达 High → hasNewDomainIntent=true → brandkit 不再因短句降阈续活。
   const hasNewDomainIntent = scores.some(
     ({ skill, score }) => score >= SKILL_SCORE_HIGH && !stickySet.has(skill.id),
   );
+
+  // 短 follow-up：字数与修订线索合取，避免「今天天气怎么样」这类闲聊触发降阈
   const followup = isStickyFollowup(text);
 
   const matches: SkillMatchResult[] = scores.map(({ skill, score }) => {
     const band = bandOf(score);
+
+    // 路径 1：分数过 High 线，直接自动激活（与 band 是否为 medium 无关，high 已覆盖）
     if (band === 'high') {
       return { id: skill.id, score, band, activated: true, reason: 'high' };
     }
 
-    // 降阈路径：延续上一轮已激活 skill 的短句修订（如「改成 2×3」），避免 Medium/Low 分丢失上下文
+    // 路径 2：降阈续活——三个条件同时满足：
+    // (a) 本 skill 已在 sticky（用户曾手动选过或历史自动激活过）
+    // (b) 本轮是短句修订（如「改成 2×3」「确认出图」）
+    // (c) 没有其它 skill 以 High 分表达新任务（避免旧 skill 抢新意图）
     const stickyFollowup = stickySet.has(skill.id) && followup && !hasNewDomainIntent;
     if (stickyFollowup && (band === 'medium' || band === 'low')) {
       return { id: skill.id, score, band, activated: true, reason: 'sticky-followup' };
     }
 
+    // 路径 3：未达 High 且不满足降阈 → 本轮不注入正文；Discovery 目录仍可见该 skill
     return { id: skill.id, score, band, activated: false, reason: 'below-threshold' };
   });
 
+  // 默认打日志；stream-chat 二次调用时传 log:false 避免与 handle-post 重复
   if (options?.log !== false) {
     console.info(
       '[skills] intent-match',
