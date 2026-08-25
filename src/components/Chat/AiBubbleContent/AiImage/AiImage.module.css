@@ -25,7 +25,6 @@
 }
 
 /* 透明 PNG 透过棋盘格可见；不透明 JPEG 会盖住，无需按格式分支 */
-.image :global(.ant-image-img),
 .previewBody :global(.ant-image-preview-img) {
   background-color: var(--one-color-fill-quaternary);
   background-image:
