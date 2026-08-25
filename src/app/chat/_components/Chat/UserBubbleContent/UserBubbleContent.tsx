@@ -43,7 +43,12 @@ function renderMessageText(text: string) {
     }
     const label = formatSkillTagLabel(segment);
     return (
-      <Tag key={`skill-${segment.id}-${index}`} className={styles.skillTag} color="processing">
+      <Tag
+        key={`skill-${segment.id}-${index}`}
+        className={styles.skillTag}
+        color="processing"
+        variant="solid"
+      >
         {label}
       </Tag>
     );

@@ -7,10 +7,14 @@
   margin-inline: 0 !important;
 }
 
-/* Sender slot tag：小号字体 */
+/* Sender 的 tag slot 只渲染 span，不支持 antd Tag 的 variant；用 token 对齐气泡内 solid processing */
 .root :global(.ant-sender-slot-tag) {
   font-size: 12px !important;
   padding: 2px var(--one-padding-xxs) !important;
+  background: var(--one-color-info) !important;
+  border-color: var(--one-color-info) !important;
+  color: var(--one-color-text-light-solid) !important;
+  border-radius: var(--one-border-radius-sm) !important;
 }
 
 /* Suggestion 根元素（Cascader），保证包裹内容全宽 */
