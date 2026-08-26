@@ -1,12 +1,20 @@
 # 凡域
 
-基于 **Next.js App Router + TypeScript + Vercel AI SDK + @ant-design/x** 的 AI 对话前端脚手架。样式使用 CSS Modules 与 Ant Design。
+基于 **Next.js App Router + TypeScript + Vercel AI SDK + @ant-design/x** 的 AI 对话应用。样式使用 CSS Modules 与 Ant Design（不使用 Tailwind）。
+
+- 流式对话、停止生成、会话侧栏与浅色 / 深色 / 跟随系统主题
+- Skills：品牌规范板、移动端 / Web 端设计；按需落盘 `DESIGN.md`
+- 文生图 / 改图（方舟 Seedream；Flux 为二期接入）
+- 会话、图片与文档落盘（SQLite + 本地文件）
+
+协作约定与分层规范见 [AGENTS.md](./AGENTS.md)。
 
 ## 技术栈
 
 - [Next.js](https://nextjs.org/) 16（App Router）
 - [Vercel AI SDK](https://ai-sdk.dev/)（`ai` / `@ai-sdk/react` / `@ai-sdk/openai`）
 - [@ant-design/x](https://x.ant.design/) + [Ant Design](https://ant.design/)
+- Drizzle + better-sqlite3
 - TypeScript、ESLint、Prettier、Husky、Commitlint
 
 ## 环境要求
@@ -21,13 +29,27 @@ pnpm install
 cp .env.example .env.local
 ```
 
-在 `.env.local` 中填入 OpenAI API Key：
+在 `.env.local` 中填写密钥（完整列表与注释见 `.env.example`）。默认对话 Provider 为 DeepSeek；识图与生图仍需方舟：
 
 ```env
-OPENAI_API_KEY=sk-xxxxxxxx
-# 可选：OpenAI 兼容接口
-# OPENAI_BASE_URL=https://api.openai.com/v1
+CHAT_PROVIDER=deepseek
+
+DEEPSEEK_API_KEY=your-deepseek-api-key
+DEEPSEEK_BASE_URL=https://your-deepseek-base-url
+
+# 识图 / 生图（CHAT_PROVIDER=deepseek 时也需要）
+ARK_API_KEY=your-ark-api-key
+ARK_BASE_URL=https://your-ark-base-url
+ARK_MODEL_PRO=your-ark-model-pro
+ARK_MODEL_LITE=your-ark-model-lite
+ARK_MODEL_MINI=your-ark-model-mini
+
+AMAP_WEB_KEY=your-amap-web-service-key
+CHAT_STORE_DIR=./data/chats
+CHAT_SYNC_REMOTE_DIR=/path/to/cloud-backup/chats
 ```
+
+主对话切到方舟时设 `CHAT_PROVIDER=ark`，并同样填写 `ARK_*`。DeepSeek 三档模型 ID 可缺省（代码默认 `deepseek-v4-flash`）；方舟三档须配置。
 
 启动开发服务：
 
@@ -53,7 +75,7 @@ pnpm run dev
 
 ## 数据库迁移
 
-会话数据使用 Drizzle + SQLite（`CHAT_STORE_DIR/chats.db`，见 `.env.example`）。**这两个命令不会随 `dev` / `build` 自动执行**，仅在改表结构或需要单独跑迁移时使用。
+会话数据使用 Drizzle + SQLite（`CHAT_STORE_DIR/chats.db`，见 `.env.example`）。**这两个命令不会随** `dev` **/** `build` **自动执行**，仅在改表结构或需要单独跑迁移时使用。
 
 ### 何时执行
 
@@ -97,28 +119,32 @@ pnpm sync:chats:pull
 pnpm sync:chats:pull -- --yes   # 跳过确认
 ```
 
-同步前建议先关闭应用，避免 WAL 文件未 checkpoint 导致不一致。
+同步前建议先关闭应用，避免 WAL 文件未 checkpoint 导致不一致。明文落盘 + 云盘同步不适合高敏感内容。
 
 ## 目录结构
 
 ```
 src/
-  app/
-    api/chat/route.ts   # 流式对话 API（streamText）
-    layout.tsx          # AntdRegistry + Providers
-    page.tsx            # 首页
-  components/
-    Providers.tsx       # ConfigProvider + XProvider
-    Chat.tsx            # 对话 UI（useChat + Bubble / Sender）
+  app/                 # Next.js 路由壳（page / layout / route）
+    api/               # 薄壳，转调 features/<域>/server
+    chat/_components/  # 对话页 UI：ChatShell / ChatSidebar / Chat
+  components/          # 全局通用 UI：theme / ModeSwitch / Providers
+  features/            # 产品域：chat / images / docs / geo
+  lib/                 # 基础设施与 Agent 能力：db / skills / tools / shared / theme
+drizzle/               # SQL migrations
 ```
+
+`app/` 只放框架入口；业务在 `features/`，skills / tools 在 `lib/`。细节见 [AGENTS.md](./AGENTS.md)。
 
 ## 生图功能
 
-`generate_image` 工具支持文生图（`generate`）和改图（`edit`）两种模式。模型选择由 `resolveImageModelId` 按三级优先级决定：
+`generate_image` 工具支持文生图（`generate`）和改图（`edit`）。模型由 `resolveImageModelId` 按三级优先级决定：
 
 1. **LLM 显式指定**（最高优先级）— 用户在对话中要求的模型
 2. **继承父图模型** — 多轮改图时沿用上一张图所用模型，保持风格一致
 3. **当前生图模型** — `CURRENT_IMAGE_MODEL_ID`（[`src/features/images/size.ts`](src/features/images/size.ts)）
+
+首版生图 Provider 为方舟 Seedream；Flux Art 仅注册接口，二期接入。
 
 ### 对话示例
 
@@ -164,17 +190,11 @@ fix(api): 修复消息转换失败导致的 500
 docs(readme): 更新本地启动说明
 ```
 
-更多协作约定见 [AGENTS.md](./AGENTS.md)。
-
-## 待办
-
-- [ ] 模型可配置化
-- [ ] 增加知识库功能：AI 回答可添加入库，入库内容可编辑
-- [ ] token 消耗统计
+commit-msg 由 commitlint 校验；pre-commit 通过 husky + lint-staged 对暂存文件执行 ESLint / Prettier。
 
 ## 相关文档
 
+- [AGENTS.md](./AGENTS.md) — 分层、Skills、主题与编码约定
 - [Next.js 文档](https://nextjs.org/docs)
 - [Vercel AI SDK](https://ai-sdk.dev/docs)
 - [Ant Design X](https://x.ant.design/docs/react/introduce)
-- [Vercel 部署指南](https://nextjs.org/docs/app/building-your-application/deploying)
