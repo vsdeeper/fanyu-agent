@@ -2,10 +2,7 @@
 
 基于 **Next.js App Router + TypeScript + Vercel AI SDK + @ant-design/x** 的 AI 对话应用。样式使用 CSS Modules 与 Ant Design（不使用 Tailwind）。
 
-- 流式对话、停止生成、会话侧栏与浅色 / 深色 / 跟随系统主题
-- Skills：品牌规范板、移动端 / Web 端设计；按需落盘 `DESIGN.md`
-- 文生图 / 改图（方舟 Seedream；Flux 为二期接入）
-- 会话、图片与文档落盘（SQLite + 本地文件）
+凡域，基于本地数据的大众智能助手：雕琢品牌规范，构想移动端与 Web 端界面，构筑个人知识库。
 
 协作约定与分层规范见 [AGENTS.md](./AGENTS.md)。
 
