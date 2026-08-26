@@ -237,7 +237,7 @@ export default function ChatSender({
             }}
             loading={loading}
             onCancel={onCancel}
-            placeholder="给 FanyuAgent 发送消息"
+            placeholder="给 凡域 发送消息"
             suffix={false}
             autoSize={{ minRows: 2, maxRows: 8 }}
             header={headerReady ? senderHeader : undefined}

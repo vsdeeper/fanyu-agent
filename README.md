@@ -1,4 +1,4 @@
-# FanyuAgent
+# 凡域
 
 基于 **Next.js App Router + TypeScript + Vercel AI SDK + @ant-design/x** 的 AI 对话前端脚手架。样式使用 CSS Modules 与 Ant Design。
 

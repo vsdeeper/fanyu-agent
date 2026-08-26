@@ -6,7 +6,7 @@
 
 <!-- END:nextjs-agent-rules -->
 
-# FanyuAgent
+# 凡域
 
 > AI 对话语言默认使用中文简体。
 
@@ -14,7 +14,7 @@
 
 基于 **Next.js App Router + TypeScript + Vercel AI SDK + @ant-design/x** 的 AI 对话前端脚手架。样式使用 CSS Modules / Ant Design（**不使用 Tailwind**）。
 
-- **应用名称**: ai-agent
+- **应用名称**: 凡域
 - **包管理器**: pnpm
 - **Node 版本**: 未在 package.json 中指定（建议 Node.js 22+）
 
