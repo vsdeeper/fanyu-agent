@@ -107,7 +107,7 @@ export default function ChatSidebar({
       <div className={`${styles.panel} ${collapsed ? styles.panelCollapsed : ''}`}>
         <div className={styles.header}>
           <Typography.Text strong className={styles.brand}>
-            凡域
+            凡域智能助手
           </Typography.Text>
           <Button
             type="text"
