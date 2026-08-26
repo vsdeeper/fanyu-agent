@@ -1,6 +1,7 @@
 import {
   convertToModelMessages,
   createIdGenerator,
+  createUIMessageStream,
   createUIMessageStreamResponse,
   pruneMessages,
   stepCountIs,
@@ -15,8 +16,10 @@ import {
   markLastAssistantStopped,
   sanitizeFilePartsForModel,
 } from '@/features/chat/server/sanitize-messages';
-import { saveChat } from '@/features/chat/server/store';
+import { generateChatTitle } from '@/features/chat/server/generate-title';
+import { saveChat, updateChatTitle } from '@/features/chat/server/store';
 import { selectModel } from '@/features/chat/server/select-model';
+import { getFirstUserText } from '@/features/chat/title';
 import { getLatestUserImageDataUrl } from '@/lib/tools/server/pasted-image';
 import { createCatalogTools, getToolHints } from '@/lib/tools/server/registry';
 import { buildSkillCatalogPrompt } from '@/lib/skills/server/catalog-prompt';
@@ -41,6 +44,18 @@ export async function streamChatResponse({
   userLocation,
   abortSignal,
 }: StreamChatOptions) {
+  const isFirstUserTurn = messages.filter((message) => message.role === 'user').length === 1;
+  const firstUserText = isFirstUserTurn ? getFirstUserText(messages) : '';
+  // 与主对话并行摘要；不绑 abortSignal，停止生成仍应留下标题
+  const titlePromise = firstUserText
+    ? generateChatTitle(firstUserText).then(async (llmTitle) => {
+        if (llmTitle) {
+          await updateChatTitle(chatId, llmTitle);
+        }
+        return llmTitle;
+      })
+    : Promise.resolve(undefined);
+
   const runtime = getChatProviderRuntime();
   const provider = getChatProvider();
   const { modelId, tier } = await selectModel(messages, provider);
@@ -164,18 +179,33 @@ export async function streamChatResponse({
     }),
   );
 
+  const modelUiStream = toUIMessageStream({
+    stream: tierInjectedStream,
+    sendSources: true,
+    originalMessages: messages,
+    generateMessageId,
+    onEnd: async ({ messages: nextMessages, isAborted }) => {
+      let toSave = finalizeIncompleteToolParts(nextMessages);
+      if (isAborted) {
+        toSave = markLastAssistantStopped(toSave);
+      }
+      await saveChat({ chatId, messages: toSave });
+      await titlePromise;
+    },
+  });
+
   return createUIMessageStreamResponse({
-    stream: toUIMessageStream({
-      stream: tierInjectedStream,
-      sendSources: true,
-      originalMessages: messages,
-      generateMessageId,
-      onEnd: async ({ messages: nextMessages, isAborted }) => {
-        let toSave = finalizeIncompleteToolParts(nextMessages);
-        if (isAborted) {
-          toSave = markLastAssistantStopped(toSave);
-        }
-        await saveChat({ chatId, messages: toSave });
+    stream: createUIMessageStream({
+      execute: ({ writer }) => {
+        void titlePromise.then((title) => {
+          if (!title) return;
+          writer.write({
+            type: 'data-chat-title',
+            data: { title },
+            transient: true,
+          });
+        });
+        writer.merge(modelUiStream);
       },
     }),
   });

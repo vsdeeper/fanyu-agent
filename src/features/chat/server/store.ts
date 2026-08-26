@@ -5,25 +5,8 @@ import { asc, desc, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
 import { chats, messages } from '@/lib/db/schema';
 import { DEFAULT_CHAT_TITLE } from '../constants';
+import { deriveHeuristicTitle, getFirstUserText } from '../title';
 import type { ChatListItem, ChatRecord } from '../types';
-
-const TITLE_MAX_LENGTH = 30;
-
-function getPartsText(message: UIMessage): string {
-  if (!message.parts?.length) return '';
-  return message.parts
-    .filter((part) => part.type === 'text' && 'text' in part && typeof part.text === 'string')
-    .map((part) => ('text' in part && typeof part.text === 'string' ? part.text : ''))
-    .join('');
-}
-
-function deriveTitle(messagesList: UIMessage[]): string | undefined {
-  const firstUser = messagesList.find((m) => m.role === 'user');
-  if (!firstUser) return undefined;
-  const text = getPartsText(firstUser).trim().replace(/\s+/g, ' ');
-  if (!text) return undefined;
-  return text.length > TITLE_MAX_LENGTH ? `${text.slice(0, TITLE_MAX_LENGTH)}…` : text;
-}
 
 export async function createChat(): Promise<string> {
   const id = generateId();
@@ -80,11 +63,14 @@ export async function saveChat({
   const now = new Date().toISOString();
 
   const previous = db.select().from(chats).where(eq(chats.id, chatId)).get();
+  const isDefaultTitle = !previous || previous.title === DEFAULT_CHAT_TITLE;
   let title = previous?.title ?? DEFAULT_CHAT_TITLE;
-  if (title === DEFAULT_CHAT_TITLE) {
-    const derived = deriveTitle(nextMessages);
+  if (isDefaultTitle) {
+    const derived = deriveHeuristicTitle(getFirstUserText(nextMessages));
     if (derived) title = derived;
   }
+  // 已有非默认标题时不回写 title，避免覆盖并行的 LLM 摘要结果
+  const shouldWriteTitle = isDefaultTitle && title !== DEFAULT_CHAT_TITLE;
 
   const createdAt = previous?.createdAt ?? now;
 
@@ -98,10 +84,14 @@ export async function saveChat({
       })
       .onConflictDoUpdate({
         target: chats.id,
-        set: {
-          title,
-          updatedAt: now,
-        },
+        set: shouldWriteTitle
+          ? {
+              title,
+              updatedAt: now,
+            }
+          : {
+              updatedAt: now,
+            },
       })
       .run();
 
@@ -132,6 +122,14 @@ export async function listChats(): Promise<ChatListItem[]> {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }));
+}
+
+/** 仅更新会话标题，不碰消息、不刷新 updatedAt（避免侧栏因改标题而重排） */
+export async function updateChatTitle(chatId: string, title: string): Promise<void> {
+  const trimmed = title.trim();
+  if (!trimmed) return;
+  const db = getDb();
+  db.update(chats).set({ title: trimmed }).where(eq(chats.id, chatId)).run();
 }
 
 export async function deleteChat(id: string): Promise<void> {

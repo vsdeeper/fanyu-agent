@@ -36,6 +36,10 @@ export function getOrCreateChat(
     messages: initialMessages,
     transport,
     onFinish,
+    onData: (dataPart) => {
+      if (dataPart.type !== 'data-chat-title') return;
+      onFinish();
+    },
   });
   registry.set(id, chat);
   return chat;
