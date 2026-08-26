@@ -8,21 +8,6 @@ export function getCurrentImageModelId(): string {
   return CURRENT_IMAGE_MODEL_ID;
 }
 
-const FLUX_ART_MODELS: ImageModelProfile[] = [
-  {
-    id: 'gpt-image-2',
-    provider: 'flux-art',
-    capabilities: ['t2i', 'i2i'],
-    label: 'GPT Image 2（Flux Art）',
-  },
-  {
-    id: 'flux-kontext-pro',
-    provider: 'flux-art',
-    capabilities: ['t2i', 'i2i'],
-    label: 'Flux Kontext Pro（Flux Art）',
-  },
-];
-
 export function listImageModels(): ImageModelProfile[] {
   return [
     {
@@ -31,7 +16,6 @@ export function listImageModels(): ImageModelProfile[] {
       capabilities: ['t2i', 'i2i'],
       label: 'Seedream（方舟）',
     },
-    ...FLUX_ART_MODELS,
   ];
 }
 

@@ -141,41 +141,7 @@ drizzle/               # SQL migrations
 2. **继承父图模型** — 多轮改图时沿用上一张图所用模型，保持风格一致
 3. **当前生图模型** — `CURRENT_IMAGE_MODEL_ID`（[`src/features/images/size.ts`](src/features/images/size.ts)）
 
-首版生图 Provider 为方舟 Seedream；Flux Art 仅注册接口，二期接入。
-
-### 对话示例
-
-**不指定模型，走默认：**
-
-```
-用户：帮我画一只猫
-LLM → generate_image({ mode: "generate", prompt: "一只可爱的橘猫" })
-      ↑ 未传 model → resolveImageModelId 返回默认 Seedream
-```
-
-**用户指定模型：**
-
-```
-用户：用 Flux 画一只猫
-LLM → generate_image({ mode: "generate", prompt: "一只可爱的橘猫", model: "flux-kontext-pro" })
-      ↑ model 已传 → resolveImageModelId 直接返回 "flux-kontext-pro"
-```
-
-**多轮改图，自动继承父图模型：**
-
-```
-第 1 轮：
-用户：用 Flux 画一只猫
-LLM → generate_image({ mode: "generate", prompt: "猫", model: "flux-kontext-pro" })
-结果：assetId="abc123"，modelId="flux-kontext-pro"
-
-第 2 轮：
-用户：把猫改成黑色
-LLM → generate_image({ mode: "edit", prompt: "把猫改成黑色", sourceAssetIds: ["abc123"] })
-      ↑ 未传 model，但 parentId="abc123"
-        → resolveParentModelId 读到 "flux-kontext-pro"
-        → 自动沿用，不会跳回 Seedream
-```
+生图 Provider 为方舟 Seedream。
 
 ## 提交规范
 
@@ -188,6 +154,10 @@ docs(readme): 更新本地启动说明
 ```
 
 commit-msg 由 commitlint 校验；pre-commit 通过 husky + lint-staged 对暂存文件执行 ESLint / Prettier。
+
+## 开源协议
+
+本项目采用 [MIT License](./LICENSE)。
 
 ## 相关文档
 

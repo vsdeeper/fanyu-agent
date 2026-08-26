@@ -1,11 +1,9 @@
 import { getCurrentImageModelId, getImageModelProfile } from '../registry';
 import { arkSeedreamProvider } from './providers/ark-seedream';
-import { fluxArtProvider } from './providers/flux-art';
 import type { ImageGenerateRequest, ImageGenerateResult, ImageProvider } from '../types';
 
 function getProvider(providerId: string): ImageProvider {
   if (providerId === 'ark') return arkSeedreamProvider;
-  if (providerId === 'flux-art') return fluxArtProvider;
   throw new Error(`未知生图 Provider: ${providerId}`);
 }
 

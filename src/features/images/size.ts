@@ -11,9 +11,6 @@ export const IMAGE_SIZE_BY_MODEL_ID: Record<string, ImageSizeSpec> = {
     maxPixels: 4096 * 4096,
     defaultSize: '2K',
   },
-  // Flux 占位，接通 Provider 时按官方文档替换
-  'gpt-image-2': { presets: ['1K', '2K'], defaultSize: '2K' },
-  'flux-kontext-pro': { presets: ['1K', '2K'], defaultSize: '2K' },
 };
 
 /**

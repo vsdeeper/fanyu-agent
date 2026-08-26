@@ -1,6 +1,6 @@
 export type ImageCapability = 't2i' | 'i2i';
 
-export type ImageProviderId = 'ark' | 'flux-art';
+export type ImageProviderId = 'ark';
 
 export type ImageSizeSpec = {
   presets: readonly string[];
