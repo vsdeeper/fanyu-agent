@@ -231,7 +231,7 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
             variant="borderless"
             icon={<CommentOutlined style={{ fontSize: 32 }} />}
             title="开始对话"
-            description="基于 Vercel AI SDK 与 @ant-design/x 的聊天脚手架"
+            description="凡域，您的私人智能助手，对话只留在这台电脑上。"
           />
           <ChatSender {...senderProps} />
         </div>
