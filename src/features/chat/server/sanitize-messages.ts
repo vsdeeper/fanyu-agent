@@ -95,7 +95,8 @@ function decodeDataUrl(url: string): Buffer {
 
 /**
  * 归一化模型入参里的 file part：text/* 与 .docx 解码为 text part 供模型阅读；
- * image/* 换成短文本占位（主模型无视觉，像素只走 analyze_image / generate_image）；
+ * image/* 在 acceptsImageInput 时原样保留（多模态主模型直读像素），否则换成短文本占位
+ * （盲主模型的像素只走 analyze_image / generate_image）；
  * application/pdf 原样保留；其余不支持类型（.doc 等二进制）从入参剔除。
  *
  * 修复：方舟 Responses 只接受 application/pdf 的内联 file part，text/markdown 等会抛
@@ -106,7 +107,11 @@ function decodeDataUrl(url: string): Buffer {
  * 兜底：损坏/不可解析的文件降级为剔除该 part，绝不抛错中断流式；落盘 UIMessage 不变，
  * 聊天气泡仍按原 file part 渲染附件卡片。
  */
-export async function sanitizeFilePartsForModel(messages: UIMessage[]): Promise<UIMessage[]> {
+export async function sanitizeFilePartsForModel(
+  messages: UIMessage[],
+  options?: { acceptsImageInput?: boolean },
+): Promise<UIMessage[]> {
+  const acceptsImageInput = options?.acceptsImageInput === true;
   return Promise.all(
     messages.map(async (message) => {
       if (!message.parts?.length) {
@@ -121,6 +126,11 @@ export async function sanitizeFilePartsForModel(messages: UIMessage[]): Promise<
 
           const mediaType = part.mediaType;
           if (mediaType.startsWith('image/')) {
+            // acceptsImageInput 的 Provider（zhipu glm 主模型自带视觉）若转占位符，
+            // 像素永远不会到达主模型，多模态直读即失效；仅盲主模型链路才降级为 analyze_image 占位
+            if (acceptsImageInput) {
+              return part;
+            }
             return imageFilePartToPlaceholder(part.filename);
           }
 

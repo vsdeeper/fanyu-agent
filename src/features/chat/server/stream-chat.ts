@@ -28,6 +28,7 @@ import { listSkills } from '@/lib/skills/server/registry';
 import { resolveTurnSkills } from '@/lib/skills/server/resolve-turn';
 import { getChatProvider } from './providers/config';
 import { getChatProviderRuntime } from './providers/resolve';
+import { createLocalWebSearchSourceBridge } from './web-search-source-bridge';
 
 const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });
 
@@ -62,12 +63,23 @@ export async function streamChatResponse({
   // 模型档位只在服务端打印供排查，不注入流展示给用户
   console.info('[chat] select-model', { chatId, modelId, tier });
   const client = runtime.getClient();
+  const capabilities = runtime.getCapabilities();
 
   const pastedImageDataUrl = getLatestUserImageDataUrl(messages);
 
+  // 联网搜索构造权在 Provider：usesSdkWebSearchTool=true（deepseek/ark）注册 SDK 原生
+  // server tool；否则（zhipu）由本地 web_search 工具经独立 API 显式检索
+  const catalogTools = createCatalogTools({
+    chatId,
+    pastedImageDataUrl,
+    mainModelAcceptsImage: capabilities.acceptsImageInput,
+    providerHasNativeWebSearch: capabilities.usesSdkWebSearchTool,
+  });
   const tools = {
-    ...createCatalogTools({ chatId, pastedImageDataUrl }),
-    web_search: client.tools.webSearch(runtime.getWebSearchArgs(userLocation)),
+    ...catalogTools,
+    ...(capabilities.usesSdkWebSearchTool
+      ? { web_search: client.tools.webSearch(runtime.getWebSearchArgs(userLocation)) }
+      : {}),
   };
 
   // 修复：勿把历史 reasoning/itemId 回传方舟；磁盘仍保留完整 UIMessage 供刷新展示 Think
@@ -75,7 +87,9 @@ export async function streamChatResponse({
   // 修复：text/* 与 .docx 附件在转模型入参前解码为 text part，否则方舟 Responses 对非
   // application/pdf 内联文件抛 UnsupportedFunctionalityError（AI SDK 转换阶段硬抛，fetch 拦不到）
   const convertedMessages = await convertToModelMessages(
-    await sanitizeFilePartsForModel(messages),
+    await sanitizeFilePartsForModel(messages, {
+      acceptsImageInput: capabilities.acceptsImageInput,
+    }),
     {
       tools,
       ignoreIncompleteToolCalls: true,
@@ -135,7 +149,7 @@ export async function streamChatResponse({
     : '';
 
   // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}\n\n${getToolHints(Boolean(pastedImageDataUrl))}`;
+  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}\n\n${getToolHints(Boolean(pastedImageDataUrl), capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool)}`;
 
   const instructions = runtime.getInstructions({
     userLocation,
@@ -144,17 +158,17 @@ export async function streamChatResponse({
   });
 
   const result = streamText({
-    model: client.responses(modelId),
+    model: runtime.getMainModel(modelId),
     instructions,
     messages: expandedMessages,
     tools,
     // 修复：无 stopWhen 时 tool 执行后不会继续汇总；生图+说明需多步
     stopWhen: stepCountIs(5),
-    // 修复：第三方 Provider（DeepSeek / Ark）均不支持服务端存储，store 默认 true 产生 item_reference
-    // 导致 DeepSeek 重复回答、Ark 报 <nil>；统一 store: false 消除 item_reference
+    // store:false 仅 Responses 端点链路需要（防 item_reference）；Chat Completions 链路
+    // 发 OpenAI 专有字段有 400 风险，由 needsOpenaiStoreFalse 能力位分流，勿恢复统一注入
     providerOptions: {
       openai: {
-        store: false,
+        ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
         ...runtime.getOpenAIOptions(),
       },
     },
@@ -162,8 +176,13 @@ export async function streamChatResponse({
     abortSignal,
   });
 
+  // 本地 web_search 工具的结果经桥接转 source part（原生联网链路自带注解产物，勿重复注入）
+  const modelStream = capabilities.usesSdkWebSearchTool
+    ? result.stream
+    : result.stream.pipeThrough(createLocalWebSearchSourceBridge());
+
   const modelUiStream = toUIMessageStream({
-    stream: result.stream,
+    stream: modelStream,
     sendSources: true,
     originalMessages: messages,
     generateMessageId,

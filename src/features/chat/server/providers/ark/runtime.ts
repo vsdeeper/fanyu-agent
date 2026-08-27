@@ -8,6 +8,14 @@ import type { ChatProviderRuntime } from '../types';
 export const arkRuntime: ChatProviderRuntime = {
   getClient: getArkClient,
 
+  getMainModel(modelId: string) {
+    return getArkClient().responses(modelId);
+  },
+
+  getCapabilities() {
+    return { acceptsImageInput: false, usesSdkWebSearchTool: true, needsOpenaiStoreFalse: true };
+  },
+
   getWebSearchArgs(userLocation: UserLocation | undefined) {
     return userLocation?.type === 'approximate' ? { userLocation } : {};
   },

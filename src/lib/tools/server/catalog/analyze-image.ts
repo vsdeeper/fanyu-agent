@@ -90,6 +90,8 @@ function createAnalyzeImageTool(chatId: string, pastedImageDataUrl?: string) {
 
 export const analyzeImage: AgentToolDefinition = {
   id: 'analyze_image',
+  // 仅盲主模型链路启用：自带视觉的 Provider（zhipu glm）直读像素，识图工具与其提示词整体多余
+  requiresBlindMainModel: true,
   create: ({ chatId, pastedImageDataUrl }) => createAnalyzeImageTool(chatId, pastedImageDataUrl),
   getHint: getAnalyzeImageHint,
   getPasteHint: () => PASTE_IMAGE_ANALYZE_HINT,

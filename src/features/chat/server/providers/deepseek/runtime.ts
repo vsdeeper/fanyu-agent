@@ -8,6 +8,14 @@ import type { ChatProviderRuntime } from '../types';
 export const deepseekRuntime: ChatProviderRuntime = {
   getClient: getDeepseekClient,
 
+  getMainModel(modelId: string) {
+    return getDeepseekClient().responses(modelId);
+  },
+
+  getCapabilities() {
+    return { acceptsImageInput: false, usesSdkWebSearchTool: true, needsOpenaiStoreFalse: true };
+  },
+
   getWebSearchArgs() {
     return {};
   },
