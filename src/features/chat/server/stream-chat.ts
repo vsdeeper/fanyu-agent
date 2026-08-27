@@ -59,6 +59,8 @@ export async function streamChatResponse({
   const runtime = getChatProviderRuntime();
   const provider = getChatProvider();
   const { modelId, tier } = await selectModel(messages, provider);
+  // 模型档位只在服务端打印供排查，不注入流展示给用户
+  console.info('[chat] select-model', { chatId, modelId, tier });
   const client = runtime.getClient();
 
   const pastedImageDataUrl = getLatestUserImageDataUrl(messages);
@@ -160,27 +162,8 @@ export async function streamChatResponse({
     abortSignal,
   });
 
-  // 修复：往 reasoning 流注入模型档位，确保 Think 块一定显示当前执行模型
-  const tierId = 'model-tier';
-  const tierInjectedStream = result.stream.pipeThrough(
-    new TransformStream({
-      transform(part, controller) {
-        controller.enqueue(part);
-        if (part.type === 'start') {
-          controller.enqueue({ type: 'reasoning-start', id: tierId });
-          controller.enqueue({
-            type: 'reasoning-delta',
-            id: tierId,
-            text: `当前执行模型: ${tier}......`,
-          });
-          controller.enqueue({ type: 'reasoning-end', id: tierId });
-        }
-      },
-    }),
-  );
-
   const modelUiStream = toUIMessageStream({
-    stream: tierInjectedStream,
+    stream: result.stream,
     sendSources: true,
     originalMessages: messages,
     generateMessageId,
