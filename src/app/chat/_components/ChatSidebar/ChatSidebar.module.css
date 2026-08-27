@@ -44,6 +44,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   padding: 0 8px;
+  letter-spacing: 1px;
 }
 
 .creation {
