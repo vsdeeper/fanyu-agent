@@ -1,8 +1,8 @@
 export type ImageCapability = 't2i' | 'i2i';
 
-export type ImageProviderId = 'ark';
+export type ImageProviderId = 'ark' | 'laozhang';
 
-export type ImageSizeSpec = {
+export type ImageSpec = {
   presets: readonly string[];
   minPixels?: number;
   maxPixels?: number;
@@ -22,6 +22,8 @@ export type ImageGenerateRequest = {
   mode: 'generate' | 'edit';
   referenceImageDataUrls?: string[];
   size?: string;
+  /** 生图宽高比；'auto' 或缺省表示交给模型自选（不传上游），否则如 '1:1'、'3:2'、'16:9' */
+  aspectRatio?: string;
   /** 用户明确要求透明背景时为 true；上游改走 PNG + 透明 prompt */
   transparent?: boolean;
 };

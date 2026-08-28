@@ -1,9 +1,11 @@
 import { getCurrentImageModelId, getImageModelProfile } from '../registry';
 import { arkSeedreamProvider } from './providers/ark-seedream';
+import { laozhangProvider } from './providers/laozhang';
 import type { ImageGenerateRequest, ImageGenerateResult, ImageProvider } from '../types';
 
 function getProvider(providerId: string): ImageProvider {
   if (providerId === 'ark') return arkSeedreamProvider;
+  if (providerId === 'laozhang') return laozhangProvider;
   throw new Error(`未知生图 Provider: ${providerId}`);
 }
 

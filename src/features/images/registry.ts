@@ -1,5 +1,5 @@
 import type { ImageModelProfile } from './types';
-import { CURRENT_IMAGE_MODEL_ID } from './size';
+import { CURRENT_IMAGE_MODEL_ID } from './image-spec';
 
 export { CURRENT_IMAGE_MODEL_ID };
 
@@ -11,10 +11,16 @@ export function getCurrentImageModelId(): string {
 export function listImageModels(): ImageModelProfile[] {
   return [
     {
-      id: CURRENT_IMAGE_MODEL_ID,
+      id: 'doubao-seedream-5-0-lite-260128',
       provider: 'ark',
       capabilities: ['t2i', 'i2i'],
       label: 'Seedream（方舟）',
+    },
+    {
+      id: 'gemini-3.1-flash-lite-image',
+      provider: 'laozhang',
+      capabilities: ['t2i', 'i2i'],
+      label: 'Gemini Flash Lite Image（老张）',
     },
   ];
 }

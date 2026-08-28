@@ -3,14 +3,16 @@
   overflow: hidden;
 }
 
-.failed {
+.failed,
+.image:global(.ant-image-error) {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
   background-color: var(--one-color-fill-tertiary);
 }
 
-.failed :global(.ant-image-img) {
+.failed :global(.ant-image-img),
+.image:global(.ant-image-error) :global(.ant-image-img) {
   width: 50px !important;
   height: 50px !important;
   object-fit: contain !important;

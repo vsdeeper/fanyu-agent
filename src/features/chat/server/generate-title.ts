@@ -2,7 +2,11 @@ import 'server-only';
 
 import { generateText } from 'ai';
 
-import { getChatProvider, getModelId } from '@/features/chat/server/providers/config';
+import {
+  getChatProvider,
+  getModelId,
+  getTitleReasoningEffort,
+} from '@/features/chat/server/providers/config';
 import { getChatProviderRuntimeFor } from '@/features/chat/server/providers/resolve';
 import { getLlmTitleSource } from '@/features/chat/title';
 
@@ -96,11 +100,12 @@ async function requestTitle(prompt: string): Promise<string | undefined> {
     instructions: TITLE_INSTRUCTIONS,
     prompt,
     temperature: 0,
-    // 原现象：finishReason=length 且 text 为空。根因：flash 先写 reasoning，48 token 在标题正文前耗尽。
+    // 生标题必须让模型先出正文：关思考用 none（deepseek/ark），zhipu 模型始终思考不支持 none（拒绝
+    // 400），只能给 low。512 兜底「flash 先写 reasoning 耗尽 token 预算再出正文」的旧况。
     maxOutputTokens: 512,
     providerOptions: {
       openai: {
-        reasoningEffort: 'none',
+        reasoningEffort: getTitleReasoningEffort(provider),
       },
     },
   });

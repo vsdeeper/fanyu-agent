@@ -47,3 +47,18 @@ export function getModelId(provider: ChatProvider, tier: ModelTier): string {
   }
   return requireEnv(ARK_MODEL_TIER_ENV[tier]);
 }
+
+/** 生标题这类低要求出调的 reasoningEffort：deepseek/ark 支持 none（关闭思考），zhipu 只收 low/high/max */
+const TITLE_REASONING_EFFORT: Record<ChatProvider, 'none' | 'low'> = {
+  deepseek: 'none',
+  ark: 'none',
+  zhipu: 'low',
+};
+
+/**
+ * 生标题的出站 reasoningEffort：给最省 token 且确保模型能出正文的档位。
+ * deepseek/ark 支持 none（关思考）；zhipu 模型始终思考、不支持 none（拒绝 400），只能给 low。
+ */
+export function getTitleReasoningEffort(provider: ChatProvider): 'none' | 'low' {
+  return TITLE_REASONING_EFFORT[provider];
+}

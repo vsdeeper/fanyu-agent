@@ -1,87 +1,52 @@
 import { requireEnv } from '@/lib/shared/server/env';
+import { buildImagePrompt, decodeBase64Image, downloadImage, sniffImageMime } from '../image-utils';
 import type { ImageProvider } from '../../types';
-import { getSizeSpec, normalizeImageSize } from '../../size';
+import {
+  aspectRatioToSize,
+  getImageSpec,
+  IMAGE_ASPECT_RATIO_AUTO,
+  normalizeImageSize,
+} from '../../image-spec';
 
 type ArkImageResponse = {
   data?: Array<{ url?: string; b64_json?: string }>;
   error?: { message?: string };
 };
 
-const TRANSPARENT_PROMPT_SUFFIX = '透明背景，alpha 通道，无底色、无棋盘格、无阴影底板';
-
-/**
- * 透明出图时在出站 prompt 末尾追加 alpha 约束；落盘仍用调用方原始 prompt。
- */
-function buildArkPrompt(prompt: string, transparent?: boolean): string {
-  if (!transparent) return prompt;
-  return `${prompt}\n${TRANSPARENT_PROMPT_SUFFIX}`;
-}
-
-/**
- * 按文件头识别图片 MIME，避免上游 Content-Type 缺失或 b64 时误标为 jpeg。
- */
-function sniffImageMime(bytes: Uint8Array, fallback = 'image/jpeg'): string {
-  if (
-    bytes.length >= 8 &&
-    bytes[0] === 0x89 &&
-    bytes[1] === 0x50 &&
-    bytes[2] === 0x4e &&
-    bytes[3] === 0x47
-  ) {
-    return 'image/png';
-  }
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return 'image/jpeg';
-  }
-  if (
-    bytes.length >= 12 &&
-    bytes[0] === 0x52 &&
-    bytes[1] === 0x49 &&
-    bytes[2] === 0x46 &&
-    bytes[3] === 0x46 &&
-    bytes[8] === 0x57 &&
-    bytes[9] === 0x45 &&
-    bytes[10] === 0x42 &&
-    bytes[11] === 0x50
-  ) {
-    return 'image/webp';
-  }
-  return fallback;
-}
-
-function decodeBase64Image(b64: string): Uint8Array {
-  return new Uint8Array(Buffer.from(b64, 'base64'));
-}
-
-async function downloadImage(url: string): Promise<{ bytes: Uint8Array; mimeType: string }> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`下载生图结果失败: HTTP ${response.status}`);
-  }
-  const headerMime = response.headers.get('content-type')?.split(';')[0]?.trim();
-  const buffer = await response.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  return { bytes, mimeType: sniffImageMime(bytes, headerMime || 'image/jpeg') };
-}
-
 export const arkSeedreamProvider: ImageProvider = {
   id: 'ark',
   async generate(req) {
     const apiKey = requireEnv('ARK_API_KEY');
     const baseURL = requireEnv('ARK_BASE_URL').replace(/\/$/, '');
+    const spec = getImageSpec(req.modelId);
 
     // 修复：归一化 size，避免 `1024x1024` 等低于最小像素限制的值透传给上游导致 400
-    const size = normalizeImageSize(req.size, getSizeSpec(req.modelId));
+    const size = normalizeImageSize(req.size, spec);
     if (req.size && req.size.trim() !== size) {
       console.warn(`[ark-seedream] size 已归一化: "${req.size}" -> "${size}"`);
     }
 
+    // 方舟仅接受 WIDTHxHEIGHT / 档位（不接受比例串），比例须换算成像素宽高
+    const ratio =
+      req.aspectRatio && req.aspectRatio !== IMAGE_ASPECT_RATIO_AUTO ? req.aspectRatio : undefined;
+    const ratioSize = ratio ? aspectRatioToSize(ratio, spec) : undefined;
+
+    // 修复：用户显式给 size（档位/像素）时优先采纳，避免被 ratioSize 按 minPixels 换算降到更低面积；
+    // 仅未给 size 时才用比例换算的像素宽高；两者同时给会丢弃比例，留日志便于排查。
+    const hasExplicitSize = !!req.size?.trim();
+    const outboundSize = hasExplicitSize ? size : (ratioSize ?? size);
+    if (hasExplicitSize && ratioSize) {
+      console.warn(
+        `[ark-seedream] 同时指定 size 与 aspectRatio，优先 size="${size}"，忽略比例换算 "${ratioSize}"`,
+      );
+    }
+
     const body: Record<string, unknown> = {
       model: req.modelId,
-      prompt: buildArkPrompt(req.prompt, req.transparent),
+      prompt: buildImagePrompt(req.prompt, req.transparent),
       response_format: 'url',
       output_format: req.transparent ? 'png' : 'jpeg',
-      size,
+      size: outboundSize,
       watermark: false,
     };
 

@@ -95,7 +95,7 @@ src/
         parse-request.ts / handle-post.ts / handle-chats.ts / handle-chat-by-id.ts / stream-chat.ts / select-model.ts
         providers/ark/     # SDK 出站适配（勿与 <域>/client/ 浏览器封装混淆）
     images/
-      types.ts / size.ts / registry.ts   # 同构：类型、尺寸与模型清单
+      types.ts / image-spec.ts / registry.ts   # 同构：类型、输出规格与模型清单
       server/              # assets / serve-asset / vision / router / providers
     docs/
       types.ts / constants.ts / url.ts   # 同构：会话文档资产（DESIGN.md）
@@ -228,7 +228,7 @@ Button/
 ## 生图与主 Agent 约定
 
 - 主对话模型在 [`src/app/api/chat/route.ts`](src/app/api/chat/route.ts) 通过 `generate_image` tool 出图/改图；`stopWhen: stepCountIs(5)` 保证 tool 后主模型可汇总说明
-- 生图 Provider 为方舟 Seedream（`CURRENT_IMAGE_MODEL_ID` 写死在 [`src/features/images/size.ts`](src/features/images/size.ts)，`POST /images/generations`）；尺寸见 `IMAGE_SIZE_BY_MODEL_ID`
+- 默认生图模型为老张 Gemini（`gemini-3.1-flash-lite-image`，需 `LAOZHANG_API_KEY`、`LAOZHANG_BASE_URL=https://api2.laozhang.ai/v1beta`，走 `POST /v1beta/models/{modelId}:generateContent`）；方舟 Seedream 为另一 provider（`ARK_*`，按所选模型自动路由）。model id 与尺寸规格见 `CURRENT_IMAGE_MODEL_ID` / `IMAGE_SPEC_BY_MODEL_ID`
 - 图片文件落盘于 `CHAT_STORE_DIR/images/{chatId}/`；元数据表 `image_assets`；`chats.working_image_asset_id` 为多轮改图默认源图
 - DESIGN.md 落盘于 `CHAT_STORE_DIR/docs/{chatId}/`；经 `save_design_md` 写入，前端展示下载卡片，不在对话正文贴全文
 - 前端经 `GET /api/images/[assetId]` 展示；气泡内使用 antd `Image`，勿用临时上游 CDN URL 直接渲染

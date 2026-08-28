@@ -14,7 +14,7 @@
 
 - 用户上传图片**已通**：`ChatSender` 文件/粘贴/拖拽 → FileUIPart（data URL）→ UIMessage → `/api/chat` → `convertToModelMessages` 转 `input_image` 透传。但 **DeepSeek 纯文本看不了图**。
 - `generate_image` 工具具备生成/改图（i2i）/`workingImageAssetId` 多轮继承，但 **edit 只认 `image_assets` 里已落盘的 assetId**，**用户上传图不落盘** → 无法作为底图引用。全库无图片上传 API。
-- 可复用原语：`saveImageAsset`（写盘+插表+setWorkingAsset）、`assetToDataUrl`、`getAsset/getWorkingAsset/setWorkingAsset`、`buildImageAssetUrl`、`generateImageViaRouter`、`size.ts` 的 `2K/4K` 与像素校验；识图可复刻 `select-model.ts` 的 `getArkClient().chat(modelId)` + `generateText` 一次性调用范式。
+- 可复用原语：`saveImageAsset`（写盘+插表+setWorkingAsset）、`assetToDataUrl`、`getAsset/getWorkingAsset/setWorkingAsset`、`buildImageAssetUrl`、`generateImageViaRouter`、`image-spec.ts` 的 `2K/4K` 与像素校验；识图可复刻 `select-model.ts` 的 `getArkClient().chat(modelId)` + `generateText` 一次性调用范式。
 
 ## 交互设计（对话形式）
 
@@ -95,7 +95,7 @@
 - `src/features/images/commerce/analyze-tool.ts`、`src/features/images/server/vision.ts`
 - （Phase 3 可选）`src/app/api/images/[assetId]/activate/route.ts`
 
-**复用**：`generateImageViaRouter`/`resolveImageModelId`（router.ts）、`saveImageAsset`/`assetToDataUrl`/`getWorkingAsset`/`setWorkingAsset`/`buildImageAssetUrl`（assets.ts）、`createGenerateImageTool` 工厂与 `toModelOutput` 模式（generate-image-tool.ts）、`size.ts` 校验、`getArkClient().chat()+generateText` 一次性视觉调用范式（select-model.ts）、`getDeepseekInstructions` 注入结构（deepseek/instructions.ts）。
+**复用**：`generateImageViaRouter`/`resolveImageModelId`（router.ts）、`saveImageAsset`/`assetToDataUrl`/`getWorkingAsset`/`setWorkingAsset`/`buildImageAssetUrl`（assets.ts）、`createGenerateImageTool` 工厂与 `toModelOutput` 模式（generate-image-tool.ts）、`image-spec.ts` 校验、`getArkClient().chat()+generateText` 一次性视觉调用范式（select-model.ts）、`getDeepseekInstructions` 注入结构（deepseek/instructions.ts）。
 
 ## 实施顺序
 

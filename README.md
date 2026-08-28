@@ -156,7 +156,7 @@ drizzle/               # SQL migrations
 
 1. **LLM 显式指定**（最高）— 用户在对话中要求的模型
 2. **继承父图模型** — 多轮改图时沿用上一张图，保持风格一致
-3. **当前生图模型** — `CURRENT_IMAGE_MODEL_ID`（[`src/features/images/size.ts`](src/features/images/size.ts)）
+3. **当前生图模型** — `CURRENT_IMAGE_MODEL_ID`（[`src/features/images/image-spec.ts`](src/features/images/image-spec.ts)）
 
 图片落盘于 `CHAT_STORE_DIR/images/{chatId}/`；前端经 `GET /api/images/[assetId]` 展示，不直接渲染上游 CDN URL。
 
