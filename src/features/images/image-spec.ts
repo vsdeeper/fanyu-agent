@@ -1,7 +1,7 @@
 import type { ImageSpec } from './types';
 
 /** 当前生图模型；换接入点改此 ID，并更新本表对应规格（presets / 像素上下限） */
-export const CURRENT_IMAGE_MODEL_ID = 'gpt-image-2-vip';
+export const CURRENT_IMAGE_MODEL_ID = 'gemini-3.1-flash-image';
 
 /** 模型 ID → 生图输出规格。新增模型须同时改 registry 与本表，勿只改一处。 */
 export const IMAGE_SPEC_BY_MODEL_ID: Record<string, ImageSpec> = {
@@ -11,6 +11,12 @@ export const IMAGE_SPEC_BY_MODEL_ID: Record<string, ImageSpec> = {
     // 而 laozhang 端只会把自定义 WxH 静默回退成 '1K'。
     presets: ['1K'],
     defaultSize: '1K',
+  },
+  'gemini-3.1-flash-image': {
+    // 与 flash-lite 同属 Gemini 档位串直传路径，故同样不配 minPixels/maxPixels（避免误宣传自定义 WxH）；
+    // 但该模型真实支持 2K/4K 多档位，故开放多档位而非恒定 1K。
+    presets: ['1K', '2K', '4K'],
+    defaultSize: '2K',
   },
   'doubao-seedream-4-5-251128': {
     presets: ['2K', '4K'],
