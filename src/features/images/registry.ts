@@ -11,6 +11,12 @@ export function getCurrentImageModelId(): string {
 export function listImageModels(): ImageModelProfile[] {
   return [
     {
+      id: 'doubao-seedream-4-5-251128',
+      provider: 'ark',
+      capabilities: ['t2i', 'i2i'],
+      label: 'Seedream 4.5（方舟）',
+    },
+    {
       id: 'doubao-seedream-5-0-lite-260128',
       provider: 'ark',
       capabilities: ['t2i', 'i2i'],

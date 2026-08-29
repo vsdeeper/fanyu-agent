@@ -7,6 +7,8 @@ export type ImageSpec = {
   minPixels?: number;
   maxPixels?: number;
   defaultSize: string;
+  /** 上游是否接受 `output_format`（png/jpeg）参数。4.5 起方舟 Seedream 不支持该参数，传则 400；缺省视为 true。 */
+  supportsOutputFormat?: boolean;
 };
 
 export type ImageModelProfile = {

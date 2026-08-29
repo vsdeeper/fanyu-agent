@@ -45,10 +45,14 @@ export const arkSeedreamProvider: ImageProvider = {
       model: req.modelId,
       prompt: buildImagePrompt(req.prompt, req.transparent),
       response_format: 'url',
-      output_format: req.transparent ? 'png' : 'jpeg',
       size: outboundSize,
       watermark: false,
     };
+    // Seedream 4.5 不支持 `output_format`（png/jpeg），传则 400 InvalidParameter；
+    // 透明背景仍经 buildImagePrompt 的 prompt 后缀表达。缺省 spec.supportsOutputFormat 视为 true（5-0-lite 等旧模型保持原行为）。
+    if (spec.supportsOutputFormat !== false) {
+      body.output_format = req.transparent ? 'png' : 'jpeg';
+    }
 
     // 改图用本地 data URL/base64，勿依赖方舟返回的临时 CDN URL（易过期）
     const refs = req.mode === 'edit' ? (req.referenceImageDataUrls ?? []) : [];

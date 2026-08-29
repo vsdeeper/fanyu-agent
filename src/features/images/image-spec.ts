@@ -12,6 +12,15 @@ export const IMAGE_SPEC_BY_MODEL_ID: Record<string, ImageSpec> = {
     presets: ['1K'],
     defaultSize: '1K',
   },
+  'doubao-seedream-4-5-251128': {
+    presets: ['2K', '4K'],
+    minPixels: 3_686_400, // 1920×1920，Seedream 可出图下限
+    maxPixels: 4096 * 4096,
+    defaultSize: '2K',
+    // 方舟 Seedream 4.5 不支持 `output_format`（png/jpeg），传则 400 InvalidParameter；
+    // 不支持透明参数时，透明背景交由 prompt 后缀表达。
+    supportsOutputFormat: false,
+  },
   'doubao-seedream-5-0-lite-260128': {
     presets: ['2K', '4K'],
     minPixels: 3_686_400, // 1920×1920，Seedream 可出图下限
