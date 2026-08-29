@@ -3,8 +3,9 @@ import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 
 // globalThis.AI_SDK_LOG_WARNINGS = false;
 
-// 聊天流式接口可能链式触发生图 tool 等多轮耗时操作，需放宽执行上限
-export const maxDuration = 120;
+// 聊天流式接口可能链式触发生图 tool 等多轮耗时操作，12 步循环的单轮往返可能超过 120s，
+// 提到 300s 以覆盖多图设计流。
+export const maxDuration = 300;
 
 // 会话走 Node 运行时：依赖 better-sqlite3 + 本地文件落盘，Edge 环境无法运行
 export const runtime = 'nodejs';

@@ -3,10 +3,12 @@ import {
   createIdGenerator,
   createUIMessageStream,
   createUIMessageStreamResponse,
+  isLoopFinished,
   pruneMessages,
   stepCountIs,
   streamText,
   toUIMessageStream,
+  type ToolSet,
   type UIMessage,
 } from 'ai';
 
@@ -29,8 +31,13 @@ import { resolveTurnSkills } from '@/lib/skills/server/resolve-turn';
 import { getChatProvider } from './providers/config';
 import { getChatProviderRuntime } from './providers/resolve';
 import { createLocalWebSearchSourceBridge } from './web-search-source-bridge';
+import { buildLoopGuard } from './loop-guard';
 
 const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });
+
+// 工具循环安全上限：isLoopFinished 依赖「模型不再发 tool call」的自然终止，该上限是
+// 唯一保证循环必然结束的机制，勿单独移除。放宽需让多图设计流（若干次生成 + 汇总）跑得完。
+const MAX_TOOL_LOOP_STEPS = 12;
 
 export type StreamChatOptions = {
   chatId: string;
@@ -162,8 +169,11 @@ export async function streamChatResponse({
     instructions,
     messages: expandedMessages,
     tools,
-    // 修复：无 stopWhen 时 tool 执行后不会继续汇总；生图+说明需多步
-    stopWhen: stepCountIs(5),
+    // 自动循环：跑至自然终止（模型某步不再发 tool call）。isLoopFinished 永不返回 true，
+    // 真正保证循环必然结束的是 stepCountIs(MAX_TOOL_LOOP_STEPS)，两者缺一不可——仅靠
+    // isLoopFinished 会变成无上限循环。prepareStep 守卫负责失败工具重试的死循环收尾。
+    stopWhen: [isLoopFinished(), stepCountIs(MAX_TOOL_LOOP_STEPS)],
+    prepareStep: buildLoopGuard(Object.keys(tools) as Array<keyof ToolSet & string>),
     // store:false 仅 Responses 端点链路需要（防 item_reference）；Chat Completions 链路
     // 发 OpenAI 专有字段有 400 风险，由 needsOpenaiStoreFalse 能力位分流，勿恢复统一注入
     providerOptions: {
