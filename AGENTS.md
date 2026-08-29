@@ -228,7 +228,7 @@ Button/
 ## 生图与主 Agent 约定
 
 - 主对话模型在 [`src/app/api/chat/route.ts`](src/app/api/chat/route.ts) 通过 `generate_image` tool 出图/改图；`stopWhen: stepCountIs(5)` 保证 tool 后主模型可汇总说明
-- 默认生图模型为老张 Gemini（`gemini-3.1-flash-lite-image`，需 `LAOZHANG_API_KEY`、`LAOZHANG_BASE_URL=https://api2.laozhang.ai/v1`，走 `POST /v1/models/{modelId}:generateContent`）；方舟 Seedream 为另一 provider（`ARK_*`，按所选模型自动路由）。model id 与尺寸规格见 `CURRENT_IMAGE_MODEL_ID` / `IMAGE_SPEC_BY_MODEL_ID`
+- 默认生图模型为老张 Gemini（`gemini-3.1-flash-image`，需 `LAOZHANG_API_KEY`、`LAOZHANG_BASE_URL=https://api2.laozhang.ai/v1`，走 `POST /v1/models/{modelId}:generateContent`）；方舟 Seedream 为另一 provider（`ARK_*`，按所选模型自动路由）。model id 与尺寸规格见 `CURRENT_IMAGE_MODEL_ID` / `IMAGE_SPEC_BY_MODEL_ID`
 - 图片文件落盘于 `CHAT_STORE_DIR/images/{chatId}/`；元数据表 `image_assets`；`chats.working_image_asset_id` 为多轮改图默认源图
 - DESIGN.md 落盘于 `CHAT_STORE_DIR/docs/{chatId}/`；经 `save_design_md` 写入，前端展示下载卡片，不在对话正文贴全文
 - 前端经 `GET /api/images/[assetId]` 展示；气泡内使用 antd `Image`，勿用临时上游 CDN URL 直接渲染

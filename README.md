@@ -68,7 +68,7 @@ ZHIPU_MODEL_PRO=your-zhipu-model-pro
 ZHIPU_MODEL_LITE=your-zhipu-model-lite
 ZHIPU_MODEL_MINI=your-zhipu-model-mini
 
-# 老张 API（生图默认模型 gpt-image-2-vip 及 gemini-3.1-flash-lite-image 走此端点）
+# 老张 API（生图默认模型 gemini-3.1-flash-image，其余老张生图模型亦走此端点）
 LAOZHANG_API_KEY=your-laozhang-api-key
 LAOZHANG_BASE_URL=https://api2.laozhang.ai/v1
 
@@ -169,9 +169,9 @@ drizzle/               # SQL migrations
 
 1. **LLM 显式指定**（最高）— 用户在对话中要求的模型
 2. **继承父图模型** — 多轮改图时沿用上一张图，保持风格一致
-3. **当前生图模型** — `CURRENT_IMAGE_MODEL_ID`（默认 `gpt-image-2-vip`，见 [`src/features/images/image-spec.ts`](src/features/images/image-spec.ts)）
+3. **当前生图模型** — `CURRENT_IMAGE_MODEL_ID`（默认 `gemini-3.1-flash-image`，见 [`src/features/images/image-spec.ts`](src/features/images/image-spec.ts)）
 
-可选模型清单见 [`src/features/images/registry.ts`](src/features/images/registry.ts)：方舟 Seedream 4.5 / Seedream 5.0 Lite，老张 Gemini Flash Lite Image / GPT Image 2 VIP。
+可选模型清单见 [`src/features/images/registry.ts`](src/features/images/registry.ts)：方舟 Seedream 4.5 / Seedream 5.0 Lite，老张 Gemini Flash Image / Gemini Flash Lite Image / GPT Image 2 VIP。
 
 图片落盘于 `CHAT_STORE_DIR/images/{chatId}/`；前端经 `GET /api/images/[assetId]` 展示，不直接渲染上游 CDN URL。
 
