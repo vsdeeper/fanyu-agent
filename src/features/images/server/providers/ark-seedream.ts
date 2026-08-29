@@ -1,12 +1,7 @@
 import { requireEnv } from '@/lib/shared/server/env';
 import { buildImagePrompt, decodeBase64Image, downloadImage, sniffImageMime } from '../image-utils';
 import type { ImageProvider } from '../../types';
-import {
-  aspectRatioToSize,
-  getImageSpec,
-  IMAGE_ASPECT_RATIO_AUTO,
-  normalizeImageSize,
-} from '../../image-spec';
+import { getImageSpec, resolveImageSize } from '../../image-spec';
 
 type ArkImageResponse = {
   data?: Array<{ url?: string; b64_json?: string }>;
@@ -20,26 +15,9 @@ export const arkSeedreamProvider: ImageProvider = {
     const baseURL = requireEnv('ARK_BASE_URL').replace(/\/$/, '');
     const spec = getImageSpec(req.modelId);
 
-    // 修复：归一化 size，避免 `1024x1024` 等低于最小像素限制的值透传给上游导致 400
-    const size = normalizeImageSize(req.size, spec);
-    if (req.size && req.size.trim() !== size) {
-      console.warn(`[ark-seedream] size 已归一化: "${req.size}" -> "${size}"`);
-    }
-
-    // 方舟仅接受 WIDTHxHEIGHT / 档位（不接受比例串），比例须换算成像素宽高
-    const ratio =
-      req.aspectRatio && req.aspectRatio !== IMAGE_ASPECT_RATIO_AUTO ? req.aspectRatio : undefined;
-    const ratioSize = ratio ? aspectRatioToSize(ratio, spec) : undefined;
-
-    // 修复：用户显式给 size（档位/像素）时优先采纳，避免被 ratioSize 按 minPixels 换算降到更低面积；
-    // 仅未给 size 时才用比例换算的像素宽高；两者同时给会丢弃比例，留日志便于排查。
-    const hasExplicitSize = !!req.size?.trim();
-    const outboundSize = hasExplicitSize ? size : (ratioSize ?? size);
-    if (hasExplicitSize && ratioSize) {
-      console.warn(
-        `[ark-seedream] 同时指定 size 与 aspectRatio，优先 size="${size}"，忽略比例换算 "${ratioSize}"`,
-      );
-    }
+    // 统一解析：K 档位先转基准 WxH，再按比例 reshape（同 gpt-image），
+    // 避免「只给比例」时被 minPixels 拉到最小、或 K 档位直传非 WxH 导致默认不生效。
+    const outboundSize = resolveImageSize(req.size, req.aspectRatio, spec);
 
     const body: Record<string, unknown> = {
       model: req.modelId,

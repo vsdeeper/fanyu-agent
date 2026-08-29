@@ -28,6 +28,12 @@ export function listImageModels(): ImageModelProfile[] {
       capabilities: ['t2i', 'i2i'],
       label: 'Gemini Flash Lite Image（老张）',
     },
+    {
+      id: 'gpt-image-2-vip',
+      provider: 'laozhang',
+      capabilities: ['t2i', 'i2i'],
+      label: 'GPT Image 2 VIP（老张）',
+    },
   ];
 }
 

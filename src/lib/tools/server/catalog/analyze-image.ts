@@ -19,6 +19,8 @@ export type AnalyzeImageToolResult =
   | {
       ok: true;
       results: Array<{ assetId?: string; index?: number; analysis: VisionAnalysis }>;
+      /** 本轮粘贴图总数（供 toModelOutput 标「共 M 张」）；资产/工作图路径为 1；旧落盘形状无此字段。 */
+      totalPasted?: number;
       // 旧落盘形状：重构前成功 part 为 { ok:true, analysis, assetId }，无 results 数组。保留可选字段供兼容读取。
       analysis?: VisionAnalysis;
       assetId?: string;
@@ -132,6 +134,8 @@ function createAnalyzeImageTool(chatId: string, pastedImageDataUrls?: string[]) 
           pasteIndexes = [undefined];
         }
 
+        // totalPasted：本轮粘贴图总数（粘贴路径）；资产/工作图兜底为 1，供 toModelOutput 标「共 M 张」。
+        const totalPasted = pastedImageDataUrls?.length ? pastedImageDataUrls.length : 1;
         // index = 实际粘贴序号（0 基），供主模型据此定位第几张后复用到 generate_image 的 pastedImageIndexes
         const results: Array<{ assetId?: string; index?: number; analysis: VisionAnalysis }> = [];
         for (let i = 0; i < dataUrls.length; i++) {
@@ -145,7 +149,7 @@ function createAnalyzeImageTool(chatId: string, pastedImageDataUrls?: string[]) 
             analysis: result.analysis,
           });
         }
-        return { ok: true, results };
+        return { ok: true, results, totalPasted };
       } catch (err) {
         console.error('[analyze_image]', err);
         return { ok: false, error: '识图服务暂不可用，请稍后重试' };
@@ -156,7 +160,12 @@ function createAnalyzeImageTool(chatId: string, pastedImageDataUrls?: string[]) 
         return { type: 'text', value: `图片分析失败：${output.error}` };
       }
       const results = normalizeAnalyzeResults(output);
-      const total = results.length;
+      // 共 M 张：优先用本轮粘贴图总数（粘贴路径 output.totalPasted）；否则退回「已分析张数」。
+      // 修复：子集选图时不要把「第 N 张」（粘贴序号）和「共 M 张」（分析子集长度）混用成自相矛盾的计数。
+      const hasIndex = results.some((r) => r.index != null);
+      const total = hasIndex
+        ? (output.totalPasted ?? Math.max(...results.map((r) => (r.index ?? 0) + 1)))
+        : results.length;
       const blocks = results.map((item, i) => {
         // 多张时用实际粘贴序号标注（item.index），历史/工作图路径 index 为 undefined 退回循环位置；
         // 避免按循环位置误标，粘贴图选了子集时（如 [2,0]）主模型据此才能对回正确序号。

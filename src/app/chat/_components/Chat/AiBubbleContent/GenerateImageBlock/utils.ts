@@ -21,8 +21,9 @@ export type GenerateImageOutput = {
  */
 export function getImageAssets(output: GenerateImageOutput | undefined): GenerateImageAsset[] {
   if (output?.assets?.length) return output.assets;
-  if (output?.assetId || output?.url) {
-    return [{ assetId: output.assetId ?? '', url: output.url }];
+  // 与服务端 legacy-output.normalizeImageAssets 判定保持一致：仅认 assetId（url 只是渲染源，不算是资产标识）。
+  if (output?.assetId) {
+    return [{ assetId: output.assetId, url: output.url }];
   }
   return [];
 }
