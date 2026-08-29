@@ -9,7 +9,12 @@ import {
   resolveParentModelId,
   saveImageAsset,
 } from '@/features/images/server/assets';
-import { getCurrentImageModelId, getImageModelProfile } from '@/features/images/registry';
+import {
+  describeImageModels,
+  getConfiguredImageModelId,
+  getCurrentImageModelId,
+  getImageModelProfile,
+} from '@/features/images/registry';
 import { generateImageViaRouter, resolveImageModelId } from '@/features/images/server/router';
 import {
   describeImageSize,
@@ -111,12 +116,17 @@ async function resolveEditRefs({
  * 按当前生图模型的尺寸规格生成工具使用规则。
  */
 function getImageSystemHint(): string {
+  const configured = getConfiguredImageModelId();
+  const modelLine = configured
+    ? `- 生图模型：全局设置为 ${configured}，绝对优先，勿改`
+    : `- 生图模型：未设置全局默认，请按场景自选。设计出图主力：写实/商拍/精细文字→gpt-image-2-vip，艺术插画/创意/色彩→gemini-3.1-flash-image（Nano Banana 2）；预算与速度优先→gemini-flash-lite 或 seedream-5-0-lite；仅对设计要求不高的一般场景→seedream-4-5。仅当确需换模型或编辑历史图需保持原模型时传 model`;
   const spec = getImageSpec(getCurrentImageModelId());
   const presets = spec.presets.join('/');
-  const sizeLine =
-    spec.minPixels != null && spec.maxPixels != null
-      ? `- 生图尺寸只传 ${presets}，或总像素 ${spec.minPixels} ~ ${spec.maxPixels} 的 WIDTHxHEIGHT（默认 ${spec.defaultSize}）；档位随模型而异，编辑历史图时以该图模型为准`
-      : `- 生图尺寸只传 ${presets}（默认 ${spec.defaultSize}）；档位随模型而异，编辑历史图时以该图模型为准`;
+  const sizeLine = configured
+    ? spec.minPixels != null && spec.maxPixels != null
+      ? `- 生图尺寸只传 ${presets}，或总像素 ${spec.minPixels} ~ ${spec.maxPixels} 的 WIDTHxHEIGHT（默认 ${spec.defaultSize}）`
+      : `- 生图尺寸只传 ${presets}（默认 ${spec.defaultSize}）`
+    : `- 生图尺寸随所选模型而异（档位/像素区间见该模型说明），默认 2K；编辑历史图时以该图模型为准`;
   return `生图工具使用规则：
 - 用户明确要求生成/绘制/出图时调用 generate_image，mode=generate
 - 用户要求修改图片时调用 generate_image，mode=edit
@@ -131,7 +141,17 @@ function getImageSystemHint(): string {
 - 用户明确要求透明背景、去底、抠图或 PNG alpha 时：transparent=true；未要求时不要传 true
 - 生成应用图标 / App Icon / logo / 标志 / 品牌标识等需要「方形满铺」的图时：prompt 必须写明背景为单一纯色、满铺到画布四边、无内缩白边/留白、无圆角或超椭圆、无投影/发光/描边边框、无纹理；图形居中置于中央约 80% 安全区。此类图标默认不透明（勿设 transparent=true），仅用户明确要透明背景时才设 true
 - 用户指定画面比例时传 aspectRatio（如 3:2、16:9）；不传或传 auto 时交由模型自选
+${modelLine}
 ${sizeLine}`;
+}
+
+/** size 参数描述：已设置全局模型给出其规格；自选模式给出通用说明 */
+function getSizeFieldDescribe(): string {
+  const configured = getConfiguredImageModelId();
+  if (configured) {
+    return `${describeImageSize(getImageSpec(configured))}；编辑历史图时档位以该图模型为准`;
+  }
+  return '生图尺寸随所选模型而异（档位与像素区间见所选模型说明），默认 2K；编辑历史图时以该图模型为准';
 }
 
 const PASTE_IMAGE_EDIT_HINT =
@@ -145,7 +165,7 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
     inputSchema: z.object({
       mode: z.enum(['generate', 'edit']).describe('generate=新图；edit=基于已有图修改'),
       prompt: z.string().min(1).describe('详细生图或改图描述；多参考时按顺序说明各图用途'),
-      model: z.string().optional().describe('可选模型 ID；省略则使用当前生图模型'),
+      model: z.string().optional().describe(describeImageModels()),
       sourceAssetIds: z
         .array(z.string())
         .optional()
@@ -166,9 +186,7 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
         .string()
         .regex(SIZE_FORMAT_PATTERN, '尺寸须为档位（如 2K、4K）或宽x高像素（如 2048x2048）')
         .optional()
-        .describe(
-          `${describeImageSize(getImageSpec(getCurrentImageModelId()))}；编辑历史图时档位以该图模型为准`,
-        ),
+        .describe(getSizeFieldDescribe()),
       aspectRatio: z
         .string()
         .regex(ASPECT_RATIO_PATTERN, '宽高比须为 auto 或 WIDTH:HEIGHT（如 3:2、16:9）')

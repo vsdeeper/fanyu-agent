@@ -8,7 +8,7 @@ import { getArkClient } from '@/features/chat/server/providers/ark/client';
  * 供 analyze_image 工具调用；失败一律返回 { ok:false, error }，绝不向主对话链路抛错。
  */
 
-/** 当前识图模型；换接入点改此处（与生图 CURRENT_IMAGE_MODEL_ID 一样写死，不走环境变量） */
+/** 当前识图模型；换接入点改此处（识图仍写死，生图已改走 env IMAGE_MODEL_ID） */
 export const CURRENT_VISION_MODEL_ID = 'doubao-seed-2-0-lite-260428';
 
 /** 当前识图模型 ID */

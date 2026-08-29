@@ -1,4 +1,8 @@
-import { getCurrentImageModelId, getImageModelProfile } from '../registry';
+import {
+  getConfiguredImageModelId,
+  getCurrentImageModelId,
+  getImageModelProfile,
+} from '../registry';
 import { arkSeedreamProvider } from './providers/ark-seedream';
 import { laozhangProvider } from './providers/laozhang';
 import type { ImageGenerateRequest, ImageGenerateResult, ImageProvider } from '../types';
@@ -16,6 +20,11 @@ export function resolveImageModelId({
   requestedModelId?: string;
   parentModelId?: string;
 }): string {
+  // 全局已设置 IMAGE_MODEL_ID：绝对优先，主模型自选（requestedModelId）不覆盖
+  const configured = getConfiguredImageModelId();
+  if (configured) {
+    return configured;
+  }
   if (requestedModelId?.trim()) {
     return requestedModelId.trim();
   }

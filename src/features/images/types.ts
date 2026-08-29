@@ -16,6 +16,8 @@ export type ImageModelProfile = {
   provider: ImageProviderId;
   capabilities: ImageCapability[];
   label: string;
+  /** 能力说明 + 擅长场景，供主模型按其强度按需选型 */
+  description: string;
 };
 
 export type ImageGenerateRequest = {

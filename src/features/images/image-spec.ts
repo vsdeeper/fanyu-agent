@@ -1,8 +1,5 @@
 import type { ImageSpec } from './types';
 
-/** 当前生图模型；换接入点改此 ID，并更新本表对应规格（presets / 像素上下限） */
-export const CURRENT_IMAGE_MODEL_ID = 'gemini-3.1-flash-image';
-
 /** 模型 ID → 生图输出规格。新增模型须同时改 registry 与本表，勿只改一处。 */
 export const IMAGE_SPEC_BY_MODEL_ID: Record<string, ImageSpec> = {
   'gemini-3.1-flash-lite-image': {

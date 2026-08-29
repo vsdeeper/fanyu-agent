@@ -165,13 +165,14 @@ drizzle/               # SQL migrations
 | `save_design_md` | 将会话 DESIGN.md 落盘，对话里只展示下载卡片                                                                                                          |
 | `web_search`     | 联网搜索：方舟在 Provider 侧透传（可带高德逆地理近似位置）；智谱经独立 Web Search API 由本地工具调用；DeepSeek 走 Responses API 原生搜索，无需该工具 |
 
-生图模型由 `resolveImageModelId` 按三级优先级决定：
+生图模型由 `resolveImageModelId` 按优先级决定：
 
-1. **LLM 显式指定**（最高）— 用户在对话中要求的模型
-2. **继承父图模型** — 多轮改图时沿用上一张图，保持风格一致
-3. **当前生图模型** — `CURRENT_IMAGE_MODEL_ID`（默认 `gemini-3.1-flash-image`，见 [`src/features/images/image-spec.ts`](src/features/images/image-spec.ts)）
+1. **全局设置（最高）** — env `IMAGE_MODEL_ID`（将来全局设置写入）设置了则绝对优先，主模型自选不覆盖
+2. **主模型自动选型** — `IMAGE_MODEL_ID` 未设置时，主模型按场景从清单自选（经 `generate_image` 的 `model` 参数回传）
+3. **继承父图模型** — 多轮改图时沿用上一张图，保持风格一致
+4. **兜底** — `FALLBACK_IMAGE_MODEL_ID`（默认 `gemini-3.1-flash-image`）
 
-可选模型清单见 [`src/features/images/registry.ts`](src/features/images/registry.ts)：方舟 Seedream 4.5 / Seedream 5.0 Lite，老张 Gemini Flash Image / Gemini Flash Lite Image / GPT Image 2 VIP。
+可选模型清单与各模型能力/擅长场景见 [`src/features/images/registry.ts`](src/features/images/registry.ts)（`listImageModels` / `describeImageModels`）：方舟 Seedream 4.5 / Seedream 5.0 Lite，老张 Gemini Flash Image / Gemini Flash Lite Image / GPT Image 2 VIP。
 
 图片落盘于 `CHAT_STORE_DIR/images/{chatId}/`；前端经 `GET /api/images/[assetId]` 展示，不直接渲染上游 CDN URL。
 
