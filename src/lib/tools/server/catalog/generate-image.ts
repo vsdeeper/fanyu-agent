@@ -129,6 +129,7 @@ function getImageSystemHint(): string {
 - 用户说「改上面那张 / 第二张」且无法对应到已知 assetId、用户也未贴图时：不要猜测、不要调用 edit，请用户将要修改的图复制粘贴到对话框后再试
 - 生图成功后界面会自动展示图片；汇总回复时只用文字说明，勿在正文中插入 Markdown 图片或 URL
 - 用户明确要求透明背景、去底、抠图或 PNG alpha 时：transparent=true；未要求时不要传 true
+- 生成应用图标 / App Icon / logo / 标志 / 品牌标识等需要「方形满铺」的图时：prompt 必须写明背景为单一纯色、满铺到画布四边、无内缩白边/留白、无圆角或超椭圆、无投影/发光/描边边框、无纹理；图形居中置于中央约 80% 安全区。此类图标默认不透明（勿设 transparent=true），仅用户明确要透明背景时才设 true
 - 用户指定画面比例时传 aspectRatio（如 3:2、16:9）；不传或传 auto 时交由模型自选
 ${sizeLine}`;
 }
