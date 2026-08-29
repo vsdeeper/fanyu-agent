@@ -50,26 +50,51 @@ export const arkSeedreamProvider: ImageProvider = {
       watermark: false,
     };
 
-    // 修复：改图用本地 data URL/base64，勿依赖方舟返回的临时 CDN URL（易过期）
-    if (req.mode === 'edit' && req.referenceImageDataUrls?.length) {
-      const ref = req.referenceImageDataUrls[0];
-      if (ref.startsWith('data:')) {
-        body.image = ref;
-      } else {
-        body.image = ref;
-      }
+    // 改图用本地 data URL/base64，勿依赖方舟返回的临时 CDN URL（易过期）
+    const refs = req.mode === 'edit' ? (req.referenceImageDataUrls ?? []) : [];
+    // Seedream 多参考能力未验证：多张先按数组试发，上游 400 拒绝数组时降级仅首图重试，其余靠 prompt 描述。
+    // 单张/无则保持标量 body.image，行为不回归。
+    if (refs.length === 1) {
+      body.image = refs[0];
+    } else if (refs.length > 1) {
+      body.image = refs;
     }
 
-    const response = await fetch(`${baseURL}/images/generations`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    const doFetch = async (candidateBody: Record<string, unknown>) => {
+      const signal = req.abortSignal
+        ? AbortSignal.any([req.abortSignal, AbortSignal.timeout(180_000)])
+        : AbortSignal.timeout(180_000);
+      const response = await fetch(`${baseURL}/images/generations`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(candidateBody),
+        signal,
+      });
+      // 错误体可能非 JSON（如 502 网关 HTML）；parse 失败降级为空，勿让上游文案抛穿降级分支
+      let payload: ArkImageResponse = {};
+      try {
+        payload = (await response.json()) as ArkImageResponse;
+      } catch {
+        payload = {};
+      }
+      return { response, payload };
+    };
 
-    const payload = (await response.json()) as ArkImageResponse;
+    let { response, payload } = await doFetch(body);
+
+    // 仅当上游明确以 400（参数无效，含「不支持数组」类）拒绝时才降级首图；5xx 属服务端瞬态，勿误降级掩盖真因。
+    if (response.status === 400 && refs.length > 1) {
+      console.warn('[ark-seedream] 多参考被上游拒绝(400)，降级仅首图', payload);
+      if (req.abortSignal?.aborted) {
+        throw new Error('已中断');
+      }
+      body.image = refs[0];
+      ({ response, payload } = await doFetch(body));
+    }
+
     if (!response.ok) {
       console.error('[ark-seedream] upstream error', response.status, payload);
       throw new Error('方舟生图服务暂不可用');

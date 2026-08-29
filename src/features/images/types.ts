@@ -26,6 +26,8 @@ export type ImageGenerateRequest = {
   aspectRatio?: string;
   /** 用户明确要求透明背景时为 true；上游改走 PNG + 透明 prompt */
   transparent?: boolean;
+  /** 用户中断信号；上游请求据此无响应中断（降级重试前后也会检查） */
+  abortSignal?: AbortSignal;
 };
 
 export type GeneratedImagePayload = {

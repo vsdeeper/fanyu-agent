@@ -20,7 +20,7 @@ import { generateChatTitle } from '@/features/chat/server/generate-title';
 import { saveChat, updateChatTitle } from '@/features/chat/server/store';
 import { selectModel } from '@/features/chat/server/select-model';
 import { getFirstUserText } from '@/features/chat/title';
-import { getLatestUserImageDataUrl } from '@/lib/tools/server/pasted-image';
+import { getLatestUserImageDataUrls } from '@/lib/tools/server/pasted-image';
 import { createCatalogTools, getToolHints } from '@/lib/tools/server/registry';
 import { buildSkillCatalogPrompt } from '@/lib/skills/server/catalog-prompt';
 import { expandSkillTokensInText } from '@/lib/skills/server/expand';
@@ -65,13 +65,13 @@ export async function streamChatResponse({
   const client = runtime.getClient();
   const capabilities = runtime.getCapabilities();
 
-  const pastedImageDataUrl = getLatestUserImageDataUrl(messages);
+  const pastedImageDataUrls = getLatestUserImageDataUrls(messages);
 
   // 联网搜索构造权在 Provider：usesSdkWebSearchTool=true（deepseek/ark）注册 SDK 原生
   // server tool；否则（zhipu）由本地 web_search 工具经独立 API 显式检索
   const catalogTools = createCatalogTools({
     chatId,
-    pastedImageDataUrl,
+    pastedImageDataUrls,
     mainModelAcceptsImage: capabilities.acceptsImageInput,
     providerHasNativeWebSearch: capabilities.usesSdkWebSearchTool,
   });
@@ -149,7 +149,7 @@ export async function streamChatResponse({
     : '';
 
   // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}\n\n${getToolHints(Boolean(pastedImageDataUrl), capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool)}`;
+  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}\n\n${getToolHints(pastedImageDataUrls.length > 0, capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool)}`;
 
   const instructions = runtime.getInstructions({
     userLocation,

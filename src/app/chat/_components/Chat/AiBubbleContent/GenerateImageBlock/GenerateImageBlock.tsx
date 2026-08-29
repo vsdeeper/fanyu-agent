@@ -8,7 +8,7 @@ import type { MessagePart } from '../utils';
 import styles from './GenerateImageBlock.module.css';
 import {
   type GenerateImageOutput,
-  getImageSrc,
+  getImageAssets,
   isGenerateImageFailed,
   isGenerateImagePending,
   isGenerateImageReady,
@@ -36,7 +36,19 @@ function GenerateImageItem({ part }: { part: MessagePart }) {
   }
 
   if (output && isGenerateImageReady(output)) {
-    return <AiImage src={getImageSrc(output)} size={120} alt="生成的图片" />;
+    const assets = getImageAssets(output);
+    return (
+      <>
+        {assets.map((asset) => (
+          <AiImage
+            key={asset.assetId || asset.url}
+            src={asset.url || `/api/images/${asset.assetId}`}
+            size={120}
+            alt="生成的图片"
+          />
+        ))}
+      </>
+    );
   }
 
   if (isGenerateImagePending(state)) {

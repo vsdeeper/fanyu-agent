@@ -112,12 +112,23 @@ export async function sanitizeFilePartsForModel(
   options?: { acceptsImageInput?: boolean },
 ): Promise<UIMessage[]> {
   const acceptsImageInput = options?.acceptsImageInput === true;
+  // pastedImageIndexes 只解析最新一条 user 消息的粘贴图；仅对最新 user 轮的占位符提示该参数，跨轮次索引到错图
+  const lastUserIndex = messages.reduce((last, m, i) => (m.role === 'user' ? i : last), -1);
   return Promise.all(
-    messages.map(async (message) => {
+    messages.map(async (message, messageIndex) => {
       if (!message.parts?.length) {
         return message;
       }
 
+      const isLatestUser = message.role === 'user' && messageIndex === lastUserIndex;
+      const fileParts = message.parts.filter(
+        (p): p is Extract<typeof p, { type: 'file' }> =>
+          isFileUIPart(p) && p.url.startsWith('data:'),
+      );
+      const imageParts = fileParts.filter((p) => p.mediaType.startsWith('image/'));
+      const totalImages = imageParts.length;
+
+      let imageIndex = 0;
       const parts = await Promise.all(
         message.parts.map(async (part) => {
           if (!isFileUIPart(part) || !part.url.startsWith('data:')) {
@@ -131,7 +142,13 @@ export async function sanitizeFilePartsForModel(
             if (acceptsImageInput) {
               return part;
             }
-            return imageFilePartToPlaceholder(part.filename);
+            const currentIndex = imageIndex++;
+            return imageFilePartToPlaceholder(
+              part.filename,
+              currentIndex,
+              totalImages,
+              isLatestUser,
+            );
           }
 
           const keepable = mediaType === 'application/pdf';
@@ -170,13 +187,20 @@ export async function sanitizeFilePartsForModel(
   );
 }
 
-/** 主模型入参中的图片占位：保留「有图」信号，不发送像素 */
-function imageFilePartToPlaceholder(filename: string | undefined): { type: 'text'; text: string } {
+/** 主模型入参中的图片占位：保留「有图」信号（含第几张/共几张），不发送像素 */
+function imageFilePartToPlaceholder(
+  filename: string | undefined,
+  index: number,
+  total: number,
+  isLatestUser: boolean,
+): { type: 'text'; text: string } {
   const name = filename?.trim();
+  const seq = total > 1 ? `（第 ${index + 1}/${total} 张）` : '';
+  const label = name ? `「${name}」` : '';
+  // pastedImageIndexes 仅对最新用户轮的粘贴图生效；跨轮/单张不提示，避免主模型索引到错图或误用
+  const indexHint = isLatestUser && total > 1 ? '；多张时可用 pastedImageIndexes 指定某几张' : '';
   return {
     type: 'text',
-    text: name
-      ? `本轮含图片附件「${name}」，请用 analyze_image 查看`
-      : '本轮含图片附件，请用 analyze_image 查看',
+    text: `本轮含图片附件${seq}${label}，请用 analyze_image 查看${indexHint}`,
   };
 }
