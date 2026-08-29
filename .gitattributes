@@ -1,0 +1,2 @@
+# 仓库统一存 LF（多人协作一致）；检出时按各平台本机行尾转换（Windows CRLF / Mac+Linux LF）。
+* text=auto
