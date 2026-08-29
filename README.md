@@ -7,9 +7,9 @@
 ## 功能概览
 
 - **流式对话**：Think 推理、联网搜索引用、停止生成；刷新后可还原思考过程与引用来源
-- **双 Provider**：默认 DeepSeek 直连；可切火山方舟。识图与生图始终走方舟
+- **多 Provider**：默认 DeepSeek 直连；可切火山方舟 / 智谱 BigModel。识图始终走方舟，生图按所选模型路由
 - **模型路由**：按消息复杂度自动选择 `pro` / `lite` / `mini` 三档
-- **工具**：文生图 / 改图、识图、DESIGN.md 落盘；Provider 侧 `web_search`
+- **工具**：文生图 / 改图（支持多参考图）、识图、DESIGN.md 落盘；联网搜索按 Provider 适配
 - **Skills**：品牌规范板、移动端 / Web 端设计；出图后可按需导出语义化 DESIGN.md
 - **附件**：图片（png / jpeg / webp / gif）、PDF、txt / md、docx（最多 5 个，单文件 10MB）
 - **主题**：浅色 / 深色 / 跟随系统，SSR 无闪白
@@ -40,31 +40,44 @@ cp .env.example .env.local
 
 在 `.env.local` 中填写密钥。完整列表与注释以 [`.env.example`](./.env.example) 为准；业务代码假定其中列出的变量已配置且非空。
 
-默认对话 Provider 为 DeepSeek；**识图与生图无论主对话用哪家，都需要方舟**：
+默认对话 Provider 为 DeepSeek；**识图无论主对话用哪家，都需要方舟，生图默认走老张**：
 
 ```env
 CHAT_PROVIDER=deepseek
 
 DEEPSEEK_API_KEY=your-deepseek-api-key
 DEEPSEEK_BASE_URL=https://your-deepseek-base-url
-# 可选：三档模型 ID（缺省均为 deepseek-v4-flash）
-# DEEPSEEK_MODEL_PRO / DEEPSEEK_MODEL_LITE / DEEPSEEK_MODEL_MINI
+# 三档模型 ID（均须配置，缺失启动时报错；按最后一条用户消息复杂度自动路由）
+DEEPSEEK_MODEL_PRO=your-deepseek-model-pro
+DEEPSEEK_MODEL_LITE=your-deepseek-model-lite
+DEEPSEEK_MODEL_MINI=your-deepseek-model-mini
 # 可选：思考强度，默认 high
 # DEEPSEEK_REASONING_EFFORT=high
 
-# 识图 / 生图（CHAT_PROVIDER=deepseek 时也需要）
+# 识图始终走方舟（任何 CHAT_PROVIDER 都需要）
 ARK_API_KEY=your-ark-api-key
 ARK_BASE_URL=https://your-ark-base-url
 ARK_MODEL_PRO=your-ark-model-pro
 ARK_MODEL_LITE=your-ark-model-lite
 ARK_MODEL_MINI=your-ark-model-mini
 
+# 智谱 BigModel（CHAT_PROVIDER=zhipu 时作为主对话；生图 / 识图底座仍依赖上方 ARK_*）
+ZHIPU_API_KEY=your-zhipu-api-key
+ZHIPU_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+ZHIPU_MODEL_PRO=your-zhipu-model-pro
+ZHIPU_MODEL_LITE=your-zhipu-model-lite
+ZHIPU_MODEL_MINI=your-zhipu-model-mini
+
+# 老张 API（生图默认模型 gpt-image-2-vip 及 gemini-3.1-flash-lite-image 走此端点）
+LAOZHANG_API_KEY=your-laozhang-api-key
+LAOZHANG_BASE_URL=https://api2.laozhang.ai/v1
+
 AMAP_WEB_KEY=your-amap-web-service-key
 CHAT_STORE_DIR=./data/chats
 CHAT_SYNC_REMOTE_DIR=/path/to/cloud-backup/chats
 ```
 
-主对话切到方舟时设 `CHAT_PROVIDER=ark`，并同样填写 `ARK_*`。DeepSeek 三档模型 ID 可缺省；方舟三档必须配置。
+主对话切到方舟 / 智谱时分别设 `CHAT_PROVIDER=ark` / `zhipu`，并填写对应 `ARK_*` / `ZHIPU_*`。各 Provider 三档模型 ID 均须配置。
 
 启动开发服务：
 
@@ -143,20 +156,22 @@ drizzle/               # SQL migrations
 
 ## 对话与工具
 
-主对话按 `CHAT_PROVIDER` 选择 DeepSeek 或方舟；工具调用完成后主模型会再汇总说明。
+主对话按 `CHAT_PROVIDER` 选择 DeepSeek、方舟或智谱；工具调用完成后主模型会再汇总说明。
 
-| 工具             | 作用                                                               |
-| ---------------- | ------------------------------------------------------------------ |
-| `generate_image` | 文生图（`generate`）与改图（`edit`），Provider 为方舟 Seedream     |
-| `analyze_image`  | 识图：方舟视觉模型返回结构化描述，回喂主模型（主模型本身看不见图） |
-| `save_design_md` | 将会话 DESIGN.md 落盘，对话里只展示下载卡片                        |
-| `web_search`     | Provider 侧联网搜索；方舟可透传高德逆地理得到的近似位置            |
+| 工具             | 作用                                                                                                                                                 |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `generate_image` | 文生图（`generate`）与改图（`edit`，支持多参考图）；按所选模型路由 Provider                                                                          |
+| `analyze_image`  | 识图：方舟视觉模型返回结构化描述，回喂主模型（主模型本身看不见图）                                                                                   |
+| `save_design_md` | 将会话 DESIGN.md 落盘，对话里只展示下载卡片                                                                                                          |
+| `web_search`     | 联网搜索：方舟在 Provider 侧透传（可带高德逆地理近似位置）；智谱经独立 Web Search API 由本地工具调用；DeepSeek 走 Responses API 原生搜索，无需该工具 |
 
 生图模型由 `resolveImageModelId` 按三级优先级决定：
 
 1. **LLM 显式指定**（最高）— 用户在对话中要求的模型
 2. **继承父图模型** — 多轮改图时沿用上一张图，保持风格一致
-3. **当前生图模型** — `CURRENT_IMAGE_MODEL_ID`（[`src/features/images/image-spec.ts`](src/features/images/image-spec.ts)）
+3. **当前生图模型** — `CURRENT_IMAGE_MODEL_ID`（默认 `gpt-image-2-vip`，见 [`src/features/images/image-spec.ts`](src/features/images/image-spec.ts)）
+
+可选模型清单见 [`src/features/images/registry.ts`](src/features/images/registry.ts)：方舟 Seedream 4.5 / Seedream 5.0 Lite，老张 Gemini Flash Lite Image / GPT Image 2 VIP。
 
 图片落盘于 `CHAT_STORE_DIR/images/{chatId}/`；前端经 `GET /api/images/[assetId]` 展示，不直接渲染上游 CDN URL。
 
