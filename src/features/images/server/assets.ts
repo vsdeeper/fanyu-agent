@@ -3,9 +3,12 @@ import 'server-only';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { generateId } from 'ai';
-import { eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { getChatDir, getDb } from '@/lib/db/client';
 import { chats, imageAssets } from '@/lib/db/schema';
+
+/** 用户上传（粘贴/拖拽）产品图落盘时的哨兵 modelId；区别于真实生图模型，供产品图检索与路由守卫用 */
+export const PRODUCT_IMAGE_MODEL_ID = 'user-upload';
 
 export type ImageAssetRecord = {
   id: string;
@@ -58,6 +61,8 @@ export async function saveImageAsset({
   prompt,
   bytes,
   mimeType,
+  fileName,
+  setWorking = true,
 }: {
   chatId: string;
   parentId: string | null;
@@ -65,14 +70,18 @@ export async function saveImageAsset({
   prompt: string;
   bytes: Uint8Array;
   mimeType: string;
+  /** 覆写随机文件名（如产品图按内容哈希落盘以便幂等复用）；缺省用随机 id 命名 */
+  fileName?: string;
+  /** 是否写回 working image；产品图桥接传 false，避免覆盖「最近一张生成图」 */
+  setWorking?: boolean;
 }): Promise<ImageAssetRecord> {
   const id = generateId();
   const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpeg';
-  const fileName = `${id}.${ext}`;
+  const resolvedFileName = fileName ?? `${id}.${ext}`;
   const createdAt = new Date().toISOString();
   const dir = getChatImagesDir(chatId);
 
-  writeFileSync(path.join(dir, fileName), bytes);
+  writeFileSync(path.join(dir, resolvedFileName), bytes);
 
   const db = getDb();
   db.insert(imageAssets)
@@ -82,13 +91,15 @@ export async function saveImageAsset({
       parentId,
       modelId,
       prompt,
-      fileName,
+      fileName: resolvedFileName,
       mimeType,
       createdAt,
     })
     .run();
 
-  await setWorkingAsset(chatId, id);
+  if (setWorking) {
+    await setWorkingAsset(chatId, id);
+  }
 
   return {
     id,
@@ -96,10 +107,22 @@ export async function saveImageAsset({
     parentId,
     modelId,
     prompt,
-    fileName,
+    fileName: resolvedFileName,
     mimeType,
     createdAt,
   };
+}
+
+/** 本会话用户上传产品图（哨兵 modelId）列表，按时间倒序；供桥接回溯与把 id 提示给主模型 */
+export function listProductImageAssets(chatId: string): ImageAssetRecord[] {
+  const db = getDb();
+  const rows = db
+    .select()
+    .from(imageAssets)
+    .where(and(eq(imageAssets.chatId, chatId), eq(imageAssets.modelId, PRODUCT_IMAGE_MODEL_ID)))
+    .orderBy(desc(imageAssets.createdAt))
+    .all();
+  return rows.map(rowToRecord);
 }
 
 export function getAsset(id: string): ImageAssetRecord | undefined {

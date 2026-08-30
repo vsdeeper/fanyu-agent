@@ -5,6 +5,7 @@ import {
 } from '../registry';
 import { arkSeedreamProvider } from './providers/ark-seedream';
 import { laozhangProvider } from './providers/laozhang';
+import { PRODUCT_IMAGE_MODEL_ID } from './assets';
 import type { ImageGenerateRequest, ImageGenerateResult, ImageProvider } from '../types';
 
 function getProvider(providerId: string): ImageProvider {
@@ -25,11 +26,13 @@ export function resolveImageModelId({
   if (configured) {
     return configured;
   }
-  if (requestedModelId?.trim()) {
+  // 哨兵守卫：用户上传产品图落盘时 modelId 为 'user-upload'，不是真实生图模型。
+  // 若被用户或父图继承，getImageModelProfile 会抛「不支持的生图模型」，故跳过、回落到后续选型。
+  if (requestedModelId?.trim() && requestedModelId.trim() !== PRODUCT_IMAGE_MODEL_ID) {
     return requestedModelId.trim();
   }
   // 修复：多轮改图默认沿用上一张 modelId，避免换模型丢风格一致性
-  if (parentModelId?.trim()) {
+  if (parentModelId?.trim() && parentModelId.trim() !== PRODUCT_IMAGE_MODEL_ID) {
     return parentModelId.trim();
   }
   return getCurrentImageModelId();

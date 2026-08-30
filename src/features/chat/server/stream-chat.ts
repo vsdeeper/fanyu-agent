@@ -23,6 +23,10 @@ import { saveChat, updateChatTitle } from '@/features/chat/server/store';
 import { selectModel } from '@/features/chat/server/select-model';
 import { getFirstUserText } from '@/features/chat/title';
 import { getLatestUserImageDataUrls } from '@/lib/tools/server/pasted-image';
+import {
+  bridgePastedProductImages,
+  getProductImageHint,
+} from '@/features/images/server/product-assets';
 import { createCatalogTools, getToolHints } from '@/lib/tools/server/registry';
 import { buildSkillCatalogPrompt } from '@/lib/skills/server/catalog-prompt';
 import { expandSkillTokensInText } from '@/lib/skills/server/expand';
@@ -37,7 +41,8 @@ const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });
 
 // 工具循环安全上限：isLoopFinished 依赖「模型不再发 tool call」的自然终止，该上限是
 // 唯一保证循环必然结束的机制，勿单独移除。放宽需让多图设计流（若干次生成 + 汇总）跑得完。
-const MAX_TOOL_LOOP_STEPS = 12;
+// 电商商品图上限 6 张（逐张生成）+ 识图 + 汇总，故放宽到 24；若仍超长再由实际压降。
+const MAX_TOOL_LOOP_STEPS = 24;
 
 export type StreamChatOptions = {
   chatId: string;
@@ -73,6 +78,9 @@ export async function streamChatResponse({
   const capabilities = runtime.getCapabilities();
 
   const pastedImageDataUrls = getLatestUserImageDataUrls(messages);
+
+  // 产品图落盘桥接：把本轮粘贴图存为哨兵资产（不动 working image），使主模型跨轮仍能引用其 assetId
+  await bridgePastedProductImages(chatId, pastedImageDataUrls);
 
   // 联网搜索构造权在 Provider：usesSdkWebSearchTool=true（deepseek/ark）注册 SDK 原生
   // server tool；否则（zhipu）由本地 web_search 工具经独立 API 显式检索
@@ -154,9 +162,11 @@ export async function streamChatResponse({
         .map((skill) => skill.name)
         .join('、')}】\n${turnActivatedSkills.map((skill) => skill.instructions).join('\n\n')}`
     : '';
+  // 产品图资产 id 提示：有已桥接产品图时注入，供盲主模型跨轮用其中的 assetId 引用产品图
+  const productImageHint = getProductImageHint(chatId);
 
   // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}\n\n${getToolHints(pastedImageDataUrls.length > 0, capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool)}`;
+  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}${productImageHint}\n\n${getToolHints(pastedImageDataUrls.length > 0, capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool)}`;
 
   const instructions = runtime.getInstructions({
     userLocation,

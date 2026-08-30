@@ -33,6 +33,14 @@ export const designMdSummary: SkillSummary = {
   userInvocable: false,
 };
 
+/** ecommerce-image 菜单摘要；指令正文只存在 server catalog，避免打进浏览器包 */
+export const ecommerceImageSummary: SkillSummary = {
+  id: 'ecommerce-image',
+  name: '电商商品图',
+  description:
+    '从产品图生成电商商品图：主图 / 详情图 / 营销图，自动分析卖点/人群/风格并默认带文案。适用于淘宝/京东/抖音/亚马逊等商品主图、详情图与营销图',
+};
+
 // 隐藏菜单：在对应 Summary 上设 userInvocable: false（默认省略即为可调用）
 
 const SKILL_SUMMARIES: SkillSummary[] = [
@@ -40,6 +48,7 @@ const SKILL_SUMMARIES: SkillSummary[] = [
   mobileDesignSummary,
   webDesignSummary,
   designMdSummary,
+  ecommerceImageSummary,
 ];
 
 /** 用户可从菜单或 /<id> 令牌调用（userInvocable !== false） */
