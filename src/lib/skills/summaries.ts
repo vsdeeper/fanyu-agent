@@ -36,7 +36,7 @@ export const designMdSummary: SkillSummary = {
 /** ecommerce-image 菜单摘要；指令正文只存在 server catalog，避免打进浏览器包 */
 export const ecommerceImageSummary: SkillSummary = {
   id: 'ecommerce-image',
-  name: '电商商品图',
+  name: '电商设计',
   description:
     '从产品图生成电商商品图：主图 / 详情图 / 营销图，自动分析卖点/人群/风格并默认带文案。适用于淘宝/京东/抖音/亚马逊等商品主图、详情图与营销图',
 };
