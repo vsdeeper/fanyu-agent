@@ -1,41 +1,41 @@
 import type { ImageSpec } from './types';
 
+/** 生图质量档位（对齐 OpenAI gpt-image 上游）；仅支持 quality 的模型（如 gpt-image-2-vip）登记到 spec.quality */
+export const IMAGE_QUALITY_VALUES = ['high', 'medium', 'low', 'auto'] as const;
+
 /** 模型 ID → 生图输出规格。新增模型须同时改 registry 与本表，勿只改一处。 */
 export const IMAGE_SPEC_BY_MODEL_ID: Record<string, ImageSpec> = {
   'gemini-3.1-flash-lite-image': {
     // 恒定 1K（实测 2K/4K 档位仍返回 1024×1024）。不配 minPixels/maxPixels：
     // 该模型只认档位串，配了像素上下限会让 describeImageSize/isValidImageSize 误宣传「支持自定义 WIDTHxHEIGHT」，
     // 而 laozhang 端只会把自定义 WxH 静默回退成 '1K'。
-    presets: ['1K'],
-    defaultSize: '1K',
+    size: { presets: ['1K'], default: '1K' },
   },
   'gemini-3.1-flash-image': {
     // 与 flash-lite 同属 Gemini 档位串直传路径，故同样不配 minPixels/maxPixels（避免误宣传自定义 WxH）；
     // 但该模型真实支持 2K/4K 多档位，故开放多档位而非恒定 1K。
-    presets: ['1K', '2K', '4K'],
-    defaultSize: '2K',
+    size: { presets: ['1K', '2K', '4K'], default: '2K' },
   },
   'doubao-seedream-4-5-251128': {
-    presets: ['2K', '4K'],
+    size: { presets: ['2K', '4K'], default: '2K' },
     minPixels: 3_686_400, // 1920×1920，Seedream 可出图下限
     maxPixels: 4096 * 4096,
-    defaultSize: '2K',
     // 方舟 Seedream 4.5 不支持 `output_format`（png/jpeg），传则 400 InvalidParameter；
     // 不支持透明参数时，透明背景交由 prompt 后缀表达。
     supportsOutputFormat: false,
   },
   'doubao-seedream-5-0-lite-260128': {
-    presets: ['2K', '4K'],
+    size: { presets: ['2K', '4K'], default: '2K' },
     minPixels: 3_686_400, // 1920×1920，Seedream 可出图下限
     maxPixels: 4096 * 4096,
-    defaultSize: '2K',
   },
   'gpt-image-2-vip': {
-    // presets 沿用档位串（与 Seedream 一致）；该模型按像素入参，故配像素区间以启用自定义 WIDTHxHEIGHT 与比例换算。
-    presets: ['1K', '2K', '4K'],
+    // 档位串沿用（与 Seedream 一致）；该模型按像素入参，故配像素区间以启用自定义 WIDTHxHEIGHT 与比例换算。
+    size: { presets: ['1K', '2K', '4K'], default: '2K' },
     minPixels: 1024 * 1024,
     maxPixels: 3840 * 2160,
-    defaultSize: '2K',
+    // OpenAI gpt-image 支持 quality（low/medium/high/auto），默认 high；其余模型上游无该参数故不登记。
+    quality: { presets: [...IMAGE_QUALITY_VALUES], default: 'high' },
   },
 };
 
@@ -92,9 +92,9 @@ export function resolveImageSize(
   aspectRatio: string | undefined,
   spec: ImageSpec,
 ): string {
-  const base = size?.trim() || spec.defaultSize;
+  const base = size?.trim() || spec.size.default;
   const baseDims = parsePixelSize(base);
-  const baseSize = baseDims ? base : (K_SIZE_BY_TIER[base.toUpperCase()] ?? spec.defaultSize);
+  const baseSize = baseDims ? base : (K_SIZE_BY_TIER[base.toUpperCase()] ?? spec.size.default);
   const dims = parsePixelSize(baseSize);
   if (!aspectRatio || aspectRatio === IMAGE_ASPECT_RATIO_AUTO) {
     // 修复：无比例分支也做 min/max 边界校验，避免非法尺寸（低于 minPixels / 高于 maxPixels）在上游 400。
@@ -135,7 +135,7 @@ export function parsePixelSize(value: string): { width: number; height: number }
 /** 匹配 spec 预设档位；大小写不敏感，返回 spec 中的规范写法 */
 function matchPreset(value: string, spec: ImageSpec): string | undefined {
   const upper = value.trim().toUpperCase();
-  return spec.presets.find((preset) => preset.toUpperCase() === upper);
+  return spec.size.presets.find((preset) => preset.toUpperCase() === upper);
 }
 
 /**
@@ -154,13 +154,39 @@ export function isValidImageSize(value: string, spec: ImageSpec): boolean {
 
 /** 生成工具 schema / HINT 用的尺寸说明文案 */
 export function describeImageSize(spec: ImageSpec): string {
-  const presets = spec.presets.join('、');
+  const presets = spec.size.presets.join('、');
   if (spec.minPixels != null && spec.maxPixels != null) {
-    return `可选尺寸：${presets}（默认 ${spec.defaultSize}），或自定义 WIDTHxHEIGHT（总像素 ${spec.minPixels} ~ ${spec.maxPixels}）`;
+    return `可选尺寸：${presets}（默认 ${spec.size.default}），或自定义 WIDTHxHEIGHT（总像素 ${spec.minPixels} ~ ${spec.maxPixels}）`;
   }
   // 固定尺寸模型：仅单一档位、无像素区间（如 gemini-flash 恒定 1K），size 实际不可选，可控的是宽高比。
-  if (spec.presets.length <= 1) {
-    return `尺寸固定为 ${spec.defaultSize}；构图控制请用宽高比（aspectRatio，如 3:2、16:9）`;
+  if (spec.size.presets.length <= 1) {
+    return `尺寸固定为 ${spec.size.default}；构图控制请用宽高比（aspectRatio，如 3:2、16:9）`;
   }
-  return `可选尺寸：${presets}（默认 ${spec.defaultSize}）`;
+  return `可选尺寸：${presets}（默认 ${spec.size.default}）`;
+}
+
+/** 生成工具 schema / HINT 用的质量说明文案；不支持 quality 的模型返回空串 */
+export function describeImageQuality(spec: ImageSpec): string {
+  if (!spec.quality) return '';
+  return `生成质量：${spec.quality.presets.join('、')}（默认 ${spec.quality.default}）`;
+}
+
+/**
+ * 校验 quality 是否可出站：须模型支持 quality，且落在其合法档位内。
+ */
+export function isValidImageQuality(value: string, spec: ImageSpec): boolean {
+  return spec.quality ? spec.quality.presets.includes(value.trim()) : false;
+}
+
+/**
+ * 解析出站质量档位：不支持 quality 的模型返回 undefined（不漏传上游）；
+ * 非法或未指定回退到 spec 默认档（gpt-image 默认 high）。
+ */
+export function resolveImageQuality(
+  quality: string | undefined,
+  spec: ImageSpec,
+): string | undefined {
+  if (!spec.quality) return undefined;
+  if (quality && spec.quality.presets.includes(quality.trim())) return quality.trim();
+  return spec.quality.default;
 }

@@ -10,6 +10,7 @@ import {
   getImageSpec,
   IMAGE_ASPECT_RATIO_AUTO,
   IMAGE_ASPECT_RATIOS,
+  resolveImageQuality,
   resolveImageSize,
 } from '../../image-spec';
 
@@ -95,6 +96,8 @@ async function generateOpenAIImage(
   // gpt-image 按像素入参（spec 配了 minPixels/maxPixels 区间），与 Seedream 同属「可出站 WxH」模型：
   // 统一走 resolveImageSize（K 档位 → 基准 WxH → 按比例 reshape）。
   const outboundSize = resolveImageSize(req.size, req.aspectRatio, spec);
+  // 仅支持 quality 的模型（gpt-image）透传该档位；不支持时 resolveImageQuality 返回 undefined，payload 不带该字段。
+  const quality = resolveImageQuality(req.quality, spec);
   const refs = req.mode === 'edit' ? (req.referenceImageDataUrls ?? []) : [];
 
   const buildPayload = async (sources: string[]) => {
@@ -106,6 +109,7 @@ async function generateOpenAIImage(
       form.append('model', req.modelId);
       form.append('prompt', prompt);
       form.append('size', outboundSize);
+      if (quality) form.append('quality', quality);
       for (const ref of sources) {
         const { bytes, mimeType } = await toSourceBytes(ref);
         // 复制到独立 ArrayBuffer 再喂 Blob：TS lib 的 BlobPart 只认 ArrayBufferView<ArrayBuffer>，
@@ -121,7 +125,12 @@ async function generateOpenAIImage(
       return { body: form };
     }
     return {
-      body: JSON.stringify({ model: req.modelId, prompt, size: outboundSize }),
+      body: JSON.stringify({
+        model: req.modelId,
+        prompt,
+        size: outboundSize,
+        ...(quality ? { quality } : {}),
+      }),
       contentType: 'application/json',
     };
   };
@@ -209,7 +218,8 @@ export const laozhangProvider: ImageProvider = {
     // imageSize 仅认档位串（1K/2K/4K…），WxH 或未知值回退到模型默认档位。
     const requestedTier = req.size?.trim().toUpperCase();
     const imageSize =
-      spec.presets.find((preset) => preset.toUpperCase() === requestedTier) ?? spec.defaultSize;
+      spec.size.presets.find((preset) => preset.toUpperCase() === requestedTier) ??
+      spec.size.default;
 
     // 生成/改图统一：参考图逐个追加 inline_data 段（Gemini generateContent 支持多图输入），无则仅文本。
     // req.mode 已由 router 按能力校验；edit 才带上参考图，generate 保持纯文本。

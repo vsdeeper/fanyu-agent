@@ -17,11 +17,14 @@ import {
 } from '@/features/images/registry';
 import { generateImageViaRouter, resolveImageModelId } from '@/features/images/server/router';
 import {
+  describeImageQuality,
   describeImageSize,
   getImageSpec,
   IMAGE_ASPECT_RATIO_AUTO,
   IMAGE_ASPECT_RATIOS,
+  IMAGE_QUALITY_VALUES,
   isValidImageSize,
+  resolveImageQuality,
 } from '@/features/images/image-spec';
 import { IMAGE_TOOL_INTERRUPTED_ERROR, IMAGE_TOOL_PASTE_SOURCE_ERROR } from '@/lib/tools/constants';
 import type { AgentToolDefinition } from '@/lib/tools/types';
@@ -121,11 +124,11 @@ function getImageSystemHint(): string {
     ? `- 生图模型：全局设置为 ${configured}，绝对优先，勿改`
     : `- 生图模型：未设置全局默认，请按场景自选。设计出图主力：写实/商拍/精细文字→gpt-image-2-vip，艺术插画/创意/色彩→gemini-3.1-flash-image（Nano Banana 2）；预算与速度优先→gemini-flash-lite 或 seedream-5-0-lite；仅对设计要求不高的一般场景→seedream-4-5。仅当确需换模型或编辑历史图需保持原模型时传 model`;
   const spec = getImageSpec(getCurrentImageModelId());
-  const presets = spec.presets.join('/');
+  const presets = spec.size.presets.join('/');
   const sizeLine = configured
     ? spec.minPixels != null && spec.maxPixels != null
-      ? `- 生图尺寸只传 ${presets}，或总像素 ${spec.minPixels} ~ ${spec.maxPixels} 的 WIDTHxHEIGHT（默认 ${spec.defaultSize}）`
-      : `- 生图尺寸只传 ${presets}（默认 ${spec.defaultSize}）`
+      ? `- 生图尺寸只传 ${presets}，或总像素 ${spec.minPixels} ~ ${spec.maxPixels} 的 WIDTHxHEIGHT（默认 ${spec.size.default}）`
+      : `- 生图尺寸只传 ${presets}（默认 ${spec.size.default}）`
     : `- 生图尺寸随所选模型而异（档位/像素区间见该模型说明），默认 2K；编辑历史图时以该图模型为准`;
   return `生图工具使用规则：
 - 用户明确要求生成/绘制/出图时调用 generate_image，mode=generate
@@ -152,6 +155,15 @@ function getSizeFieldDescribe(): string {
     return `${describeImageSize(getImageSpec(configured))}；编辑历史图时档位以该图模型为准`;
   }
   return '生图尺寸随所选模型而异（档位与像素区间见所选模型说明），默认 2K；编辑历史图时以该图模型为准';
+}
+
+/** quality 参数描述：按当前模型质量规格给出说明；仅支持 quality 的模型生效 */
+function getQualityFieldDescribe(): string {
+  const configured = getConfiguredImageModelId();
+  if (configured) {
+    return `${describeImageQuality(getImageSpec(configured))}；不支持 quality 的模型请在 prompt 用文字表达画质要求`;
+  }
+  return `生成质量：${IMAGE_QUALITY_VALUES.join('、')}（默认 high）；仅支持 quality 的模型生效，不支持时请在 prompt 用文字表达画质要求`;
 }
 
 const PASTE_IMAGE_EDIT_HINT =
@@ -198,6 +210,7 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
         .boolean()
         .optional()
         .describe('仅当用户明确要求透明背景、去底、抠图或 PNG alpha 时为 true'),
+      quality: z.enum(IMAGE_QUALITY_VALUES).optional().describe(getQualityFieldDescribe()),
     }),
     execute: async (
       {
@@ -210,6 +223,7 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
         size,
         aspectRatio,
         transparent,
+        quality,
       },
       { abortSignal },
     ): Promise<ImageToolResult> => {
@@ -239,10 +253,12 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
 
         const spec = getImageSpec(modelId);
         const resolvedSize =
-          size && isValidImageSize(size, spec) ? size.trim() : size ? spec.defaultSize : undefined;
+          size && isValidImageSize(size, spec) ? size.trim() : size ? spec.size.default : undefined;
         if (size && resolvedSize !== size.trim()) {
           console.warn(`[generate_image] size 已按模型规格回退: "${size}" -> "${resolvedSize}"`);
         }
+        // 质量档位：仅支持 quality 的模型（gpt-image）透传；不支持时 resolveImageQuality 返回 undefined，请求不带该字段
+        const resolvedQuality = resolveImageQuality(quality, spec);
 
         // 大小写不敏感归一 'auto' -> undefined，避免把 'Auto' 当比例串传上游
         const normalizedAspectRatio =
@@ -250,7 +266,7 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
 
         const profile = getImageModelProfile(modelId);
         console.info(
-          `[generate_image] model=${modelId} provider=${profile?.provider ?? '未知'} label=${profile?.label ?? '?'} mode=${mode} strategy=${strategy ?? (mode === 'edit' && refs.dataUrls.length > 1 ? 'merge' : '-')} refs=${refs.dataUrls.length} size=${resolvedSize ?? '默认'} aspectRatio=${normalizedAspectRatio ?? IMAGE_ASPECT_RATIO_AUTO}`,
+          `[generate_image] model=${modelId} provider=${profile?.provider ?? '未知'} label=${profile?.label ?? '?'} mode=${mode} strategy=${strategy ?? (mode === 'edit' && refs.dataUrls.length > 1 ? 'merge' : '-')} refs=${refs.dataUrls.length} size=${resolvedSize ?? '默认'} aspectRatio=${normalizedAspectRatio ?? IMAGE_ASPECT_RATIO_AUTO} quality=${resolvedQuality ?? '默认'}`,
         );
 
         // batch：多张各出一张。每张单独走一次 i2i，parentId 挂各自源；中断即停。
@@ -268,6 +284,7 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
               mode: 'edit',
               referenceImageDataUrls: [refs.dataUrls[i]],
               size: resolvedSize,
+              quality: resolvedQuality,
               aspectRatio: normalizedAspectRatio,
               transparent,
               abortSignal,
@@ -312,6 +329,7 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
           mode,
           referenceImageDataUrls: refs.dataUrls.length ? refs.dataUrls : undefined,
           size: resolvedSize,
+          quality: resolvedQuality,
           aspectRatio: normalizedAspectRatio,
           transparent,
           abortSignal,
