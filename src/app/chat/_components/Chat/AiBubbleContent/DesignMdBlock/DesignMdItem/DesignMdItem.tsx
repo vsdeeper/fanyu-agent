@@ -1,7 +1,7 @@
 import { FileMarkdownOutlined } from '@ant-design/icons';
 import FileCard from '@/components/FileCard';
 import type { MessagePart } from '../../utils';
-import { DESIGN_MD_DOWNLOAD_HINT, DESIGN_MD_FAILED_LABEL } from './constants';
+import { DESIGN_MD_FAILED_LABEL } from './constants';
 import {
   getDesignMdFileName,
   getDesignMdHref,
@@ -34,7 +34,7 @@ export default function DesignMdItem({ part, chatId }: DesignMdItemProps) {
       <FileCard
         fileName={fileName}
         href={href}
-        hint={DESIGN_MD_DOWNLOAD_HINT}
+        byteSize={output.byteSize}
         icon={<FileMarkdownOutlined />}
       />
     );

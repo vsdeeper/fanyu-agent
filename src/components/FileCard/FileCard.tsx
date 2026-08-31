@@ -3,7 +3,7 @@ import { Skeleton } from 'antd';
 import { FILE_CARD_SKELETON_STYLE } from './constants';
 import styles from './FileCard.module.css';
 import type { FileCardProps } from './types';
-import { bindPreviewClick, handleDownloadClick } from './utils';
+import { bindPreviewClick, formatFileMeta, handleDownloadClick } from './utils';
 
 export type { FileCardProps, FileCardStatus } from './types';
 
@@ -14,7 +14,7 @@ export default function FileCard({
   status = 'ready',
   fileName,
   icon,
-  hint,
+  byteSize,
   href,
   onPreview,
   className,
@@ -25,6 +25,7 @@ export default function FileCard({
 
   const isFailed = status === 'failed';
   const isReady = status === 'ready';
+  const meta = formatFileMeta(fileName, byteSize);
 
   return (
     <div
@@ -38,7 +39,7 @@ export default function FileCard({
         {icon ? <span className={styles.icon}>{icon}</span> : null}
         <div className={styles.meta}>
           {fileName ? <div className={styles.name}>{fileName}</div> : null}
-          {hint ? <div className={styles.hint}>{hint}</div> : null}
+          {meta ? <div className={styles.hint}>{meta}</div> : null}
         </div>
       </div>
       {isReady && href ? (

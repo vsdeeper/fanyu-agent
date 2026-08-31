@@ -11,6 +11,7 @@ export type SaveDesignMdSuccess = {
   assetId: string;
   url: string;
   fileName: string;
+  byteSize: number;
 };
 
 export type SaveDesignMdFailure = {
@@ -59,6 +60,7 @@ function createSaveDesignMdTool(chatId: string) {
           assetId: asset.id,
           url: buildDocAssetUrl(asset.chatId, asset.id),
           fileName: asset.fileName,
+          byteSize: asset.byteSize,
         };
       } catch (err) {
         if (abortSignal?.aborted) {

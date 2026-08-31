@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import path from 'path';
 import { generateId } from 'ai';
 import { getChatDir } from '@/lib/db/client';
@@ -81,6 +81,7 @@ export function saveDesignDoc({
     chatId,
     fileName: resolvedName,
     mimeType: DESIGN_MD_MIME_TYPE,
+    byteSize: Buffer.byteLength(content, 'utf8'),
   };
 }
 
@@ -114,6 +115,7 @@ export function getDesignDoc(chatId: string, assetId: string): DocAssetRecord | 
     chatId,
     fileName: readMetaFileName(chatId, assetId),
     mimeType: DESIGN_MD_MIME_TYPE,
+    byteSize: statSync(filePath).size,
   };
 }
 

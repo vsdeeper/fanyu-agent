@@ -6,6 +6,7 @@ export type SaveDesignMdOutput = {
   assetId?: string;
   url?: string;
   fileName?: string;
+  byteSize?: number;
   error?: string;
 };
 

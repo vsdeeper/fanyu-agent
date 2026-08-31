@@ -4,4 +4,6 @@ export type DocAssetRecord = {
   chatId: string;
   fileName: string;
   mimeType: string;
+  /** 落盘字节数，供卡片副标题展示 */
+  byteSize: number;
 };

@@ -6,3 +6,6 @@ export const FILE_CARD_SKELETON_STYLE: CSSProperties = {
   height: 52,
   borderRadius: 8,
 };
+
+/** 文件大小单位（1024 进制） */
+export const FILE_SIZE_UNITS = ['B', 'KB', 'MB', 'GB'] as const;
