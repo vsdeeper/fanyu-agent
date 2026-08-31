@@ -160,11 +160,11 @@ export function formatVisionAnalysisText(analysis: VisionAnalysis, assetId?: str
   ];
   if (assetId) {
     lines.push(
-      `- 已分析资产 assetId：${assetId}（改图时可将该 id 放入 generate_image 的 sourceAssetIds）`,
+      `- 已分析资产 assetId：${assetId}（仅供 tool 复用：改图时放入 generate_image 的 sourceAssetIds；不要在给用户的正文中展示或复述该 id）`,
     );
   }
   lines.push(
-    '若用户针对图片提问或改图，请基于以上信息用自然语言回答或写 generate_image 的 prompt，勿原样复述本清单。',
+    '若用户针对图片提问或改图，请基于以上信息用自然语言回答或写 generate_image 的 prompt，勿原样复述本清单，也勿在正文中暴露 assetId 等内部标识。',
   );
   return lines.join('\n');
 }

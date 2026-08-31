@@ -144,6 +144,7 @@ function getImageSystemHint(): string {
 - 改刚生成的图：mode=edit，尽量传 sourceAssetIds（上一轮 tool 结果已含 assetId）；未传则服务端使用 working image
 - 用户说「改上面那张 / 第二张」且无法对应到已知 assetId、用户也未贴图时：不要猜测、不要调用 edit，请用户将要修改的图复制粘贴到对话框后再试
 - 生图成功后界面会自动展示图片；汇总回复时只用文字说明，勿在正文中插入 Markdown 图片或 URL
+- 给用户的汇总文字不要出现 assetId、模型 id、图片 URL、/api/images 链接等内部标识；这些仅供工具入参（sourceAssetIds / model / assetId）内部复用，用户不关心也不懂。确需说明来源或所用模型时用用户能懂的说法（如「你上传的产品图」「写实商拍模型」），不要写出模型 id 或资产 id
 - 用户明确要求透明背景、去底、抠图或 PNG alpha 时：transparent=true；未要求时不要传 true
 - 生成应用图标 / App Icon / logo / 标志 / 品牌标识等需要「方形满铺」的图时：prompt 必须写明背景为单一纯色、满铺到画布四边、无内缩白边/留白、无圆角或超椭圆、无投影/发光/描边边框、无纹理；图形居中置于中央约 80% 安全区。此类图标默认不透明（勿设 transparent=true），仅用户明确要透明背景时才设 true
 - 用户指定画面比例时传 aspectRatio（如 3:2、16:9）；不传或传 auto 时交由模型自选
@@ -397,8 +398,8 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
         type: 'text',
         value:
           count > 1
-            ? `已生成 ${count} 张图片，assetId 依次为 ${idsText}。改图时请将这些 id 放入 sourceAssetIds。界面会自动展示，请用简短文字向用户说明，不要在正文中插入 Markdown 图片、图片 URL 或 /api/images 链接。`
-            : `图片已生成，assetId 为 ${idsText}。改图时请将该 id 放入 sourceAssetIds。界面会自动展示，请用简短文字向用户说明，不要在正文中插入 Markdown 图片、图片 URL 或 /api/images 链接。`,
+            ? `已生成 ${count} 张图片。assetId（${idsText}）仅供后续 tool 调用：改图时放入 sourceAssetIds 即可；不要在给用户的正文中展示、复述这些 id 或模型 id。界面会自动展示图片，请用简短文字向用户说明，勿在正文中插入 Markdown 图片、图片 URL 或 /api/images 链接。`
+            : `图片已生成。assetId（${idsText}）仅供后续 tool 调用：改图时放入 sourceAssetIds 即可；不要在给用户的正文中展示、复述该 id 或模型 id。界面会自动展示图片，请用简短文字向用户说明，勿在正文中插入 Markdown 图片、图片 URL 或 /api/images 链接。`,
       };
     },
   });

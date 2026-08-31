@@ -79,5 +79,5 @@ export function getProductImageHint(chatId: string): string {
   const assets = listProductImageAssets(chatId);
   if (assets.length === 0) return '';
   const ids = assets.map((asset) => asset.id).join('、');
-  return `\n\n【产品图】本会话产品图资产 id：${ids}；以产品图为底出图时请用这些 id 作 generate_image 的 sourceAssetIds 或 analyze_image 的 assetId。`;
+  return `\n\n【产品图】本会话产品图资产 id：${ids}；以产品图为底出图时请用这些 id 作 generate_image 的 sourceAssetIds 或 analyze_image 的 assetId。这些 id 仅供工具入参复用：不要向用户展示、复述，也不要在正文里写成「以 xxx(assetId) 为底」；确需说明来源时用「你上传的产品图」等用户能懂的说法。`;
 }
