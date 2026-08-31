@@ -98,6 +98,7 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
         role: isAi ? ('ai' as const) : ('user' as const),
         content: isAi ? (
           <AiBubbleContent
+            messageId={message.id}
             text={text}
             reasoning={reasoning}
             streaming={streaming}
@@ -128,6 +129,7 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
         role: 'ai' as const,
         content: (
           <AiBubbleContent
+            messageId={AWAITING_ASSISTANT_BUBBLE_KEY}
             text=""
             reasoning=""
             streaming={false}

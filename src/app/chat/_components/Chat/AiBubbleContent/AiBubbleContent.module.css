@@ -16,11 +16,3 @@
 .markdown :global(p:last-child) {
   margin-bottom: 0;
 }
-
-.sources {
-  margin-top: 4px;
-}
-
-.sources :global(.ant-sources-link) {
-  align-items: center;
-}

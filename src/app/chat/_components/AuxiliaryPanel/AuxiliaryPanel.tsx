@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Layout, Typography } from 'antd';
 import { useAuxiliaryPanelStore } from './store';
-import { AUX_PANEL_CLOSE_MS, AUX_PANEL_WIDTH } from './constants';
+import { AUX_PANEL_CLOSE_MS } from './constants';
 import FilePreview from './FilePreview';
+import SourceList from './SourceList';
 import styles from './AuxiliaryPanel.module.css';
-import { getPanelTitle, isFormFieldTarget, prefersReducedMotion } from './utils';
+import { getPanelTitle, getPanelWidth, isFormFieldTarget, prefersReducedMotion } from './utils';
 
 type AuxiliaryPanelProps = {
   /** 当前路由会话 id；变化时关闭面板 */
@@ -13,7 +14,7 @@ type AuxiliaryPanelProps = {
 };
 
 /**
- * 对话页右侧通用辅助栏：标题 + 关闭 + 可滚动正文；首期承载文件预览。
+ * 对话页右侧通用辅助栏：标题 + 关闭 + 可滚动正文；承载文件预览与来源概要。
  */
 export default function AuxiliaryPanel({ chatId }: AuxiliaryPanelProps) {
   const open = useAuxiliaryPanelStore((s) => s.open);
@@ -55,15 +56,17 @@ export default function AuxiliaryPanel({ chatId }: AuxiliaryPanelProps) {
 
   const collapsed = !open;
   const title = getPanelTitle(content);
+  const panelWidth = getPanelWidth(content);
 
   return (
     <Layout.Sider
-      width={AUX_PANEL_WIDTH}
+      width={panelWidth}
       collapsedWidth={0}
       collapsed={collapsed}
       trigger={null}
       theme="light"
       className={styles.sider}
+      style={{ '--aux-panel-width': panelWidth } as CSSProperties}
       aria-hidden={collapsed}
       inert={collapsed || undefined}
     >
@@ -75,7 +78,7 @@ export default function AuxiliaryPanel({ chatId }: AuxiliaryPanelProps) {
           <Button
             type="text"
             icon={<CloseOutlined />}
-            aria-label="关闭预览"
+            aria-label="关闭"
             shape="circle"
             onClick={closePanel}
           />
@@ -89,6 +92,7 @@ export default function AuxiliaryPanel({ chatId }: AuxiliaryPanelProps) {
               source={content.source}
             />
           ) : null}
+          {content?.type === 'source-list' ? <SourceList items={content.items} /> : null}
         </div>
       </div>
     </Layout.Sider>

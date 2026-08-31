@@ -1,8 +1,10 @@
+import type { SourceListItem } from '@/app/chat/_components/AuxiliaryPanel/types';
+import { isHttpUrl } from '@/app/chat/_components/SourceFavicon/utils';
+
 export type MessagePart = { type: string; [key: string]: unknown };
 
-export type SourceItem = { key: string; title: string; url: string };
-
 export type AiBubbleContentProps = {
+  messageId: string;
   text: string;
   reasoning: string;
   streaming: boolean;
@@ -68,16 +70,88 @@ function extractMarkdownLinksFromReferenceSection(
   return links;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+type WebSearchExtra = { title?: string; snippet?: string; publishDate?: string };
+
+/**
+ * 从 tool-web_search.output.results 按 URL 抽出摘要与日期（智谱链路才有）。
+ */
+function collectWebSearchExtras(
+  messageParts: ReadonlyArray<MessagePart> | undefined,
+): Map<string, WebSearchExtra> {
+  const extras = new Map<string, WebSearchExtra>();
+  for (const part of messageParts ?? []) {
+    if (part.type !== 'tool-web_search' || part.state !== 'output-available') continue;
+    if (!isRecord(part.output) || !Array.isArray(part.output.results)) continue;
+    for (const row of part.output.results) {
+      if (!isRecord(row) || typeof row.link !== 'string' || !row.link) continue;
+      extras.set(row.link, {
+        title: typeof row.title === 'string' && row.title ? row.title : undefined,
+        snippet: typeof row.content === 'string' && row.content ? row.content : undefined,
+        publishDate:
+          typeof row.publishDate === 'string' && row.publishDate ? row.publishDate : undefined,
+      });
+    }
+  }
+  return extras;
+}
+
+/** 把智谱检索摘要/日期合并进已去重的来源列表 */
+function enrichSourceItems(
+  items: SourceListItem[],
+  extras: Map<string, WebSearchExtra>,
+): SourceListItem[] {
+  if (extras.size === 0) return items;
+  return items.map((item) => {
+    const extra = extras.get(item.url);
+    if (!extra) return item;
+    return {
+      ...item,
+      snippet: extra.snippet,
+      publishDate: extra.publishDate,
+    };
+  });
+}
+
+/** 是否存在可展示的 source-url part */
+function hasSourceUrlPart(messageParts: ReadonlyArray<MessagePart>): boolean {
+  return messageParts.some(
+    (part) => part.type === 'source-url' && typeof part.url === 'string' && part.url,
+  );
+}
+
+/** 从 tool-web_search.output.results 收集列表项（桥接缺失时的兼容路径） */
+function addWebSearchResultLinks(
+  messageParts: ReadonlyArray<MessagePart>,
+  add: (url: string, title?: string, key?: string) => void,
+): void {
+  for (const part of messageParts) {
+    if (part.type !== 'tool-web_search' || part.state !== 'output-available') continue;
+    if (!isRecord(part.output) || !Array.isArray(part.output.results)) continue;
+    for (const row of part.output.results) {
+      if (!isRecord(row) || typeof row.link !== 'string' || !row.link) continue;
+      add(row.link, typeof row.title === 'string' ? row.title : undefined);
+    }
+  }
+}
+
+/**
+ * 从消息 parts / 正文「参考来源」区块收集可展示来源；智谱 tool 结果按 URL 补摘要与日期。
+ * 有 source-url 时不把 results 并进列表，避免拆掉桥接的域名去重。
+ */
 export function getSourceItems(
   messageParts: ReadonlyArray<MessagePart> | undefined,
   text: string,
-): SourceItem[] {
+): SourceListItem[] {
   if (!messageParts?.length && !text) return [];
 
-  const byUrl = new Map<string, SourceItem>();
+  const byUrl = new Map<string, SourceListItem>();
 
   const add = (url: string, title?: string, key?: string) => {
-    if (!url || byUrl.has(url)) return;
+    if (!url || !isHttpUrl(url) || byUrl.has(url)) return;
     byUrl.set(url, {
       key: key ?? url,
       title: title || url,
@@ -86,38 +160,27 @@ export function getSourceItems(
   };
 
   const hasReferenceSection = findReferenceSectionStart(text) != null;
+  const parts = messageParts ?? [];
 
   if (hasReferenceSection) {
     for (const link of extractMarkdownLinksFromReferenceSection(text)) {
       add(link.url, link.title);
     }
-    return Array.from(byUrl.values());
-  }
-
-  for (const part of messageParts ?? []) {
-    // 1. AI SDK source-url（后端 SSE 注入 annotation.added 后的主路径）
-    if (part.type === 'source-url' && typeof part.url === 'string') {
-      add(
-        part.url,
-        typeof part.title === 'string' ? part.title : undefined,
-        String(part.sourceId ?? part.url),
-      );
-      continue;
-    }
-
-    // 2. tool-web_search.output.sources（偶发 / 兼容）
-    if (part.type === 'tool-web_search' && part.state === 'output-available') {
-      const output = part.output as
-        { sources?: Array<{ type?: string; url?: string; title?: string }> } | undefined;
-      for (const source of output?.sources ?? []) {
-        if (source.url) {
-          add(source.url, source.title);
-        }
+  } else if (hasSourceUrlPart(parts)) {
+    for (const part of parts) {
+      if (part.type === 'source-url' && typeof part.url === 'string') {
+        add(
+          part.url,
+          typeof part.title === 'string' ? part.title : undefined,
+          String(part.sourceId ?? part.url),
+        );
       }
     }
+  } else {
+    addWebSearchResultLinks(parts, add);
   }
 
-  return Array.from(byUrl.values());
+  return enrichSourceItems(Array.from(byUrl.values()), collectWebSearchExtras(messageParts));
 }
 
 /** memo 比较用：仅序列化 parts 中的引用相关字段，不扫描正文 Markdown */
@@ -174,14 +237,10 @@ export function getDesignMdParts(
   return (messageParts ?? []).filter((part) => part.type === 'tool-save_design_md');
 }
 
-export function openSourceUrl(item: { url?: string }) {
-  if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer');
-}
-
 /**
  * 裁切正文末尾的「参考来源」区块。
  * 模型受 prompt 引导在回答末尾附加 Markdown 链接形式的引用列表，
- * 该区块由 Sources 组件统一展示，正文中不应重复渲染。
+ * 该区块由来源条统一展示，正文中不应重复渲染。
  *
  * 不用正则精确匹配标题格式（实测模型输出 `**参考来源：**`，冒号在加粗标记内）。
  * 整行归一化后恰好是「参考来源」，或标题粘在行尾（如「尽量减少**参考来源：**」），都从该处切开。
@@ -206,6 +265,7 @@ export function aiBubbleContentPropsAreEqual(
   next: AiBubbleContentProps,
 ): boolean {
   return (
+    prev.messageId === next.messageId &&
     prev.text === next.text &&
     prev.reasoning === next.reasoning &&
     prev.streaming === next.streaming &&
