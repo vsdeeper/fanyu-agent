@@ -27,7 +27,7 @@ function GenerateImageItem({ part }: { part: MessagePart }) {
     return (
       <ChatImage
         src={FALLBACK_ICON_SRC}
-        size={120}
+        size={60}
         alt="图片生成失败"
         preview={false}
         classNames={CHAT_IMAGE_FAILED_CLASS_NAMES}
@@ -43,7 +43,7 @@ function GenerateImageItem({ part }: { part: MessagePart }) {
           <ChatImage
             key={asset.assetId || asset.url}
             src={asset.url || `/api/images/${asset.assetId}`}
-            size={120}
+            size={60}
             alt="生成的图片"
           />
         ))}
@@ -52,7 +52,7 @@ function GenerateImageItem({ part }: { part: MessagePart }) {
   }
 
   if (isGenerateImagePending(state)) {
-    return <Skeleton.Image active style={{ width: 120, height: 120, borderRadius: 8 }} />;
+    return <Skeleton.Image active style={{ width: 60, height: 60, borderRadius: 8 }} />;
   }
 
   return null;

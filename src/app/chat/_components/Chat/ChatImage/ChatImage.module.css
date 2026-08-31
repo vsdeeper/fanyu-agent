@@ -13,8 +13,8 @@
 
 .failed :global(.ant-image-img),
 .image:global(.ant-image-error) :global(.ant-image-img) {
-  width: 50px !important;
-  height: 50px !important;
+  width: 30px !important;
+  height: 30px !important;
   object-fit: contain !important;
   background: none !important;
   background-image: none !important;

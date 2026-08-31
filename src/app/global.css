@@ -119,3 +119,9 @@ body > * {
 .ant-sender .ant-input-borderless:has(textarea:focus-visible) {
   outline: none;
 }
+
+/* Skeleton Image */
+.ant-skeleton.ant-skeleton-element .ant-skeleton-image .ant-skeleton-image-svg {
+  width: calc(var(--one-control-height) * 1) !important;
+  height: calc(var(--one-control-height) * 1) !important;
+}
