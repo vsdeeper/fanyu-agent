@@ -29,6 +29,13 @@ export type Skill = {
    * 只写在 catalog，勿写入 summaries。
    */
   coActivateWith?: string[];
+  /**
+   * 本 skill 产出的图片需按类型分组展示（如电商主图/详情图/营销图）。
+   * 服务端据「本轮激活的 skill ∩ 声明了分组的 skill」在 generate_image 输出打 imageGrouping 标志，
+   * 前端据此启用「横向簇 + 书页叠」渲染。只写在 catalog，勿写入 summaries（不进浏览器包）。
+   * 扩展：新 skill 出多类型组合图时，加此字段并要求模型在 generate_image 传 type 即可，无需改 tool/context。
+   */
+  supportsImageGrouping?: boolean;
   /** 注入模型的指令正文；仅本轮 Activation 时加载（Discovery 只放 name + description） */
   instructions: string;
   /** 可选：建议 prompt 模板（预留，默认不自动填入输入框） */

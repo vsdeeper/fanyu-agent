@@ -1,6 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Layout, Typography } from 'antd';
+import { Button, Image, Layout, Typography } from 'antd';
 import { useAuxiliaryPanelStore } from './store';
 import { AUX_PANEL_CLOSE_MS } from './constants';
 import FilePreview from './FilePreview';
@@ -93,6 +93,19 @@ export default function AuxiliaryPanel({ chatId }: AuxiliaryPanelProps) {
             />
           ) : null}
           {content?.type === 'source-list' ? <SourceList items={content.items} /> : null}
+          {content?.type === 'detail-images' ? (
+            <div className={styles.imageList}>
+              {content.images.map((img) => (
+                <Image
+                  key={img.key || img.src}
+                  src={img.src}
+                  alt={content.title}
+                  width="100%"
+                  className={styles.imageListItem}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </Layout.Sider>

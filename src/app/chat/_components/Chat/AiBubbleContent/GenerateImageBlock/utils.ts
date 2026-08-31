@@ -1,4 +1,5 @@
 import { IMAGE_TOOL_PASTE_SOURCE_ERROR } from '@/app/api/chat/_shared/tool-errors';
+import type { ImagePurpose } from '@/app/api/chat/_shared/types';
 import type { MessagePart } from '../utils';
 
 export type GenerateImageAsset = {
@@ -13,6 +14,10 @@ export type GenerateImageOutput = {
   assetId?: string;
   url?: string;
   error?: string;
+  /** 电商图类型标记（主图/详情图/营销图）：服务端归一后落盘，供按类型分组；无关场景省略 */
+  type?: 'main' | 'detail' | 'marketing';
+  /** 本轮激活了「声明分组能力」的 skill（如电商设计）时为 true，据此启用分类渲染 */
+  imageGrouping?: boolean;
 };
 
 /**
@@ -71,4 +76,67 @@ export function getPreviewableImages(parts: ReadonlyArray<MessagePart>): Array<{
     }
   }
   return result;
+}
+
+export type GenerateImageInGroup = { src: string; assetId?: string };
+
+export const GENERATE_IMAGE_CATEGORY_LABELS: Record<ImagePurpose, string> = {
+  main: '主图',
+  detail: '详情图',
+  marketing: '营销图',
+};
+
+/** 产品图 type 标记 → 类型内码（与服务端 generate_image 的 ImagePurpose，见 _shared/types）；未识别返回 undefined（不参与分组） */
+export function getImageCategory(type: string | undefined): ImagePurpose | undefined {
+  return type === 'main' || type === 'detail' || type === 'marketing' ? type : undefined;
+}
+
+export type GenerateImageGroup = {
+  category: ImagePurpose;
+  items: GenerateImageInGroup[];
+};
+
+export type CategorizedGroupsResult = {
+  groups: GenerateImageGroup[];
+  /** 是否所有就绪图都带可识别 type（避免把漏标 type 的图隐藏掉） */
+  allTyped: boolean;
+};
+
+/**
+ * 就绪 = 生成成功（isGenerateImageReady：output.ok===true 且有 assets，缩略图可渲染展示，非挂起/失败阶段）。
+ * 按 parts→assets 顺序把就绪图片按 type 分桶（仅返回非空桶，固定 main→detail→marketing）。
+ * 未就绪（挂起 Skeleton）、失败、缺源图不进入；未带可识别 type 的就绪图只置 anyUntyped（不落桶）。
+ */
+export function getCategorizedGroups(parts: ReadonlyArray<MessagePart>): CategorizedGroupsResult {
+  const buckets: Record<ImagePurpose, GenerateImageInGroup[]> = {
+    main: [],
+    detail: [],
+    marketing: [],
+  };
+  let anyTyped = false;
+  let anyUntyped = false;
+
+  for (const part of parts) {
+    const output = part.output as GenerateImageOutput | undefined;
+    if (!(output && isGenerateImageReady(output))) continue;
+    const category = getImageCategory(output.type);
+    if (category) {
+      anyTyped = true;
+    } else {
+      anyUntyped = true;
+    }
+    for (const asset of getImageAssets(output)) {
+      if (!category) continue;
+      buckets[category].push({
+        src: asset.url || `/api/images/${asset.assetId}`,
+        assetId: asset.assetId,
+      });
+    }
+  }
+
+  const groups = (['main', 'detail', 'marketing'] as const)
+    .map<GenerateImageGroup>((category) => ({ category, items: buckets[category] }))
+    .filter((group) => group.items.length > 0);
+
+  return { groups, allTyped: anyTyped && !anyUntyped };
 }

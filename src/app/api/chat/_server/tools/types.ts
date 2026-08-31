@@ -11,6 +11,11 @@ export type AgentToolContext = {
   mainModelAcceptsImage?: boolean;
   /** true = Provider 链路已有原生联网搜索（deepseek/ark 的 SDK server tool），本地 web_search 与之互斥 */
   providerHasNativeWebSearch?: boolean;
+  /** 本轮激活的 skill id 数组（resolveTurnSkills 的 turnActivatedIds）。工具据此与「声明分组能力」的 skill 求交集，决定输出是否带 imageGrouping 标志 */
+  activatedSkillIds?: string[];
+  /** 会话粘滞 skill id 数组（resolveTurnSkills 的 mergedSkillIds，只增不减）。follow-up 回合未必复激活 skill，
+   * 但粘滞记录仍在，故分类展示以「激活 ∪ 粘滞」判定，避免依赖脆弱的本轮复激活 */
+  stickySkillIds?: string[];
 };
 
 export type AgentToolDefinition = {

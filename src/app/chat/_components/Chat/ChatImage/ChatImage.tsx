@@ -9,7 +9,7 @@ export type ChatImageProps = ImageProps & {
 export default function ChatImage({
   preview,
   placeholder,
-  size = 120,
+  size = 60,
   alt = '',
   classNames,
   styles: imageStyles,

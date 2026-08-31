@@ -25,4 +25,10 @@ export type AuxiliaryPanelContent =
       type: 'source-list';
       messageId: string;
       items: SourceListItem[];
+    }
+  | {
+      /** 详情图分组：点击分类叠加的详情图簇时打开，竖排顺序查看 */
+      type: 'detail-images';
+      title: string;
+      images: Array<{ src: string; key?: string }>;
     };

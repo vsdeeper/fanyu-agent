@@ -1,5 +1,9 @@
 import type { AuxiliaryPanelContent } from './types';
-import { AUX_PANEL_SOURCE_LIST_WIDTH, AUX_PANEL_WIDTH } from './constants';
+import {
+  AUX_PANEL_DETAIL_IMAGES_WIDTH,
+  AUX_PANEL_SOURCE_LIST_WIDTH,
+  AUX_PANEL_WIDTH,
+} from './constants';
 
 /** 来源概要面板标题 */
 export function formatSourceListTitle(count: number): string {
@@ -11,12 +15,14 @@ export function getPanelTitle(content: AuxiliaryPanelContent | null): string {
   if (!content) return '';
   if (content.type === 'file-preview') return content.fileName;
   if (content.type === 'source-list') return formatSourceListTitle(content.items.length);
+  if (content.type === 'detail-images') return content.title;
   return '';
 }
 
-/** 按载荷类型取侧栏宽度：来源概要固定 360px，其余走弹性宽度 */
+/** 按载荷类型取侧栏宽度：来源概要 / 详情图分组固定 360px，其余走弹性宽度 */
 export function getPanelWidth(content: AuxiliaryPanelContent | null): string {
   if (content?.type === 'source-list') return AUX_PANEL_SOURCE_LIST_WIDTH;
+  if (content?.type === 'detail-images') return AUX_PANEL_DETAIL_IMAGES_WIDTH;
   return AUX_PANEL_WIDTH;
 }
 

@@ -21,3 +21,11 @@ export function listSkills(): Skill[] {
 export function getSkill(id: string): Skill | undefined {
   return SKILLS.find((skill) => skill.id === id);
 }
+
+/**
+ * 声明了「按类型分组展示图片」的 skill id 集合。
+ * 供本轮激活的 skill 与之求交集，决定 generate_image 输出是否带 imageGrouping 标志。
+ */
+export function listImageGroupingSkillIds(): Set<string> {
+  return new Set(SKILLS.filter((skill) => skill.supportsImageGrouping).map((skill) => skill.id));
+}

@@ -1,0 +1,18 @@
+.overlapStack {
+  display: flex;
+  position: relative;
+}
+
+/* 书页叠：后图右移叠在前图之上，.overlapCard:first-child 不缩进 */
+.overlapCard {
+  position: relative;
+  margin-left: -16px;
+  border-radius: 8px;
+  border: 2px solid var(--one-color-bg-container);
+  overflow: hidden;
+  font-size: 0;
+}
+
+.overlapCard:first-child {
+  margin-left: 0;
+}

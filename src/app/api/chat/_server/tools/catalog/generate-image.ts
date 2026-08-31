@@ -30,6 +30,8 @@ import {
   IMAGE_TOOL_INTERRUPTED_ERROR,
   IMAGE_TOOL_PASTE_SOURCE_ERROR,
 } from '@/app/api/chat/_shared/tool-errors';
+import type { ImagePurpose } from '@/app/api/chat/_shared/types';
+import { listImageGroupingSkillIds } from '@/lib/skills/server/registry';
 import type { AgentToolDefinition } from '../types';
 import { normalizeImageAssets } from './legacy-output';
 
@@ -49,6 +51,10 @@ export type ImageToolSuccess = {
   // 旧落盘形状：重构前成功 part 为 { ok:true, assetId, url }，无 assets 数组。保留可选字段供兼容读取。
   assetId?: string;
   url?: string;
+  // 电商图类型标记（主图/详情图/营销图）：模型显式传入，供前端按类型分组展示；无关场景不传则省略
+  type?: ImagePurpose;
+  // 本回合激活了「声明分组能力」的 skill（如电商设计）时为 true，前端据此启用分类渲染
+  imageGrouping?: boolean;
 };
 
 export type ImageToolFailure = {
@@ -57,6 +63,29 @@ export type ImageToolFailure = {
 };
 
 export type ImageToolResult = ImageToolSuccess | ImageToolFailure;
+
+/**
+ * type 入参归一表：形码（main/detail/marketing）与中文别名都映射到内码；未知值丢弃（undefined）。
+ * 用 Map 而非普通对象字面量：对象会从 Object.prototype 继承 constructor/toString 等键，
+ * 模型误传这类值会命中继承的函数而非 undefined，导致 type 污染 output 后又被 JSON 静默丢弃。
+ */
+const IMAGE_PURPOSE_ALIASES = new Map<string, ImagePurpose>([
+  ['main', 'main'],
+  ['detail', 'detail'],
+  ['marketing', 'marketing'],
+  ['主图', 'main'],
+  ['商品主图', 'main'],
+  ['详情图', 'detail'],
+  ['商品详情图', 'detail'],
+  ['详情', 'detail'],
+  ['营销图', 'marketing'],
+]);
+
+/** 归一电商图类型：trim + 小写（中文不受影响），命中别名表才返回内码；未知值返回 undefined（正常出图，仅不参与分组） */
+function normalizeImagePurpose(type: string | undefined): ImagePurpose | undefined {
+  if (!type) return undefined;
+  return IMAGE_PURPOSE_ALIASES.get(type.trim().toLowerCase());
+}
 
 /** 解析出的参考图集：data URL 数组 + 每个来源的 parentId（粘贴图为 null，历史资产为其 assetId）。 */
 type ResolvedRefs = {
@@ -148,6 +177,7 @@ function getImageSystemHint(): string {
 - 用户明确要求透明背景、去底、抠图或 PNG alpha 时：transparent=true；未要求时不要传 true
 - 生成应用图标 / App Icon / logo / 标志 / 品牌标识等需要「方形满铺」的图时：prompt 必须写明背景为单一纯色、满铺到画布四边、无内缩白边/留白、无圆角或超椭圆、无投影/发光/描边边框、无纹理；图形居中置于中央约 80% 安全区。此类图标默认不透明（勿设 transparent=true），仅用户明确要透明背景时才设 true
 - 用户指定画面比例时传 aspectRatio（如 3:2、16:9）；不传或传 auto 时交由模型自选
+- 生成电商主图/详情图/营销图时，每次调用显式传 type 标注类型（主图 main / 详情图 detail / 营销图 marketing）；非电商图勿传 type
 ${modelLine}
 ${sizeLine}`;
 }
@@ -174,7 +204,17 @@ const PASTE_IMAGE_EDIT_HINT =
   '本轮用户消息含图片附件，edit 将使用这些附件作源图（第一张为默认源，可传 pastedImageIndexes 指定某几张，strategy 决定合成一张还是每张各一张）；若改图依赖画面内容，先 analyze_image 再调用本工具。';
 
 /** 创建 generate_image：出图或改图（支持多参考合成/批量），成功后逐张落盘为会话图片资产。 */
-function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[]) {
+function createGenerateImageTool(
+  chatId: string,
+  pastedImageDataUrls?: string[],
+  activatedSkillIds?: string[],
+  stickySkillIds?: string[],
+) {
+  // 本会话是否有「声明分组能力」的 skill（如电商设计）：以「本轮激活 ∪ 会话粘滞」判定。
+  // 只用本轮激活会漏掉 follow-up 回合——ecommerce 复激活依赖关键词/修订线索，短指令常命中不到，
+  // 但会话粘滞（metadata.skillIds）只增不减，覆盖此类回合，故分类展示不因复激活失败而失效。
+  const groupingSkillIds = new Set([...(activatedSkillIds ?? []), ...(stickySkillIds ?? [])]);
+  const imageGrouping = [...groupingSkillIds].some((id) => listImageGroupingSkillIds().has(id));
   return tool({
     description:
       '根据描述生成或编辑图片。仅在用户明确要求出图或改图时调用；讨论绘画技巧时不要调用。',
@@ -215,6 +255,12 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
         .optional()
         .describe('仅当用户明确要求透明背景、去底、抠图或 PNG alpha 时为 true'),
       quality: z.enum(IMAGE_QUALITY_VALUES).optional().describe(getQualityFieldDescribe()),
+      type: z
+        .string()
+        .optional()
+        .describe(
+          '电商图类型（仅电商图必传，用 main/detail/marketing 或中文主图/详情图/营销图）：生成主图传 main、详情图传 detail、营销图传 marketing，每次调用通过本字段标注该张图的类型，供前端按类型分组展示；非电商出图则不要传',
+        ),
     }),
     execute: async (
       {
@@ -228,6 +274,7 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
         aspectRatio,
         transparent,
         quality,
+        type,
       },
       { abortSignal },
     ): Promise<ImageToolResult> => {
@@ -267,6 +314,9 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
         // 大小写不敏感归一 'auto' -> undefined，避免把 'Auto' 当比例串传上游
         const normalizedAspectRatio =
           aspectRatio?.toLowerCase() === IMAGE_ASPECT_RATIO_AUTO ? undefined : aspectRatio;
+
+        // 电商图类型归一：形码/中文别名 → 内码；未知值丢为 undefined（正常出图，仅不参与类型分组）
+        const normalizedType = normalizeImagePurpose(type);
 
         const profile = getImageModelProfile(modelId);
         console.info(
@@ -323,7 +373,12 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
               parentId: asset.parentId,
             });
           }
-          return { ok: true, assets };
+          return {
+            ok: true,
+            assets,
+            type: normalizedType,
+            imageGrouping: imageGrouping || undefined,
+          };
         }
 
         // merge / generate / 单参考：一次调用
@@ -368,6 +423,8 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
               parentId: asset.parentId,
             },
           ],
+          type: normalizedType,
+          imageGrouping: imageGrouping || undefined,
         };
       } catch (err) {
         if (abortSignal?.aborted) {
@@ -407,7 +464,8 @@ function createGenerateImageTool(chatId: string, pastedImageDataUrls?: string[])
 
 export const generateImage: AgentToolDefinition = {
   id: 'generate_image',
-  create: ({ chatId, pastedImageDataUrls }) => createGenerateImageTool(chatId, pastedImageDataUrls),
+  create: ({ chatId, pastedImageDataUrls, activatedSkillIds, stickySkillIds }) =>
+    createGenerateImageTool(chatId, pastedImageDataUrls, activatedSkillIds, stickySkillIds),
   getHint: getImageSystemHint,
   getPasteHint: () => PASTE_IMAGE_EDIT_HINT,
 };

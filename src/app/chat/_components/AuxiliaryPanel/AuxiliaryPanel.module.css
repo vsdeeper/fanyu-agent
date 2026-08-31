@@ -62,3 +62,16 @@
   min-height: 0;
   overflow: auto;
 }
+
+/* 详情图分组：竖排顺序查看，配合 .body 上下滚动 */
+.imageList {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.imageListItem {
+  display: block;
+  width: 100%;
+  height: auto;
+}

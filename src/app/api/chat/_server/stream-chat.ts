@@ -82,6 +82,14 @@ export async function streamChatResponse({
   // 产品图落盘桥接：把本轮粘贴图存为哨兵资产（不动 working image），使主模型跨轮仍能引用其 assetId
   await bridgePastedProductImages(chatId, pastedImageDataUrls);
 
+  // 本回合激活的 skill 必须先于工具构建解析：generate_image 要据此判定「是否有声明分组能力的 skill 在激活」，
+  // 决定输出是否带 imageGrouping 标志（见 createCatalogTools 的 activatedSkillIds；activationBlock 亦复用本结果）。
+  const { turnActivatedIds, turnActivatedSkills, mergedSkillIds } = resolveTurnSkills(messages, {
+    log: false,
+  });
+  const activatedIds = new Set(turnActivatedIds);
+  const allSkillIds = new Set(listSkills().map((skill) => skill.id));
+
   // 联网搜索构造权在 Provider：usesSdkWebSearchTool=true（deepseek/ark）注册 SDK 原生
   // server tool；否则（zhipu）由本地 web_search 工具经独立 API 显式检索
   const catalogTools = createCatalogTools({
@@ -89,6 +97,8 @@ export async function streamChatResponse({
     pastedImageDataUrls,
     mainModelAcceptsImage: capabilities.acceptsImageInput,
     providerHasNativeWebSearch: capabilities.usesSdkWebSearchTool,
+    activatedSkillIds: turnActivatedIds,
+    stickySkillIds: mergedSkillIds,
   });
   const tools = {
     ...catalogTools,
@@ -114,10 +124,6 @@ export async function streamChatResponse({
     messages: convertedMessages,
     reasoning: 'all',
   });
-
-  const { turnActivatedSkills } = resolveTurnSkills(messages, { log: false });
-  const activatedIds = new Set(turnActivatedSkills.map((skill) => skill.id));
-  const allSkillIds = new Set(listSkills().map((skill) => skill.id));
 
   // skill 令牌：历史消息一律短引用，避免把过期 instructions 再塞进上下文；
   // 本轮已 Activation 的 id 同样短引用（正文只出现在 instructions 块）。
