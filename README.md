@@ -202,6 +202,15 @@ docs(readme): 更新本地启动说明
 
 commit-msg 由 commitlint 校验；pre-commit 通过 husky + lint-staged 对暂存文件执行 ESLint / Prettier。
 
+## 待办
+
+- [ ] 用户消息锚点，快速跳转
+- [ ] 媒体号方向探索，skill 快速出文/图
+- [ ] DeepSeek 参考来源摘要和时间补全
+- [ ] 品牌设计、web端/移动端设计、电商图设计案例
+- [ ] 对话上下文管理
+- [ ] 文字选中引用
+
 ## 开源协议
 
 本项目采用 [MIT License](./LICENSE)。
