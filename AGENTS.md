@@ -232,7 +232,7 @@ Button/
 
 ## 生图与主 Agent 约定
 
-- 主对话模型在 [`src/app/api/chat/route.ts`](src/app/api/chat/route.ts) 通过 `generate_image` tool 出图/改图；`stopWhen: stepCountIs(5)` 保证 tool 后主模型可汇总说明
+- 主对话模型在 [`src/app/api/chat/route.ts`](src/app/api/chat/route.ts) 通过 `generate_image` tool 出图/改图；`stopWhen` 由 `isLoopFinished()` 自然终止 + `stepCountIs(24)` 兜底（`MAX_TOOL_LOOP_STEPS`，见 `stream-chat.ts`），跑至主模型不再发 tool call 时即可汇总说明
 - 生图模型按 env `IMAGE_MODEL_ID` 驱动：**设置则绝对优先**（主模型自选不再覆盖）；**未设置则主模型自动选型**（经 `generate_image` 的 `model` 参数回传，`resolveImageModelId` 依此路由）。未设置且主模型未自选、也无父图时兜底 `FALLBACK_IMAGE_MODEL_ID`。老张 Gemini 走 `LAOZHANG_API_KEY`、`LAOZHANG_BASE_URL=https://api2.laozhang.ai/v1`（`POST /v1/models/{modelId}:generateContent`）；方舟 Seedream 为另一 provider（`ARK_*`，按所选模型自动路由）。model id 清单与能力描述见 `registry.ts`（`listImageModels` / `describeImageModels`），尺寸规格见 `IMAGE_SPEC_BY_MODEL_ID`
 - 图片文件落盘于 `CHAT_STORE_DIR/images/{chatId}/`；元数据表 `image_assets`；`chats.working_image_asset_id` 为多轮改图默认源图
 - DESIGN.md 落盘于 `CHAT_STORE_DIR/docs/{chatId}/`；经 `save_design_md` 写入，前端展示下载卡片，不在对话正文贴全文
