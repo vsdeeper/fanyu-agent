@@ -41,7 +41,25 @@ export const IMAGE_SPEC_BY_MODEL_ID: Record<string, ImageSpec> = {
 
 /** 生图宽高比：'auto' 表示交给模型自选（不传上游），其余为可用比例。 */
 export const IMAGE_ASPECT_RATIO_AUTO = 'auto';
-export const IMAGE_ASPECT_RATIOS = ['1:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16'] as const;
+// 注意：本数组同时是 laozhang(Gemini) imageConfig.aspectRatio 的枚举白名单（providers/laozhang.ts），
+// 新增值必须是 Gemini 官方支持的枚举，否则该值会被透传上游导致 400。
+// Gemini 官方完整枚举（14 个）：1:1 / 1:4 / 1:8 / 2:3 / 3:2 / 3:4 / 4:1 / 4:3 / 4:5 / 5:4 / 8:1 / 9:16 / 16:9 / 21:9。
+// 本数组收录其中 12 个实用值，唯独略去极端长宽比 1:8 / 8:1（整图过长过宽，电商/生图少见），需要时补回即可。
+// 数组按「正方形→横→竖→特长特宽」分组。
+export const IMAGE_ASPECT_RATIOS = [
+  '1:1',
+  '4:3',
+  '3:2',
+  '16:9',
+  '21:9',
+  '4:1',
+  '3:4',
+  '2:3',
+  '9:16',
+  '4:5',
+  '5:4',
+  '1:4',
+] as const;
 
 /** K 档位 → 标准基准分辨率。按像素（WxH）入参的模型（Seedream / gpt-image 等）以此换算默认/档位尺寸。 */
 export const K_SIZE_BY_TIER: Record<string, string> = {
