@@ -9,6 +9,7 @@ import styles from './GenerateImageBlock.module.css';
 import {
   type GenerateImageOutput,
   getImageAssets,
+  getPreviewableImages,
   isGenerateImageFailed,
   isGenerateImagePending,
   isGenerateImageReady,
@@ -69,9 +70,12 @@ export default function GenerateImageBlock({ parts }: GenerateImageBlockProps) {
   });
   if (visibleParts.length === 0) return null;
 
+  // 预览图册顺序与缩略图行同源：避免 antd PreviewGroup 按图片注册（挂载）顺序生成预览序列，导致「N/M」序号错位
+  const previewItems = getPreviewableImages(visibleParts);
+
   return (
     <div className={styles.list}>
-      <Image.PreviewGroup classNames={CHAT_IMAGE_PREVIEW_GROUP_CLASS_NAMES}>
+      <Image.PreviewGroup items={previewItems} classNames={CHAT_IMAGE_PREVIEW_GROUP_CLASS_NAMES}>
         {visibleParts.map((part, index) => (
           <GenerateImageItem key={`generate-image-${index}`} part={part} />
         ))}

@@ -1,4 +1,5 @@
 import { IMAGE_TOOL_PASTE_SOURCE_ERROR } from '@/app/api/chat/_shared/tool-errors';
+import type { MessagePart } from '../utils';
 
 export type GenerateImageAsset = {
   assetId: string;
@@ -52,4 +53,22 @@ export function isGenerateImageSourceMissing(output: GenerateImageOutput | undef
 
 export function isGenerateImageReady(output: GenerateImageOutput | undefined): boolean {
   return output?.ok === true && getImageAssets(output).length > 0;
+}
+
+/**
+ * 预览图册用：按 parts 数组序 → 每个 part 的 assets 数组序 摊平出可预览图片的有序列表。
+ * 缩略图行与 PreviewGroup 的 items 都以此为准，保证两者顺序一致。
+ * 修复：antd PreviewGroup 默认按图片组件注册（挂载）顺序生成预览序列，流式生成时就绪顺序 ≠ parts 顺序，
+ * 导致点开缩略图时「N/M」序号错位；改用 items 后按 src 在有序列表查找，即可对齐缩略图顺序。
+ */
+export function getPreviewableImages(parts: ReadonlyArray<MessagePart>): Array<{ src: string }> {
+  const result: Array<{ src: string }> = [];
+  for (const part of parts) {
+    const output = part.output as GenerateImageOutput | undefined;
+    if (!(output && isGenerateImageReady(output))) continue;
+    for (const asset of getImageAssets(output)) {
+      result.push({ src: asset.url || `/api/images/${asset.assetId}` });
+    }
+  }
+  return result;
 }
