@@ -1,9 +1,9 @@
 import { Image, Skeleton } from 'antd';
-import AiImage, {
-  AI_IMAGE_FAILED_CLASS_NAMES,
-  AI_IMAGE_PREVIEW_GROUP_CLASS_NAMES,
+import ChatImage, {
+  CHAT_IMAGE_FAILED_CLASS_NAMES,
+  CHAT_IMAGE_PREVIEW_GROUP_CLASS_NAMES,
   FALLBACK_ICON_SRC,
-} from '../AiImage';
+} from '../../ChatImage';
 import type { MessagePart } from '../utils';
 import styles from './GenerateImageBlock.module.css';
 import {
@@ -25,12 +25,12 @@ function GenerateImageItem({ part }: { part: MessagePart }) {
 
   if (isGenerateImageFailed(state, output)) {
     return (
-      <AiImage
+      <ChatImage
         src={FALLBACK_ICON_SRC}
         size={120}
         alt="图片生成失败"
         preview={false}
-        classNames={AI_IMAGE_FAILED_CLASS_NAMES}
+        classNames={CHAT_IMAGE_FAILED_CLASS_NAMES}
       />
     );
   }
@@ -40,7 +40,7 @@ function GenerateImageItem({ part }: { part: MessagePart }) {
     return (
       <>
         {assets.map((asset) => (
-          <AiImage
+          <ChatImage
             key={asset.assetId || asset.url}
             src={asset.url || `/api/images/${asset.assetId}`}
             size={120}
@@ -71,7 +71,7 @@ export default function GenerateImageBlock({ parts }: GenerateImageBlockProps) {
 
   return (
     <div className={styles.list}>
-      <Image.PreviewGroup classNames={AI_IMAGE_PREVIEW_GROUP_CLASS_NAMES}>
+      <Image.PreviewGroup classNames={CHAT_IMAGE_PREVIEW_GROUP_CLASS_NAMES}>
         {visibleParts.map((part, index) => (
           <GenerateImageItem key={`generate-image-${index}`} part={part} />
         ))}

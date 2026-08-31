@@ -1,6 +1,6 @@
 import { type ComponentProps } from '@ant-design/x-markdown';
 import Skeleton from 'antd/es/skeleton';
-import AiImage from '../AiImage';
+import ChatImage from '../../ChatImage';
 import styles from './MarkdownImage.module.css';
 
 export default function MarkdownImage(props: ComponentProps) {
@@ -10,7 +10,7 @@ export default function MarkdownImage(props: ComponentProps) {
   if (!src) return null;
 
   return (
-    <AiImage
+    <ChatImage
       size={80}
       src={src}
       alt={alt}

@@ -1,12 +1,12 @@
 import { Image, Skeleton } from 'antd';
 import type { ImageProps } from 'antd';
-import { AI_IMAGE_CLASS_NAMES, FALLBACK_ICON_SRC } from './constants';
+import { CHAT_IMAGE_CLASS_NAMES, FALLBACK_ICON_SRC } from './constants';
 
-export type AiImageProps = ImageProps & {
+export type ChatImageProps = ImageProps & {
   size?: number;
 };
 
-export default function AiImage({
+export default function ChatImage({
   preview,
   placeholder,
   size = 120,
@@ -14,10 +14,10 @@ export default function AiImage({
   classNames,
   styles: imageStyles,
   ...rest
-}: AiImageProps) {
+}: ChatImageProps) {
   return (
     <Image
-      classNames={{ ...AI_IMAGE_CLASS_NAMES, ...classNames }}
+      classNames={{ ...CHAT_IMAGE_CLASS_NAMES, ...classNames }}
       width={size}
       height={size}
       alt={alt}
