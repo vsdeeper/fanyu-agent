@@ -4,8 +4,8 @@ import { Conversations } from '@ant-design/x';
 import type { ConversationItemType } from '@ant-design/x/es/conversations/interface';
 import { DeleteOutlined, MenuFoldOutlined, MessageOutlined } from '@ant-design/icons';
 import { Button, Layout, Typography } from 'antd';
-import { getChatGroupLabel } from '@/features/chat/group';
-import type { ChatListItem } from '@/features/chat/types';
+import { getChatGroupLabel } from './utils';
+import type { ChatListItem } from '@/app/api/chats/_shared/types';
 import { apiDelete } from '@/lib/shared/client/api-client';
 import styles from './ChatSidebar.module.css';
 

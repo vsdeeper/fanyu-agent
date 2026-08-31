@@ -143,16 +143,15 @@ pnpm sync:chats:pull -- --yes   # 跳过确认
 
 ```
 src/
-  app/                 # Next.js 路由壳（page / layout / route）
-    api/               # 薄壳，转调 features/<域>/server
-    chat/_components/  # 对话页 UI：ChatShell / ChatSidebar / Chat
+  app/
+    chat/              # 对话页：_components / _utils
+    api/<域>/          # route.ts 薄壳 + _server 实现 + _shared 契约
   components/          # 全局通用 UI：theme / ModeSwitch / Providers
-  features/            # 产品域：chat / images / docs / geo
-  lib/                 # 基础设施与 Agent 能力：db / skills / tools / shared / theme
+  lib/                 # 平台内核：db / skills / shared / theme
 drizzle/               # SQL migrations
 ```
 
-`app/` 只放框架入口；业务在 `features/`，skills / tools 在 `lib/`。细节见 [AGENTS.md](./AGENTS.md)。
+前端跟页面路由走，服务端跟 API 路由走；`lib/` 只放无产品面的平台能力。细节见 [AGENTS.md](./AGENTS.md)。
 
 ## 对话与工具
 
@@ -172,7 +171,7 @@ drizzle/               # SQL migrations
 3. **继承父图模型** — 多轮改图时沿用上一张图，保持风格一致
 4. **兜底** — `FALLBACK_IMAGE_MODEL_ID`（默认 `gemini-3.1-flash-image`）
 
-可选模型清单与各模型能力/擅长场景见 [`src/features/images/registry.ts`](src/features/images/registry.ts)（`listImageModels` / `describeImageModels`）：方舟 Seedream 4.5 / Seedream 5.0 Lite，老张 Gemini Flash Image / Gemini Flash Lite Image / GPT Image 2 VIP。
+可选模型清单与各模型能力/擅长场景见 [`src/app/api/images/_server/registry.ts`](src/app/api/images/_server/registry.ts)（`listImageModels` / `describeImageModels`）：方舟 Seedream 4.5 / Seedream 5.0 Lite，老张 Gemini Flash Image / Gemini Flash Lite Image / GPT Image 2 VIP。
 
 图片落盘于 `CHAT_STORE_DIR/images/{chatId}/`；前端经 `GET /api/images/[assetId]` 展示，不直接渲染上游 CDN URL。
 

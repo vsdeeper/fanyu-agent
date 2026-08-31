@@ -2,6 +2,7 @@ import { FileMarkdownOutlined } from '@ant-design/icons';
 import FileCard from '@/components/FileCard';
 import type { MessagePart } from '../../utils';
 import { DESIGN_MD_FAILED_LABEL } from './constants';
+import { bindDesignMdPreview } from './utils';
 import {
   getDesignMdFileName,
   getDesignMdHref,
@@ -36,6 +37,7 @@ export default function DesignMdItem({ part, chatId }: DesignMdItemProps) {
         href={href}
         byteSize={output.byteSize}
         icon={<FileMarkdownOutlined />}
+        onPreview={bindDesignMdPreview(fileName, href, output.byteSize)}
       />
     );
   }

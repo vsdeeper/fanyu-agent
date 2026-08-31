@@ -5,7 +5,9 @@ import { USER_ATTACHMENT_IMAGE_SIZE } from './constants';
 import styles from './UserAttachmentList.module.css';
 import type { MessagePart } from '../utils';
 import {
+  bindUserFilePreview,
   getUserFileByteSize,
+  getUserFileHref,
   getUserFileIcon,
   getUserFileKey,
   getUserFileName,
@@ -37,12 +39,15 @@ export default function UserAttachmentList({ parts }: UserAttachmentListProps) {
               />
             );
           }
+          const href = getUserFileHref(part.url);
           return (
             <FileCard
               key={key}
               fileName={fileName}
               byteSize={getUserFileByteSize(part.url)}
               icon={getUserFileIcon(part.mediaType)}
+              href={href}
+              onPreview={bindUserFilePreview(fileName, part.mediaType, part.url)}
             />
           );
         })}

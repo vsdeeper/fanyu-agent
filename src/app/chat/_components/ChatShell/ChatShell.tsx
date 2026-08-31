@@ -5,10 +5,11 @@ import { useParams, usePathname, useRouter } from 'next/navigation';
 import { generateId, type UIMessage } from 'ai';
 import { MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Layout, Spin, Typography } from 'antd';
-import type { ChatListItem, ChatRecord } from '@/features/chat/types';
+import type { ChatListItem, ChatRecord } from '@/app/api/chats/_shared/types';
 import { apiGet } from '@/lib/shared/client/api-client';
-import { resolveChatRouteId } from '@/features/chat/route';
+import { resolveChatRouteId } from '@/app/chat/_utils/chat-id';
 import ModeSwitch from '@/components/ModeSwitch';
+import AuxiliaryPanel from '../AuxiliaryPanel';
 import Chat from '../Chat';
 import ChatSidebar from '../ChatSidebar';
 import { peekChat, resolveRouteChat } from './chat-registry';
@@ -175,6 +176,7 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
           {children}
         </Layout.Content>
       </Layout>
+      <AuxiliaryPanel chatId={routeChatId} />
     </Layout>
   );
 }

@@ -1,4 +1,4 @@
-import { serveDesignDoc } from '@/features/docs/server/serve-asset';
+import { serveDesignDoc } from '@/app/api/docs/_server/serve-asset';
 
 export const runtime = 'nodejs';
 

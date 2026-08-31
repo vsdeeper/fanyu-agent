@@ -1,4 +1,4 @@
-import { IMAGE_TOOL_PASTE_SOURCE_ERROR } from '@/lib/tools/constants';
+import { IMAGE_TOOL_PASTE_SOURCE_ERROR } from '@/app/api/chat/_shared/tool-errors';
 
 export type GenerateImageAsset = {
   assetId: string;
@@ -16,7 +16,7 @@ export type GenerateImageOutput = {
 
 /**
  * 兼容旧单资产形状：无 assets 时用 assetId 兜底成单元素数组。
- * 注意：与 server/catalog/legacy-output.ts 的 normalizeImageAssets 判定保持一致（新 assets 优先，否则旧 assetId），
+ * 注意：与 chat/_server/tools/catalog/legacy-output.ts 的 normalizeImageAssets 判定保持一致（新 assets 优先，否则旧 assetId），
  * 改判定须两侧同步，避免旧会话语义漂移。
  */
 export function getImageAssets(output: GenerateImageOutput | undefined): GenerateImageAsset[] {

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { listChats } from '@/features/chat/server/store';
+import { listChats } from '@/app/api/chats/_server/store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

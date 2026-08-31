@@ -1,5 +1,5 @@
-import { DEFAULT_DESIGN_MD_FILENAME } from '@/features/docs/constants';
-import { buildDocAssetUrl } from '@/features/docs/url';
+import { DEFAULT_DESIGN_MD_FILENAME } from '@/app/api/docs/_shared/constants';
+import { buildDocAssetUrl, isDocAssetHref } from '@/app/api/docs/_shared/url';
 
 export type SaveDesignMdOutput = {
   ok?: boolean;
@@ -10,13 +10,13 @@ export type SaveDesignMdOutput = {
   error?: string;
 };
 
-/** 下载地址：优先 tool 返回的 url，否则按 chatId + assetId 拼 */
+/** 下载地址：优先 chatId + assetId 拼相对路径；否则仅放行同源文档 url */
 export function getDesignMdHref(
   output: SaveDesignMdOutput,
   chatId: string | undefined,
 ): string | undefined {
-  if (output.url) return output.url;
   if (chatId && output.assetId) return buildDocAssetUrl(chatId, output.assetId);
+  if (output.url && isDocAssetHref(output.url)) return output.url;
   return undefined;
 }
 

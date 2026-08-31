@@ -5,7 +5,7 @@ import type { Skill } from '../../types';
  * ecommerce-image：从产品图生成电商商品图（主图 / 详情图 / 营销图）skill。
  * 复用 generate_image（i2i，主体保真）与 analyze_image（识图），形成
  * 「上传产品图 → 识图 → 方案确认 → 逐张出图 → 迭代」的对话流程。
- * 产品图是强后端主体，靠服务端「产品图落盘桥接」跨轮引用（见 features/images/server/product-assets.ts）。
+ * 产品图是强后端主体，靠服务端「产品图落盘桥接」跨轮引用（见 app/api/images/_server/product-assets.ts）。
  */
 export const ecommerceImage: Skill = {
   ...ecommerceImageSummary,

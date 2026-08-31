@@ -1,4 +1,9 @@
 import { createElement, type ReactNode } from 'react';
+import { openFilePreview } from '@/app/chat/_components/AuxiliaryPanel/open-file-preview';
+import {
+  estimateDataUrlBytes,
+  isPreviewableFile,
+} from '@/app/chat/_components/AuxiliaryPanel/file-preview';
 import type { MessagePart } from '../utils';
 import {
   ICON_BY_KIND,
@@ -35,21 +40,31 @@ export function isImageMediaType(mediaType: string): boolean {
 }
 
 /**
+ * 附件下载地址：仅 data URL；其它形态不传给 FileCard。
+ */
+export function getUserFileHref(url: string): string | undefined {
+  return url.startsWith('data:') ? url : undefined;
+}
+
+/**
  * 从 data URL 头推算原始字节数，不拷贝 payload。
- * SDK 落盘为 `;base64,`；非 data URL / 非 base64 不返回。
  */
 export function getUserFileByteSize(url: string): number | undefined {
-  if (!url.startsWith('data:')) return undefined;
-  const comma = url.indexOf(',');
-  if (comma < 0) return undefined;
+  return estimateDataUrlBytes(url);
+}
 
-  const meta = url.slice(0, comma);
-  const payloadLength = url.length - comma - 1;
-  if (payloadLength <= 0) return 0;
-  if (!meta.endsWith(';base64')) return undefined;
-
-  const padding = url.endsWith('==') ? 2 : url.endsWith('=') ? 1 : 0;
-  return Math.floor((payloadLength * 3) / 4) - padding;
+/**
+ * 可预览附件才返回打开面板的回调；PDF 等不传 onPreview。
+ */
+export function bindUserFilePreview(
+  fileName: string,
+  mediaType: string,
+  url: string,
+): (() => void) | undefined {
+  const href = getUserFileHref(url);
+  if (!href || !isPreviewableFile(fileName, mediaType)) return undefined;
+  const byteSize = getUserFileByteSize(url);
+  return () => openFilePreview({ fileName, mediaType, href, byteSize });
 }
 
 /**

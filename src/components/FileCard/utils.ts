@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
 import { FILE_SIZE_UNITS } from './constants';
 import type { FileCardStatus } from './types';
 
@@ -41,21 +41,23 @@ export function formatFileMeta(fileName?: string, byteSize?: number): string | u
 }
 
 /**
- * 卡片主体点击：就绪态转发 onPreview；未传入则为空操作。
- */
-export function handlePreviewClick(onPreview?: () => void): void {
-  onPreview?.();
-}
-
-/**
- * 仅就绪态绑定预览点击，避免失败卡误触。
+ * 仅就绪且传入 onPreview 时绑定点击，避免失败卡误触。
  */
 export function bindPreviewClick(
   status: FileCardStatus,
   onPreview?: () => void,
 ): (() => void) | undefined {
-  if (status !== 'ready') return undefined;
-  return () => handlePreviewClick(onPreview);
+  if (status !== 'ready' || !onPreview) return undefined;
+  return onPreview;
+}
+
+/**
+ * 就绪态卡片键盘：Enter / Space 触发预览。
+ */
+export function handlePreviewKeyDown(event: KeyboardEvent, onPreview: () => void): void {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  onPreview();
 }
 
 /**

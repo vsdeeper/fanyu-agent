@@ -10,9 +10,9 @@ export type FileCardProps = {
   icon?: ReactNode;
   /** 字节数；与扩展名一起拼副标题，如 MD 8.43KB */
   byteSize?: number;
-  /** 仅 ready 且有值时渲染下载图标 */
+  /** 仅 ready 且有值时渲染下载链接 */
   href?: string;
-  /** 仅 ready 生效；未传则卡片主体点击为空操作 */
+  /** 仅 ready 生效；未传则卡片主体不可预览 */
   onPreview?: () => void;
   className?: string;
 };

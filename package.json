@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "sync:chats:push": "node scripts/sync-chats.mjs push",
@@ -21,7 +22,7 @@
     ]
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+    "*.{js,jsx,ts,tsx,mjs,cjs,mts}": [
       "eslint --fix",
       "prettier --write"
     ],
@@ -46,7 +47,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "server-only": "^0.0.1",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
@@ -62,6 +64,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.1.1",
     "prettier": "^3.9.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   }
 }
