@@ -166,7 +166,7 @@ export async function streamChatResponse({
   const productImageHint = getProductImageHint(chatId);
 
   // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}${productImageHint}\n\n${getToolHints(pastedImageDataUrls.length > 0, capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool)}`;
+  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体，并用短段落、空行分隔要点，避免写成一整段。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}${productImageHint}\n\n${getToolHints(pastedImageDataUrls.length > 0, capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool)}`;
 
   const instructions = runtime.getInstructions({
     userLocation,

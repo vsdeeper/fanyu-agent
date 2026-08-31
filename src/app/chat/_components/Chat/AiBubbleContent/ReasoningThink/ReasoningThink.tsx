@@ -19,6 +19,7 @@ export default function ReasoningThink({ thinking, children }: ReasoningThinkPro
   return (
     <Think
       className={styles.think}
+      classNames={{ content: styles.content }}
       title={thinking ? '思考中' : '思考过程'}
       loading={thinking}
       blink={thinking}
