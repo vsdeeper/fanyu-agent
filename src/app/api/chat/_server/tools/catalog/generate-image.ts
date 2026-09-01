@@ -6,6 +6,7 @@ import {
   buildImageAssetUrl,
   getAsset,
   getWorkingAsset,
+  PRODUCT_IMAGE_MODEL_ID,
   resolveParentModelId,
   saveImageAsset,
 } from '@/app/api/images/_server/assets';
@@ -182,6 +183,7 @@ function getImageSystemHint(): string {
 - 用户本轮消息含图片附件并要求修改时：mode=edit，服务端优先使用该附件作源图，无需传 sourceAssetIds
 - 用户贴了多张图并要求「把这些图一起合成一张」时：strategy=merge（多个参考合并成一张）；要求「把这几张各自都改成 X」时：必传 strategy=batch（每张各出一张新图），漏传会静默合成一张、用户多张请求被缩水
 - 只对多张做批改或合成，必传 pastedImageIndexes 指认参考（0 基，0=第一张）；省略时服务端只用第一张，不会自动用全部。多参考按顺序在 prompt 说明图片用途（如「第1张作场景、第2张是主体」）
+- 出电商主图/详情图/营销图系列、已有作为「系列风格定板」的样张/前图时：后续每张用 sourceAssetIds=[产品图 assetId, 定板图 assetId] 双参考，prompt 注明「第1个参考=产品主体严格保真，第2个参考=仅作风格参考（色板/色温/氛围/构图语言）」，勿传 strategy=batch、勿在系列内换 model
 - 改刚生成的图：mode=edit，尽量传 sourceAssetIds（上一轮 tool 结果已含 assetId）；未传则服务端使用 working image
 - 用户说「改上面那张 / 第二张」且无法对应到已知 assetId、用户也未贴图时：不要猜测、不要调用 edit，请用户将要修改的图复制粘贴到对话框后再试
 - 生图成功后界面会自动展示图片；汇总回复时只用文字说明，勿在正文中插入 Markdown 图片或 URL
@@ -312,9 +314,18 @@ function createGenerateImageTool(
           refs = resolved;
         }
 
+        // 系列主图「产品图 + 样张/定板图」双参考时，首参考常为产品图（哨兵 user-upload）；
+        // 若仍只取 parentIds[0] 的 model，会因哨兵被 resolveImageModelId 跳过而落到默认模型。
+        // 这里改向第一个真实生图模型的参考取 model，使系列沿用样张/定板图模型，保持风格连续。
+        const referenceModelId = refs.parentIds
+          .map((parentId) => resolveParentModelId(parentId))
+          .find((candidate) => {
+            const trimmed = candidate?.trim();
+            return Boolean(trimmed) && trimmed !== PRODUCT_IMAGE_MODEL_ID;
+          });
         modelId = resolveImageModelId({
           requestedModelId: model,
-          parentModelId: refs.parentIds[0] ? resolveParentModelId(refs.parentIds[0]) : undefined,
+          parentModelId: referenceModelId,
         });
 
         const spec = getImageSpec(modelId);
