@@ -6,6 +6,7 @@ import {
   buildImageAssetUrl,
   getAsset,
   getWorkingAsset,
+  listProductImageAssets,
   PRODUCT_IMAGE_MODEL_ID,
   resolveParentModelId,
   saveImageAsset,
@@ -38,6 +39,14 @@ import { normalizeImageAssets } from './legacy-output';
 
 const SIZE_FORMAT_PATTERN = /^\d+(?:\.\d+)?K$|^\d+x\d+$/i;
 const ASPECT_RATIO_PATTERN = /^(auto|\d+:\d+)$/i;
+
+/**
+ * 电商改图的服务端守卫（追加到出站 prompt 末尾，落盘仍用原始 prompt，不回流）。
+ * 兜底「主模型失忆」：即便模型没在首次 prompt 重申产品保真/文字占比，出站也强制带上，
+ * 避免多轮 i2i 让产品本体漂移、文字占比失控。追加到 prompt 末尾，不与模型前端分工首句冲突。
+ */
+const ECOMMERCE_EDIT_PROMPT_GUARD =
+  '（服务端强制）第1个参考图=产品本体，形状/颜色/材质/细节严格100%不变；其余参考仅作背景/色调/氛围/构图语言的风格参考，不改变产品本体。文字按最小编排：主标题字高≤画面高约1/6，整段文字总高≤画面高约40%，文字不压产品主体，四周留白≥5%。';
 
 /** 生图失败（非用户中断）打服务端日志；面向用户的文案仍走工具 output。 */
 function logImageToolFailure(fields: {
@@ -114,11 +123,14 @@ async function resolveEditRefs({
   pastedImageDataUrls,
   sourceAssetIds,
   pastedImageIndexes,
+  anchorProductAssetId,
 }: {
   chatId: string;
   pastedImageDataUrls?: string[];
   sourceAssetIds?: string[];
   pastedImageIndexes?: number[];
+  /** 电商改图时前置的产品图锚点 id（哨兵资产），保证产品本体始终有参考底，防止多轮漂移 */
+  anchorProductAssetId?: string;
 }): Promise<ResolvedRefs | { error: string }> {
   const sources: Array<{ dataUrl: string; parentId: string | null }> = [];
 
@@ -139,10 +151,14 @@ async function resolveEditRefs({
     };
   }
 
-  // 历史资产路径：sourceAssetIds 缺省退化为工作图
-  const sourceIds = sourceAssetIds?.length
-    ? sourceAssetIds
+  // 历史资产路径：sourceAssetIds 缺省退化为工作图。电商可传产品图锚点，
+  // 缺失/未含时前置到首位，避免仅以「上一张生成图」为唯一底导致多轮漂移（产品本体参考回退到底）。
+  let sourceIds = sourceAssetIds?.length
+    ? [...sourceAssetIds]
     : [(await getWorkingAsset(chatId))?.id].filter((id): id is string => Boolean(id));
+  if (anchorProductAssetId && !sourceIds.includes(anchorProductAssetId)) {
+    sourceIds = [anchorProductAssetId, ...sourceIds];
+  }
   if (sourceIds.length === 0) {
     return { error: IMAGE_TOOL_PASTE_SOURCE_ERROR };
   }
@@ -229,6 +245,8 @@ function createGenerateImageTool(
   // 但会话粘滞（metadata.skillIds）只增不减，覆盖此类回合，故分类展示不因复激活失败而失效。
   const groupingSkillIds = new Set([...(activatedSkillIds ?? []), ...(stickySkillIds ?? [])]);
   const imageGrouping = [...groupingSkillIds].some((id) => listImageGroupingSkillIds().has(id));
+  // 电商图 skill 激活（含会话粘滞）判定：用于服务端给 edit 兜底前置产品图锚点 + prompt 守卫
+  const isEcommerceActive = [...groupingSkillIds].includes('ecommerce-image');
   return tool({
     description:
       '根据描述生成或编辑图片。仅在用户明确要求出图或改图时调用；讨论绘画技巧时不要调用；从产品图生成电商商品图（主图/详情图/营销图）时，须已锁定目标平台；出主图须已完成逐张规划并在用户确认方案与提示词后再调用。',
@@ -300,12 +318,19 @@ function createGenerateImageTool(
         }
 
         let refs: ResolvedRefs = { dataUrls: [], parentIds: [] };
+        // 电商改图（非批量、且会话激活本 skill）时取最近产品图作锚点：服务端兜底，
+        // 即便模型只传了「上一张生成图」，也强制补上产品本体参考，防止多轮漂移。
+        const anchorProductAssetId =
+          isEcommerceActive && mode === 'edit' && strategy !== 'batch'
+            ? listProductImageAssets(chatId)[0]?.id
+            : undefined;
         if (mode === 'edit') {
           const resolved = await resolveEditRefs({
             chatId,
             pastedImageDataUrls,
             sourceAssetIds,
             pastedImageIndexes,
+            anchorProductAssetId,
           });
           if ('error' in resolved) {
             logImageToolFailure({ error: resolved.error, mode });
@@ -313,6 +338,12 @@ function createGenerateImageTool(
           }
           refs = resolved;
         }
+
+        // 参考集含产品图锚点 → 出站 prompt 追加服务端守卫（产品保真 + 文字占比）；落盘仍用原始 prompt，不回流。
+        const hasProductRef = Boolean(
+          anchorProductAssetId && refs.parentIds.includes(anchorProductAssetId),
+        );
+        const outboundPrompt = hasProductRef ? `${prompt}\n${ECOMMERCE_EDIT_PROMPT_GUARD}` : prompt;
 
         // 系列主图「产品图 + 样张/定板图」双参考时，首参考常为产品图（哨兵 user-upload）；
         // 若仍只取 parentIds[0] 的 model，会因哨兵被 resolveImageModelId 跳过而落到默认模型。
@@ -360,7 +391,7 @@ function createGenerateImageTool(
             }
             const result = await generateImageViaRouter({
               modelId,
-              prompt,
+              prompt: outboundPrompt,
               mode: 'edit',
               referenceImageDataUrls: [refs.dataUrls[i]],
               size: resolvedSize,
@@ -416,7 +447,7 @@ function createGenerateImageTool(
         // merge / generate / 单参考：一次调用
         const result = await generateImageViaRouter({
           modelId,
-          prompt,
+          prompt: outboundPrompt,
           mode,
           referenceImageDataUrls: refs.dataUrls.length ? refs.dataUrls : undefined,
           size: resolvedSize,
