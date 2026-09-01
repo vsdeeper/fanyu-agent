@@ -38,7 +38,7 @@ export const ecommerceImageSummary: SkillSummary = {
   id: 'ecommerce-image',
   name: '电商设计',
   description:
-    '从产品图生成电商商品图：主图 / 详情图 / 营销图；先识图分析再锁定目标平台，出主图前逐张规划（营销+视觉）。适用于淘宝/天猫、京东、拼多多、抖音、小红书',
+    '从产品图生成电商商品图：主图 / 详情图 / 营销图；先识图并输出产品分析、生成清单与主图规划，再锁定目标平台后出图。适用于淘宝/天猫、京东、拼多多、抖音、小红书',
 };
 
 // 隐藏菜单：在对应 Summary 上设 userInvocable: false（默认省略即为可调用）
