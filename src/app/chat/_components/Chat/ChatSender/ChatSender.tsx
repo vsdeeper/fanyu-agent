@@ -246,7 +246,7 @@ export default function ChatSender({
                 attachmentsRef.current?.upload(file);
               }
             }}
-            footer={(actionNode) => (
+            footer={(_actionNode, { components: { SendButton, LoadingButton } }) => (
               <Flex justify="space-between" align="center">
                 <Badge dot={hasAttachments && !attachmentsOpen}>
                   <Button
@@ -257,7 +257,11 @@ export default function ChatSender({
                     onClick={() => selectAttachments(attachmentsRef)}
                   />
                 </Badge>
-                {actionNode}
+                {loading ? (
+                  <LoadingButton />
+                ) : (
+                  <SendButton disabled={hasAttachments ? false : undefined} />
+                )}
               </Flex>
             )}
             onSubmit={(value) => {
