@@ -5,6 +5,14 @@ export const IMAGE_QUALITY_VALUES = ['high', 'medium', 'low', 'auto'] as const;
 
 /** 模型 ID → 生图输出规格。新增模型须同时改 registry 与本表，勿只改一处。 */
 export const IMAGE_SPEC_BY_MODEL_ID: Record<string, ImageSpec> = {
+  'gpt-image-2-vip': {
+    // 档位串沿用（与 Seedream 一致）；该模型按像素入参，故配像素区间以启用自定义 WIDTHxHEIGHT 与比例换算。
+    size: { presets: ['1K', '2K', '4K'], default: '2K' },
+    minPixels: 1024 * 1024,
+    maxPixels: 3840 * 2160,
+    // OpenAI gpt-image 支持 quality（low/medium/high/auto），默认 high；其余模型上游无该参数故不登记。
+    quality: { presets: [...IMAGE_QUALITY_VALUES], default: 'high' },
+  },
   'gemini-3.1-flash-lite-image': {
     // 恒定 1K（实测 2K/4K 档位仍返回 1024×1024）。不配 minPixels/maxPixels：
     // 该模型只认档位串，配了像素上下限会让 describeImageSize/isValidImageSize 误宣传「支持自定义 WIDTHxHEIGHT」，
@@ -28,14 +36,6 @@ export const IMAGE_SPEC_BY_MODEL_ID: Record<string, ImageSpec> = {
     size: { presets: ['2K', '4K'], default: '2K' },
     minPixels: 3_686_400, // 1920×1920，Seedream 可出图下限
     maxPixels: 4096 * 4096,
-  },
-  'gpt-image-2-vip': {
-    // 档位串沿用（与 Seedream 一致）；该模型按像素入参，故配像素区间以启用自定义 WIDTHxHEIGHT 与比例换算。
-    size: { presets: ['1K', '2K', '4K'], default: '2K' },
-    minPixels: 1024 * 1024,
-    maxPixels: 3840 * 2160,
-    // OpenAI gpt-image 支持 quality（low/medium/high/auto），默认 high；其余模型上游无该参数故不登记。
-    quality: { presets: [...IMAGE_QUALITY_VALUES], default: 'high' },
   },
 };
 

@@ -41,8 +41,8 @@ const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });
 
 // 工具循环安全上限：isLoopFinished 依赖「模型不再发 tool call」的自然终止，该上限是
 // 唯一保证循环必然结束的机制，勿单独移除。放宽需让多图设计流（若干次生成 + 汇总）跑得完。
-// 电商商品图上限 6 张（逐张生成）+ 识图 + 汇总，故放宽到 24；若仍超长再由实际压降。
-const MAX_TOOL_LOOP_STEPS = 24;
+// 电商商品图上限 10 张（逐张生成）+ 识图 + 汇总，故放宽到 40；若仍超长再由实际压降。
+const MAX_TOOL_LOOP_STEPS = 40;
 
 export type StreamChatOptions = {
   chatId: string;

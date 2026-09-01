@@ -3,7 +3,7 @@ import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 
 // globalThis.AI_SDK_LOG_WARNINGS = false;
 
-// 聊天流式接口可能链式触发生图 tool 等多轮耗时操作，工具循环已放宽到 24 步（电商图最多 6 张顺序生成 +
+// 聊天流式接口可能链式触发生图 tool 等多轮耗时操作，工具循环已放宽到 40 步（电商图最多 10 张顺序生成 +
 // 识图 + 汇总），单轮往返可能远超 120s，故提到 600s 覆盖多图设计流。
 export const maxDuration = 600;
 
