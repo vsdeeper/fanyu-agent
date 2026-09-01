@@ -17,8 +17,12 @@ type GeminiRequestPart = { text?: string; inline_data?: { mime_type?: string; da
 type GeminiResponsePart = { text?: string; inlineData?: InlineData; inline_data?: InlineData };
 
 type GeminiGenerateResponse = {
-  candidates?: Array<{ content?: { parts?: GeminiResponsePart[] } }>;
-  error?: { message?: string };
+  candidates?: Array<{
+    finishReason?: string;
+    content?: { parts?: GeminiResponsePart[] };
+  }>;
+  promptFeedback?: { blockReason?: string; blockReasonMessage?: string };
+  error?: { message?: string; status?: string; code?: number };
 };
 
 /** Gemini imageConfig.aspectRatio 支持的枚举（白名单），非枚举比例直接不发送以免 400。 */
@@ -34,6 +38,37 @@ async function toInlineData(source: string): Promise<{ mime_type?: string; data?
   if (m) return { mime_type: m[1] || 'image/jpeg', data: m[2] };
   const { bytes, mimeType } = await downloadImage(source);
   return { mime_type: mimeType, data: Buffer.from(bytes).toString('base64') };
+}
+
+/** 压缩 Gemini 失败体：去掉可能存在的 base64，只留 finishReason / 文本片段供排查。 */
+function summarizeGeminiFailurePayload(payload: GeminiGenerateResponse) {
+  const first = payload.candidates?.[0];
+  const parts = first?.content?.parts ?? [];
+  return {
+    error: payload.error,
+    promptFeedback: payload.promptFeedback,
+    finishReason: first?.finishReason,
+    candidateCount: payload.candidates?.length ?? 0,
+    parts: parts.map((part) => {
+      if (part.inlineData?.data || part.inline_data?.data) return { type: 'image' as const };
+      if (part.text) return { type: 'text' as const, text: part.text.slice(0, 200) };
+      return { type: 'other' as const };
+    }),
+  };
+}
+
+/** 老张生图失败打服务端日志（含出站尺寸）；payload 摘要避免把整段 base64 刷进终端。 */
+function logLaozhangFailure(
+  reason: string,
+  fields: {
+    modelId: string;
+    status: number;
+    size?: string;
+    aspectRatio?: string;
+    payload: unknown;
+  },
+) {
+  console.error(`[laozhang] ${reason}`, fields);
 }
 
 /** 从 generateContent 响应取第一张图：遍历 candidates / parts，认 inlineData 或 inline_data。 */
@@ -165,12 +200,25 @@ async function generateOpenAIImage(
   }
 
   if (!response.ok) {
-    console.error('[laozhang] upstream error', response.status, payload);
+    logLaozhangFailure('upstream error', {
+      modelId: req.modelId,
+      status: response.status,
+      size: outboundSize,
+      aspectRatio: req.aspectRatio,
+      payload,
+    });
     throw new Error('老张生图服务暂不可用');
   }
 
   const items = payload.data ?? [];
   if (items.length === 0) {
+    logLaozhangFailure('未返回图片', {
+      modelId: req.modelId,
+      status: response.status,
+      size: outboundSize,
+      aspectRatio: req.aspectRatio,
+      payload,
+    });
     throw new Error('老张生图未返回图片');
   }
   const images = await Promise.all(
@@ -272,12 +320,25 @@ export const laozhangProvider: ImageProvider = {
     }
 
     if (!response.ok) {
-      console.error('[laozhang] upstream error', response.status, payload);
+      logLaozhangFailure('upstream error', {
+        modelId: req.modelId,
+        status: response.status,
+        size: imageSize,
+        aspectRatio: ratio,
+        payload: summarizeGeminiFailurePayload(payload),
+      });
       throw new Error('老张生图服务暂不可用');
     }
 
     const image = extractImage(payload);
     if (!image) {
+      logLaozhangFailure('未返回图片', {
+        modelId: req.modelId,
+        status: response.status,
+        size: imageSize,
+        aspectRatio: ratio,
+        payload: summarizeGeminiFailurePayload(payload),
+      });
       throw new Error('老张生图未返回图片');
     }
 

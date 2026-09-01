@@ -38,6 +38,17 @@ import { normalizeImageAssets } from './legacy-output';
 const SIZE_FORMAT_PATTERN = /^\d+(?:\.\d+)?K$|^\d+x\d+$/i;
 const ASPECT_RATIO_PATTERN = /^(auto|\d+:\d+)$/i;
 
+/** 生图失败（非用户中断）打服务端日志；面向用户的文案仍走工具 output。 */
+function logImageToolFailure(fields: {
+  error: string;
+  mode: string;
+  modelId?: string;
+  size?: string;
+  cause?: unknown;
+}) {
+  console.error('[generate_image]', fields);
+}
+
 export type ImageToolAsset = {
   assetId: string;
   url: string;
@@ -279,6 +290,8 @@ function createGenerateImageTool(
       },
       { abortSignal },
     ): Promise<ImageToolResult> => {
+      let modelId: string | undefined;
+      let resolvedSize: string | undefined;
       try {
         if (abortSignal?.aborted) {
           return { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR };
@@ -293,18 +306,19 @@ function createGenerateImageTool(
             pastedImageIndexes,
           });
           if ('error' in resolved) {
+            logImageToolFailure({ error: resolved.error, mode });
             return { ok: false, error: resolved.error };
           }
           refs = resolved;
         }
 
-        const modelId = resolveImageModelId({
+        modelId = resolveImageModelId({
           requestedModelId: model,
           parentModelId: refs.parentIds[0] ? resolveParentModelId(refs.parentIds[0]) : undefined,
         });
 
         const spec = getImageSpec(modelId);
-        const resolvedSize =
+        resolvedSize =
           size && isValidImageSize(size, spec) ? size.trim() : size ? spec.size.default : undefined;
         if (size && resolvedSize !== size.trim()) {
           console.warn(`[generate_image] size 已按模型规格回退: "${size}" -> "${resolvedSize}"`);
@@ -349,6 +363,12 @@ function createGenerateImageTool(
             }
             const first = result.images[0];
             if (!first) {
+              logImageToolFailure({
+                error: '生图服务未返回图片',
+                mode,
+                modelId,
+                size: resolvedSize,
+              });
               return { ok: false, error: '生图服务未返回图片' };
             }
             generated.push({
@@ -402,6 +422,12 @@ function createGenerateImageTool(
 
         const first = result.images[0];
         if (!first) {
+          logImageToolFailure({
+            error: '生图服务未返回图片',
+            mode,
+            modelId,
+            size: resolvedSize,
+          });
           return { ok: false, error: '生图服务未返回图片' };
         }
 
@@ -431,7 +457,13 @@ function createGenerateImageTool(
         if (abortSignal?.aborted) {
           return { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR };
         }
-        console.error('[generate_image]', err);
+        logImageToolFailure({
+          error: '生图服务暂不可用，请稍后重试',
+          mode,
+          modelId,
+          size: resolvedSize,
+          cause: err,
+        });
         return { ok: false, error: '生图服务暂不可用，请稍后重试' };
       }
     },

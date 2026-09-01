@@ -44,6 +44,20 @@ const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });
 // 电商商品图上限 10 张（逐张生成）+ 识图 + 汇总，故放宽到 40；若仍超长再由实际压降。
 const MAX_TOOL_LOOP_STEPS = 40;
 
+/** 记录未进 execute 的工具失败（如 Zod 校验）；仅服务端日志，不改用户可见文案。 */
+function logStreamToolErrors(
+  content: Array<{ type: string; toolName?: string; error?: unknown; input?: unknown }>,
+) {
+  for (const part of content) {
+    if (part.type !== 'tool-error') continue;
+    console.error('[chat] tool-error', {
+      toolName: part.toolName,
+      error: part.error,
+      input: part.input,
+    });
+  }
+}
+
 export type StreamChatOptions = {
   chatId: string;
   messages: UIMessage[];
@@ -200,6 +214,12 @@ export async function streamChatResponse({
     },
     // 修复：stop 须随客户端 abort 同步中止并落盘半截；勿再用 consumeStream 后台跑完覆盖
     abortSignal,
+    onError: ({ error }) => {
+      console.error('[chat] stream error', error);
+    },
+    onStepEnd: ({ content }) => {
+      logStreamToolErrors(content);
+    },
   });
 
   // 本地 web_search 工具的结果经桥接转 source part（原生联网链路自带注解产物，勿重复注入）

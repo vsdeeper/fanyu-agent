@@ -78,12 +78,25 @@ export const arkSeedreamProvider: ImageProvider = {
     }
 
     if (!response.ok) {
-      console.error('[ark-seedream] upstream error', response.status, payload);
+      console.error('[ark-seedream] upstream error', {
+        modelId: req.modelId,
+        status: response.status,
+        size: outboundSize,
+        aspectRatio: req.aspectRatio,
+        payload,
+      });
       throw new Error('方舟生图服务暂不可用');
     }
 
     const items = payload.data ?? [];
     if (items.length === 0) {
+      console.error('[ark-seedream] 未返回图片', {
+        modelId: req.modelId,
+        status: response.status,
+        size: outboundSize,
+        aspectRatio: req.aspectRatio,
+        payload,
+      });
       throw new Error('方舟生图未返回图片');
     }
 
