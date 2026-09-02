@@ -6,7 +6,7 @@
   flex-direction: column;
   background: var(--one-color-bg-container);
   border: 1px solid var(--one-color-border-secondary);
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -14,7 +14,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 20px;
+  padding: 0 20px;
+  height: 50px;
   border-bottom: 1px solid var(--one-color-border-secondary);
   font-size: 14px;
   font-weight: 600;
@@ -23,6 +24,24 @@
 
 .star {
   color: var(--one-color-primary);
+}
+
+/* head 栏右侧操作区：编辑/保存/取消 */
+.headActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 编辑态分析结果 Markdown 全文输入框 */
+.editor {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 .body {

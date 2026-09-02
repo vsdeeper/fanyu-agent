@@ -253,6 +253,7 @@ export default function EcommerceStudio() {
           expectedImageCount={expectedImageCount}
           onPrev={handlePrev}
           onNext={() => void handleGenerate()}
+          onAnalysisTextChange={setAnalysisText}
         />
       </Layout.Content>
     </Layout>

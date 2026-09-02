@@ -3,19 +3,22 @@ import { Badge, Button, Input, Segmented, Select } from 'antd';
 import {
   ANALYZE_BUTTON,
   ASPECT_RATIO_OPTIONS,
-  CLARITY_OPTIONS,
-  COUNT_OPTIONS,
   DESIGN_TYPE_ITEMS,
   LANGUAGE_OPTIONS,
   MODEL_OPTIONS,
   PLATFORM_OPTIONS,
-  QUALITY_OPTIONS,
   REQUIREMENT_LABELS,
   REQUIREMENT_PLACEHOLDER,
 } from '../constants';
+import {
+  isQualitySupported,
+  toClarityOptions,
+  toCountOptions,
+  toQualityOptions,
+} from '../model-options';
 import type { ProductImageItem, StudioFormState, StudioPhase } from '../types';
 import ProductUpload from './ProductUpload';
-import { patchDesignType, patchFormState, toDesignType } from './utils';
+import { patchDesignType, patchFormState, patchModel, patchPlatform, toDesignType } from './utils';
 import styles from './ControlPanel.module.css';
 
 const TYPE_OPTIONS = DESIGN_TYPE_ITEMS.map((item) => ({
@@ -85,7 +88,7 @@ export default function ControlPanel({
             value={form.platform}
             options={PLATFORM_OPTIONS}
             disabled={formLocked}
-            onChange={(value) => onFormChange(patchFormState(form, 'platform', value))}
+            onChange={(value) => onFormChange(patchPlatform(form, value))}
           />
         </label>
 
@@ -96,6 +99,7 @@ export default function ControlPanel({
               className={styles.requirement}
               value={form.requirement}
               placeholder={REQUIREMENT_PLACEHOLDER}
+              autoSize={{ minRows: 3, maxRows: 10 }}
               disabled={formLocked}
               onChange={(event) =>
                 onFormChange(patchFormState(form, 'requirement', event.target.value))
@@ -131,7 +135,7 @@ export default function ControlPanel({
               value={form.model}
               options={MODEL_OPTIONS}
               disabled={formLocked}
-              onChange={(value) => onFormChange(patchFormState(form, 'model', value))}
+              onChange={(value) => onFormChange(patchModel(form, value))}
             />
           </label>
           <label className={styles.field}>
@@ -146,20 +150,22 @@ export default function ControlPanel({
         </div>
 
         <div className={styles.pair}>
-          <label className={styles.field}>
-            <span className={styles.label}>质量</span>
-            <Select
-              value={form.quality}
-              options={QUALITY_OPTIONS}
-              disabled={formLocked}
-              onChange={(value) => onFormChange(patchFormState(form, 'quality', value))}
-            />
-          </label>
+          {isQualitySupported(form.model) && (
+            <label className={styles.field}>
+              <span className={styles.label}>质量</span>
+              <Select
+                value={form.quality}
+                options={toQualityOptions(form.model)}
+                disabled={formLocked}
+                onChange={(value) => onFormChange(patchFormState(form, 'quality', value))}
+              />
+            </label>
+          )}
           <label className={styles.field}>
             <span className={styles.label}>清晰度</span>
             <Select
               value={form.clarity}
-              options={CLARITY_OPTIONS}
+              options={toClarityOptions(form.model)}
               disabled={formLocked}
               onChange={(value) => onFormChange(patchFormState(form, 'clarity', value))}
             />
@@ -170,7 +176,7 @@ export default function ControlPanel({
           <span className={styles.label}>生成数量</span>
           <Select
             value={form.count}
-            options={COUNT_OPTIONS}
+            options={toCountOptions(form.designType, form.platform)}
             disabled={formLocked}
             onChange={(value) => onFormChange(patchFormState(form, 'count', value))}
           />

@@ -6,7 +6,7 @@
   min-height: 0;
   background: var(--one-color-bg-container);
   border: 1px solid var(--one-color-border-secondary);
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
 }
 

@@ -33,4 +33,5 @@ export const LANGUAGE_LABEL: Record<string, string> = {
 };
 
 export const MAX_STUDIO_PRODUCT_IMAGES = 6;
-export const STUDIO_COUNT_VALUES = [1, 2, 4, 8] as const;
+// 覆盖各生图类型/平台可选数量（主图随平台至 5，详情图 2/4/6/8，广告图 1/2/4）的并集。
+export const STUDIO_COUNT_VALUES = [1, 2, 3, 4, 5, 6, 8] as const;

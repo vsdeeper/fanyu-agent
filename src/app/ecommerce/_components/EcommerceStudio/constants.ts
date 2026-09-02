@@ -1,4 +1,5 @@
 import type { DesignType, StudioFormState, StudioPhase } from './types';
+import { toModelOptions } from './model-options';
 
 export const MAX_PRODUCT_IMAGES = 6;
 
@@ -32,7 +33,7 @@ export const REQUIREMENT_LABELS: Record<DesignType, string> = {
 };
 
 export const REQUIREMENT_PLACEHOLDER =
-  '建议填写：产品名称、核心卖点、目标人群、投放平台、画面风格等，便于生成更贴合的电商图';
+  '建议填写：产品名称、核心卖点、目标人群、投放平台、画面风格、整体氛围、文案要求，便于生成更贴合的电商图';
 
 export const DEFAULT_ASPECT_BY_TYPE: Record<DesignType, string> = {
   main: '1:1',
@@ -81,13 +82,8 @@ export const LANGUAGE_OPTIONS = [
   { value: 'en', label: '英文' },
 ];
 
-export const MODEL_OPTIONS = [
-  { value: 'gpt-image-2-vip', label: 'GPT Image 2 VIP' },
-  { value: 'gemini-3.1-flash-image', label: 'Gemini Flash Image' },
-  { value: 'gemini-3.1-flash-lite-image', label: 'Gemini Flash Lite Image' },
-  { value: 'doubao-seedream-4-5-251128', label: 'Seedream 4.5' },
-  { value: 'doubao-seedream-5-0-lite-260128', label: 'Seedream' },
-];
+/** 模型下拉（id + label），派生自 model-options，与服务端模型清单一致 */
+export const MODEL_OPTIONS = toModelOptions();
 
 export const ASPECT_RATIO_OPTIONS = [
   { value: '3:4', label: '3:4 竖版' },
@@ -97,35 +93,16 @@ export const ASPECT_RATIO_OPTIONS = [
   { value: '16:9', label: '16:9 横版' },
 ];
 
-export const QUALITY_OPTIONS = [
-  { value: 'medium', label: '中等质量' },
-  { value: 'high', label: '高质量' },
-  { value: 'low', label: '低质量' },
-];
-
-export const CLARITY_OPTIONS = [
-  { value: '1K', label: '1K 标准' },
-  { value: '2K', label: '2K 高清' },
-  { value: '4K', label: '4K 超清' },
-];
-
-export const COUNT_OPTIONS = [
-  { value: '1', label: '1 张' },
-  { value: '2', label: '2 张' },
-  { value: '4', label: '4 张' },
-  { value: '8', label: '8 张' },
-];
-
 export const DEFAULT_FORM_STATE: StudioFormState = {
   designType: 'main',
   platform: 'auto',
   requirement: '',
-  language: 'visual',
-  model: 'gpt-image-2-vip',
+  language: 'zh-CN', // 目标语言默认中文简体
+  model: 'gpt-image-2-vip', // 统一默认模型：写实/指令遵从最强、支持透明底
   aspectRatio: '1:1',
-  quality: 'medium',
-  clarity: '1K',
-  count: '1',
+  quality: 'high', // 模型支持质量时默认高质量
+  clarity: '2K', // 按模型规格默认 2K，不支持回退 1K
+  count: '1', // 主图(智能匹配)默认 1
 };
 
 export const PRODUCT_IMAGE_ACCEPT = 'image/*';

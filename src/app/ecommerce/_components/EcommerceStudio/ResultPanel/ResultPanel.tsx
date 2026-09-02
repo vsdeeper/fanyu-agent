@@ -1,9 +1,10 @@
 import { StarOutlined } from '@ant-design/icons';
-import { Button, Spin } from 'antd';
+import { Button, Input, Spin } from 'antd';
 import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import './XMarkdownTheme.css';
+import { useState } from 'react';
 import { useThemeMode } from '@/components/theme';
 import { EMPTY_RESULT_HINT, NEXT_BUTTON, PREV_BUTTON } from '../constants';
 import type { StudioPhase, StudioResultImage } from '../types';
@@ -26,10 +27,11 @@ type ResultPanelProps = {
   expectedImageCount: number;
   onPrev: () => void;
   onNext: () => void;
+  onAnalysisTextChange: (next: string) => void;
 };
 
 /**
- * 右侧结果区：空态、分析等待 Spin、流式规划 Markdown（贴底跟随）、出图网格，右下角上一步/下一步。
+ * 右侧结果区：空态、分析等待 Spin、流式规划 Markdown（贴底跟随，可编辑）、出图网格，右下角上一步/下一步。
  */
 export default function ResultPanel({
   phase,
@@ -39,23 +41,68 @@ export default function ResultPanel({
   expectedImageCount,
   onPrev,
   onNext,
+  onAnalysisTextChange,
 }: ResultPanelProps) {
   const { mode } = useThemeMode();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
   const showPlan = (phase === 'analyzing' || phase === 'confirm') && Boolean(analysisText);
   const showImages = phase === 'generating' || phase === 'done';
+  // 编辑态仅在确认阶段生效（footer 在上一步/下一步期间被禁用，故编辑时不会离开 confirm）
+  const isEditing = editing && phase === 'confirm';
+  // 仅确认阶段（内容已输出完毕）且已有内容时才可进入编辑
+  const canEdit = phase === 'confirm' && Boolean(analysisText) && !editing;
   const { scrollRef, contentRef, onScroll } = usePlanStreamScroll(
     showPlan,
     analysisStreaming,
     analysisText,
   );
 
+  const startEdit = () => {
+    setDraft(analysisText);
+    setEditing(true);
+  };
+  const cancelEdit = () => setEditing(false);
+  const saveEdit = () => {
+    const next = draft.trim();
+    if (next && next !== analysisText) onAnalysisTextChange(draft);
+    setEditing(false);
+  };
+
   return (
     <section className={styles.panel}>
       <div className={styles.head}>
         <StarOutlined className={styles.star} />
         生成结果
+        <div className={styles.headActions}>
+          {isEditing ? (
+            <>
+              <Button size="small" onClick={cancelEdit}>
+                取消
+              </Button>
+              <Button size="small" type="primary" onClick={saveEdit}>
+                保存
+              </Button>
+            </>
+          ) : (
+            canEdit && (
+              <Button size="small" onClick={startEdit}>
+                编辑
+              </Button>
+            )
+          )}
+        </div>
       </div>
-      {showPlan ? (
+      {isEditing ? (
+        <div className={styles.scroll}>
+          <Input.TextArea
+            className={styles.editor}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            style={{ height: '100%' }}
+          />
+        </div>
+      ) : showPlan ? (
         <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
           <div ref={contentRef}>
             <XMarkdown
@@ -85,10 +132,15 @@ export default function ResultPanel({
         </div>
       )}
       <div className={styles.footer}>
-        <Button disabled={isPrevDisabled(phase)} onClick={onPrev}>
+        <Button size="large" disabled={isEditing || isPrevDisabled(phase)} onClick={onPrev}>
           {PREV_BUTTON}
         </Button>
-        <Button type="primary" disabled={isNextDisabled(phase)} onClick={onNext}>
+        <Button
+          size="large"
+          type="primary"
+          disabled={isEditing || isNextDisabled(phase)}
+          onClick={onNext}
+        >
           {NEXT_BUTTON}
         </Button>
       </div>

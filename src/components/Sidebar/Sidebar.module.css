@@ -62,7 +62,7 @@
 
 .nav {
   flex-shrink: 0;
-  padding: 16px 12px 0;
+  padding: 16px calc(12px - var(--scrollbar-size)) 0 12px;
 }
 
 .newChatBtn {

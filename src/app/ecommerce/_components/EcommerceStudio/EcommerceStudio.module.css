@@ -30,7 +30,7 @@
 
 .stepsRow {
   flex-shrink: 0;
-  padding: 12 24px 32px;
+  padding: 12 42px 32px;
 }
 
 .steps :global(.ant-steps-item-title) {
