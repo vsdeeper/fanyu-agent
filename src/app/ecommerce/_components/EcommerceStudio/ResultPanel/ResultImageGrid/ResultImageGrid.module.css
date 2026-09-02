@@ -1,0 +1,48 @@
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.image {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.failed,
+.image:global(.ant-image-error) {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--one-color-fill-tertiary);
+}
+
+.failed :global(.ant-image-img),
+.image:global(.ant-image-error) :global(.ant-image-img) {
+  width: 48px !important;
+  height: 48px !important;
+  object-fit: contain !important;
+  background: none !important;
+  background-image: none !important;
+}
+
+.image :global(.ant-image-img),
+.image :global(.ant-skeleton-image) {
+  object-fit: cover;
+  object-position: center;
+}
+
+.previewBody :global(.ant-image-preview-img) {
+  background-color: var(--one-color-fill-quaternary);
+  background-image:
+    linear-gradient(45deg, var(--one-color-fill-secondary) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--one-color-fill-secondary) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--one-color-fill-secondary) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--one-color-fill-secondary) 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+}

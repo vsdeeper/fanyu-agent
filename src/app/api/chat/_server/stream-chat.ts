@@ -28,7 +28,7 @@ import { isEcommerceUploadsEnabled } from './tools/ecommerce-uploads';
 import { createCatalogTools, getToolHints } from './tools/registry';
 import { buildSkillCatalogPrompt } from '@/lib/skills/server/catalog-prompt';
 import { expandSkillTokensInText } from '@/lib/skills/server/expand';
-import { listSkills } from '@/lib/skills/server/registry';
+import { getSkill, listSkills } from '@/lib/skills/server/registry';
 import { resolveTurnSkills } from '@/lib/skills/server/resolve-turn';
 import { getChatProvider } from './providers/config';
 import { getChatProviderRuntime } from './providers/resolve';
@@ -61,25 +61,48 @@ export type StreamChatOptions = {
   messages: UIMessage[];
   userLocation: UserLocation | undefined;
   abortSignal: AbortSignal;
+  /** 并入本轮激活与粘滞，保证指定 skill 的工具与 instructions 生效 */
+  forcedSkillIds?: string[];
+  /** 拼在 Activation 块之后，供工作台等入口覆盖 skill 正文中的确认门 */
+  extraInstructions?: string;
+  /** 跳过对话标题摘要（工作台会话不进侧栏） */
+  skipTitle?: boolean;
 };
+
+/** 按注册表去重追加 skill id */
+function mergeSkillIds(base: string[], extra: string[] | undefined): string[] {
+  if (!extra?.length) return base;
+  const seen = new Set(base);
+  const out = [...base];
+  for (const id of extra) {
+    if (seen.has(id) || !getSkill(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
 
 export async function streamChatResponse({
   chatId,
   messages,
   userLocation,
   abortSignal,
+  forcedSkillIds,
+  extraInstructions,
+  skipTitle,
 }: StreamChatOptions) {
   const isFirstUserTurn = messages.filter((message) => message.role === 'user').length === 1;
   const firstUserText = isFirstUserTurn ? getFirstUserText(messages) : '';
   // 与主对话并行摘要；不绑 abortSignal，停止生成仍应留下标题
-  const titlePromise = firstUserText
-    ? generateChatTitle(firstUserText).then(async (llmTitle) => {
-        if (llmTitle) {
-          await updateChatTitle(chatId, llmTitle);
-        }
-        return llmTitle;
-      })
-    : Promise.resolve(undefined);
+  const titlePromise =
+    skipTitle || !firstUserText
+      ? Promise.resolve(undefined)
+      : generateChatTitle(firstUserText).then(async (llmTitle) => {
+          if (llmTitle) {
+            await updateChatTitle(chatId, llmTitle);
+          }
+          return llmTitle;
+        });
 
   const runtime = getChatProviderRuntime();
   const provider = getChatProvider();
@@ -92,8 +115,14 @@ export async function streamChatResponse({
   const pastedImageDataUrls = getLatestUserImageDataUrls(messages);
 
   // 本回合激活的 skill 必须先于工具构建与上传图 hint：电商登记工具 / 产品图锚点仅在电商链路开启。
-  const { turnActivatedIds, turnActivatedSkills, mergedSkillIds } = resolveTurnSkills(messages, {
+  const resolved = resolveTurnSkills(messages, {
     log: false,
+  });
+  const turnActivatedIds = mergeSkillIds(resolved.turnActivatedIds, forcedSkillIds);
+  const mergedSkillIds = mergeSkillIds(resolved.mergedSkillIds, forcedSkillIds);
+  const turnActivatedSkills = turnActivatedIds.flatMap((id) => {
+    const skill = getSkill(id);
+    return skill ? [skill] : [];
   });
   const activatedIds = new Set(turnActivatedIds);
   const allSkillIds = new Set(listSkills().map((skill) => skill.id));
@@ -190,9 +219,10 @@ export async function streamChatResponse({
         pastedImageDataUrls.length > 0 ? pastedImageDataUrls.length : 0,
       )
     : '';
+  const extraBlock = extraInstructions?.trim() ? `\n\n${extraInstructions.trim()}` : '';
 
   // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体，并用短段落、空行分隔要点，避免写成一整段。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}${uploadHint}\n\n${getToolHints(pastedImageDataUrls.length > 0, capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool, ecommerceUploadsEnabled)}`;
+  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体，并用短段落、空行分隔要点，避免写成一整段。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}${extraBlock}${uploadHint}\n\n${getToolHints(pastedImageDataUrls.length > 0, capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool, ecommerceUploadsEnabled)}`;
 
   const instructions = runtime.getInstructions({
     userLocation,

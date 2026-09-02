@@ -1,4 +1,4 @@
-import type { DesignType, StudioFormState } from './types';
+import type { DesignType, StudioFormState, StudioPhase } from './types';
 
 export const MAX_PRODUCT_IMAGES = 6;
 
@@ -7,13 +7,13 @@ export const STUDIO_TITLE = 'AI帮写需求，一键生成详情图组';
 export const STUDIO_SUBTITLE =
   '上传产品图，AI 智能分析并帮写拍摄需求，自动生成多角度、多场景的电商详情图组';
 
-export const STUDIO_STEPS = [
+export const STUDIO_STEPS: { title: string }[] = [
   { title: '输入' },
   { title: '分析中' },
   { title: '确认规划' },
   { title: '生成中' },
   { title: '完成' },
-] as const;
+];
 
 export const DESIGN_TYPE_ITEMS: {
   value: DesignType;
@@ -34,11 +34,35 @@ export const REQUIREMENT_LABELS: Record<DesignType, string> = {
 export const REQUIREMENT_PLACEHOLDER =
   '建议填写：产品名称、核心卖点、目标人群、投放平台、画面风格等，便于生成更贴合的电商图';
 
+export const DEFAULT_ASPECT_BY_TYPE: Record<DesignType, string> = {
+  main: '1:1',
+  detail: '3:4',
+  ad: '16:9',
+};
+
+export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
+  input: 0,
+  analyzing: 1,
+  confirm: 2,
+  generating: 3,
+  done: 4,
+};
+
+export const NO_IMAGE_WARNING = '请先上传产品图';
+export const ANALYZE_BUTTON = '分析产品';
+export const PREV_BUTTON = '上一步';
+export const NEXT_BUTTON = '下一步';
+export const ANALYZE_FAILED = '产品分析失败，请稍后重试';
+export const GENERATE_FAILED = '生图失败，请稍后重试';
+export const SLOTS_MISSING = '请先完成产品分析';
+
 export const COMING_SOON_MESSAGE = '功能即将开放';
 
 export const EMPTY_RESULT_HINT = '上传产品图并填写要求后 点击「分析产品」开始';
 
-export const UPLOAD_HINT = '多图上传时建议仅上传必要的视角或 sku 图，干净的白底产品图最佳';
+export const UPLOAD_SUBTITLE = '上传清晰的产品图片';
+
+export const UPLOAD_HINT = '多图上传时建议仅上传必要的视角或 sku 图，\n干净的白底产品图最佳';
 
 export const RETOUCH_HINT = '没有白底图？去精修获得白底图';
 
@@ -98,7 +122,7 @@ export const DEFAULT_FORM_STATE: StudioFormState = {
   requirement: '',
   language: 'visual',
   model: 'gpt-image-2-vip',
-  aspectRatio: '3:4',
+  aspectRatio: '1:1',
   quality: 'medium',
   clarity: '1K',
   count: '1',

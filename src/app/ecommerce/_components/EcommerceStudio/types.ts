@@ -1,5 +1,7 @@
 export type DesignType = 'main' | 'detail' | 'ad';
 
+export type StudioPhase = 'input' | 'analyzing' | 'confirm' | 'generating' | 'done';
+
 export type ProductImageItem = {
   uid: string;
   file: File;
@@ -16,4 +18,11 @@ export type StudioFormState = {
   quality: string;
   clarity: string;
   count: string;
+};
+
+export type StudioResultImage = {
+  index: number;
+  status: 'pending' | 'ready' | 'failed';
+  url?: string;
+  error?: string;
 };

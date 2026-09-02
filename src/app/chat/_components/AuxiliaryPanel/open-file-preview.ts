@@ -1,7 +1,7 @@
 import 'client-only';
 
-import { message } from 'antd';
 import { isDocAssetHref } from '@/app/api/docs/_shared/url';
+import { getAntdMessage } from '@/lib/shared/client/antd-message';
 import {
   estimateDataUrlBytes,
   FILE_PREVIEW_TOO_LARGE_MESSAGE,
@@ -33,7 +33,7 @@ export function resolvePreviewSource(href: string): AuxiliaryPanelFileSource {
  */
 export function openFilePreview(options: OpenFilePreviewOptions): void {
   if (!isPreviewableFile(options.fileName, options.mediaType)) {
-    message.warning(UNSUPPORTED_PREVIEW_MESSAGE);
+    getAntdMessage().warning(UNSUPPORTED_PREVIEW_MESSAGE);
     return;
   }
 
@@ -41,13 +41,13 @@ export function openFilePreview(options: OpenFilePreviewOptions): void {
     options.byteSize ??
     (options.href.startsWith('data:') ? estimateDataUrlBytes(options.href) : undefined);
   if (isFileOverPreviewLimit(byteSize)) {
-    message.warning(FILE_PREVIEW_TOO_LARGE_MESSAGE);
+    getAntdMessage().warning(FILE_PREVIEW_TOO_LARGE_MESSAGE);
     return;
   }
 
   const isDataUrl = options.href.startsWith('data:');
   if (!isDataUrl && !isDocAssetHref(options.href)) {
-    message.warning(UNAVAILABLE_PREVIEW_MESSAGE);
+    getAntdMessage().warning(UNAVAILABLE_PREVIEW_MESSAGE);
     return;
   }
 

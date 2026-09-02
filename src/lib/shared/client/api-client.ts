@@ -1,6 +1,6 @@
 import 'client-only';
 
-import { message } from 'antd';
+import { getAntdMessage } from './antd-message';
 
 const API_OK = 0;
 
@@ -59,7 +59,7 @@ function notifyError(err: unknown, silent?: boolean): never {
   }
 
   if (!silent) {
-    message.error(apiErr.message);
+    getAntdMessage().error(apiErr.message);
   }
 
   throw apiErr;

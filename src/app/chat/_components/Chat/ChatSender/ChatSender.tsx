@@ -4,7 +4,7 @@ import type { AttachmentsRef } from '@ant-design/x/es/attachments';
 import Suggestion from '@ant-design/x/es/suggestion';
 import type { SenderRef } from '@ant-design/x/es/sender/interface';
 import { LinkOutlined } from '@ant-design/icons';
-import { Badge, Button, Flex, Upload, message } from 'antd';
+import { App, Badge, Button, Flex, Upload } from 'antd';
 import { listSkillSummaries } from '@/lib/skills/summaries';
 import AttachmentPreviewList from './AttachmentPreviewList';
 import {
@@ -52,6 +52,7 @@ export default function ChatSender({
   onCancel,
   onSend,
 }: ChatSenderProps) {
+  const { message } = App.useApp();
   const [chatId, setChatId] = useState(id);
   // 修复：Sender.Header + forceRender 让 CSSMotion 在 SSR 输出 display:none 的 header，
   // 客户端首帧不输出，草稿 /chat 刷新 Hydration failed（header 对上 textarea）。

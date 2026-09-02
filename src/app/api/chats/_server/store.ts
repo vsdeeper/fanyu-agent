@@ -7,6 +7,7 @@ import { getDb } from '@/lib/db/client';
 import { chats, messages } from '@/lib/db/schema';
 import { DEFAULT_CHAT_TITLE } from './constants';
 import { deriveHeuristicTitle, getFirstUserText } from '@/app/api/chat/_server/title';
+import { ECOM_CHAT_ID_PREFIX } from '@/app/api/ecommerce/_shared/constants';
 import type { ChatListItem, ChatRecord } from '../_shared/types';
 
 export async function createChat(): Promise<string> {
@@ -114,16 +115,18 @@ export async function saveChat({
   });
 }
 
-/** 会话列表（按更新时间倒序）；React.cache 去重同请求内根 layout 与 chat layout 的重复查询 */
+/** 会话列表（按更新时间倒序）；排除历史上工作台写入的 ecom- 空会话。React.cache 去重同请求内根 layout 与 chat layout 的重复查询 */
 export const listChats = cache(async function listChats(): Promise<ChatListItem[]> {
   const db = getDb();
   const rows = db.select().from(chats).orderBy(desc(chats.updatedAt)).all();
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title || DEFAULT_CHAT_TITLE,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  }));
+  return rows
+    .filter((row) => !row.id.startsWith(ECOM_CHAT_ID_PREFIX))
+    .map((row) => ({
+      id: row.id,
+      title: row.title || DEFAULT_CHAT_TITLE,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }));
 });
 
 /** 仅更新会话标题，不碰消息、不刷新 updatedAt（避免侧栏因改标题而重排） */
