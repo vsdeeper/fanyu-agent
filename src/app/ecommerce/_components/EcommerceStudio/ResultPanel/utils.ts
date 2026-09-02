@@ -55,3 +55,18 @@ export function isNextDisabled(phase: StudioPhase): boolean {
 export function getImageSrc(asset: { url?: string }): string {
   return asset.url ?? '';
 }
+
+/**
+ * 依据宽高比串（如 3:4、16:9）把基准宽换算为预览单元格尺寸。
+ * 与表单「尺寸比例」对标，使预览/骨架比例一致；非法比例回退正方形。
+ */
+export function aspectRatioToSize(
+  ratio: string,
+  baseWidth: number,
+): { width: number; height: number } {
+  const m = /^(\d+):(\d+)$/.exec(ratio.trim());
+  const w = m ? Number(m[1]) : 0;
+  const h = m ? Number(m[2]) : 0;
+  if (w <= 0 || h <= 0) return { width: baseWidth, height: baseWidth };
+  return { width: baseWidth, height: Math.round((baseWidth * h) / w) };
+}

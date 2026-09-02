@@ -2,18 +2,30 @@ import { Image, Skeleton } from 'antd';
 import type { StudioResultImage } from '../../types';
 import ResultImageItem from './ResultImageItem';
 import { RESULT_IMAGE_SIZE, RESULT_PREVIEW_GROUP_CLASS_NAMES } from './constants';
-import { getImageSrc } from '../utils';
+import { aspectRatioToSize, getImageSrc } from '../utils';
 import styles from './ResultImageGrid.module.css';
 
 type ResultImageGridProps = {
   images: readonly StudioResultImage[];
   expectedCount: number;
+  /** 表单「尺寸比例」（如 3:4），用于对齐预览/骨架显示比例 */
+  aspectRatio: string;
 };
 
 /**
  * 工作台出图网格：pending 为 Skeleton，就绪为可预览图，失败为 fallback。
+ * 预览与骨架单元格比例随表单「尺寸比例」变化。
  */
-export default function ResultImageGrid({ images, expectedCount }: ResultImageGridProps) {
+export default function ResultImageGrid({
+  images,
+  expectedCount,
+  aspectRatio,
+}: ResultImageGridProps) {
+  // 统一基准宽换算：同一次出图所有单元格用同一比例，网格对齐
+  const { width: cellWidth, height: cellHeight } = aspectRatioToSize(
+    aspectRatio,
+    RESULT_IMAGE_SIZE,
+  );
   const previewItems = images
     .filter((item) => item.status === 'ready')
     .map((item) => ({ src: getImageSrc(item) }))
@@ -27,7 +39,7 @@ export default function ResultImageGrid({ images, expectedCount }: ResultImageGr
           <Skeleton.Image
             key={`pending-${index}`}
             active
-            style={{ width: RESULT_IMAGE_SIZE, height: RESULT_IMAGE_SIZE, borderRadius: 8 }}
+            style={{ width: cellWidth, height: cellHeight, borderRadius: 8 }}
           />
         ))}
       </div>
@@ -38,7 +50,12 @@ export default function ResultImageGrid({ images, expectedCount }: ResultImageGr
     <div className={styles.grid}>
       <Image.PreviewGroup items={previewItems} classNames={RESULT_PREVIEW_GROUP_CLASS_NAMES}>
         {images.map((item) => (
-          <ResultImageItem key={`result-${item.index}`} image={item} />
+          <ResultImageItem
+            key={`result-${item.index}`}
+            image={item}
+            width={cellWidth}
+            height={cellHeight}
+          />
         ))}
       </Image.PreviewGroup>
     </div>

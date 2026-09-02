@@ -251,6 +251,7 @@ export default function EcommerceStudio() {
           analysisStreaming={analysisStreaming}
           images={resultImages}
           expectedImageCount={expectedImageCount}
+          aspectRatio={form.aspectRatio}
           onPrev={handlePrev}
           onNext={() => void handleGenerate()}
           onAnalysisTextChange={setAnalysisText}

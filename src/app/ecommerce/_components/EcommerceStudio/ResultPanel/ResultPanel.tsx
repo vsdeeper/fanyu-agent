@@ -28,6 +28,8 @@ type ResultPanelProps = {
   onPrev: () => void;
   onNext: () => void;
   onAnalysisTextChange: (next: string) => void;
+  /** 表单「尺寸比例」，传给出图网格对齐预览比例 */
+  aspectRatio: string;
 };
 
 /**
@@ -42,6 +44,7 @@ export default function ResultPanel({
   onPrev,
   onNext,
   onAnalysisTextChange,
+  aspectRatio,
 }: ResultPanelProps) {
   const { mode } = useThemeMode();
   const [editing, setEditing] = useState(false);
@@ -123,7 +126,11 @@ export default function ResultPanel({
         </div>
       ) : showImages ? (
         <div className={styles.scroll}>
-          <ResultImageGrid images={images} expectedCount={expectedImageCount} />
+          <ResultImageGrid
+            images={images}
+            expectedCount={expectedImageCount}
+            aspectRatio={aspectRatio}
+          />
         </div>
       ) : (
         <div className={styles.body}>
