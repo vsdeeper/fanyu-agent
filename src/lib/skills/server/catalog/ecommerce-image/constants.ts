@@ -47,6 +47,13 @@ export const GATE_B =
 export const GATE_C =
   '以上生成清单与主图规划可调整；确认后我将按规划生成整组主图（下一步：生成系列图）。请确认或提出修改。';
 
+/**
+ * 每次 generate_image 的 prompt 末尾须写明的字面硬约束。
+ * skill 指令要求模型写入；服务端出站守卫再追加同款片段，避免主模型漏写。
+ */
+export const PROMPT_HARD_CONSTRAINTS =
+  '主标题字高≤画面高约1/6，整段文字总高≤画面高约40%，文字不压产品主体，四周留白≥5%；画面四边四角为连续场景，禁空占位色块/圆角底板框/未填内容的徽章或二维码框';
+
 /** 把平台张数拼成清单里的「淘宝/天猫 5 · 京东 10 …」提示 */
 export function formatMainPlatformCountHint(): string {
   return MAIN_PLATFORM_COUNTS.map((platform) => `${platform.label} ${platform.count}`).join(' · ');

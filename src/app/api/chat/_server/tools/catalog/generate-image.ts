@@ -33,6 +33,7 @@ import {
   IMAGE_TOOL_PASTE_SOURCE_ERROR,
 } from '@/app/api/chat/_shared/tool-errors';
 import type { ImagePurpose } from '@/app/api/chat/_shared/types';
+import { PROMPT_HARD_CONSTRAINTS } from '@/lib/skills/server/catalog/ecommerce-image/constants';
 import { listImageGroupingSkillIds } from '@/lib/skills/server/registry';
 import type { AgentToolDefinition } from '../types';
 import { normalizeImageAssets } from './legacy-output';
@@ -42,11 +43,10 @@ const ASPECT_RATIO_PATTERN = /^(auto|\d+:\d+)$/i;
 
 /**
  * 电商改图的服务端守卫（追加到出站 prompt 末尾，落盘仍用原始 prompt，不回流）。
- * 兜底「主模型失忆」：即便模型没在首次 prompt 重申产品保真/文字占比，出站也强制带上，
- * 避免多轮 i2i 让产品本体漂移、文字占比失控。追加到 prompt 末尾，不与模型前端分工首句冲突。
+ * 兜底「主模型失忆」：即便模型没在首次 prompt 重申产品保真/文字占比/画面完整，出站也强制带上，
+ * 避免多轮 i2i 让产品本体漂移、文字占比失控、画面出现空占位色块。追加到 prompt 末尾，不与模型前端分工首句冲突。
  */
-const ECOMMERCE_EDIT_PROMPT_GUARD =
-  '（服务端强制）第1个参考图=产品本体，形状/颜色/材质/细节严格100%不变；其余参考仅作背景/色调/氛围/构图语言的风格参考，不改变产品本体。文字按最小编排：主标题字高≤画面高约1/6，整段文字总高≤画面高约40%，文字不压产品主体，四周留白≥5%；文字禁任何投影/描边/发光等阴影效果；文字与产品场景背景自然融为一体，勿用与背景割裂的实心纯色块/不透明底板，文案区与产品画面须连续成一张照片。';
+const ECOMMERCE_EDIT_PROMPT_GUARD = `（服务端强制）第1个参考图=产品本体，形状/颜色/材质/细节严格100%不变；其余参考仅作背景/色调/氛围/构图语言的风格参考，不改变产品本体。文字按最小编排：${PROMPT_HARD_CONSTRAINTS}；文字禁任何投影/描边/发光等阴影效果；文字与产品场景背景自然融为一体，勿用与背景割裂的实心纯色块/不透明底板，文案区与产品画面须连续成一张照片。`;
 
 /** 生图失败（非用户中断）打服务端日志；面向用户的文案仍走工具 output。 */
 function logImageToolFailure(fields: {
