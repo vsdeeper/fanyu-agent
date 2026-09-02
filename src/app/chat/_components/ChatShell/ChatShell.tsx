@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { generateId, type UIMessage } from 'ai';
 import { Layout, Spin, Typography } from 'antd';
 import type { ChatListItem, ChatRecord } from '@/app/api/chats/_shared/types';
-import { useWorkspace } from '@/app/_components/AppLayout/context';
+import { useWorkspace } from '@/components/AppLayout/context';
 import { apiGet } from '@/lib/shared/client/api-client';
 import { resolveChatRouteId } from '@/app/chat/_utils/chat-id';
 import ModeSwitch from '@/components/ModeSwitch';

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
-import AppLayout from '@/app/_components/AppLayout';
+import AppLayout from '@/components/AppLayout';
 import { listChats } from '@/app/api/chats/_server/store';
 import Providers from '@/components/Providers';
 import { THEME_RESOLVED_COOKIE_KEY } from '@/components/theme/constants';

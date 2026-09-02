@@ -9,7 +9,7 @@ import {
   ShoppingOutlined,
 } from '@ant-design/icons';
 import { Button, Layout, Typography } from 'antd';
-import { useWorkspace } from '@/app/_components/AppLayout/context';
+import { useWorkspace } from '@/components/AppLayout/context';
 import { ECOMMERCE_PATH } from './constants';
 import { getActiveChatIdFromPathname, getChatGroupLabel } from './utils';
 import type { ChatListItem } from '@/app/api/chats/_shared/types';

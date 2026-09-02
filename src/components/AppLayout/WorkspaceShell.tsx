@@ -1,6 +1,6 @@
 import { Layout } from 'antd';
 import { usePathname } from 'next/navigation';
-import Sidebar from '@/app/_components/Sidebar';
+import Sidebar from '@/components/Sidebar';
 import CollapsedBar from './CollapsedBar';
 import { useWorkspace } from './context';
 import styles from './AppLayout.module.css';
