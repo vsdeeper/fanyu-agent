@@ -7,8 +7,18 @@ import { and, desc, eq } from 'drizzle-orm';
 import { getChatDir, getDb } from '@/lib/db/client';
 import { chats, imageAssets } from '@/lib/db/schema';
 
-/** 用户上传（粘贴/拖拽）产品图落盘时的哨兵 modelId；区别于真实生图模型，供产品图检索与路由守卫用 */
-export const PRODUCT_IMAGE_MODEL_ID = 'user-upload';
+/** 电商用户上传产品图落盘时的哨兵 modelId；不是真实生图模型 */
+export const USER_PRODUCT_MODEL_ID = 'user-product';
+/** 电商用户上传设计参考图落盘时的哨兵 modelId；不是真实生图模型 */
+export const USER_REFERENCE_MODEL_ID = 'user-reference';
+
+const USER_UPLOAD_SENTINEL_MODEL_IDS = new Set([USER_PRODUCT_MODEL_ID, USER_REFERENCE_MODEL_ID]);
+
+/** 是否为用户上传哨兵（产品图/参考图）；用于跳过模型继承，避免当真实生图模型 */
+export function isUserUploadSentinelModelId(modelId: string | undefined): boolean {
+  const trimmed = modelId?.trim();
+  return Boolean(trimmed && USER_UPLOAD_SENTINEL_MODEL_IDS.has(trimmed));
+}
 
 export type ImageAssetRecord = {
   id: string;
@@ -70,9 +80,9 @@ export async function saveImageAsset({
   prompt: string;
   bytes: Uint8Array;
   mimeType: string;
-  /** 覆写随机文件名（如产品图按内容哈希落盘以便幂等复用）；缺省用随机 id 命名 */
+  /** 覆写随机文件名（如用户上传图按内容哈希落盘以便幂等复用）；缺省用随机 id 命名 */
   fileName?: string;
-  /** 是否写回 working image；产品图桥接传 false，避免覆盖「最近一张生成图」 */
+  /** 是否写回 working image；用户上传图桥接传 false，避免覆盖「最近一张生成图」 */
   setWorking?: boolean;
 }): Promise<ImageAssetRecord> {
   const id = generateId();
@@ -113,16 +123,43 @@ export async function saveImageAsset({
   };
 }
 
-/** 本会话用户上传产品图（哨兵 modelId）列表，按时间倒序；供桥接回溯与把 id 提示给主模型 */
-export function listProductImageAssets(chatId: string): ImageAssetRecord[] {
+/** 按哨兵 modelId 列出本会话用户上传图，时间倒序 */
+export function listUserUploadAssets(
+  chatId: string,
+  modelId: typeof USER_PRODUCT_MODEL_ID | typeof USER_REFERENCE_MODEL_ID,
+): ImageAssetRecord[] {
   const db = getDb();
   const rows = db
     .select()
     .from(imageAssets)
-    .where(and(eq(imageAssets.chatId, chatId), eq(imageAssets.modelId, PRODUCT_IMAGE_MODEL_ID)))
+    .where(and(eq(imageAssets.chatId, chatId), eq(imageAssets.modelId, modelId)))
     .orderBy(desc(imageAssets.createdAt))
     .all();
   return rows.map(rowToRecord);
+}
+
+/** 本会话已登记产品图（user-product），按时间倒序 */
+export function listProductImageAssets(chatId: string): ImageAssetRecord[] {
+  return listUserUploadAssets(chatId, USER_PRODUCT_MODEL_ID);
+}
+
+/** 本会话已登记设计参考图（user-reference），按时间倒序 */
+export function listReferenceImageAssets(chatId: string): ImageAssetRecord[] {
+  return listUserUploadAssets(chatId, USER_REFERENCE_MODEL_ID);
+}
+
+/** 按 (chatId, fileName) 查已落盘资产；供上传图幂等复用 */
+export function findAssetByFileName(
+  chatId: string,
+  fileName: string,
+): ImageAssetRecord | undefined {
+  const db = getDb();
+  const row = db
+    .select()
+    .from(imageAssets)
+    .where(and(eq(imageAssets.chatId, chatId), eq(imageAssets.fileName, fileName)))
+    .get();
+  return row ? rowToRecord(row) : undefined;
 }
 
 export function getAsset(id: string): ImageAssetRecord | undefined {

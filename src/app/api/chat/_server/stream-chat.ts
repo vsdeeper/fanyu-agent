@@ -22,11 +22,9 @@ import { generateChatTitle } from '@/app/api/chat/_server/generate-title';
 import { saveChat, updateChatTitle } from '@/app/api/chats/_server/store';
 import { selectModel } from '@/app/api/chat/_server/select-model';
 import { getFirstUserText } from '@/app/api/chat/_server/title';
-import { getLatestUserImageDataUrls } from './tools/pasted-image';
-import {
-  bridgePastedProductImages,
-  getProductImageHint,
-} from '@/app/api/images/_server/product-assets';
+import { getLatestUserImageDataUrls, getMostRecentUserImageDataUrls } from './tools/pasted-image';
+import { getEcommerceUploadHint } from '@/app/api/images/_server/product-assets';
+import { isEcommerceUploadsEnabled } from './tools/ecommerce-uploads';
 import { createCatalogTools, getToolHints } from './tools/registry';
 import { buildSkillCatalogPrompt } from '@/lib/skills/server/catalog-prompt';
 import { expandSkillTokensInText } from '@/lib/skills/server/expand';
@@ -93,16 +91,18 @@ export async function streamChatResponse({
 
   const pastedImageDataUrls = getLatestUserImageDataUrls(messages);
 
-  // 产品图落盘桥接：把本轮粘贴图存为哨兵资产（不动 working image），使主模型跨轮仍能引用其 assetId
-  await bridgePastedProductImages(chatId, pastedImageDataUrls);
-
-  // 本回合激活的 skill 必须先于工具构建解析：generate_image 要据此判定「是否有声明分组能力的 skill 在激活」，
-  // 决定输出是否带 imageGrouping 标志（见 createCatalogTools 的 activatedSkillIds；activationBlock 亦复用本结果）。
+  // 本回合激活的 skill 必须先于工具构建与上传图 hint：电商登记工具 / 产品图锚点仅在电商链路开启。
   const { turnActivatedIds, turnActivatedSkills, mergedSkillIds } = resolveTurnSkills(messages, {
     log: false,
   });
   const activatedIds = new Set(turnActivatedIds);
   const allSkillIds = new Set(listSkills().map((skill) => skill.id));
+  const ecommerceUploadsEnabled = isEcommerceUploadsEnabled(turnActivatedIds, mergedSkillIds);
+  const pendingUploadDataUrls = ecommerceUploadsEnabled
+    ? pastedImageDataUrls.length > 0
+      ? pastedImageDataUrls
+      : getMostRecentUserImageDataUrls(messages)
+    : [];
 
   // 联网搜索构造权在 Provider：usesSdkWebSearchTool=true（deepseek/ark）注册 SDK 原生
   // server tool；否则（zhipu）由本地 web_search 工具经独立 API 显式检索
@@ -113,6 +113,8 @@ export async function streamChatResponse({
     providerHasNativeWebSearch: capabilities.usesSdkWebSearchTool,
     activatedSkillIds: turnActivatedIds,
     stickySkillIds: mergedSkillIds,
+    ecommerceUploadsEnabled,
+    pendingUploadDataUrls,
   });
   const tools = {
     ...catalogTools,
@@ -182,11 +184,15 @@ export async function streamChatResponse({
         .map((skill) => skill.name)
         .join('、')}】\n${turnActivatedSkills.map((skill) => skill.instructions).join('\n\n')}`
     : '';
-  // 产品图资产 id 提示：有已桥接产品图时注入，供盲主模型跨轮用其中的 assetId 引用产品图
-  const productImageHint = getProductImageHint(chatId);
+  const uploadHint = ecommerceUploadsEnabled
+    ? getEcommerceUploadHint(
+        chatId,
+        pastedImageDataUrls.length > 0 ? pastedImageDataUrls.length : 0,
+      )
+    : '';
 
   // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体，并用短段落、空行分隔要点，避免写成一整段。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}${productImageHint}\n\n${getToolHints(pastedImageDataUrls.length > 0, capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool)}`;
+  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体，并用短段落、空行分隔要点，避免写成一整段。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}${uploadHint}\n\n${getToolHints(pastedImageDataUrls.length > 0, capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool, ecommerceUploadsEnabled)}`;
 
   const instructions = runtime.getInstructions({
     userLocation,

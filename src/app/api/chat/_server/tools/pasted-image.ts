@@ -26,3 +26,28 @@ export function getLatestUserImageDataUrls(messages: UIMessage[]): string[] {
   }
   return [];
 }
+
+/**
+ * 从后往前找最近一条「带图片附件」的 user 消息，返回其全部 image data URL。
+ * 与 getLatestUserImageDataUrls 的差别：最新用户消息若无图则继续往前找，供用户回答
+ * 「哪张是产品图」后仍能登记上一轮粘贴。
+ */
+export function getMostRecentUserImageDataUrls(messages: UIMessage[]): string[] {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role !== 'user' || !message.parts?.length) continue;
+
+    const urls: string[] = [];
+    for (const part of message.parts) {
+      if (
+        isFileUIPart(part) &&
+        part.mediaType.startsWith('image/') &&
+        part.url.startsWith('data:')
+      ) {
+        urls.push(part.url);
+      }
+    }
+    if (urls.length > 0) return urls;
+  }
+  return [];
+}

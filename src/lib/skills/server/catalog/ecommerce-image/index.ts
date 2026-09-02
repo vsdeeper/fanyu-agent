@@ -9,8 +9,8 @@ import { sharedPrefix, sharedSuffix } from './shared';
  * 「上传产品图 + 设计参考图 → 产品分析 → 确认 → 出 1 张主图样张 → 确认样张 →
  * 以样张为系列风格锚点输出生成清单与主图规划 → 确认 → 按规划出系列图」的对话流程；
  * 方案含视觉与出图内容营销策略（转化角色、卖点分层、套图叙事），最终仍只出图。
- * 产品图是强后端主体，靠服务端「产品图落盘桥接」跨轮引用（见 app/api/images/_server/product-assets.ts）。
- * 设计参考图是可选的风格输入，产品分析对齐其调性/色板/构图语言；样张是整组系列图的视觉定板。
+ * 产品图是强后端主体，靠电商链路内「分类登记落盘」（register_ecommerce_images → user-product / user-reference）跨轮引用。
+ * 设计参考图是可选的风格输入，须同样登记；产品分析对齐其调性/色板/构图语言；样张是整组系列图的视觉定板。
  *
  * 指令正文按 sharedPrefix → mainChapter → sharedSuffix 拼接；日后加详情图时插在 main 与 suffix 之间。
  */

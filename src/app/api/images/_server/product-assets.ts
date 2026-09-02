@@ -1,19 +1,34 @@
 import 'server-only';
 
 import { createHash } from 'crypto';
-import { and, eq } from 'drizzle-orm';
 
-import { getDb } from '@/lib/db/client';
-import { imageAssets } from '@/lib/db/schema';
-import { listProductImageAssets, PRODUCT_IMAGE_MODEL_ID, saveImageAsset } from './assets';
+import {
+  findAssetByFileName,
+  listProductImageAssets,
+  listReferenceImageAssets,
+  saveImageAsset,
+  USER_PRODUCT_MODEL_ID,
+  USER_REFERENCE_MODEL_ID,
+  type ImageAssetRecord,
+} from './assets';
 import { decodeBase64Image, sniffImageMime } from './image-utils';
 
-const PRODUCT_IMAGE_PROMPT = '用户上传的产品图（桥接）';
+export type UserUploadRole = 'product' | 'reference';
+
+const ROLE_MODEL_ID = {
+  product: USER_PRODUCT_MODEL_ID,
+  reference: USER_REFERENCE_MODEL_ID,
+} as const;
+
+const ROLE_PROMPT = {
+  product: '用户上传的产品图',
+  reference: '用户上传的设计参考图',
+} as const;
 
 /**
- * 产品图落盘桥接：把本轮粘贴/上传的产品图存为「哨兵资产」（modelId='user-upload'，不动 working image），
- * 使主模型在后续轮次仍能用其 assetId 作为 generate_image 的 sourceAssetIds / analyze_image 的 assetId。
- * 无产品图桥接前，粘贴图只存在于「最新一条消息」，隔轮即不可引用。
+ * 电商用户上传图落盘：按角色写成哨兵资产（user-product / user-reference，不动 working image），
+ * 使主模型跨轮用 assetId 作 generate_image 的 sourceAssetIds / analyze_image 的 assetId。
+ * 仅电商设计链路经 register_ecommerce_images 调用；不在 HTTP 入口按粘贴无差别桥接。
  */
 
 /** 解析 data URL 为字节与 MIME；base64 部分解码，MIME 优先用文件头识别 */
@@ -33,51 +48,62 @@ function extFor(mimeType: string): string {
   return mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpeg';
 }
 
-/** 是否已按 (chatId, fileName) 落盘过；用于幂等，中断后「继续」不产生重复产品资产行 */
-function productAssetExists(chatId: string, fileName: string): boolean {
-  const db = getDb();
-  const row = db
-    .select({ id: imageAssets.id })
-    .from(imageAssets)
-    .where(and(eq(imageAssets.chatId, chatId), eq(imageAssets.fileName, fileName)))
-    .get();
-  return Boolean(row);
-}
-
-/** 把当前轮次的粘贴/上传产品图逐一落盘为哨兵资产；已存在则跳过。单张失败不阻断整轮。 */
-export async function bridgePastedProductImages(
+/**
+ * 按角色落盘一张用户上传图；同一 (chatId, 角色, 内容 hash) 已存在则复用，不新增行。
+ * 返回落盘或已存在的资产。
+ */
+export async function saveLabeledUserUpload(
   chatId: string,
-  pastedImageDataUrls: string[],
-): Promise<void> {
-  if (pastedImageDataUrls.length === 0) return;
-  for (const dataUrl of pastedImageDataUrls) {
-    try {
-      const { bytes, mimeType } = dataUrlToBytes(dataUrl);
-      const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 12);
-      const fileName = `product-${hash}.${extFor(mimeType)}`;
-      if (productAssetExists(chatId, fileName)) {
-        continue;
-      }
-      await saveImageAsset({
-        chatId,
-        parentId: null,
-        modelId: PRODUCT_IMAGE_MODEL_ID,
-        prompt: PRODUCT_IMAGE_PROMPT,
-        bytes,
-        mimeType,
-        fileName,
-        setWorking: false,
-      });
-    } catch (err) {
-      console.error('[product-asset] 产品图桥接失败', err);
-    }
+  dataUrl: string,
+  role: UserUploadRole,
+): Promise<ImageAssetRecord> {
+  const { bytes, mimeType } = dataUrlToBytes(dataUrl);
+  const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 12);
+  const fileName = `${ROLE_MODEL_ID[role]}-${hash}.${extFor(mimeType)}`;
+  const existing = findAssetByFileName(chatId, fileName);
+  if (existing) {
+    return existing;
   }
+  return saveImageAsset({
+    chatId,
+    parentId: null,
+    modelId: ROLE_MODEL_ID[role],
+    prompt: ROLE_PROMPT[role],
+    bytes,
+    mimeType,
+    fileName,
+    setWorking: false,
+  });
 }
 
-/** 组装产品图 id 提示；无产品资产时返回空串。供主模型跨轮引用产品图 assetId。 */
-export function getProductImageHint(chatId: string): string {
-  const assets = listProductImageAssets(chatId);
-  if (assets.length === 0) return '';
-  const ids = assets.map((asset) => asset.id).join('、');
-  return `\n\n【产品图】本会话产品图资产 id：${ids}；以产品图为底出图时请用这些 id 作 generate_image 的 sourceAssetIds 或 analyze_image 的 assetId。这些 id 仅供工具入参复用：不要向用户展示、复述，也不要在正文里写成「以 xxx(assetId) 为底」；确需说明来源时用「你上传的产品图」等用户能懂的说法。`;
+/**
+ * 组装电商上传图 id 提示；无已登记资产且无待登记图时返回空串。
+ * 仅电商设计链路注入。
+ */
+export function getEcommerceUploadHint(chatId: string, pendingUploadCount: number): string {
+  const products = listProductImageAssets(chatId);
+  const references = listReferenceImageAssets(chatId);
+  if (products.length === 0 && references.length === 0 && pendingUploadCount === 0) {
+    return '';
+  }
+
+  const lines: string[] = [];
+  if (products.length > 0) {
+    const ids = products.map((asset) => asset.id).join('、');
+    lines.push(
+      `【产品图】本会话产品图资产 id：${ids}；出图/改图时作 generate_image 的 sourceAssetIds 首位（身份锚点），或 analyze_image 的 assetId。这些 id 仅供工具入参：不要向用户展示、复述；确需说明来源时用「你上传的产品图」。`,
+    );
+  }
+  if (references.length > 0) {
+    const ids = references.map((asset) => asset.id).join('、');
+    lines.push(
+      `【参考图】本会话设计参考图资产 id：${ids}；作风格参考时放入 generate_image 的 sourceAssetIds（排在产品图之后），不要当作产品本体。这些 id 仅供工具入参：不要向用户展示、复述；确需说明来源时用「你上传的参考图」。`,
+    );
+  }
+  if (pendingUploadCount > 0) {
+    lines.push(
+      `本轮有 ${pendingUploadCount} 张待登记上传图（0 基下标 0～${pendingUploadCount - 1}）：请按用户意图调用 register_ecommerce_images 分类落盘；多张且未说明哪张是产品图/参考图时先问用户，不要猜测、不要先出图。`,
+    );
+  }
+  return `\n\n${lines.join('\n')}`;
 }

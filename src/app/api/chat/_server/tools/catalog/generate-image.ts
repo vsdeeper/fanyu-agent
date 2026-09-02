@@ -7,7 +7,6 @@ import {
   getAsset,
   getWorkingAsset,
   listProductImageAssets,
-  PRODUCT_IMAGE_MODEL_ID,
   resolveParentModelId,
   saveImageAsset,
 } from '@/app/api/images/_server/assets';
@@ -129,7 +128,7 @@ async function resolveEditRefs({
   pastedImageDataUrls?: string[];
   sourceAssetIds?: string[];
   pastedImageIndexes?: number[];
-  /** 电商改图时前置的产品图锚点 id（哨兵资产），保证产品本体始终有参考底，防止多轮漂移 */
+  /** 电商改图时前置的产品图锚点 id（已登记 user-product），保证产品本体始终有参考底 */
   anchorProductAssetId?: string;
 }): Promise<ResolvedRefs | { error: string }> {
   const sources: Array<{ dataUrl: string; parentId: string | null }> = [];
@@ -151,8 +150,8 @@ async function resolveEditRefs({
     };
   }
 
-  // 历史资产路径：sourceAssetIds 缺省退化为工作图。电商可传产品图锚点，
-  // 缺失/未含时前置到首位，避免仅以「上一张生成图」为唯一底导致多轮漂移（产品本体参考回退到底）。
+  // 历史资产路径：sourceAssetIds 缺省退化为工作图。电商可传已登记产品图锚点，
+  // 缺失/未含时前置到首位，避免仅以「上一张生成图」为唯一底导致多轮漂移。
   let sourceIds = sourceAssetIds?.length
     ? [...sourceAssetIds]
     : [(await getWorkingAsset(chatId))?.id].filter((id): id is string => Boolean(id));
@@ -194,12 +193,10 @@ function getImageSystemHint(): string {
 - 用户明确要求生成/绘制/出图时调用 generate_image，mode=generate
 - 用户要求修改图片时调用 generate_image，mode=edit
 - 仅讨论如何画、不请求出图时不要调用
-- 面向电商/商品出图（用产品图为底生成主图/详情图/营销图的 i2i）时：须已锁定目标平台（淘宝/天猫、京东、拼多多、抖音、小红书之一；用户只传产品图时先识图分析再请用户选定，未锁定不得调用）。出主图须先向用户展示逐张规划（第 X 张：营销任务 + 视觉要点）再展示拟用提示词，待用户明确确认（「确认/就用这个出图/开始生成」）后再调用本工具；用户给的类型/数量/平台/画幅属方案输入，不视为出图指令，未经确认不得出图。仅用户明说「直接出图/不用确认」时可跳过提示词全文确认，但仍须已锁定目标平台且已列出主图逐张规划（未锁定则先问平台；无规划不得出主图）
 - 有源图且改图/按图生图指令依赖画面内容（复刻风格、改文字、提取局部、指定元素）时：先调用 analyze_image，再按分析结果调用本工具
 - 用户本轮消息含图片附件并要求修改时：mode=edit，服务端优先使用该附件作源图，无需传 sourceAssetIds
 - 用户贴了多张图并要求「把这些图一起合成一张」时：strategy=merge（多个参考合并成一张）；要求「把这几张各自都改成 X」时：必传 strategy=batch（每张各出一张新图），漏传会静默合成一张、用户多张请求被缩水
 - 只对多张做批改或合成，必传 pastedImageIndexes 指认参考（0 基，0=第一张）；省略时服务端只用第一张，不会自动用全部。多参考按顺序在 prompt 说明图片用途（如「第1张作场景、第2张是主体」）
-- 出电商主图/详情图/营销图系列、已有作为「系列风格定板」的样张/前图时：后续每张用 sourceAssetIds=[产品图 assetId, 定板图 assetId] 双参考，prompt 注明「第1个参考=产品主体严格保真，第2个参考=仅作风格参考（色板/色温/氛围/构图语言）」，勿传 strategy=batch、勿在系列内换 model
 - 改刚生成的图：mode=edit，尽量传 sourceAssetIds（上一轮 tool 结果已含 assetId）；未传则服务端使用 working image
 - 用户说「改上面那张 / 第二张」且无法对应到已知 assetId、用户也未贴图时：不要猜测、不要调用 edit，请用户将要修改的图复制粘贴到对话框后再试
 - 生图成功后界面会自动展示图片；汇总回复时只用文字说明，勿在正文中插入 Markdown 图片或 URL
@@ -207,7 +204,7 @@ function getImageSystemHint(): string {
 - 用户明确要求透明背景、去底、抠图或 PNG alpha 时：transparent=true；未要求时不要传 true
 - 生成应用图标 / App Icon / logo / 标志 / 品牌标识等需要「方形满铺」的图时：prompt 必须写明背景为单一纯色、满铺到画布四边、无内缩白边/留白、无圆角或超椭圆、无投影/发光/描边边框、无纹理；图形居中置于中央约 80% 安全区。此类图标默认不透明（勿设 transparent=true），仅用户明确要透明背景时才设 true
 - 用户指定画面比例时传 aspectRatio（如 3:2、16:9）；不传或传 auto 时交由模型自选
-- 生成电商主图/详情图/营销图时，每次调用显式传 type 标注类型（主图 main / 详情图 detail / 营销图 marketing）；非电商图勿传 type
+- 当前 skill 需要按类型分组展示图片时，每次调用显式传 type（如 main / detail / marketing 或对应中文）；不需要分组则不要传
 ${modelLine}
 ${sizeLine}`;
 }
@@ -239,17 +236,16 @@ function createGenerateImageTool(
   pastedImageDataUrls?: string[],
   activatedSkillIds?: string[],
   stickySkillIds?: string[],
+  ecommerceUploadsEnabled?: boolean,
 ) {
   // 本会话是否有「声明分组能力」的 skill（如电商设计）：以「本轮激活 ∪ 会话粘滞」判定。
   // 只用本轮激活会漏掉 follow-up 回合——ecommerce 复激活依赖关键词/修订线索，短指令常命中不到，
   // 但会话粘滞（metadata.skillIds）只增不减，覆盖此类回合，故分类展示不因复激活失败而失效。
   const groupingSkillIds = new Set([...(activatedSkillIds ?? []), ...(stickySkillIds ?? [])]);
   const imageGrouping = [...groupingSkillIds].some((id) => listImageGroupingSkillIds().has(id));
-  // 电商图 skill 激活（含会话粘滞）判定：用于服务端给 edit 兜底前置产品图锚点 + prompt 守卫
-  const isEcommerceActive = [...groupingSkillIds].includes('ecommerce-image');
   return tool({
     description:
-      '根据描述生成或编辑图片。仅在用户明确要求出图或改图时调用；讨论绘画技巧时不要调用；从产品图生成电商商品图（主图/详情图/营销图）时，须已锁定目标平台；出主图须已完成逐张规划并在用户确认方案与提示词后再调用。',
+      '根据描述生成或编辑图片。仅在用户明确要求出图或改图时调用；讨论绘画技巧时不要调用。',
     inputSchema: z.object({
       mode: z.enum(['generate', 'edit']).describe('generate=新图；edit=基于已有图修改'),
       prompt: z.string().min(1).describe('详细生图或改图描述；多参考时按顺序说明各图用途'),
@@ -291,7 +287,7 @@ function createGenerateImageTool(
         .string()
         .optional()
         .describe(
-          '电商图类型（仅电商图必传，用 main/detail/marketing 或中文主图/详情图/营销图）：生成主图传 main、详情图传 detail、营销图传 marketing，每次调用通过本字段标注该张图的类型，供前端按类型分组展示；非电商出图则不要传',
+          '图片类型（仅当前流程需要分组展示时必传，如电商主图/详情图/营销图用 main/detail/marketing 或中文）：每次调用标注该张图的类型，供前端分组；不需要分组则不要传',
         ),
     }),
     execute: async (
@@ -318,10 +314,10 @@ function createGenerateImageTool(
         }
 
         let refs: ResolvedRefs = { dataUrls: [], parentIds: [] };
-        // 电商改图（非批量、且会话激活本 skill）时取最近产品图作锚点：服务端兜底，
+        // 电商改图（非批量、且本轮上传链路开启）时取最近已登记产品图作锚点：服务端兜底，
         // 即便模型只传了「上一张生成图」，也强制补上产品本体参考，防止多轮漂移。
         const anchorProductAssetId =
-          isEcommerceActive && mode === 'edit' && strategy !== 'batch'
+          ecommerceUploadsEnabled && mode === 'edit' && strategy !== 'batch'
             ? listProductImageAssets(chatId)[0]?.id
             : undefined;
         if (mode === 'edit') {
@@ -345,14 +341,14 @@ function createGenerateImageTool(
         );
         const outboundPrompt = hasProductRef ? `${prompt}\n${ECOMMERCE_EDIT_PROMPT_GUARD}` : prompt;
 
-        // 系列主图「产品图 + 样张/定板图」双参考时，首参考常为产品图（哨兵 user-upload）；
-        // 若仍只取 parentIds[0] 的 model，会因哨兵被 resolveImageModelId 跳过而落到默认模型。
+        // 系列「产品图 + 样张/定板图」双参考时，首参考常为用户上传哨兵；
+        // 若仍只取 parentIds[0] 的 model，会因哨兵不在 registry 而落到默认模型。
         // 这里改向第一个真实生图模型的参考取 model，使系列沿用样张/定板图模型，保持风格连续。
         const referenceModelId = refs.parentIds
           .map((parentId) => resolveParentModelId(parentId))
           .find((candidate) => {
             const trimmed = candidate?.trim();
-            return Boolean(trimmed) && trimmed !== PRODUCT_IMAGE_MODEL_ID;
+            return Boolean(trimmed && getImageModelProfile(trimmed));
           });
         modelId = resolveImageModelId({
           requestedModelId: model,
@@ -539,8 +535,20 @@ function createGenerateImageTool(
 
 export const generateImage: AgentToolDefinition = {
   id: 'generate_image',
-  create: ({ chatId, pastedImageDataUrls, activatedSkillIds, stickySkillIds }) =>
-    createGenerateImageTool(chatId, pastedImageDataUrls, activatedSkillIds, stickySkillIds),
+  create: ({
+    chatId,
+    pastedImageDataUrls,
+    activatedSkillIds,
+    stickySkillIds,
+    ecommerceUploadsEnabled,
+  }) =>
+    createGenerateImageTool(
+      chatId,
+      pastedImageDataUrls,
+      activatedSkillIds,
+      stickySkillIds,
+      ecommerceUploadsEnabled,
+    ),
   getHint: getImageSystemHint,
   getPasteHint: () => PASTE_IMAGE_EDIT_HINT,
 };

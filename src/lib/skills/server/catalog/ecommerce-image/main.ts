@@ -12,7 +12,7 @@ const platformCountHint = formatMainPlatformCountHint();
 const slotDefaults = formatMainSlotDefaults();
 
 /** 主图专属：样张定板 → 门 B → 生成清单 + 主图规划 → 门 C → 按规划出系列 */
-export const mainChapter = `【主图样张（系列风格定板）】用户确认【产品分析】（门 A）后，先只出 **1 张主图样张**：mode='edit'，sourceAssetIds=[产品图 assetId]，显式传 type=main、aspectRatio ${MAIN_ASPECT_RATIO}，prompt 落实分析锁定的调性/基调/色板（含设计参考图时对齐参考图视觉语言；样张本身为主图 ${MAIN_ASPECT_RATIO}，作为整组系列的风格定板）。**样张不计入正式 N 张**，除非用户确认后判定其恰合【主图规划】第 1 张（则保留为第 1 张，避免重复生成）。样张无需锁定平台即可出（它是风格预览，平台只影响正式系列的张数与话术）。样张展示后进入【确认门 B】。
+export const mainChapter = `【主图样张（系列风格定板）】用户确认【产品分析】（门 A）后，先只出 **1 张主图样张**：mode='edit'，sourceAssetIds=[已登记产品图 assetId]（若有已登记设计参考图可紧随其后），显式传 type=main、aspectRatio ${MAIN_ASPECT_RATIO}，prompt 落实分析锁定的调性/基调/色板（含设计参考图时对齐参考图视觉语言；样张本身为主图 ${MAIN_ASPECT_RATIO}，作为整组系列的风格定板）。**样张不计入正式 N 张**，除非用户确认后判定其恰合【主图规划】第 1 张（则保留为第 1 张，避免重复生成）。样张无需锁定平台即可出（它是风格预览，平台只影响正式系列的张数与话术）。样张展示后进入【确认门 B】。
 
 【确认门 B】样张展示后，末尾提示：\`${GATE_B}\`
 
@@ -49,7 +49,7 @@ export const mainChapter = `【主图样张（系列风格定板）】用户确�
 【出系列图】（输入：样张确认 + 平台锁定 + 生成清单 + 主图规划经用户确认；用户明确确认（「确认/就用这个出图/开始生成」）后才可调用 generate_image，未确认一律不出。）N 张 → 按规划顺序逐张调用，每张：
 - 每个成品图独立调用一次 generate_image（工具无一次返回多张 n 参数）。
 - mode='edit'，strategy 不传（默认合成；勿传 batch——否则服务端按「每张参考各出一张」拆分，会把产品图与样张各出一张，破坏「产品保真 + 样张风格」的合成语义）。
-- sourceAssetIds=[产品图 assetId, 样张 assetId]（顺序固定：第 1 个产品、第 2 个样张）。
+- sourceAssetIds=[已登记产品图 assetId, 样张 assetId]（顺序固定：第 1 个产品、第 2 个样张；若本张还需对齐用户设计参考图，插在产品图之后、样张之前或按 prompt 分工写明）。
 - 显式传同一 model（系列内不换模型，便于风格统一；已设全局 IMAGE_MODEL_ID 则自动满足，未设时首张选定后在后续张显式传同一 model）。
 - prompt 首句必须写明双参考分工：\`第1个参考=产品主体，形状/颜色/材质/细节严格 100% 不变；第2个参考=样张，仅作背景/场景色调/灯光色温/整体氛围/构图语言的风格参考，不改变产品本体。\`再落实该槽位营销任务、视觉要点与图上文字；文字默认中文简体、一句一意图、可读、不跑安全区。
 - 逐张传 type=main，落实同一产品调性/设计基调/色板/色温，禁中途换审美、一张一色调、N 张同一构图只换滤镜。
