@@ -1,0 +1,80 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  flex-shrink: 0;
+  min-height: 0;
+  background: var(--one-color-bg-container);
+  border: 1px solid var(--one-color-border-secondary);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.footer {
+  flex-shrink: 0;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--one-color-border-secondary);
+}
+
+.analyzeBtn {
+  height: 40px !important;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--one-color-text);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.requirementWrap {
+  position: relative;
+}
+
+.requirement {
+  min-height: 120px !important;
+  padding-bottom: 40px !important;
+}
+
+.helpWrite {
+  position: absolute !important;
+  right: 8px;
+  bottom: 8px;
+  font-size: 12px !important;
+  line-height: 1 !important;
+}
+
+.typeLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.newBadge :global(.ant-badge-count) {
+  font-size: 10px;
+  height: 16px;
+  line-height: 16px;
+  padding: 0 4px;
+  box-shadow: none;
+}

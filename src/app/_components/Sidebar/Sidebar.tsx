@@ -1,37 +1,35 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Conversations } from '@ant-design/x';
 import type { ConversationItemType } from '@ant-design/x/es/conversations/interface';
-import { DeleteOutlined, MenuFoldOutlined, MessageOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined,
+  MenuFoldOutlined,
+  MessageOutlined,
+  ShoppingOutlined,
+} from '@ant-design/icons';
 import { Button, Layout, Typography } from 'antd';
-import { getChatGroupLabel } from './utils';
+import { useWorkspace } from '@/app/_components/AppLayout/context';
+import { ECOMMERCE_PATH } from './constants';
+import { getActiveChatIdFromPathname, getChatGroupLabel } from './utils';
 import type { ChatListItem } from '@/app/api/chats/_shared/types';
 import { apiDelete } from '@/lib/shared/client/api-client';
-import styles from './ChatSidebar.module.css';
+import styles from './Sidebar.module.css';
 
-type ChatSidebarProps = {
+type SidebarProps = {
   chats: ChatListItem[];
-  activeChatId: string;
-  anchorChatId?: string;
-  collapsed: boolean;
-  onCollapsedChange: (collapsed: boolean) => void;
-  onCreateChat: () => Promise<void>;
-  busy?: boolean;
 };
 
-export default function ChatSidebar({
-  chats,
-  activeChatId,
-  anchorChatId,
-  collapsed,
-  onCollapsedChange,
-  onCreateChat,
-  busy = false,
-}: ChatSidebarProps) {
+export default function Sidebar({ chats }: SidebarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [, startTransition] = useTransition();
   const [deleting, setDeleting] = useState(false);
   const conversationsRef = useRef<{ nativeElement: HTMLDivElement }>(null);
+  const { collapsed, setCollapsed, createChat, busy, anchorChatId } = useWorkspace();
+
+  const activeChatId = getActiveChatIdFromPathname(pathname);
+  const isEcommerce = pathname === ECOMMERCE_PATH;
 
   const items = useMemo<ConversationItemType[]>(
     () =>
@@ -116,7 +114,7 @@ export default function ChatSidebar({
             aria-label="折叠侧栏"
             shape="circle"
             variant="filled"
-            onClick={() => onCollapsedChange(true)}
+            onClick={() => setCollapsed(true)}
           />
         </div>
 
@@ -130,43 +128,61 @@ export default function ChatSidebar({
             shape="round"
             icon={<MessageOutlined />}
             disabled={actionsDisabled}
-            onClick={() => {
-              void onCreateChat();
-            }}
+            onClick={createChat}
           >
             开启新对话
           </Button>
         </div>
 
-        {/* 修复：只有列表区 overflow，header/creation 必须在滚动容器外，否则会整栏一起滚 */}
-        <Conversations
-          ref={conversationsRef}
-          className={styles.conversations}
-          items={items}
-          activeKey={activeChatId || undefined}
-          groupable
-          onActiveChange={(key) => {
-            if (!key || key === activeChatId || actionsDisabled) return;
-            goRefresh(`/chat/${key}`);
-          }}
-          menu={(conversation) => ({
-            items: [
-              {
-                key: 'delete',
-                label: '删除',
-                icon: <DeleteOutlined />,
-                danger: true,
-                disabled: actionsDisabled,
+        {/* 品牌与「开启新对话」固定；电商入口与会话列表同一滚动区 */}
+        <div className={styles.scroll}>
+          <div className={styles.nav}>
+            <Button
+              block
+              className={`${styles.navBtn} ${isEcommerce ? styles.navBtnActive : ''}`}
+              color="default"
+              variant="text"
+              size="medium"
+              icon={<ShoppingOutlined />}
+              aria-current={isEcommerce ? 'page' : undefined}
+              onClick={() => {
+                if (isEcommerce) return;
+                goRefresh(ECOMMERCE_PATH);
+              }}
+            >
+              电商设计
+            </Button>
+          </div>
+
+          <Conversations
+            ref={conversationsRef}
+            className={styles.conversations}
+            items={items}
+            activeKey={activeChatId || undefined}
+            groupable
+            onActiveChange={(key) => {
+              if (!key || key === activeChatId || actionsDisabled) return;
+              goRefresh(`/chat/${key}`);
+            }}
+            menu={(conversation) => ({
+              items: [
+                {
+                  key: 'delete',
+                  label: '删除',
+                  icon: <DeleteOutlined />,
+                  danger: true,
+                  disabled: actionsDisabled,
+                },
+              ],
+              onClick: ({ key, domEvent }) => {
+                domEvent.stopPropagation();
+                if (key === 'delete') {
+                  void handleDelete(String(conversation.key));
+                }
               },
-            ],
-            onClick: ({ key, domEvent }) => {
-              domEvent.stopPropagation();
-              if (key === 'delete') {
-                void handleDelete(String(conversation.key));
-              }
-            },
-          })}
-        />
+            })}
+          />
+        </div>
       </div>
     </Layout.Sider>
   );

@@ -8,7 +8,7 @@ import type { ThemeConfig } from 'antd';
  */
 export const componentTokens: ThemeConfig['components'] = {
   // ===== antd Layout 布局 =====
-  // 修复：布局壳必须用 antd Layout 组件（ChatShell/ChatSidebar），组件级 token 才会惰性输出
+  // 修复：布局壳必须用 antd Layout 组件（AppLayout/Sidebar、ChatShell），组件级 token 才会惰性输出
   // 为 --one-layout-* 并注入 .ant-layout-* 规则；若仍用原生 div 布局，以下配置完全不生效。
   Layout: {
     // 默认 bodyBg = colorBgLayout（#f9fafb）会把主内容区变灰，必须显式设回 colorBgBase

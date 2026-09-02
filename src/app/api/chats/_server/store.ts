@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { cache } from 'react';
 import { generateId, type UIMessage } from 'ai';
 import { asc, desc, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
@@ -113,7 +114,8 @@ export async function saveChat({
   });
 }
 
-export async function listChats(): Promise<ChatListItem[]> {
+/** 会话列表（按更新时间倒序）；React.cache 去重同请求内根 layout 与 chat layout 的重复查询 */
+export const listChats = cache(async function listChats(): Promise<ChatListItem[]> {
   const db = getDb();
   const rows = db.select().from(chats).orderBy(desc(chats.updatedAt)).all();
   return rows.map((row) => ({
@@ -122,7 +124,7 @@ export async function listChats(): Promise<ChatListItem[]> {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }));
-}
+});
 
 /** 仅更新会话标题，不碰消息、不刷新 updatedAt（避免侧栏因改标题而重排） */
 export async function updateChatTitle(chatId: string, title: string): Promise<void> {

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
+import AppLayout from '@/app/_components/AppLayout';
+import { listChats } from '@/app/api/chats/_server/store';
 import Providers from '@/components/Providers';
 import { THEME_RESOLVED_COOKIE_KEY } from '@/components/theme/constants';
 import type { ResolvedThemeMode } from '@/components/theme/constants';
@@ -10,6 +12,9 @@ export const metadata: Metadata = {
   title: '凡域智能助手',
   description: 'Vercel AI SDK + Next.js + @ant-design/x',
 };
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({
   children,
@@ -23,6 +28,8 @@ export default async function RootLayout({
   const ssrInitialMode: ResolvedThemeMode | undefined =
     resolvedCookie === 'light' || resolvedCookie === 'dark' ? resolvedCookie : undefined;
 
+  const chats = await listChats();
+
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
@@ -35,7 +42,9 @@ export default async function RootLayout({
       </head>
       <body>
         <AntdRegistry>
-          <Providers ssrInitialMode={ssrInitialMode}>{children}</Providers>
+          <Providers ssrInitialMode={ssrInitialMode}>
+            <AppLayout chats={chats}>{children}</AppLayout>
+          </Providers>
         </AntdRegistry>
       </body>
     </html>

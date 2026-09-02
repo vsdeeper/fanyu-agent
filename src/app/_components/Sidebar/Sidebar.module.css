@@ -52,6 +52,19 @@
   padding: 0 12px;
 }
 
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.nav {
+  flex-shrink: 0;
+  padding: 16px 12px 0;
+}
+
 .newChatBtn {
   height: 38px !important;
   border: 0 none !important;
@@ -71,12 +84,28 @@
     0 4px 4px var(--sidebar-btn-shadow-7) !important;
 }
 
-/* 唯一纵向滚动区：会话列表 */
+.navBtn {
+  height: var(--one-control-height-lg) !important;
+  min-height: var(--one-control-height-lg) !important;
+  border-radius: var(--one-border-radius-lg) !important;
+  justify-content: flex-start !important;
+}
+
+.navBtnActive {
+  color: var(--one-color-text) !important;
+  background: var(--one-color-bg-text-hover) !important;
+}
+
+.navBtnActive:hover:not(button[disabled]) {
+  color: var(--one-color-text) !important;
+  background: var(--one-color-bg-text-hover) !important;
+}
+
+/* 列表随内容增高，滚动交给外层 .scroll；覆盖组件自带 overflowY:auto，避免内层单独出滚动条 */
 .conversations {
-  flex: 1;
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: visible;
+  padding-top: 6px !important;
+  padding-right: calc(12px - var(--scrollbar-size)) !important;
 }
 
 .conversations :global(.ant-conversations-group-label) {

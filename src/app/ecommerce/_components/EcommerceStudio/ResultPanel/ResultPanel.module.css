@@ -1,0 +1,48 @@
+.panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--one-color-bg-container);
+  border: 1px solid var(--one-color-border-secondary);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--one-color-border-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--one-color-text);
+}
+
+.star {
+  color: var(--one-color-primary);
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--one-color-text-tertiary);
+}
+
+.icon {
+  font-size: 48px;
+  opacity: 0.35;
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  text-align: center;
+}
