@@ -22,9 +22,7 @@ import { generateChatTitle } from '@/app/api/chat/_server/generate-title';
 import { saveChat, updateChatTitle } from '@/app/api/chats/_server/store';
 import { selectModel } from '@/app/api/chat/_server/select-model';
 import { getFirstUserText } from '@/app/api/chat/_server/title';
-import { getLatestUserImageDataUrls, getMostRecentUserImageDataUrls } from './tools/pasted-image';
-import { getEcommerceUploadHint } from '@/app/api/images/_server/product-assets';
-import { isEcommerceUploadsEnabled } from './tools/ecommerce-uploads';
+import { getLatestUserImageDataUrls } from './tools/pasted-image';
 import { createCatalogTools, getToolHints } from './tools/registry';
 import { buildSkillCatalogPrompt } from '@/lib/skills/server/catalog-prompt';
 import { expandSkillTokensInText } from '@/lib/skills/server/expand';
@@ -39,7 +37,6 @@ const generateMessageId = createIdGenerator({ prefix: 'msg', size: 16 });
 
 // 工具循环安全上限：isLoopFinished 依赖「模型不再发 tool call」的自然终止，该上限是
 // 唯一保证循环必然结束的机制，勿单独移除。放宽需让多图设计流（若干次生成 + 汇总）跑得完。
-// 电商商品图上限 10 张（逐张生成）+ 识图 + 汇总，故放宽到 40；若仍超长再由实际压降。
 const MAX_TOOL_LOOP_STEPS = 40;
 
 /** 记录未进 execute 的工具失败（如 Zod 校验）；仅服务端日志，不改用户可见文案。 */
@@ -114,7 +111,6 @@ export async function streamChatResponse({
 
   const pastedImageDataUrls = getLatestUserImageDataUrls(messages);
 
-  // 本回合激活的 skill 必须先于工具构建与上传图 hint：电商登记工具 / 产品图锚点仅在电商链路开启。
   const resolved = resolveTurnSkills(messages, {
     log: false,
   });
@@ -126,12 +122,6 @@ export async function streamChatResponse({
   });
   const activatedIds = new Set(turnActivatedIds);
   const allSkillIds = new Set(listSkills().map((skill) => skill.id));
-  const ecommerceUploadsEnabled = isEcommerceUploadsEnabled(turnActivatedIds, mergedSkillIds);
-  const pendingUploadDataUrls = ecommerceUploadsEnabled
-    ? pastedImageDataUrls.length > 0
-      ? pastedImageDataUrls
-      : getMostRecentUserImageDataUrls(messages)
-    : [];
 
   // 联网搜索构造权在 Provider：usesSdkWebSearchTool=true（deepseek/ark）注册 SDK 原生
   // server tool；否则（zhipu）由本地 web_search 工具经独立 API 显式检索
@@ -142,8 +132,6 @@ export async function streamChatResponse({
     providerHasNativeWebSearch: capabilities.usesSdkWebSearchTool,
     activatedSkillIds: turnActivatedIds,
     stickySkillIds: mergedSkillIds,
-    ecommerceUploadsEnabled,
-    pendingUploadDataUrls,
   });
   const tools = {
     ...catalogTools,
@@ -213,16 +201,10 @@ export async function streamChatResponse({
         .map((skill) => skill.name)
         .join('、')}】\n${turnActivatedSkills.map((skill) => skill.instructions).join('\n\n')}`
     : '';
-  const uploadHint = ecommerceUploadsEnabled
-    ? getEcommerceUploadHint(
-        chatId,
-        pastedImageDataUrls.length > 0 ? pastedImageDataUrls.length : 0,
-      )
-    : '';
   const extraBlock = extraInstructions?.trim() ? `\n\n${extraInstructions.trim()}` : '';
 
   // 修复：明确要求思考过程使用中文简体，避免中英文混杂
-  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体，并用短段落、空行分隔要点，避免写成一整段。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}${extraBlock}${uploadHint}\n\n${getToolHints(pastedImageDataUrls.length > 0, capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool, ecommerceUploadsEnabled)}`;
+  const baseInstructions = `使用中文简体与用户对话，思考过程（reasoning/thinking）也必须使用中文简体，并用短段落、空行分隔要点，避免写成一整段。\n\n${stoppedTaskHint}\n\n${catalogPrompt}${activationBlock}${extraBlock}\n\n${getToolHints(pastedImageDataUrls.length > 0, capabilities.acceptsImageInput, capabilities.usesSdkWebSearchTool)}`;
 
   const instructions = runtime.getInstructions({
     userLocation,

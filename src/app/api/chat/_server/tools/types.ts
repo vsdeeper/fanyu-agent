@@ -16,13 +16,6 @@ export type AgentToolContext = {
   /** 会话粘滞 skill id 数组（resolveTurnSkills 的 mergedSkillIds，只增不减）。follow-up 回合未必复激活 skill，
    * 但粘滞记录仍在，故分类展示以「激活 ∪ 粘滞」判定，避免依赖脆弱的本轮复激活 */
   stickySkillIds?: string[];
-  /** 电商上传图链路是否开启（登记工具 / 产品图锚点 / 上传 hint） */
-  ecommerceUploadsEnabled?: boolean;
-  /**
-   * 待登记上传图 data URL：本轮粘贴，若无则取最近一条含图用户消息。
-   * 仅电商链路填充，供 register_ecommerce_images 按 index 落盘。
-   */
-  pendingUploadDataUrls?: string[];
 };
 
 export type AgentToolDefinition = {
@@ -33,8 +26,6 @@ export type AgentToolDefinition = {
   requiresBlindMainModel?: boolean;
   /** true = 仅 Provider 无原生联网搜索时注册/注入提示词（本地 web_search 与原生 server tool 重叠） */
   requiresNoNativeWebSearch?: boolean;
-  /** true = 仅电商设计上传图链路可见（产品图/参考图分类落盘） */
-  requiresEcommerceUploads?: boolean;
   getHint: () => string;
   /** 本轮有粘贴图时额外注入 */
   getPasteHint?: () => string;
