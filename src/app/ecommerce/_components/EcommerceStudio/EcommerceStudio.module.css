@@ -15,6 +15,12 @@
   gap: 12px;
 }
 
+.brand {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .title {
   margin: 0 !important;
   font-weight: normal !important;
@@ -22,6 +28,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+}
+
+.subtitle {
+  font-size: 12px !important;
+  line-height: 1.4;
+  color: var(--one-color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .headerSpacer {

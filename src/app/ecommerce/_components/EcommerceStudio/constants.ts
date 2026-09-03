@@ -3,10 +3,9 @@ import { toModelOptions } from './model-options';
 
 export const MAX_PRODUCT_IMAGES = 6;
 
-export const STUDIO_TITLE = 'AI帮写需求，一键生成详情图组';
+export const STUDIO_TITLE = '电商设计';
 
-export const STUDIO_SUBTITLE =
-  '上传产品图，AI 智能分析并帮写拍摄需求，自动生成多角度、多场景的电商详情图组';
+export const STUDIO_SUBTITLE = 'AI 商业分析到设计出图，一站式专业引导';
 
 export const STUDIO_STEPS: { title: string }[] = [
   { title: '输入' },

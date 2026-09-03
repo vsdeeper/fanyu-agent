@@ -14,6 +14,7 @@ import {
   SLOTS_MISSING,
   STUDIO_STEP_INDEX,
   STUDIO_STEPS,
+  STUDIO_SUBTITLE,
   STUDIO_TITLE,
 } from './constants';
 import ResultPanel from './ResultPanel';
@@ -218,9 +219,14 @@ export default function EcommerceStudio() {
   return (
     <Layout className={styles.studio}>
       <Layout.Header className={styles.header}>
-        <Typography.Title level={5} className={styles.title} ellipsis>
-          {STUDIO_TITLE}
-        </Typography.Title>
+        <div className={styles.brand}>
+          <Typography.Title level={5} className={styles.title} ellipsis>
+            {STUDIO_TITLE}
+          </Typography.Title>
+          <Typography.Text className={styles.subtitle} ellipsis>
+            {STUDIO_SUBTITLE}
+          </Typography.Text>
+        </div>
         <div className={styles.headerSpacer} />
         <ModeSwitch />
       </Layout.Header>
