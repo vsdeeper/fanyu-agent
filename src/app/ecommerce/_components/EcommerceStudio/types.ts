@@ -1,6 +1,12 @@
-export type DesignType = 'main' | 'detail' | 'ad';
-
-export type StudioPhase = 'input' | 'analyzing' | 'analyzed' | 'confirm' | 'generating' | 'done';
+export type StudioPhase =
+  | 'input'
+  | 'analyzing'
+  | 'analyzed'
+  | 'visual'
+  | 'visualGenerating'
+  | 'model'
+  | 'modelGenerating'
+  | 'done';
 
 export type ProductImageItem = {
   uid: string;
@@ -14,16 +20,20 @@ export type ProductDocItem = {
   previewUrl: string;
 };
 
-export type StudioFormState = {
-  designType: DesignType;
-  platform: string;
-  requirement: string;
-  language: string;
+/** 生图规格字段，主视觉与产品模特表单共用 */
+export type StudioSpecFields = {
   model: string;
   aspectRatio: string;
   quality: string;
   clarity: string;
+};
+
+export type StudioFormState = StudioSpecFields & {
   count: string;
+};
+
+export type ModelFormState = StudioSpecFields & {
+  modelRequirement: string;
 };
 
 export type StudioResultImage = {

@@ -2,23 +2,27 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { App, Layout, Steps, Typography } from 'antd';
-import type { EcommerceHelpWriteData, EcommercePlanSlot } from '@/app/api/ecommerce/_shared/types';
+import type { EcommerceModelHelpWriteData } from '@/app/api/ecommerce/_shared/types';
 import { apiPost } from '@/lib/shared/client/api-client';
 import ModeSwitch from '@/components/ModeSwitch';
 import ControlPanel from './ControlPanel';
 import {
   ANALYZE_FAILED,
+  ANALYSIS_MISSING,
   DEFAULT_FORM_STATE,
+  DEFAULT_MODEL_FORM_STATE,
   GENERATE_FAILED,
+  MAX_MODEL_IMAGES,
   NO_IMAGE_WARNING,
-  SLOTS_MISSING,
   STUDIO_STEP_INDEX,
   STUDIO_STEPS,
   STUDIO_SUBTITLE,
   STUDIO_TITLE,
+  VISUAL_SELECT_MISSING,
 } from './constants';
 import ResultPanel from './ResultPanel';
 import type {
+  ModelFormState,
   ProductDocItem,
   ProductImageItem,
   StudioFormState,
@@ -34,16 +38,18 @@ import {
   consumeGenerateNdjson,
   createRafTextBuffer,
   isAbortError,
-  pendingImagesFromSlots,
+  getSelectedVisualUrl,
+  pendingImagesFromCount,
   phaseAfterNext,
   phaseAfterPrev,
-  readFileAsDataUrl,
   removeProductDoc,
   removeProductImage,
   revokeProductDocUrls,
   revokeProductImageUrls,
   toAnalyzePayload,
-  toGeneratePayload,
+  toModelGeneratePayload,
+  toModelHelpWritePayload,
+  toVisualGeneratePayload,
 } from './utils';
 import styles from './EcommerceStudio.module.css';
 
@@ -54,15 +60,19 @@ export default function EcommerceStudio() {
   const { message } = App.useApp();
   const [images, setImages] = useState<ProductImageItem[]>([]);
   const [documents, setDocuments] = useState<ProductDocItem[]>([]);
+  const [portraits, setPortraits] = useState<ProductImageItem[]>([]);
   const [form, setForm] = useState<StudioFormState>(DEFAULT_FORM_STATE);
+  const [modelForm, setModelForm] = useState<ModelFormState>(DEFAULT_MODEL_FORM_STATE);
   const [phase, setPhase] = useState<StudioPhase>('input');
-  const [helpWriteLoading, setHelpWriteLoading] = useState(false);
+  const [modelHelpWriteLoading, setModelHelpWriteLoading] = useState(false);
   const [analysisText, setAnalysisText] = useState('');
-  const [slots, setSlots] = useState<EcommercePlanSlot[]>([]);
-  const [resultImages, setResultImages] = useState<StudioResultImage[]>([]);
+  const [visualImages, setVisualImages] = useState<StudioResultImage[]>([]);
+  const [modelImages, setModelImages] = useState<StudioResultImage[]>([]);
+  const [selectedVisualIndex, setSelectedVisualIndex] = useState<number | null>(null);
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
   const imagesRef = useRef(images);
   const documentsRef = useRef(documents);
+  const portraitsRef = useRef(portraits);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -74,17 +84,23 @@ export default function EcommerceStudio() {
   }, [documents]);
 
   useEffect(() => {
+    portraitsRef.current = portraits;
+  }, [portraits]);
+
+  useEffect(() => {
     return () => {
       abortRef.current?.abort();
       analysisBuffer.dispose();
       revokeProductImageUrls(imagesRef.current);
       revokeProductDocUrls(documentsRef.current);
+      revokeProductImageUrls(portraitsRef.current);
     };
   }, [analysisBuffer]);
 
-  const formLocked = phase === 'analyzing' || phase === 'generating';
+  const formLocked =
+    phase === 'analyzing' || phase === 'visualGenerating' || phase === 'modelGenerating';
   const analysisStreaming = phase === 'analyzing';
-  const expectedImageCount = Number.parseInt(form.count, 10) || 1;
+  const expectedVisualCount = Number.parseInt(form.count, 10) || 1;
 
   const abortCurrent = useCallback(() => {
     abortRef.current?.abort();
@@ -102,7 +118,9 @@ export default function EcommerceStudio() {
     abortRef.current = controller;
     setPhase('analyzing');
     analysisBuffer.reset();
-    setSlots([]);
+    setVisualImages([]);
+    setModelImages([]);
+    setSelectedVisualIndex(null);
     try {
       const payload = await toAnalyzePayload(images, documents);
       const res = await fetch('/api/ecommerce/analyze', {
@@ -148,44 +166,114 @@ export default function EcommerceStudio() {
     }
   }, [abortCurrent, analysisBuffer, documents, images, message]);
 
-  const handleGenerate = useCallback(async () => {
-    if (slots.length === 0 || images.length === 0) {
-      message.warning(slots.length === 0 ? SLOTS_MISSING : NO_IMAGE_WARNING);
+  const handleGenerateVisual = useCallback(async () => {
+    if (images.length === 0) {
+      message.warning(NO_IMAGE_WARNING);
+      return;
+    }
+    if (!analysisText.trim()) {
+      message.warning(ANALYSIS_MISSING);
       return;
     }
     abortCurrent();
     const controller = new AbortController();
     abortRef.current = controller;
-    setPhase('generating');
-    setResultImages(pendingImagesFromSlots(slots));
+    const count = Number.parseInt(form.count, 10) || 1;
+    setPhase('visualGenerating');
+    setSelectedVisualIndex(null);
+    setVisualImages(pendingImagesFromCount(count));
     try {
       const res = await fetch('/api/ecommerce/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(await toGeneratePayload(form, images, slots)),
+        body: JSON.stringify(await toVisualGeneratePayload(form, images, analysisText)),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);
       await consumeGenerateNdjson(res, (event) => {
-        setResultImages((current) => applyGenerateEvent(current, event));
+        setVisualImages((current) => applyGenerateEvent(current, event));
       });
       if (controller.signal.aborted) {
-        setPhase('confirm');
+        setPhase('visual');
         return;
       }
-      setPhase('done');
+      setPhase('visual');
     } catch (err) {
       if (isAbortError(err) || controller.signal.aborted) {
-        setPhase('confirm');
+        setPhase('visual');
         return;
       }
-      console.error('[ecommerce-studio] generate', err);
+      console.error('[ecommerce-studio] generate visual', err);
       message.error(err instanceof Error && err.message ? err.message : GENERATE_FAILED);
-      setPhase('confirm');
+      setPhase('visual');
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, form, images, message, slots]);
+  }, [abortCurrent, analysisText, form, images, message]);
+
+  const handleGenerateModel = useCallback(async () => {
+    const visualDataUrl = getSelectedVisualUrl(visualImages, selectedVisualIndex);
+    if (!visualDataUrl) {
+      message.warning(VISUAL_SELECT_MISSING);
+      return;
+    }
+    abortCurrent();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setPhase('modelGenerating');
+    setModelImages(pendingImagesFromCount(1));
+    try {
+      const res = await fetch('/api/ecommerce/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(await toModelGeneratePayload(modelForm, portraits, visualDataUrl)),
+        signal: controller.signal,
+      });
+      await assertOkOrJsonFail(res);
+      await consumeGenerateNdjson(res, (event) => {
+        setModelImages((current) => applyGenerateEvent(current, event));
+      });
+      if (controller.signal.aborted) {
+        setPhase('model');
+        return;
+      }
+      setPhase('model');
+    } catch (err) {
+      if (isAbortError(err) || controller.signal.aborted) {
+        setPhase('model');
+        return;
+      }
+      console.error('[ecommerce-studio] generate model', err);
+      message.error(err instanceof Error && err.message ? err.message : GENERATE_FAILED);
+      setPhase('model');
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+    }
+  }, [abortCurrent, message, modelForm, portraits, selectedVisualIndex, visualImages]);
+
+  const handleModelHelpWrite = useCallback(async () => {
+    if (!analysisText.trim()) {
+      message.warning(ANALYSIS_MISSING);
+      return;
+    }
+    const visualDataUrl = getSelectedVisualUrl(visualImages, selectedVisualIndex);
+    if (!visualDataUrl) {
+      message.warning(VISUAL_SELECT_MISSING);
+      return;
+    }
+    setModelHelpWriteLoading(true);
+    try {
+      const data = await apiPost<EcommerceModelHelpWriteData>(
+        '/api/ecommerce/model-help-write',
+        await toModelHelpWritePayload({ analysisText, visualDataUrl, portraits }),
+      );
+      setModelForm((current) => ({ ...current, modelRequirement: data.modelRequirement }));
+    } catch {
+      /* apiPost 已 Toast */
+    } finally {
+      setModelHelpWriteLoading(false);
+    }
+  }, [analysisText, message, portraits, selectedVisualIndex, visualImages]);
 
   const handleImagesAppend = useCallback((files: File[]) => {
     setImages((current) => appendProductImages(current, files));
@@ -203,46 +291,28 @@ export default function EcommerceStudio() {
     setDocuments((current) => removeProductDoc(current, uid));
   }, []);
 
+  const handlePortraitsAppend = useCallback((files: File[]) => {
+    setPortraits((current) => appendProductImages(current, files, MAX_MODEL_IMAGES));
+  }, []);
+
+  const handlePortraitRemove = useCallback((uid: string) => {
+    setPortraits((current) => removeProductImage(current, uid));
+  }, []);
+
   const handlePrev = useCallback(() => {
-    if (phase === 'analyzing' || phase === 'generating') {
+    if (phase === 'analyzing' || phase === 'visualGenerating' || phase === 'modelGenerating') {
       abortCurrent();
     }
     setPhase((current) => phaseAfterPrev(current));
   }, [abortCurrent, phase]);
 
   const handleNext = useCallback(() => {
-    if (phase === 'analyzed') {
-      setPhase(phaseAfterNext(phase));
+    if (phase === 'visual' && selectedVisualIndex === null) {
+      message.warning(VISUAL_SELECT_MISSING);
       return;
     }
-    void handleGenerate();
-  }, [handleGenerate, phase]);
-
-  const handleHelpWrite = useCallback(async () => {
-    if (images.length === 0) {
-      message.warning(NO_IMAGE_WARNING);
-      return;
-    }
-    const first = images[0];
-    if (!first) {
-      message.warning(NO_IMAGE_WARNING);
-      return;
-    }
-    setHelpWriteLoading(true);
-    try {
-      const imageDataUrl = await readFileAsDataUrl(first.file);
-      const data = await apiPost<EcommerceHelpWriteData>('/api/ecommerce/help-write', {
-        designType: form.designType,
-        platform: form.platform,
-        imageDataUrl,
-      });
-      setForm((current) => ({ ...current, requirement: data.requirement }));
-    } catch {
-      /* apiPost 已 Toast */
-    } finally {
-      setHelpWriteLoading(false);
-    }
-  }, [form.designType, form.platform, images, message]);
+    setPhase((current) => phaseAfterNext(current));
+  }, [message, phase, selectedVisualIndex]);
 
   return (
     <Layout className={styles.studio}>
@@ -270,25 +340,36 @@ export default function EcommerceStudio() {
         <ControlPanel
           images={images}
           documents={documents}
+          portraits={portraits}
           form={form}
+          modelForm={modelForm}
           phase={phase}
           formLocked={formLocked}
-          helpWriteLoading={helpWriteLoading}
+          modelHelpWriteLoading={modelHelpWriteLoading}
           onImagesAppend={handleImagesAppend}
           onImageRemove={handleImageRemove}
           onDocsAppend={handleDocsAppend}
           onDocRemove={handleDocRemove}
+          onPortraitsAppend={handlePortraitsAppend}
+          onPortraitRemove={handlePortraitRemove}
           onFormChange={setForm}
+          onModelFormChange={setModelForm}
           onAnalyze={handleAnalyze}
-          onHelpWrite={handleHelpWrite}
+          onGenerateVisual={handleGenerateVisual}
+          onGenerateModel={handleGenerateModel}
+          onModelHelpWrite={handleModelHelpWrite}
         />
         <ResultPanel
           phase={phase}
           analysisText={analysisText}
           analysisStreaming={analysisStreaming}
-          images={resultImages}
-          expectedImageCount={expectedImageCount}
-          aspectRatio={form.aspectRatio}
+          visualImages={visualImages}
+          modelImages={modelImages}
+          expectedVisualCount={expectedVisualCount}
+          visualAspectRatio={form.aspectRatio}
+          modelAspectRatio={modelForm.aspectRatio}
+          selectedVisualIndex={selectedVisualIndex}
+          onSelectVisual={setSelectedVisualIndex}
           onPrev={handlePrev}
           onNext={handleNext}
           onAnalysisTextChange={setAnalysisText}

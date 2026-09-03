@@ -5,8 +5,8 @@ import {
   isValidImageSize,
   resolveImageQuality,
 } from '@/app/api/images/_server/image-spec';
-import { generateImageViaRouter, resolveImageModelId } from '@/app/api/images/_server/router';
-import { PRODUCT_EDIT_PROMPT_GUARD } from './constants';
+import { resolveExplicitImageModelId } from '@/app/api/images/_server/registry';
+import { generateImageViaRouter } from '@/app/api/images/_server/router';
 
 export type GenerateOneResult = { ok: true; url: string } | { ok: false; error: string };
 
@@ -18,7 +18,7 @@ function bytesToDataUrl(bytes: Uint8Array, mimeType: string): string {
 }
 
 /**
- * 按单张 slot 做产品图 i2i，结果以 data URL 返回。不经过 chat generate_image tool，不落盘。
+ * 单张生图（有参考图则 i2i，否则 t2i），结果以 data URL 返回。不经过 chat generate_image tool，不落盘。
  */
 export async function generateStudioImage(input: {
   prompt: string;
@@ -26,32 +26,42 @@ export async function generateStudioImage(input: {
   aspectRatio: string;
   clarity: string;
   quality: string;
-  productDataUrls: string[];
+  referenceImageDataUrls?: string[];
   abortSignal?: AbortSignal;
 }): Promise<GenerateOneResult> {
   if (input.abortSignal?.aborted) {
     return { ok: false, error: '已取消' };
   }
 
-  if (input.productDataUrls.length === 0) {
-    return { ok: false, error: '缺少产品图' };
-  }
-
   try {
-    const modelId = resolveImageModelId({ requestedModelId: input.model });
+    const modelId = resolveExplicitImageModelId(input.model);
+    if (!modelId) {
+      return { ok: false, error: '不支持的生图模型' };
+    }
     const spec = getImageSpec(modelId);
     const resolvedSize =
       input.clarity && isValidImageSize(input.clarity, spec)
         ? input.clarity.trim()
         : spec.size.default;
     const resolvedQuality = resolveImageQuality(input.quality, spec);
-    const outboundPrompt = `${input.prompt}\n${PRODUCT_EDIT_PROMPT_GUARD}`;
+    const refs = input.referenceImageDataUrls?.filter(Boolean) ?? [];
+    const mode = refs.length > 0 ? 'edit' : 'generate';
+    console.info('[ecommerce/generate] image-request', {
+      requestedModelId: input.model,
+      modelId,
+      mode,
+      clarity: input.clarity,
+      resolvedSize,
+      aspectRatio: input.aspectRatio,
+      quality: resolvedQuality ?? '默认',
+      refs: refs.length,
+    });
 
     const result = await generateImageViaRouter({
       modelId,
-      prompt: outboundPrompt,
-      mode: 'edit',
-      referenceImageDataUrls: input.productDataUrls,
+      prompt: input.prompt,
+      mode,
+      ...(refs.length > 0 ? { referenceImageDataUrls: refs } : {}),
       size: resolvedSize,
       quality: resolvedQuality,
       aspectRatio: input.aspectRatio,

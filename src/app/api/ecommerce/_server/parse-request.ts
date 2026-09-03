@@ -5,28 +5,21 @@ import { z } from 'zod';
 import type {
   EcommerceAnalyzeRequest,
   EcommerceGenerateRequest,
-  EcommercePlanSlot,
+  EcommerceModelHelpWriteRequest,
 } from '@/app/api/ecommerce/_shared/types';
 import {
+  MAX_STUDIO_MODEL_IMAGES,
   MAX_STUDIO_PRODUCT_DOCS,
   MAX_STUDIO_PRODUCT_IMAGES,
   STUDIO_COUNT_VALUES,
 } from './constants';
 import { isAllowedStudioDocument } from './document-guard';
 
-const formFieldsSchema = z.object({
-  designType: z.enum(['main', 'detail', 'ad']),
-  platform: z.string().min(1),
-  requirement: z.string(),
-  language: z.string().min(1),
+const specFieldsSchema = z.object({
   model: z.string().min(1),
   aspectRatio: z.string().min(1),
   quality: z.string().min(1),
   clarity: z.string().min(1),
-  count: z
-    .number()
-    .int()
-    .refine((value) => (STUDIO_COUNT_VALUES as readonly number[]).includes(value)),
 });
 
 const imageInputSchema = z.object({
@@ -34,6 +27,8 @@ const imageInputSchema = z.object({
   mediaType: z.string().min(1),
   dataUrl: z.string().startsWith('data:image/'),
 });
+
+const imageDataUrlSchema = z.string().startsWith('data:image/');
 
 const documentInputSchema = z
   .object({
@@ -48,19 +43,33 @@ const analyzeBodySchema = z.object({
   documents: z.array(documentInputSchema).max(MAX_STUDIO_PRODUCT_DOCS).optional(),
 });
 
-const planSlotSchema = z.object({
-  index: z.number().int(),
-  title: z.string(),
-  marketing: z.string(),
-  visual: z.string(),
-  copy: z.string(),
-  prompt: z.string().min(1),
+const visualGenerateSchema = specFieldsSchema.extend({
+  kind: z.literal('visual'),
+  count: z
+    .number()
+    .int()
+    .refine((value) => (STUDIO_COUNT_VALUES as readonly number[]).includes(value)),
+  analysisText: z.string().min(1),
+  images: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
 });
 
-const generateBodySchema = formFieldsSchema.extend({
-  images: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
-  slots: z.array(planSlotSchema).min(1),
+const modelGenerateSchema = specFieldsSchema.extend({
+  kind: z.literal('model'),
+  modelRequirement: z.string(),
+  visualDataUrl: imageDataUrlSchema,
+  modelImages: z.array(imageInputSchema).max(MAX_STUDIO_MODEL_IMAGES).optional(),
 });
+
+const modelHelpWriteBodySchema = z.object({
+  analysisText: z.string().min(1),
+  visualDataUrl: imageDataUrlSchema,
+  modelImageDataUrl: imageDataUrlSchema.optional(),
+});
+
+const generateBodySchema = z.discriminatedUnion('kind', [
+  visualGenerateSchema,
+  modelGenerateSchema,
+]);
 
 /** 校验分析请求体；失败返回 null */
 export function parseAnalyzeBody(json: unknown): EcommerceAnalyzeRequest | null {
@@ -74,8 +83,8 @@ export function parseGenerateBody(json: unknown): EcommerceGenerateRequest | nul
   return parsed.success ? parsed.data : null;
 }
 
-/** 校验模型输出的 slots 数组 */
-export function parsePlanSlots(value: unknown): EcommercePlanSlot[] | null {
-  const parsed = z.array(planSlotSchema).min(1).safeParse(value);
+/** 校验模特要求帮写请求体；失败返回 null */
+export function parseModelHelpWriteBody(json: unknown): EcommerceModelHelpWriteRequest | null {
+  const parsed = modelHelpWriteBodySchema.safeParse(json);
   return parsed.success ? parsed.data : null;
 }

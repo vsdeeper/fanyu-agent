@@ -1,20 +1,38 @@
-import { RESULT_TITLE_ANALYSIS, RESULT_TITLE_GENERATE } from '../constants';
+import {
+  EMPTY_MODEL_HINT,
+  EMPTY_RESULT_HINT,
+  EMPTY_VISUAL_HINT,
+  RESULT_TITLE_ANALYSIS,
+  RESULT_TITLE_MODEL,
+  RESULT_TITLE_VISUAL,
+} from '../constants';
 import type { StudioPhase } from '../types';
 
-/** 商业分析/确认规划显示分析结果；出图阶段显示生成结果 */
+/** 右侧标题随步骤切换 */
 export function toResultHeadTitle(phase: StudioPhase): string {
-  if (phase === 'generating' || phase === 'done') return RESULT_TITLE_GENERATE;
+  if (isVisualResultPhase(phase)) return RESULT_TITLE_VISUAL;
+  if (isModelResultPhase(phase)) return RESULT_TITLE_MODEL;
   return RESULT_TITLE_ANALYSIS;
 }
 
-/** 右侧是否展示规划 Markdown（分析中、分析完成、确认规划） */
+/** 右侧是否展示规划 Markdown（分析中、分析完成） */
 export function isPlanPhase(phase: StudioPhase): boolean {
-  return phase === 'analyzing' || phase === 'analyzed' || phase === 'confirm';
+  return phase === 'analyzing' || phase === 'analyzed';
+}
+
+/** 营销主视觉结果区（含生图中） */
+export function isVisualResultPhase(phase: StudioPhase): boolean {
+  return phase === 'visual' || phase === 'visualGenerating';
+}
+
+/** 产品模特结果区（含完成） */
+export function isModelResultPhase(phase: StudioPhase): boolean {
+  return phase === 'model' || phase === 'modelGenerating' || phase === 'done';
 }
 
 /** 第一步（商业分析）不展示上一步 */
 export function isPrevVisible(phase: StudioPhase): boolean {
-  return phase === 'confirm' || phase === 'generating' || phase === 'done';
+  return phase !== 'input' && phase !== 'analyzing' && phase !== 'analyzed';
 }
 
 /** 规划滚动区是否贴底（普通 overflow，底部 ≈ scrollHeight - clientHeight） */
@@ -58,9 +76,26 @@ export function reconcilePlanScrollPin(
   };
 }
 
-/** 分析完成后可进确认规划；确认规划后可出图 */
-export function isNextDisabled(phase: StudioPhase): boolean {
-  return phase !== 'analyzed' && phase !== 'confirm';
+/**
+ * 下一步是否禁用：分析完成可进视觉；视觉须已点选标准；模特须至少一张成功。
+ */
+export function isNextDisabled(
+  phase: StudioPhase,
+  analysisText: string,
+  selectedVisualIndex: number | null,
+  hasReadyModelImage: boolean,
+): boolean {
+  if (phase === 'analyzed') return !analysisText.trim();
+  if (phase === 'visual') return selectedVisualIndex === null;
+  if (phase === 'model') return !hasReadyModelImage;
+  return true;
+}
+
+/** 空态提示随步骤切换 */
+export function toEmptyHint(phase: StudioPhase): string {
+  if (isVisualResultPhase(phase)) return EMPTY_VISUAL_HINT;
+  if (isModelResultPhase(phase)) return EMPTY_MODEL_HINT;
+  return EMPTY_RESULT_HINT;
 }
 
 /** 出图预览地址（工作台结果为 data URL） */

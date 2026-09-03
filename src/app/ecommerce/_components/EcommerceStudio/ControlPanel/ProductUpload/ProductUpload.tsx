@@ -15,18 +15,28 @@ type ProductUploadProps = {
   disabled?: boolean;
   onAppend: (files: File[]) => void;
   onRemove: (uid: string) => void;
+  max?: number;
+  label?: string;
+  subtitle?: string;
+  hint?: string;
+  ariaLabel?: string;
 };
 
 /**
- * 产品图本地上传与预览（最多 6 张）：空态为大虚线投放区，有图后为网格缩略图 + 加号槽，不落盘。
+ * 本地图片上传与预览：空态为大虚线投放区，有图后为网格缩略图 + 加号槽，不落盘。
  */
 export default function ProductUpload({
   images,
   disabled = false,
   onAppend,
   onRemove,
+  max = MAX_PRODUCT_IMAGES,
+  label = '产品图',
+  subtitle = UPLOAD_SUBTITLE,
+  hint = UPLOAD_HINT,
+  ariaLabel = '上传产品图',
 }: ProductUploadProps) {
-  const remaining = MAX_PRODUCT_IMAGES - images.length;
+  const remaining = max - images.length;
   const empty = images.length === 0;
 
   return (
@@ -37,12 +47,12 @@ export default function ProductUpload({
             <PictureOutlined />
           </span>
           <div className={styles.titles}>
-            <span className={styles.label}>产品图</span>
-            <span className={styles.sub}>{UPLOAD_SUBTITLE}</span>
+            <span className={styles.label}>{label}</span>
+            <span className={styles.sub}>{subtitle}</span>
           </div>
         </div>
         <span className={styles.counter}>
-          {images.length}/{MAX_PRODUCT_IMAGES}
+          {images.length}/{max}
         </span>
       </div>
 
@@ -59,12 +69,12 @@ export default function ProductUpload({
             type="button"
             className={styles.emptyDrop}
             disabled={disabled}
-            aria-label="上传产品图"
+            aria-label={ariaLabel}
           >
             <span className={styles.emptyIcon} aria-hidden>
               <UploadOutlined />
             </span>
-            <span className={styles.emptyHint}>{UPLOAD_HINT}</span>
+            <span className={styles.emptyHint}>{hint}</span>
           </button>
         </Upload>
       ) : (
@@ -97,7 +107,7 @@ export default function ProductUpload({
                 type="button"
                 className={styles.addSlot}
                 disabled={disabled}
-                aria-label="上传产品图"
+                aria-label={ariaLabel}
               >
                 <PlusOutlined />
               </button>

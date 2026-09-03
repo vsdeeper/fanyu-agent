@@ -10,18 +10,25 @@ type ResultImageGridProps = {
   expectedCount: number;
   /** 表单「尺寸比例」（如 3:4），用于对齐预览/骨架显示比例 */
   aspectRatio: string;
+  selectable?: boolean;
+  selectedIndex?: number | null;
+  selectedBadge?: string;
+  onSelect?: (index: number) => void;
 };
 
 /**
  * 工作台出图网格：pending 为 Skeleton，就绪为可预览图，失败为 fallback。
- * 预览与骨架单元格比例随表单「尺寸比例」变化。
+ * 预览与骨架单元格比例随表单「尺寸比例」变化；主视觉步可点选一张为标准。
  */
 export default function ResultImageGrid({
   images,
   expectedCount,
   aspectRatio,
+  selectable = false,
+  selectedIndex = null,
+  selectedBadge,
+  onSelect,
 }: ResultImageGridProps) {
-  // 统一基准宽换算：同一次出图所有单元格用同一比例，网格对齐
   const { width: cellWidth, height: cellHeight } = aspectRatioToSize(
     aspectRatio,
     RESULT_IMAGE_SIZE,
@@ -55,6 +62,10 @@ export default function ResultImageGrid({
             image={item}
             width={cellWidth}
             height={cellHeight}
+            selectable={selectable}
+            selected={selectedIndex === item.index}
+            selectedBadge={selectedBadge}
+            onSelect={onSelect}
           />
         ))}
       </Image.PreviewGroup>

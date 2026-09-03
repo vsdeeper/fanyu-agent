@@ -1,56 +1,35 @@
-import { DEFAULT_ASPECT_BY_TYPE } from '../constants';
-import { getCountSpec, getModelCapability } from '../model-options';
-import type { DesignType, StudioFormState, StudioPhase } from '../types';
+import { getModelCapability } from '../model-options';
+import type { StudioPhase, StudioSpecFields } from '../types';
 
-/** 商业分析步骤（输入、分析中、分析完成同属一步，不自动进入确认规划） */
+/** 商业分析步骤（输入、分析中、分析完成同属一步） */
 export function isAnalyzePhase(phase: StudioPhase): boolean {
   return phase === 'input' || phase === 'analyzing' || phase === 'analyzed';
 }
 
+/** 营销主视觉步骤（含生图中，步进条停在第二步） */
+export function isVisualPhase(phase: StudioPhase): boolean {
+  return phase === 'visual' || phase === 'visualGenerating';
+}
+
+/** 产品模特及完成（左栏展示模特表单） */
+export function isModelPhase(phase: StudioPhase): boolean {
+  return phase === 'model' || phase === 'modelGenerating' || phase === 'done';
+}
+
 /** 更新表单中的单个字段 */
-export function patchFormState<K extends keyof StudioFormState>(
-  state: StudioFormState,
+export function patchFormState<T extends object, K extends keyof T>(
+  state: T,
   key: K,
-  value: StudioFormState[K],
-): StudioFormState {
+  value: T[K],
+): T {
   return { ...state, [key]: value };
-}
-
-/** 将 Segmented 的值收窄为 DesignType */
-export function toDesignType(value: string | number): DesignType {
-  if (value === 'detail' || value === 'ad' || value === 'main') return value;
-  return 'main';
-}
-
-/**
- * 切换类型时同步默认画幅与默认数量（数量随类型+平台），其它字段保持。
- */
-export function patchDesignType(state: StudioFormState, designType: DesignType): StudioFormState {
-  return {
-    ...state,
-    designType,
-    aspectRatio: DEFAULT_ASPECT_BY_TYPE[designType],
-    count: getCountSpec(designType, state.platform).default,
-  };
-}
-
-/**
- * 切平台时：仅主图数量随平台变化；详情/广告为统一标准范围，不重置数量。
- */
-export function patchPlatform(state: StudioFormState, platform: string): StudioFormState {
-  if (state.designType !== 'main') return { ...state, platform };
-  return {
-    ...state,
-    platform,
-    count: getCountSpec('main', platform).default,
-  };
 }
 
 /**
  * 切模型时按模型规格重置清晰度与质量默认：
- * 清晰度默认 spec.size.default（2K，不支持回退 1K）；不支持的模型隐藏质量字段，不再强制其默认。
+ * 清晰度默认 spec.size.default（2K，不支持回退 1K）；不支持的模型不再强制质量默认。
  */
-export function patchModel(state: StudioFormState, model: string): StudioFormState {
+export function patchModel<T extends StudioSpecFields>(state: T, model: string): T {
   const next = { ...state, model };
   const capability = getModelCapability(model);
   if (!capability) return next;

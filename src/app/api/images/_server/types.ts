@@ -5,6 +5,14 @@ export type ImageProviderId = 'ark' | 'laozhang';
 export type ImageSpec = {
   /** 尺寸规格：预设档位 + 默认档 */
   size: { presets: readonly string[]; default: string };
+  /** 上游尺寸入参格式：tier=原生支持 1K/2K/4K 等档位串；pixel=须换算为 WIDTHxHEIGHT。 */
+  sizeInput: 'tier' | 'pixel';
+  /** 像素入参模型的档位长边表；存在时优先用长边 + 宽高比换算，而不是用正方形面积换算。 */
+  tierLongEdges?: Record<string, number>;
+  /** 像素尺寸对齐步长；GPT Image 2 要求宽高为 16 的倍数。 */
+  dimensionMultiple?: number;
+  /** 像素入参模型支持的最大长短边比例。 */
+  maxAspectRatio?: number;
   minPixels?: number;
   maxPixels?: number;
   /** 上游是否接受 `output_format`（png/jpeg）参数。4.5 起方舟 Seedream 不支持该参数，传则 400；缺省视为 true。 */

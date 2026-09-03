@@ -1,29 +1,23 @@
 import { requireEnv } from '@/lib/shared/server/env';
-import { buildImagePrompt, decodeBase64Image, downloadImage, sniffImageMime } from '../image-utils';
+import {
+  buildImagePrompt,
+  decodeBase64Image,
+  downloadImage,
+  readImageDimensions,
+  sniffImageMime,
+} from '../image-utils';
 import type { ImageGenerateRequest, ImageGenerateResult, ImageProvider, ImageSpec } from '../types';
 import {
   getImageSpec,
   IMAGE_ASPECT_RATIO_AUTO,
   IMAGE_ASPECT_RATIOS,
   resolveImageQuality,
-  resolveImageSize,
+  resolveOutboundImageSize,
 } from '../image-spec';
+import { extractGeminiImage, type GeminiGenerateResponse } from './gemini-response';
 
 /** Gemini generateContent 图片段：请求用 snake `inline_data`，响应可能回 camel `inlineData`，两种都认。 */
-type InlineData = { mime_type?: string; mimeType?: string; data?: string };
-
 type GeminiRequestPart = { text?: string; inline_data?: { mime_type?: string; data?: string } };
-
-type GeminiResponsePart = { text?: string; inlineData?: InlineData; inline_data?: InlineData };
-
-type GeminiGenerateResponse = {
-  candidates?: Array<{
-    finishReason?: string;
-    content?: { parts?: GeminiResponsePart[] };
-  }>;
-  promptFeedback?: { blockReason?: string; blockReasonMessage?: string };
-  error?: { message?: string; status?: string; code?: number };
-};
 
 /** Gemini imageConfig.aspectRatio 支持的枚举（白名单），非枚举比例直接不发送以免 400。 */
 const SUPPORTED_ASPECT_RATIOS = IMAGE_ASPECT_RATIOS as readonly string[];
@@ -71,24 +65,6 @@ function logLaozhangFailure(
   console.error(`[laozhang] ${reason}`, fields);
 }
 
-/** 从 generateContent 响应取第一张图：遍历 candidates / parts，认 inlineData 或 inline_data。 */
-function extractImage(
-  payload: GeminiGenerateResponse,
-): { bytes: Uint8Array; mimeType: string } | undefined {
-  for (const candidate of payload.candidates ?? []) {
-    for (const part of candidate.content?.parts ?? []) {
-      const inline = part.inlineData ?? part.inline_data;
-      if (!inline?.data) continue;
-      const bytes = decodeBase64Image(inline.data);
-      return {
-        bytes,
-        mimeType: inline.mimeType ?? inline.mime_type ?? sniffImageMime(bytes),
-      };
-    }
-  }
-  return undefined;
-}
-
 /** OpenAI images 通道的响应项：gpt-image 系列默认只回 b64_json，兼容 url。 */
 type OpenAIImageItem = { b64_json?: string; url?: string };
 type OpenAIImageResponse = { data?: OpenAIImageItem[]; error?: { message?: string } };
@@ -123,9 +99,8 @@ async function generateOpenAIImage(
   baseURL: string,
   spec: ImageSpec,
 ): Promise<ImageGenerateResult> {
-  // gpt-image 按像素入参（spec 配了 minPixels/maxPixels 区间），与 Seedream 同属「可出站 WxH」模型：
-  // 统一走 resolveImageSize（K 档位 → 基准 WxH → 按比例 reshape）。
-  const outboundSize = resolveImageSize(req.size, req.aspectRatio, spec);
+  // gpt-image 按模型声明走像素入参：不支持 *K 档位时统一转 WxH，并结合比例 reshape。
+  const outboundSize = resolveOutboundImageSize(req.size, req.aspectRatio, spec);
   // 仅支持 quality 的模型（gpt-image）透传该档位；不支持时 resolveImageQuality 返回 undefined，payload 不带该字段。
   const quality = resolveImageQuality(req.quality, spec);
   const refs = req.mode === 'edit' ? (req.referenceImageDataUrls ?? []) : [];
@@ -233,6 +208,16 @@ async function generateOpenAIImage(
       throw new Error('老张生图结果格式无效');
     }),
   );
+  console.info('[laozhang] gpt-image result', {
+    modelId: req.modelId,
+    mode: req.mode,
+    requestedSize: req.size ?? '默认',
+    outboundSize,
+    aspectRatio: req.aspectRatio ?? IMAGE_ASPECT_RATIO_AUTO,
+    quality: quality ?? '默认',
+    refs: refs.length,
+    dimensions: images.map((image) => readImageDimensions(image.bytes) ?? null),
+  });
   return { images };
 }
 
@@ -249,7 +234,7 @@ export const laozhangProvider: ImageProvider = {
       return generateOpenAIImage(req, apiKey, baseURL, spec);
     }
 
-    // Gemini imageConfig 直传比例串与档位，无需换算成像素宽高（非方舟 WxH 端点）。
+    // Gemini native generateContent 支持 imageSize 档位串（1K/2K/4K），按模型声明直传而非换算 WxH。
     // 仅发送白名单内的比例；'auto' / 未指定 / 非枚举比例 → 省略 aspectRatio，交由模型自选。
     const ratio =
       req.aspectRatio &&
@@ -258,11 +243,8 @@ export const laozhangProvider: ImageProvider = {
         ? req.aspectRatio
         : undefined;
 
-    // imageSize 仅认档位串（1K/2K/4K…），WxH 或未知值回退到模型默认档位。
-    const requestedTier = req.size?.trim().toUpperCase();
-    const imageSize =
-      spec.size.presets.find((preset) => preset.toUpperCase() === requestedTier) ??
-      spec.size.default;
+    // imageSize 仅认模型登记的档位串；WxH 或未知值回退到模型默认档位。
+    const imageSize = resolveOutboundImageSize(req.size, undefined, spec);
 
     // 生成/改图统一：参考图逐个追加 inline_data 段（Gemini generateContent 支持多图输入），无则仅文本。
     // req.mode 已由 router 按能力校验；edit 才带上参考图，generate 保持纯文本。
@@ -330,7 +312,7 @@ export const laozhangProvider: ImageProvider = {
       throw new Error('老张生图服务暂不可用');
     }
 
-    const image = extractImage(payload);
+    const image = extractGeminiImage(payload);
     if (!image) {
       logLaozhangFailure('未返回图片', {
         modelId: req.modelId,

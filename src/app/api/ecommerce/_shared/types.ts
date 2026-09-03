@@ -1,23 +1,3 @@
-/** POST /api/ecommerce/help-write 成功载荷 */
-export type EcommerceHelpWriteData = {
-  requirement: string;
-};
-
-export type EcommerceDesignType = 'main' | 'detail' | 'ad';
-
-/** 出图表单字段，与确认规划步左侧栏对齐；不落会话库 */
-export type EcommerceStudioFormInput = {
-  designType: EcommerceDesignType;
-  platform: string;
-  requirement: string;
-  language: string;
-  model: string;
-  aspectRatio: string;
-  quality: string;
-  clarity: string;
-  count: number;
-};
-
 export type EcommerceImageInput = {
   filename: string;
   mediaType: string;
@@ -36,15 +16,6 @@ export type EcommerceAnalyzeRequest = {
   documents?: EcommerceDocumentInput[];
 };
 
-export type EcommercePlanSlot = {
-  index: number;
-  title: string;
-  marketing: string;
-  visual: string;
-  copy: string;
-  prompt: string;
-};
-
 export type EcommerceAnalyzeTextEvent = {
   delta: string;
 };
@@ -55,13 +26,48 @@ export type EcommerceAnalyzeErrorEvent = {
   message: string;
 };
 
-export type EcommerceGenerateRequest = EcommerceStudioFormInput & {
-  images: EcommerceImageInput[];
-  slots: EcommercePlanSlot[];
+export type EcommerceGenerateKind = 'visual' | 'model';
+
+type EcommerceGenerateBase = {
+  model: string;
+  aspectRatio: string;
+  quality: string;
+  clarity: string;
 };
+
+/** 营销主视觉：表单规格 + 商业分析 + 产品图 */
+export type EcommerceVisualGenerateRequest = EcommerceGenerateBase & {
+  kind: 'visual';
+  count: number;
+  analysisText: string;
+  images: EcommerceImageInput[];
+};
+
+/** 产品模特：本步表单 + 选中主视觉 + 可选模特形象；不传分析/产品图 */
+export type EcommerceModelGenerateRequest = EcommerceGenerateBase & {
+  kind: 'model';
+  modelRequirement: string;
+  visualDataUrl: string;
+  modelImages?: EcommerceImageInput[];
+};
+
+export type EcommerceGenerateRequest =
+  EcommerceVisualGenerateRequest | EcommerceModelGenerateRequest;
 
 export type EcommerceGenerateImageEvent = {
   index: number;
   url?: string;
   error?: string;
+};
+
+/** POST /api/ecommerce/model-help-write 成功载荷 */
+export type EcommerceModelHelpWriteData = {
+  modelRequirement: string;
+};
+
+/** POST /api/ecommerce/model-help-write 请求体 */
+export type EcommerceModelHelpWriteRequest = {
+  analysisText: string;
+  visualDataUrl: string;
+  modelImageDataUrl?: string;
 };

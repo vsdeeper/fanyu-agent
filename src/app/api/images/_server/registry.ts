@@ -80,3 +80,12 @@ export function getImageModelProfile(modelId: string): ImageModelProfile | undef
   const normalized = modelId.trim();
   return listImageModels().find((item) => item.id === normalized);
 }
+
+/**
+ * 解析用户显式选择的模型；不读取 IMAGE_MODEL_ID，供有固定模型下拉的工作台类入口使用。
+ */
+export function resolveExplicitImageModelId(requestedModelId: string | undefined): string | null {
+  const normalized = requestedModelId?.trim();
+  if (!normalized) return null;
+  return getImageModelProfile(normalized) ? normalized : null;
+}

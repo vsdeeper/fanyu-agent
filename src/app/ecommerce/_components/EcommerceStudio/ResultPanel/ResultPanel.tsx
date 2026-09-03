@@ -6,7 +6,7 @@ import '@ant-design/x-markdown/themes/dark.css';
 import './XMarkdownTheme.css';
 import { useState } from 'react';
 import { useThemeMode } from '@/components/theme';
-import { EMPTY_RESULT_HINT, NEXT_BUTTON, PREV_BUTTON } from '../constants';
+import { NEXT_BUTTON, PREV_BUTTON, VISUAL_STANDARD_BADGE } from '../constants';
 import type { StudioPhase, StudioResultImage } from '../types';
 import {
   MARKDOWN_COMPONENTS,
@@ -16,46 +16,63 @@ import {
 } from './constants';
 import ResultImageGrid from './ResultImageGrid';
 import { usePlanStreamScroll } from './usePlanStreamScroll';
-import { isNextDisabled, isPlanPhase, isPrevVisible, toResultHeadTitle } from './utils';
+import {
+  isModelResultPhase,
+  isNextDisabled,
+  isPlanPhase,
+  isPrevVisible,
+  isVisualResultPhase,
+  toEmptyHint,
+  toResultHeadTitle,
+} from './utils';
 import styles from './ResultPanel.module.css';
 
 type ResultPanelProps = {
   phase: StudioPhase;
   analysisText: string;
   analysisStreaming: boolean;
-  images: readonly StudioResultImage[];
-  expectedImageCount: number;
+  visualImages: readonly StudioResultImage[];
+  modelImages: readonly StudioResultImage[];
+  expectedVisualCount: number;
+  visualAspectRatio: string;
+  modelAspectRatio: string;
+  selectedVisualIndex: number | null;
+  onSelectVisual: (index: number) => void;
   onPrev: () => void;
   onNext: () => void;
   onAnalysisTextChange: (next: string) => void;
-  /** 表单「尺寸比例」，传给出图网格对齐预览比例 */
-  aspectRatio: string;
 };
 
 /**
- * 右侧结果区：空态、分析等待 Spin、流式规划 Markdown（贴底跟随，可编辑）、出图网格；
+ * 右侧结果区：空态、分析 Markdown（可编辑）、主视觉/模特出图网格；
  * 右下角下一步，上一步仅第二步起显示。
  */
 export default function ResultPanel({
   phase,
   analysisText,
   analysisStreaming,
-  images,
-  expectedImageCount,
+  visualImages,
+  modelImages,
+  expectedVisualCount,
+  visualAspectRatio,
+  modelAspectRatio,
+  selectedVisualIndex,
+  onSelectVisual,
   onPrev,
   onNext,
   onAnalysisTextChange,
-  aspectRatio,
 }: ResultPanelProps) {
   const { mode } = useThemeMode();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const showPlan = isPlanPhase(phase) && Boolean(analysisText);
-  const showImages = phase === 'generating' || phase === 'done';
-  // 编辑态仅在确认规划生效（分析完成仍停在第一步，由下一步进入后再改稿）
-  const isEditing = editing && phase === 'confirm';
-  // 仅确认规划（内容已输出完毕）且已有内容时才可进入编辑
-  const canEdit = phase === 'confirm' && Boolean(analysisText) && !editing;
+  const showVisualGrid = isVisualResultPhase(phase) && visualImages.length > 0;
+  const showModelGrid = isModelResultPhase(phase) && modelImages.length > 0;
+  const isEditing = editing && phase === 'analyzed';
+  const canEdit = phase === 'analyzed' && Boolean(analysisText) && !editing;
+  const hasReadyModelImage = modelImages.some((item) => item.status === 'ready');
+  const nextDisabled =
+    isEditing || isNextDisabled(phase, analysisText, selectedVisualIndex, hasReadyModelImage);
   const { scrollRef, contentRef, onScroll } = usePlanStreamScroll(
     showPlan,
     analysisStreaming,
@@ -125,18 +142,26 @@ export default function ResultPanel({
         <div className={styles.body}>
           <Spin />
         </div>
-      ) : showImages ? (
+      ) : showVisualGrid ? (
         <div className={styles.scroll}>
           <ResultImageGrid
-            images={images}
-            expectedCount={expectedImageCount}
-            aspectRatio={aspectRatio}
+            images={visualImages}
+            expectedCount={expectedVisualCount}
+            aspectRatio={visualAspectRatio}
+            selectable={phase === 'visual'}
+            selectedIndex={selectedVisualIndex}
+            selectedBadge={VISUAL_STANDARD_BADGE}
+            onSelect={onSelectVisual}
           />
+        </div>
+      ) : showModelGrid ? (
+        <div className={styles.scroll}>
+          <ResultImageGrid images={modelImages} expectedCount={1} aspectRatio={modelAspectRatio} />
         </div>
       ) : (
         <div className={styles.body}>
           <StarOutlined className={styles.icon} />
-          <p className={styles.hint}>{EMPTY_RESULT_HINT}</p>
+          <p className={styles.hint}>{toEmptyHint(phase)}</p>
         </div>
       )}
       <div className={styles.footer}>
@@ -145,12 +170,7 @@ export default function ResultPanel({
             {PREV_BUTTON}
           </Button>
         ) : null}
-        <Button
-          size="large"
-          type="primary"
-          disabled={isEditing || isNextDisabled(phase)}
-          onClick={onNext}
-        >
+        <Button size="large" type="primary" disabled={nextDisabled} onClick={onNext}>
           {NEXT_BUTTON}
         </Button>
       </div>

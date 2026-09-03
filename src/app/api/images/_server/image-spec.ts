@@ -6,26 +6,31 @@ export const IMAGE_QUALITY_VALUES = ['high', 'medium', 'low', 'auto'] as const;
 /** 模型 ID → 生图输出规格。新增模型须同时改 registry 与本表，勿只改一处。 */
 export const IMAGE_SPEC_BY_MODEL_ID: Record<string, ImageSpec> = {
   'gpt-image-2-vip': {
-    // 档位串沿用（与 Seedream 一致）；该模型按像素入参，故配像素区间以启用自定义 WIDTHxHEIGHT 与比例换算。
+    // 该模型按像素入参：K 档位只是 UI 语义，出站须换成符合官方约束的 WIDTHxHEIGHT。
     size: { presets: ['1K', '2K', '4K'], default: '2K' },
-    minPixels: 1024 * 1024,
+    sizeInput: 'pixel',
+    tierLongEdges: { '1K': 1280, '2K': 2048, '4K': 3840 },
+    dimensionMultiple: 16,
+    maxAspectRatio: 3,
+    minPixels: 655_360,
     maxPixels: 3840 * 2160,
     // OpenAI gpt-image 支持 quality（low/medium/high/auto），默认 high；其余模型上游无该参数故不登记。
     quality: { presets: [...IMAGE_QUALITY_VALUES], default: 'high' },
   },
   'gemini-3.1-flash-lite-image': {
     // 恒定 1K（实测 2K/4K 档位仍返回 1024×1024）。不配 minPixels/maxPixels：
-    // 该模型只认档位串，配了像素上下限会让 describeImageSize/isValidImageSize 误宣传「支持自定义 WIDTHxHEIGHT」，
-    // 而 laozhang 端只会把自定义 WxH 静默回退成 '1K'。
+    // Gemini native 只认 imageSize 档位串，配像素上下限会误宣传「支持自定义 WIDTHxHEIGHT」。
     size: { presets: ['1K'], default: '1K' },
+    sizeInput: 'tier',
   },
   'gemini-3.1-flash-image': {
-    // 与 flash-lite 同属 Gemini 档位串直传路径，故同样不配 minPixels/maxPixels（避免误宣传自定义 WxH）；
-    // 但该模型真实支持 2K/4K 多档位，故开放多档位而非恒定 1K。
+    // Gemini native generateContent 支持大写 imageSize 档位（1K/2K/4K），不是 WIDTHxHEIGHT。
     size: { presets: ['1K', '2K', '4K'], default: '2K' },
+    sizeInput: 'tier',
   },
   'doubao-seedream-4-5-251128': {
     size: { presets: ['2K', '4K'], default: '2K' },
+    sizeInput: 'pixel',
     minPixels: 3_686_400, // 1920×1920，Seedream 可出图下限
     maxPixels: 4096 * 4096,
     // 方舟 Seedream 4.5 不支持 `output_format`（png/jpeg），传则 400 InvalidParameter；
@@ -34,6 +39,7 @@ export const IMAGE_SPEC_BY_MODEL_ID: Record<string, ImageSpec> = {
   },
   'doubao-seedream-5-0-lite-260128': {
     size: { presets: ['2K', '4K'], default: '2K' },
+    sizeInput: 'pixel',
     minPixels: 3_686_400, // 1920×1920，Seedream 可出图下限
     maxPixels: 4096 * 4096,
   },
@@ -61,12 +67,61 @@ export const IMAGE_ASPECT_RATIOS = [
   '1:4',
 ] as const;
 
-/** K 档位 → 标准基准分辨率。按像素（WxH）入参的模型（Seedream / gpt-image 等）以此换算默认/档位尺寸。 */
+/** K 档位 → 标准基准分辨率。仅供按像素（WxH）入参的模型（Seedream / gpt-image 等）换算默认/档位尺寸。 */
 export const K_SIZE_BY_TIER: Record<string, string> = {
   '1K': '1024x1024',
   '2K': '2048x2048',
   '4K': '4096x4096',
 };
+
+/** 解析宽高比；auto 或非法值返回 null，由调用方决定是否回退默认比例。 */
+function parseAspectRatio(value: string | undefined): { w: number; h: number } | null {
+  if (!value || value === IMAGE_ASPECT_RATIO_AUTO) return null;
+  const m = /^(\d+):(\d+)$/.exec(value.trim());
+  if (!m) return null;
+  const w = Number(m[1]);
+  const h = Number(m[2]);
+  if (w <= 0 || h <= 0) return null;
+  return { w, h };
+}
+
+/** 将尺寸向下对齐到模型要求的倍数，最小保留一个步长。 */
+function floorToMultiple(value: number, multiple: number): number {
+  return Math.max(multiple, Math.floor(value / multiple) * multiple);
+}
+
+/**
+ * 按模型专属长边表把 K 档位换算为 WxH；用于 GPT Image 2 这类要求 16 倍数、长边封顶的模型。
+ */
+function tierToConstrainedPixelSize(
+  tier: string,
+  aspectRatio: string | undefined,
+  spec: ImageSpec,
+): string | undefined {
+  const longEdge = spec.tierLongEdges?.[tier.toUpperCase()];
+  if (!longEdge) return undefined;
+
+  const multiple = spec.dimensionMultiple ?? 2;
+  const ratio = parseAspectRatio(aspectRatio) ?? { w: 1, h: 1 };
+  const longToShort = Math.max(ratio.w, ratio.h) / Math.min(ratio.w, ratio.h);
+  if (spec.maxAspectRatio != null && longToShort > spec.maxAspectRatio) return undefined;
+
+  let width = ratio.w >= ratio.h ? longEdge : (longEdge * ratio.w) / ratio.h;
+  let height = ratio.h >= ratio.w ? longEdge : (longEdge * ratio.h) / ratio.w;
+  width = floorToMultiple(width, multiple);
+  height = floorToMultiple(height, multiple);
+
+  const pixels = width * height;
+  if (spec.maxPixels != null && pixels > spec.maxPixels) {
+    const scale = Math.sqrt(spec.maxPixels / pixels);
+    width = floorToMultiple(width * scale, multiple);
+    height = floorToMultiple(height * scale, multiple);
+  }
+
+  if (spec.minPixels != null && width * height < spec.minPixels) return undefined;
+  if (spec.maxPixels != null && width * height > spec.maxPixels) return undefined;
+  return `${width}x${height}`;
+}
 
 /**
  * 把宽高比串（如 '3:2'）换算成模型可出站的 WIDTHxHEIGHT。
@@ -96,14 +151,21 @@ export function aspectRatioToSize(
     pw += 2;
     ph += 2;
   }
-  if (spec.maxPixels != null && pw * ph > spec.maxPixels) return undefined;
+  if (spec.maxPixels != null && pw * ph > spec.maxPixels) {
+    const maxScale = Math.sqrt(spec.maxPixels / (w * h));
+    pw = Math.max(2, Math.floor(w * maxScale));
+    ph = Math.max(2, Math.floor(h * maxScale));
+    if (pw % 2) pw -= 1;
+    if (ph % 2) ph -= 1;
+    if (pw * ph > spec.maxPixels) return undefined;
+  }
   return `${pw}x${ph}`;
 }
 
 /**
  * 解析按像素入参模型（Seedream / gpt-image 等）的可出站尺寸：把 size/defaultSize 的 K 档位先转成基准 WxH，
  * 无比例（'auto'/省略）直接返回基准 WxH，有比例则按基准面积 reshape。
- * 即「K 档位 → WxH → 结合比例」的统一入口；与档位串直传的 Gemini 路径（imageSize）不同。
+ * 即「K 档位 → WxH → 结合比例」的统一入口；与 Gemini native 档位串直传路径（imageSize）不同。
  */
 export function resolveImageSize(
   size: string | undefined,
@@ -111,6 +173,12 @@ export function resolveImageSize(
   spec: ImageSpec,
 ): string {
   const base = size?.trim() || spec.size.default;
+  const matchedPreset = matchPreset(base, spec);
+  const constrainedSize = matchedPreset
+    ? tierToConstrainedPixelSize(matchedPreset, aspectRatio, spec)
+    : undefined;
+  if (constrainedSize) return constrainedSize;
+
   const baseDims = parsePixelSize(base);
   const baseSize = baseDims ? base : (K_SIZE_BY_TIER[base.toUpperCase()] ?? spec.size.default);
   const dims = parsePixelSize(baseSize);
@@ -125,6 +193,27 @@ export function resolveImageSize(
   }
   if (!dims) return baseSize;
   return aspectRatioToSize(aspectRatio, spec, dims.width * dims.height) ?? baseSize;
+}
+
+/**
+ * 解析原生支持档位串模型的 imageSize：仅接受登记过的 1K/2K/4K 等档位，自定义像素值回退默认档。
+ */
+export function resolveImageTier(size: string | undefined, spec: ImageSpec): string {
+  if (!size) return spec.size.default;
+  return matchPreset(size, spec) ?? spec.size.default;
+}
+
+/**
+ * 按模型声明的上游尺寸格式解析出站尺寸：支持档位串则直传，不支持则把任意登记档位换算为 WxH。
+ */
+export function resolveOutboundImageSize(
+  size: string | undefined,
+  aspectRatio: string | undefined,
+  spec: ImageSpec,
+): string {
+  return spec.sizeInput === 'tier'
+    ? resolveImageTier(size, spec)
+    : resolveImageSize(size, aspectRatio, spec);
 }
 
 /**
@@ -173,10 +262,10 @@ export function isValidImageSize(value: string, spec: ImageSpec): boolean {
 /** 生成工具 schema / HINT 用的尺寸说明文案 */
 export function describeImageSize(spec: ImageSpec): string {
   const presets = spec.size.presets.join('、');
-  if (spec.minPixels != null && spec.maxPixels != null) {
+  if (spec.sizeInput === 'pixel' && spec.minPixels != null && spec.maxPixels != null) {
     return `可选尺寸：${presets}（默认 ${spec.size.default}），或自定义 WIDTHxHEIGHT（总像素 ${spec.minPixels} ~ ${spec.maxPixels}）`;
   }
-  // 固定尺寸模型：仅单一档位、无像素区间（如 gemini-flash 恒定 1K），size 实际不可选，可控的是宽高比。
+  // 固定尺寸模型：仅单一档位、无像素区间（如 gemini-flash-lite 恒定 1K），size 实际不可选，可控的是宽高比。
   if (spec.size.presets.length <= 1) {
     return `尺寸固定为 ${spec.size.default}；构图控制请用宽高比（aspectRatio，如 3:2、16:9）`;
   }

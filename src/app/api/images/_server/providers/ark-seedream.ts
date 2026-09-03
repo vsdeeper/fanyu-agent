@@ -1,7 +1,7 @@
 import { requireEnv } from '@/lib/shared/server/env';
 import { buildImagePrompt, decodeBase64Image, downloadImage, sniffImageMime } from '../image-utils';
 import type { ImageProvider } from '../types';
-import { getImageSpec, resolveImageSize } from '../image-spec';
+import { getImageSpec, resolveOutboundImageSize } from '../image-spec';
 
 type ArkImageResponse = {
   data?: Array<{ url?: string; b64_json?: string }>;
@@ -15,9 +15,9 @@ export const arkSeedreamProvider: ImageProvider = {
     const baseURL = requireEnv('ARK_BASE_URL').replace(/\/$/, '');
     const spec = getImageSpec(req.modelId);
 
-    // 统一解析：K 档位先转基准 WxH，再按比例 reshape（同 gpt-image），
+    // 按模型声明解析：Seedream 上游不支持 *K 档位，须先转基准 WxH，再按比例 reshape。
     // 避免「只给比例」时被 minPixels 拉到最小、或 K 档位直传非 WxH 导致默认不生效。
-    const outboundSize = resolveImageSize(req.size, req.aspectRatio, spec);
+    const outboundSize = resolveOutboundImageSize(req.size, req.aspectRatio, spec);
 
     const body: Record<string, unknown> = {
       model: req.modelId,

@@ -39,6 +39,55 @@ export function decodeBase64Image(b64: string): Uint8Array {
   return new Uint8Array(Buffer.from(b64, 'base64'));
 }
 
+/** 读取常见图片格式的像素尺寸；无法识别时返回 undefined，供服务端日志观测上游实际输出。 */
+export function readImageDimensions(
+  bytes: Uint8Array,
+): { width: number; height: number } | undefined {
+  if (
+    bytes.length >= 24 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  ) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return { width: view.getUint32(16), height: view.getUint32(20) };
+  }
+
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return undefined;
+  let offset = 2;
+  while (offset + 4 < bytes.length) {
+    while (bytes[offset] === 0xff) offset += 1;
+    const marker = bytes[offset];
+    offset += 1;
+    if (marker === 0xd9 || marker === 0xda) return undefined;
+    const length = (bytes[offset] << 8) + bytes[offset + 1];
+    if (length < 2 || offset + length > bytes.length) return undefined;
+    if (
+      marker === 0xc0 ||
+      marker === 0xc1 ||
+      marker === 0xc2 ||
+      marker === 0xc3 ||
+      marker === 0xc5 ||
+      marker === 0xc6 ||
+      marker === 0xc7 ||
+      marker === 0xc9 ||
+      marker === 0xca ||
+      marker === 0xcb ||
+      marker === 0xcd ||
+      marker === 0xce ||
+      marker === 0xcf
+    ) {
+      return {
+        height: (bytes[offset + 3] << 8) + bytes[offset + 4],
+        width: (bytes[offset + 5] << 8) + bytes[offset + 6],
+      };
+    }
+    offset += length;
+  }
+  return undefined;
+}
+
 export async function downloadImage(url: string): Promise<{ bytes: Uint8Array; mimeType: string }> {
   const response = await fetch(url);
   if (!response.ok) {

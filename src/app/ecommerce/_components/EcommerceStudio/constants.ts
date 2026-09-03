@@ -1,4 +1,4 @@
-import type { DesignType, StudioFormState, StudioPhase } from './types';
+import type { ModelFormState, StudioFormState, StudioPhase } from './types';
 import { toModelOptions } from './model-options';
 
 export const MAX_PRODUCT_IMAGES = 6;
@@ -9,57 +9,42 @@ export const STUDIO_SUBTITLE = 'AI 商业分析到设计出图，一站式专业
 
 export const STUDIO_STEPS: { title: string }[] = [
   { title: '商业分析' },
-  { title: '确认规划' },
-  { title: '生成中' },
+  { title: '营销主视觉' },
+  { title: '产品模特' },
   { title: '完成' },
 ];
-
-export const DESIGN_TYPE_ITEMS: {
-  value: DesignType;
-  label: string;
-  isNew?: boolean;
-}[] = [
-  { value: 'main', label: '主图' },
-  { value: 'detail', label: '详情图' },
-  { value: 'ad', label: '广告图', isNew: true },
-];
-
-export const REQUIREMENT_LABELS: Record<DesignType, string> = {
-  main: '主图要求',
-  detail: '详情图要求',
-  ad: '广告图要求',
-};
-
-export const REQUIREMENT_PLACEHOLDER =
-  '建议填写：产品名称、核心卖点、目标人群、投放平台、画面风格、整体氛围、文案要求，便于生成更贴合的电商图';
-
-export const DEFAULT_ASPECT_BY_TYPE: Record<DesignType, string> = {
-  main: '1:1',
-  detail: '3:4',
-  ad: '16:9',
-};
 
 export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
   input: 0,
   analyzing: 0,
   analyzed: 0,
-  confirm: 1,
-  generating: 2,
+  visual: 1,
+  visualGenerating: 1,
+  model: 2,
+  modelGenerating: 2,
   done: 3,
 };
 
 export const NO_IMAGE_WARNING = '请先上传产品图';
+export const ANALYSIS_MISSING = '请先完成产品分析';
+export const VISUAL_SELECT_MISSING = '请先点选一张主视觉作为视觉标准';
 export const ANALYZE_BUTTON = '分析产品';
+export const VISUAL_BUTTON = '生成主视觉';
+export const MODEL_BUTTON = '生成模特';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
 export const ANALYZE_FAILED = '产品分析失败，请稍后重试';
 export const GENERATE_FAILED = '生图失败，请稍后重试';
-export const SLOTS_MISSING = '请先完成产品分析';
+export const MODEL_HELP_WRITE_FAILED = '模特要求生成失败，请稍后重试';
 
 export const EMPTY_RESULT_HINT = '上传产品资料和产品图，点击「分析产品」开始';
+export const EMPTY_VISUAL_HINT = '设置参数后点击「生成主视觉」';
+export const EMPTY_MODEL_HINT = '可上传模特形象，填写要求后点击「生成模特」';
 
 export const RESULT_TITLE_ANALYSIS = '分析结果';
-export const RESULT_TITLE_GENERATE = '生成结果';
+export const RESULT_TITLE_VISUAL = '营销主视觉';
+export const RESULT_TITLE_MODEL = '产品模特';
+export const VISUAL_STANDARD_BADGE = '视觉标准';
 
 export const UPLOAD_SUBTITLE = '上传清晰的产品图片';
 
@@ -73,20 +58,11 @@ export const PRODUCT_DOC_HINT = '可上传产品说明、卖点清单、品牌�
 export const DOC_TOO_LARGE_WARNING = '单个资料不超过 10MB';
 export const DOC_TYPE_WARNING = '仅支持图片、PDF、TXT、MD、DOCX';
 
-export const PLATFORM_OPTIONS = [
-  { value: 'auto', label: '智能匹配' },
-  { value: 'taobao', label: '淘宝/天猫' },
-  { value: 'jd', label: '京东' },
-  { value: 'pdd', label: '拼多多' },
-  { value: 'douyin', label: '抖音' },
-  { value: 'xiaohongshu', label: '小红书' },
-];
-
-export const LANGUAGE_OPTIONS = [
-  { value: 'visual', label: '无文字(纯视觉)' },
-  { value: 'zh-CN', label: '中文简体' },
-  { value: 'en', label: '英文' },
-];
+export const MAX_MODEL_IMAGES = 3;
+export const MODEL_UPLOAD_SUBTITLE = '上传模特照片，非必须';
+export const MODEL_UPLOAD_HINT = '正面或全身清晰照更佳，用于锁定五官与体态';
+export const MODEL_REQUIREMENT_PLACEHOLDER =
+  '建议填写：性别年龄气质、体态发型；可穿戴品说明穿戴方式，非穿戴品注明画面不出现产品';
 
 /** 模型下拉（id + label），派生自 model-options，与服务端模型清单一致 */
 export const MODEL_OPTIONS = toModelOptions();
@@ -100,15 +76,19 @@ export const ASPECT_RATIO_OPTIONS = [
 ];
 
 export const DEFAULT_FORM_STATE: StudioFormState = {
-  designType: 'main',
-  platform: 'auto',
-  requirement: '',
-  language: 'zh-CN', // 目标语言默认中文简体
-  model: 'gpt-image-2-vip', // 统一默认模型：写实/指令遵从最强、支持透明底
+  model: 'gpt-image-2-vip',
   aspectRatio: '1:1',
-  quality: 'high', // 模型支持质量时默认高质量
-  clarity: '2K', // 按模型规格默认 2K，不支持回退 1K
-  count: '1', // 主图(智能匹配)默认 1
+  quality: 'high',
+  clarity: '2K',
+  count: '1',
+};
+
+export const DEFAULT_MODEL_FORM_STATE: ModelFormState = {
+  modelRequirement: '',
+  model: 'gpt-image-2-vip',
+  aspectRatio: '16:9',
+  quality: 'high',
+  clarity: '2K',
 };
 
 export const PRODUCT_IMAGE_ACCEPT = 'image/*';

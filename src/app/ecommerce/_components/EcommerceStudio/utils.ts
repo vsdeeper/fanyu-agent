@@ -7,12 +7,11 @@ import type {
   EcommerceGenerateImageEvent,
   EcommerceGenerateRequest,
   EcommerceImageInput,
-  EcommercePlanSlot,
-  EcommerceStudioFormInput,
 } from '@/app/api/ecommerce/_shared/types';
 import { ApiClientError } from '@/lib/shared/client/api-client';
 import { MAX_PRODUCT_DOCS, MAX_PRODUCT_IMAGES } from './constants';
 import type {
+  ModelFormState,
   ProductDocItem,
   ProductImageItem,
   StudioFormState,
@@ -26,8 +25,9 @@ import type {
 export function appendProductImages(
   current: ProductImageItem[],
   files: File[],
+  max = MAX_PRODUCT_IMAGES,
 ): ProductImageItem[] {
-  const room = MAX_PRODUCT_IMAGES - current.length;
+  const room = max - current.length;
   if (room <= 0) return current;
   const next = files.slice(0, room).map((file) => ({
     uid: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
@@ -97,18 +97,69 @@ export function isAbortError(err: unknown): boolean {
   );
 }
 
-/** 出图表单转生图接口字段 */
-export function toStudioFormPayload(form: StudioFormState): EcommerceStudioFormInput {
+/** 营销主视觉请求体：表单规格 + 商业分析 + 产品图 */
+export async function toVisualGeneratePayload(
+  form: StudioFormState,
+  images: ProductImageItem[],
+  analysisText: string,
+): Promise<EcommerceGenerateRequest> {
   return {
-    designType: form.designType,
-    platform: form.platform,
-    requirement: form.requirement,
-    language: form.language,
+    kind: 'visual',
     model: form.model,
     aspectRatio: form.aspectRatio,
     quality: form.quality,
     clarity: form.clarity,
     count: Number.parseInt(form.count, 10) || 1,
+    analysisText: analysisText.trim(),
+    images: await toAnalyzeImages(images),
+  };
+}
+
+/** 产品模特请求体：本步表单 + 选中主视觉 + 可选模特形象 */
+export async function toModelGeneratePayload(
+  form: ModelFormState,
+  modelImages: ProductImageItem[],
+  visualDataUrl: string,
+): Promise<EcommerceGenerateRequest> {
+  return {
+    kind: 'model',
+    model: form.model,
+    aspectRatio: form.aspectRatio,
+    quality: form.quality,
+    clarity: form.clarity,
+    modelRequirement: form.modelRequirement,
+    visualDataUrl,
+    ...(modelImages.length > 0 ? { modelImages: await toAnalyzeImages(modelImages) } : {}),
+  };
+}
+
+/** 取已点选且就绪的主视觉 data URL；无效返回 null */
+export function getSelectedVisualUrl(
+  visualImages: readonly StudioResultImage[],
+  selectedVisualIndex: number | null,
+): string | null {
+  if (selectedVisualIndex === null) return null;
+  const item = visualImages.find((entry) => entry.index === selectedVisualIndex);
+  if (!item || item.status !== 'ready' || !item.url) return null;
+  return item.url;
+}
+
+/** 模特要求帮写请求体 */
+export async function toModelHelpWritePayload(input: {
+  analysisText: string;
+  visualDataUrl: string;
+  portraits: ProductImageItem[];
+}): Promise<{
+  analysisText: string;
+  visualDataUrl: string;
+  modelImageDataUrl?: string;
+}> {
+  const first = input.portraits[0];
+  const modelImageDataUrl = first ? await readFileAsDataUrl(first.file) : undefined;
+  return {
+    analysisText: input.analysisText.trim(),
+    visualDataUrl: input.visualDataUrl,
+    ...(modelImageDataUrl ? { modelImageDataUrl } : {}),
   };
 }
 
@@ -161,19 +212,6 @@ export async function toAnalyzePayload(
   return {
     images: await toAnalyzeImages(images),
     ...(documents.length > 0 ? { documents: await toAnalyzeDocuments(documents) } : {}),
-  };
-}
-
-/** 组装生图请求体：产品图随请求传入，不引用落盘资产 */
-export async function toGeneratePayload(
-  form: StudioFormState,
-  images: ProductImageItem[],
-  slots: EcommercePlanSlot[],
-): Promise<EcommerceGenerateRequest> {
-  return {
-    ...toStudioFormPayload(form),
-    images: await toAnalyzeImages(images),
-    slots,
   };
 }
 
@@ -355,24 +393,28 @@ export function applyGenerateEvent(
   });
 }
 
-/** 按 slots 铺 pending 网格（index 与 slot.index 对齐） */
-export function pendingImagesFromSlots(slots: EcommercePlanSlot[]): StudioResultImage[] {
-  return slots.map((slot) => ({
-    index: slot.index,
+/** 按张数铺 pending 网格 */
+export function pendingImagesFromCount(count: number): StudioResultImage[] {
+  const total = Math.max(1, count);
+  return Array.from({ length: total }, (_, index) => ({
+    index,
     status: 'pending' as const,
   }));
 }
 
-/** 上一步：生成中取消回确认规划，确认规划回分析完成，完成回规划 */
+/** 上一步：生图中取消回本步空闲，视觉回分析完成，模特回视觉，完成回模特 */
 export function phaseAfterPrev(phase: StudioPhase): StudioPhase {
   if (phase === 'analyzing') return 'input';
-  if (phase === 'confirm') return 'analyzed';
-  if (phase === 'generating' || phase === 'done') return 'confirm';
+  if (phase === 'visual' || phase === 'visualGenerating') return 'analyzed';
+  if (phase === 'model' || phase === 'modelGenerating') return 'visual';
+  if (phase === 'done') return 'model';
   return phase;
 }
 
-/** 下一步：分析完成后进入确认规划；确认规划由调用方触发出图 */
+/** 下一步：分析完成进视觉；视觉进模特；模特进完成 */
 export function phaseAfterNext(phase: StudioPhase): StudioPhase {
-  if (phase === 'analyzed') return 'confirm';
+  if (phase === 'analyzed') return 'visual';
+  if (phase === 'visual') return 'model';
+  if (phase === 'model') return 'done';
   return phase;
 }

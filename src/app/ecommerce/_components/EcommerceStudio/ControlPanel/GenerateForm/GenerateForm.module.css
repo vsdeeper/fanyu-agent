@@ -15,34 +15,3 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
-
-.requirementWrap {
-  position: relative;
-}
-
-.requirement {
-  min-height: 120px !important;
-  padding-bottom: 40px !important;
-}
-
-.helpWrite {
-  position: absolute !important;
-  right: 8px;
-  bottom: 8px;
-  font-size: 12px !important;
-  line-height: 1 !important;
-}
-
-.typeLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.newBadge :global(.ant-badge-count) {
-  font-size: 10px;
-  height: 16px;
-  line-height: 16px;
-  padding: 0 4px;
-  box-shadow: none;
-}

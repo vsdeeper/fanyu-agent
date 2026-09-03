@@ -1,5 +1,3 @@
-import type { DesignType } from './types';
-
 /**
  * 质量档位中文文案（前端展示用）。服务端档位串沿用 IMAGE_QUALITY_VALUES。
  */
@@ -110,41 +108,14 @@ export function toModelOptions(): { value: string; label: string }[] {
   return MODEL_CAPABILITIES.map((m) => ({ value: m.id, label: m.label }));
 }
 
-/**
- * 各平台主图数量（经公开资料调研，取合理且较通用的档位；规则会随平台按类目/版本调整）。
- * 智能匹配 auto 未知平台，故默认 1、给较多档位供用户自选。
- */
-export const MAIN_COUNT_BY_PLATFORM: Record<string, { options: string[]; default: string }> = {
-  auto: { options: ['1', '2', '3', '4', '5'], default: '1' },
-  taobao: { options: ['1', '2', '4', '5'], default: '5' },
-  jd: { options: ['1', '2', '4', '5'], default: '5' },
-  pdd: { options: ['1', '2', '4', '5'], default: '5' },
-  douyin: { options: ['1', '2', '3', '4', '5'], default: '3' },
-  xiaohongshu: { options: ['1', '2', '4'], default: '1' },
-};
+/** 营销主视觉生成数量档位 */
+export const VISUAL_COUNT_OPTIONS = ['1', '2', '3', '4'] as const;
 
-/** 详情图：统一合理范围（长图多分段） */
-export const DETAIL_COUNT = { options: ['2', '4', '6', '8'], default: '4' };
-
-/** 广告图：统一合理范围（主视觉 1 张，可出变体） */
-export const AD_COUNT = { options: ['1', '2', '4'], default: '1' };
-
-/** 按生图类型 + 平台取数量档位；主图随平台、详情/广告为统一标准 */
-export function getCountSpec(
-  designType: DesignType,
-  platform: string,
-): { options: string[]; default: string } {
-  if (designType === 'detail') return DETAIL_COUNT;
-  if (designType === 'ad') return AD_COUNT;
-  return MAIN_COUNT_BY_PLATFORM[platform] ?? MAIN_COUNT_BY_PLATFORM.auto;
-}
+export const VISUAL_COUNT_DEFAULT = '1';
 
 /** 数量下拉（给 antd Select），带「N 张」文案 */
-export function toCountOptions(
-  designType: DesignType,
-  platform: string,
-): { value: string; label: string }[] {
-  return getCountSpec(designType, platform).options.map((value) => ({
+export function toCountOptions(): { value: string; label: string }[] {
+  return VISUAL_COUNT_OPTIONS.map((value) => ({
     value,
     label: `${value} 张`,
   }));

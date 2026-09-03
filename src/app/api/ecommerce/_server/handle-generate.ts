@@ -2,13 +2,22 @@ import 'server-only';
 
 import type { EcommerceGenerateImageEvent } from '@/app/api/ecommerce/_shared/types';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
-import { GENERATE_FAILED, INVALID_FORM, INVALID_JSON, MISSING_PRODUCT_IMAGE } from './constants';
+import {
+  GENERATE_FAILED,
+  INVALID_FORM,
+  INVALID_JSON,
+  MISSING_ANALYSIS,
+  MISSING_PRODUCT_IMAGE,
+  MISSING_VISUAL,
+  MODEL_GENERATE_COUNT,
+} from './constants';
+import { buildModelPrompt, buildVisualPrompt } from './generate-instructions';
 import { generateStudioImage } from './generate-one';
 import { parseGenerateBody } from './parse-request';
 import { createPushStreamResponse, encodeNdjsonLine, NDJSON_STREAM_HEADERS } from './stream-encode';
 
 /**
- * POST /api/ecommerce/generate：按 slots 逐张 i2i，NDJSON 推送每张 data URL。
+ * POST /api/ecommerce/generate：按 kind 出主视觉或模特图，NDJSON 推送每张 data URL。
  */
 export async function handleEcommerceGenerate(req: Request): Promise<Response> {
   let json: unknown;
@@ -23,30 +32,52 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
 
-  const productDataUrls = body.images.map((image) => image.dataUrl);
-  if (productDataUrls.length === 0) {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_IMAGE, 400);
+  if (body.kind === 'visual') {
+    if (body.images.length === 0) {
+      return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_IMAGE, 400);
+    }
+    if (!body.analysisText.trim()) {
+      return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_ANALYSIS, 400);
+    }
   }
+
+  if (body.kind === 'model' && !body.visualDataUrl.trim()) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_VISUAL, 400);
+  }
+
+  const count = body.kind === 'visual' ? body.count : MODEL_GENERATE_COUNT;
+  const hasPortrait = body.kind === 'model' && (body.modelImages?.length ?? 0) > 0;
+  const prompt =
+    body.kind === 'visual'
+      ? buildVisualPrompt(body.analysisText)
+      : buildModelPrompt(body.modelRequirement, hasPortrait);
+  const referenceImageDataUrls =
+    body.kind === 'visual'
+      ? body.images.map((image) => image.dataUrl)
+      : [
+          body.visualDataUrl,
+          ...(body.kind === 'model' ? (body.modelImages?.map((image) => image.dataUrl) ?? []) : []),
+        ];
 
   return createPushStreamResponse(NDJSON_STREAM_HEADERS, async (write) => {
     const send = (event: EcommerceGenerateImageEvent) => write(encodeNdjsonLine(event));
     try {
-      for (const slot of body.slots) {
+      for (let index = 0; index < count; index++) {
         if (req.signal.aborted) return;
         const result = await generateStudioImage({
-          prompt: slot.prompt,
+          prompt,
           model: body.model,
           aspectRatio: body.aspectRatio,
           clarity: body.clarity,
           quality: body.quality,
-          productDataUrls,
+          referenceImageDataUrls,
           abortSignal: req.signal,
         });
         if (req.signal.aborted) return;
         if (result.ok) {
-          await send({ index: slot.index, url: result.url });
+          await send({ index, url: result.url });
         } else {
-          await send({ index: slot.index, error: result.error });
+          await send({ index, error: result.error });
         }
       }
     } catch (err) {
