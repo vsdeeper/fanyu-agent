@@ -10,7 +10,7 @@ export const STUDIO_SUBTITLE = 'AI 商业分析到设计出图，一站式专业
 export const STUDIO_STEPS: { title: string }[] = [
   { title: '商业分析' },
   { title: '营销主视觉' },
-  { title: '产品模特' },
+  { title: '产品模特多视角' },
   { title: '完成' },
 ];
 
