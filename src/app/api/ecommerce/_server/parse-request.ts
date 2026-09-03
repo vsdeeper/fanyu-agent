@@ -43,6 +43,17 @@ const analyzeBodySchema = z.object({
   documents: z.array(documentInputSchema).max(MAX_STUDIO_PRODUCT_DOCS).optional(),
 });
 
+const countSchema = z
+  .number()
+  .int()
+  .refine((value) => (STUDIO_COUNT_VALUES as readonly number[]).includes(value));
+
+const productViewGenerateSchema = specFieldsSchema.extend({
+  kind: z.literal('productView'),
+  count: countSchema,
+  images: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
+});
+
 const visualGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('visual'),
   count: z
@@ -50,11 +61,12 @@ const visualGenerateSchema = specFieldsSchema.extend({
     .int()
     .refine((value) => (STUDIO_COUNT_VALUES as readonly number[]).includes(value)),
   analysisText: z.string().min(1),
-  images: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
+  productViewDataUrl: imageDataUrlSchema,
 });
 
 const modelGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('model'),
+  count: countSchema,
   modelRequirement: z.string(),
   visualDataUrl: imageDataUrlSchema,
   modelImages: z.array(imageInputSchema).max(MAX_STUDIO_MODEL_IMAGES).optional(),
@@ -67,6 +79,7 @@ const modelHelpWriteBodySchema = z.object({
 });
 
 const generateBodySchema = z.discriminatedUnion('kind', [
+  productViewGenerateSchema,
   visualGenerateSchema,
   modelGenerateSchema,
 ]);

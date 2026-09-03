@@ -2,6 +2,8 @@ export type StudioPhase =
   | 'input'
   | 'analyzing'
   | 'analyzed'
+  | 'productView'
+  | 'productViewGenerating'
   | 'visual'
   | 'visualGenerating'
   | 'model'
@@ -32,8 +34,11 @@ export type StudioFormState = StudioSpecFields & {
   count: string;
 };
 
+export type ProductViewFormState = StudioFormState;
+
 export type ModelFormState = StudioSpecFields & {
   modelRequirement: string;
+  count: string;
 };
 
 export type StudioResultImage = {

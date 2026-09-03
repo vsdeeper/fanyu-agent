@@ -14,6 +14,7 @@ import type {
   ModelFormState,
   ProductDocItem,
   ProductImageItem,
+  ProductViewFormState,
   StudioFormState,
   StudioPhase,
   StudioResultImage,
@@ -97,12 +98,28 @@ export function isAbortError(err: unknown): boolean {
   );
 }
 
-/** 营销主视觉请求体：表单规格 + 商业分析 + 产品图 */
-export async function toVisualGeneratePayload(
-  form: StudioFormState,
+/** 产品多视角请求体：本步表单 + 产品图 */
+export async function toProductViewGeneratePayload(
+  form: ProductViewFormState,
   images: ProductImageItem[],
-  analysisText: string,
 ): Promise<EcommerceGenerateRequest> {
+  return {
+    kind: 'productView',
+    model: form.model,
+    aspectRatio: form.aspectRatio,
+    quality: form.quality,
+    clarity: form.clarity,
+    count: Number.parseInt(form.count, 10) || 1,
+    images: await toAnalyzeImages(images),
+  };
+}
+
+/** 营销主视觉请求体：表单规格 + 商业分析 + 选中产品多视角图 */
+export function toVisualGeneratePayload(
+  form: StudioFormState,
+  analysisText: string,
+  productViewDataUrl: string,
+): EcommerceGenerateRequest {
   return {
     kind: 'visual',
     model: form.model,
@@ -111,7 +128,7 @@ export async function toVisualGeneratePayload(
     clarity: form.clarity,
     count: Number.parseInt(form.count, 10) || 1,
     analysisText: analysisText.trim(),
-    images: await toAnalyzeImages(images),
+    productViewDataUrl,
   };
 }
 
@@ -127,19 +144,20 @@ export async function toModelGeneratePayload(
     aspectRatio: form.aspectRatio,
     quality: form.quality,
     clarity: form.clarity,
+    count: Number.parseInt(form.count, 10) || 1,
     modelRequirement: form.modelRequirement,
     visualDataUrl,
     ...(modelImages.length > 0 ? { modelImages: await toAnalyzeImages(modelImages) } : {}),
   };
 }
 
-/** 取已点选且就绪的主视觉 data URL；无效返回 null */
-export function getSelectedVisualUrl(
-  visualImages: readonly StudioResultImage[],
+/** 取已点选且就绪的结果图 data URL；无效返回 null */
+export function getSelectedResultImageUrl(
+  resultImages: readonly StudioResultImage[],
   selectedVisualIndex: number | null,
 ): string | null {
   if (selectedVisualIndex === null) return null;
-  const item = visualImages.find((entry) => entry.index === selectedVisualIndex);
+  const item = resultImages.find((entry) => entry.index === selectedVisualIndex);
   if (!item || item.status !== 'ready' || !item.url) return null;
   return item.url;
 }
@@ -402,18 +420,20 @@ export function pendingImagesFromCount(count: number): StudioResultImage[] {
   }));
 }
 
-/** 上一步：生图中取消回本步空闲，视觉回分析完成，模特回视觉，完成回模特 */
+/** 上一步：生图中取消回本步空闲，产品多视角回分析完成，视觉回产品多视角，模特回视觉，完成回模特 */
 export function phaseAfterPrev(phase: StudioPhase): StudioPhase {
   if (phase === 'analyzing') return 'input';
-  if (phase === 'visual' || phase === 'visualGenerating') return 'analyzed';
+  if (phase === 'productView' || phase === 'productViewGenerating') return 'analyzed';
+  if (phase === 'visual' || phase === 'visualGenerating') return 'productView';
   if (phase === 'model' || phase === 'modelGenerating') return 'visual';
   if (phase === 'done') return 'model';
   return phase;
 }
 
-/** 下一步：分析完成进视觉；视觉进模特；模特进完成 */
+/** 下一步：分析完成进产品多视角；产品多视角进视觉；视觉进模特；模特进完成 */
 export function phaseAfterNext(phase: StudioPhase): StudioPhase {
-  if (phase === 'analyzed') return 'visual';
+  if (phase === 'analyzed') return 'productView';
+  if (phase === 'productView') return 'visual';
   if (phase === 'visual') return 'model';
   if (phase === 'model') return 'done';
   return phase;

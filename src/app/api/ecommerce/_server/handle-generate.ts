@@ -8,16 +8,20 @@ import {
   INVALID_JSON,
   MISSING_ANALYSIS,
   MISSING_PRODUCT_IMAGE,
+  MISSING_PRODUCT_VIEW,
   MISSING_VISUAL,
-  MODEL_GENERATE_COUNT,
 } from './constants';
-import { buildModelPrompt, buildVisualPrompt } from './generate-instructions';
+import {
+  buildModelPrompt,
+  buildProductViewPrompt,
+  buildVisualPrompt,
+} from './generate-instructions';
 import { generateStudioImage } from './generate-one';
 import { parseGenerateBody } from './parse-request';
 import { createPushStreamResponse, encodeNdjsonLine, NDJSON_STREAM_HEADERS } from './stream-encode';
 
 /**
- * POST /api/ecommerce/generate：按 kind 出主视觉或模特图，NDJSON 推送每张 data URL。
+ * POST /api/ecommerce/generate：按 kind 出产品多视角、主视觉或模特图，NDJSON 推送每张 data URL。
  */
 export async function handleEcommerceGenerate(req: Request): Promise<Response> {
   let json: unknown;
@@ -32,9 +36,15 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
 
-  if (body.kind === 'visual') {
+  if (body.kind === 'productView') {
     if (body.images.length === 0) {
       return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_IMAGE, 400);
+    }
+  }
+
+  if (body.kind === 'visual') {
+    if (!body.productViewDataUrl.trim()) {
+      return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_VIEW, 400);
     }
     if (!body.analysisText.trim()) {
       return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_ANALYSIS, 400);
@@ -45,19 +55,20 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_VISUAL, 400);
   }
 
-  const count = body.kind === 'visual' ? body.count : MODEL_GENERATE_COUNT;
+  const count = body.count;
   const hasPortrait = body.kind === 'model' && (body.modelImages?.length ?? 0) > 0;
   const prompt =
-    body.kind === 'visual'
-      ? buildVisualPrompt(body.analysisText)
-      : buildModelPrompt(body.modelRequirement, hasPortrait);
+    body.kind === 'productView'
+      ? buildProductViewPrompt()
+      : body.kind === 'visual'
+        ? buildVisualPrompt(body.analysisText)
+        : buildModelPrompt(body.modelRequirement, hasPortrait);
   const referenceImageDataUrls =
-    body.kind === 'visual'
+    body.kind === 'productView'
       ? body.images.map((image) => image.dataUrl)
-      : [
-          body.visualDataUrl,
-          ...(body.kind === 'model' ? (body.modelImages?.map((image) => image.dataUrl) ?? []) : []),
-        ];
+      : body.kind === 'visual'
+        ? [body.productViewDataUrl]
+        : [body.visualDataUrl, ...(body.modelImages?.map((image) => image.dataUrl) ?? [])];
 
   return createPushStreamResponse(NDJSON_STREAM_HEADERS, async (write) => {
     const send = (event: EcommerceGenerateImageEvent) => write(encodeNdjsonLine(event));

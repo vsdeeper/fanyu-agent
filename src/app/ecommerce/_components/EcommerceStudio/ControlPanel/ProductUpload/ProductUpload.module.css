@@ -122,18 +122,24 @@
   position: relative;
   aspect-ratio: 1;
   border-radius: 8px;
-  overflow: hidden;
   background: var(--one-color-fill-tertiary);
 }
 
-.thumb :global(.ant-image),
-.thumb :global(.ant-image-img) {
+.thumb :global(.ant-image) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   height: 100%;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
 .thumb :global(.ant-image-img) {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
 
@@ -154,20 +160,40 @@
 .index {
   left: 6px;
   bottom: 6px;
+  display: block;
+  width: 16px;
+  height: 16px;
+  font-size: 9px;
+  line-height: 16px;
+  text-align: center;
   pointer-events: none;
 }
 
 .remove {
-  top: 6px;
-  right: 6px;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
   margin: 0;
   padding: 0;
   border: none;
+  transform: translate(40%, -40%);
   cursor: pointer;
 }
 
 .remove :global(.anticon) {
-  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.remove :global(.anticon svg) {
+  display: block;
 }
 
 .remove:hover:not(:disabled) {
@@ -191,11 +217,11 @@
 }
 
 .addSlot {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 100%;
+  height: 100% !important;
   margin: 0;
   padding: 0;
   border: 1px dashed var(--one-color-border);

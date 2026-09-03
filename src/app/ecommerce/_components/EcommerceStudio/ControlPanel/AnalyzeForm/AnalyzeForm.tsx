@@ -13,7 +13,7 @@ type AnalyzeFormProps = {
 };
 
 /**
- * 商业分析左栏表单：产品资料与产品图，不含出图参数。
+ * 商业分析左栏表单：产品图与产品资料，不含出图参数。
  */
 export default function AnalyzeForm({
   images,
@@ -26,17 +26,17 @@ export default function AnalyzeForm({
 }: AnalyzeFormProps) {
   return (
     <>
-      <ProductDocsUpload
-        documents={documents}
-        disabled={disabled}
-        onAppend={onDocsAppend}
-        onRemove={onDocRemove}
-      />
       <ProductUpload
         images={images}
         disabled={disabled}
         onAppend={onImagesAppend}
         onRemove={onImageRemove}
+      />
+      <ProductDocsUpload
+        documents={documents}
+        disabled={disabled}
+        onAppend={onDocsAppend}
+        onRemove={onDocRemove}
       />
     </>
   );

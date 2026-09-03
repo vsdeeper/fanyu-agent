@@ -1,5 +1,5 @@
 import { CloseOutlined, PictureOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
-import { Image, Upload } from 'antd';
+import { Button, Image, Upload } from 'antd';
 import {
   MAX_PRODUCT_IMAGES,
   PRODUCT_IMAGE_ACCEPT,
@@ -65,8 +65,8 @@ export default function ProductUpload({
           showUploadList={false}
           beforeUpload={(file, fileList) => interceptLocalFiles(file, fileList, onAppend)}
         >
-          <button
-            type="button"
+          <Button
+            type="dashed"
             className={styles.emptyDrop}
             disabled={disabled}
             aria-label={ariaLabel}
@@ -75,7 +75,7 @@ export default function ProductUpload({
               <UploadOutlined />
             </span>
             <span className={styles.emptyHint}>{hint}</span>
-          </button>
+          </Button>
         </Upload>
       ) : (
         <div className={styles.thumbs}>
@@ -103,14 +103,14 @@ export default function ProductUpload({
               showUploadList={false}
               beforeUpload={(file, fileList) => interceptLocalFiles(file, fileList, onAppend)}
             >
-              <button
-                type="button"
+              <Button
+                type="dashed"
                 className={styles.addSlot}
                 disabled={disabled}
                 aria-label={ariaLabel}
               >
                 <PlusOutlined />
-              </button>
+              </Button>
             </Upload>
           ) : null}
         </div>

@@ -1,8 +1,9 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
-import { ANALYZE_BUTTON, MODEL_BUTTON, VISUAL_BUTTON } from '../constants';
+import { ANALYZE_BUTTON, MODEL_BUTTON, PRODUCT_VIEW_BUTTON, VISUAL_BUTTON } from '../constants';
 import type {
   ModelFormState,
+  ProductViewFormState,
   ProductDocItem,
   ProductImageItem,
   StudioFormState,
@@ -12,7 +13,7 @@ import type {
 import AnalyzeForm from './AnalyzeForm';
 import GenerateForm from './GenerateForm';
 import ModelForm from './ModelForm';
-import { isAnalyzePhase, isModelPhase, isVisualPhase } from './utils';
+import { isAnalyzePhase, isModelPhase, isProductViewPhase, isVisualPhase } from './utils';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
@@ -20,6 +21,7 @@ type ControlPanelProps = {
   documents: ProductDocItem[];
   portraits: ProductImageItem[];
   form: StudioFormState;
+  productViewForm: ProductViewFormState;
   modelForm: ModelFormState;
   phase: StudioPhase;
   formLocked: boolean;
@@ -31,8 +33,10 @@ type ControlPanelProps = {
   onPortraitsAppend: (files: File[]) => void;
   onPortraitRemove: (uid: string) => void;
   onFormChange: (next: StudioFormState) => void;
+  onProductViewFormChange: (next: ProductViewFormState) => void;
   onModelFormChange: (next: ModelFormState) => void;
   onAnalyze: () => void;
+  onGenerateProductView: () => void;
   onGenerateVisual: () => void;
   onGenerateModel: () => void;
   onModelHelpWrite: () => void;
@@ -46,6 +50,7 @@ export default function ControlPanel({
   documents,
   portraits,
   form,
+  productViewForm,
   modelForm,
   phase,
   formLocked,
@@ -57,22 +62,29 @@ export default function ControlPanel({
   onPortraitsAppend,
   onPortraitRemove,
   onFormChange,
+  onProductViewFormChange,
   onModelFormChange,
   onAnalyze,
+  onGenerateProductView,
   onGenerateVisual,
   onGenerateModel,
   onModelHelpWrite,
 }: ControlPanelProps) {
   const analyzing = phase === 'analyzing';
+  const productViewGenerating = phase === 'productViewGenerating';
   const visualGenerating = phase === 'visualGenerating';
   const modelGenerating = phase === 'modelGenerating';
   const showAnalyzeForm = isAnalyzePhase(phase);
+  const showProductViewForm = isProductViewPhase(phase);
   const showVisualForm = isVisualPhase(phase);
   const showModelForm = isModelPhase(phase);
   const analyzeDisabled = images.length === 0;
 
   const handleVisualSpecChange = (next: StudioSpecFields) => {
     onFormChange({ ...form, ...next });
+  };
+  const handleProductViewSpecChange = (next: StudioSpecFields) => {
+    onProductViewFormChange({ ...productViewForm, ...next });
   };
 
   return (
@@ -87,6 +99,14 @@ export default function ControlPanel({
             onImageRemove={onImageRemove}
             onDocsAppend={onDocsAppend}
             onDocRemove={onDocRemove}
+          />
+        ) : showProductViewForm ? (
+          <GenerateForm
+            form={productViewForm}
+            disabled={formLocked}
+            onFormChange={handleProductViewSpecChange}
+            count={productViewForm.count}
+            onCountChange={(value) => onProductViewFormChange({ ...productViewForm, count: value })}
           />
         ) : showVisualForm ? (
           <GenerateForm
@@ -137,6 +157,21 @@ export default function ControlPanel({
             onClick={onGenerateVisual}
           >
             {VISUAL_BUTTON}
+          </Button>
+        </div>
+      ) : null}
+      {showProductViewForm ? (
+        <div className={styles.footer}>
+          <Button
+            className={styles.analyzeBtn}
+            type="primary"
+            block
+            size="large"
+            icon={<HighlightOutlined />}
+            loading={productViewGenerating}
+            onClick={onGenerateProductView}
+          >
+            {PRODUCT_VIEW_BUTTON}
           </Button>
         </div>
       ) : null}

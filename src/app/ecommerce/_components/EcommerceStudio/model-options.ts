@@ -108,7 +108,7 @@ export function toModelOptions(): { value: string; label: string }[] {
   return MODEL_CAPABILITIES.map((m) => ({ value: m.id, label: m.label }));
 }
 
-/** 营销主视觉生成数量档位 */
+/** 工作台生图数量档位 */
 export const VISUAL_COUNT_OPTIONS = ['1', '2', '3', '4'] as const;
 
 export const VISUAL_COUNT_DEFAULT = '1';

@@ -26,7 +26,7 @@ export type EcommerceAnalyzeErrorEvent = {
   message: string;
 };
 
-export type EcommerceGenerateKind = 'visual' | 'model';
+export type EcommerceGenerateKind = 'productView' | 'visual' | 'model';
 
 type EcommerceGenerateBase = {
   model: string;
@@ -35,24 +35,34 @@ type EcommerceGenerateBase = {
   clarity: string;
 };
 
-/** 营销主视觉：表单规格 + 商业分析 + 产品图 */
+/** 产品多视角：表单规格 + 产品图 */
+export type EcommerceProductViewGenerateRequest = EcommerceGenerateBase & {
+  kind: 'productView';
+  count: number;
+  images: EcommerceImageInput[];
+};
+
+/** 营销主视觉：表单规格 + 商业分析 + 选中产品多视角图 */
 export type EcommerceVisualGenerateRequest = EcommerceGenerateBase & {
   kind: 'visual';
   count: number;
   analysisText: string;
-  images: EcommerceImageInput[];
+  productViewDataUrl: string;
 };
 
 /** 产品模特：本步表单 + 选中主视觉 + 可选模特形象；不传分析/产品图 */
 export type EcommerceModelGenerateRequest = EcommerceGenerateBase & {
   kind: 'model';
+  count: number;
   modelRequirement: string;
   visualDataUrl: string;
   modelImages?: EcommerceImageInput[];
 };
 
 export type EcommerceGenerateRequest =
-  EcommerceVisualGenerateRequest | EcommerceModelGenerateRequest;
+  | EcommerceProductViewGenerateRequest
+  | EcommerceVisualGenerateRequest
+  | EcommerceModelGenerateRequest;
 
 export type EcommerceGenerateImageEvent = {
   index: number;

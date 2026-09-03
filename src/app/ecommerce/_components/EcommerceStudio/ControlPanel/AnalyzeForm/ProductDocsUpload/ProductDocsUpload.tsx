@@ -1,4 +1,4 @@
-import { CloseCircleFilled, FileOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { CloseOutlined, FileOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { App, Button, Image, Upload } from 'antd';
 import FileCard from '@/components/FileCard';
 import {
@@ -114,7 +114,7 @@ export default function ProductDocsUpload({
                 disabled={disabled}
                 onClick={() => onRemove(item.uid)}
               >
-                <CloseCircleFilled />
+                <CloseOutlined />
               </button>
             </div>
           ))}
@@ -125,12 +125,14 @@ export default function ProductDocsUpload({
               disabled={disabled}
               showUploadList={false}
               beforeUpload={(file, fileList) => interceptLocalFiles(file, fileList, handleFiles)}
+              styles={{ trigger: { display: 'block' } }}
             >
               <Button
                 className={styles.addBtn}
                 type="dashed"
                 icon={<PlusOutlined />}
                 disabled={disabled}
+                block
                 aria-label="上传产品资料"
               >
                 添加资料

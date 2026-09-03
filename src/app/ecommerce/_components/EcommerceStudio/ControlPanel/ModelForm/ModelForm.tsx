@@ -68,7 +68,13 @@ export default function ModelForm({
           </Button>
         </div>
       </label>
-      <GenerateForm form={form} disabled={disabled} onFormChange={handleSpecChange} />
+      <GenerateForm
+        form={form}
+        disabled={disabled}
+        onFormChange={handleSpecChange}
+        count={form.count}
+        onCountChange={(value) => onFormChange({ ...form, count: value })}
+      />
     </>
   );
 }

@@ -1,18 +1,38 @@
 import 'server-only';
 
-import { PRODUCT_EDIT_PROMPT_GUARD } from './constants';
+import { DEFAULT_MODEL_REQUIREMENT } from '@/app/api/ecommerce/_shared/constants';
+import { PRODUCT_FIDELITY_PROMPT_GUARD, VISUAL_AD_PROMPT_GUARD } from './constants';
 
 /**
- * 营销主视觉出站 prompt：商业分析为内容依据，产品图为改图参考。
+ * 产品多视角出站 prompt：先建立精修产品基准，再从同一基准生成多视角视图板。
+ */
+export function buildProductViewPrompt(): string {
+  return [
+    '生成恰好一张电商产品多视角视图板，不要拆成多张图。',
+    '严格按“先精修、再出多视角”的顺序执行；精修过程不单独输出图片，只输出最终视图板。',
+    '【第一阶段：产品精修】',
+    '保持产品外观、颜色、比例、结构完全一致；修复产品瑕疵，优化材质质感、光影、高光、阴影和边缘细节，提高商业摄影品质。',
+    '背景简洁高级，突出产品主体，整体达到产品精修效果。将精修后的同一产品作为后续全部视角的唯一基准。',
+    '【第二阶段：产品多视角】',
+    '保持产品外观完全一致，在同一画幅内生成产品正面、侧面、背面、45度、俯视、仰视等多个角度。',
+    '使用纯色背景和统一光线，各视角产品比例一致；不要添加无关道具或营销装饰。',
+    PRODUCT_FIDELITY_PROMPT_GUARD,
+  ].join('\n');
+}
+
+/**
+ * 营销主视觉出站 prompt：商业分析为内容依据，产品多视角图为改图参考。
  */
 export function buildVisualPrompt(analysisText: string): string {
   return [
     '生成一张电商营销主视觉图，作为后续所有设计物料的统一视觉标准。',
+    '第1个参考图=已选产品多视角视图板，仅用于锁定产品外观、颜色、比例、结构与材质细节；主视觉只输出一张完整广告图。',
     '根据商业分析确定整体配色、场景、光影、构图、品牌氛围与视觉风格。',
     '画面突出产品主体，具有商业广告品质；一张图一个主焦点。',
     '【商业分析】',
     analysisText.trim(),
-    PRODUCT_EDIT_PROMPT_GUARD,
+    PRODUCT_FIDELITY_PROMPT_GUARD,
+    VISUAL_AD_PROMPT_GUARD,
   ].join('\n');
 }
 
@@ -36,8 +56,6 @@ export function buildModelPrompt(modelRequirement: string, hasPortrait: boolean)
     '构图固定、同一画幅内拼合：左侧半身特写（胸以上、正面看镜头）；右侧三格全身站姿，从左到右为正视、侧视、背视。',
     '同一模特、同一套造型；干净无缝浅灰或白色影棚背景，背景保持空净无物，均匀柔光、少硬影；氛围与主视觉同调的专业目录感。',
     '专业电商目录气质，姿态端正、自然，便于看清版型与细节。',
-    requirement
-      ? `【模特要求】\n${requirement}`
-      : '【模特要求】未填写，按专业电商目录默认气质生成。',
+    requirement ? `【模特要求】\n${requirement}` : `【模特要求】\n${DEFAULT_MODEL_REQUIREMENT}`,
   ].join('\n');
 }

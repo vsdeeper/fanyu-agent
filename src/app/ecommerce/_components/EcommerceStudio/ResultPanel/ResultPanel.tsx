@@ -6,7 +6,12 @@ import '@ant-design/x-markdown/themes/dark.css';
 import './XMarkdownTheme.css';
 import { useState } from 'react';
 import { useThemeMode } from '@/components/theme';
-import { NEXT_BUTTON, PREV_BUTTON, VISUAL_STANDARD_BADGE } from '../constants';
+import {
+  NEXT_BUTTON,
+  PREV_BUTTON,
+  PRODUCT_STANDARD_BADGE,
+  VISUAL_STANDARD_BADGE,
+} from '../constants';
 import type { StudioPhase, StudioResultImage } from '../types';
 import {
   MARKDOWN_COMPONENTS,
@@ -20,6 +25,7 @@ import {
   isModelResultPhase,
   isNextDisabled,
   isPlanPhase,
+  isProductViewResultPhase,
   isPrevVisible,
   isVisualResultPhase,
   toEmptyHint,
@@ -31,12 +37,18 @@ type ResultPanelProps = {
   phase: StudioPhase;
   analysisText: string;
   analysisStreaming: boolean;
+  productViewImages: readonly StudioResultImage[];
   visualImages: readonly StudioResultImage[];
   modelImages: readonly StudioResultImage[];
+  expectedProductViewCount: number;
   expectedVisualCount: number;
+  expectedModelCount: number;
+  productViewAspectRatio: string;
   visualAspectRatio: string;
   modelAspectRatio: string;
+  selectedProductViewIndex: number | null;
   selectedVisualIndex: number | null;
+  onSelectProductView: (index: number) => void;
   onSelectVisual: (index: number) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -51,12 +63,18 @@ export default function ResultPanel({
   phase,
   analysisText,
   analysisStreaming,
+  productViewImages,
   visualImages,
   modelImages,
+  expectedProductViewCount,
   expectedVisualCount,
+  expectedModelCount,
+  productViewAspectRatio,
   visualAspectRatio,
   modelAspectRatio,
+  selectedProductViewIndex,
   selectedVisualIndex,
+  onSelectProductView,
   onSelectVisual,
   onPrev,
   onNext,
@@ -66,13 +84,21 @@ export default function ResultPanel({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const showPlan = isPlanPhase(phase) && Boolean(analysisText);
+  const showProductViewGrid = isProductViewResultPhase(phase) && productViewImages.length > 0;
   const showVisualGrid = isVisualResultPhase(phase) && visualImages.length > 0;
   const showModelGrid = isModelResultPhase(phase) && modelImages.length > 0;
   const isEditing = editing && phase === 'analyzed';
   const canEdit = phase === 'analyzed' && Boolean(analysisText) && !editing;
   const hasReadyModelImage = modelImages.some((item) => item.status === 'ready');
   const nextDisabled =
-    isEditing || isNextDisabled(phase, analysisText, selectedVisualIndex, hasReadyModelImage);
+    isEditing ||
+    isNextDisabled(
+      phase,
+      analysisText,
+      selectedProductViewIndex,
+      selectedVisualIndex,
+      hasReadyModelImage,
+    );
   const { scrollRef, contentRef, onScroll } = usePlanStreamScroll(
     showPlan,
     analysisStreaming,
@@ -142,6 +168,18 @@ export default function ResultPanel({
         <div className={styles.body}>
           <Spin />
         </div>
+      ) : showProductViewGrid ? (
+        <div className={styles.scroll}>
+          <ResultImageGrid
+            images={productViewImages}
+            expectedCount={expectedProductViewCount}
+            aspectRatio={productViewAspectRatio}
+            selectable={phase === 'productView'}
+            selectedIndex={selectedProductViewIndex}
+            selectedBadge={PRODUCT_STANDARD_BADGE}
+            onSelect={onSelectProductView}
+          />
+        </div>
       ) : showVisualGrid ? (
         <div className={styles.scroll}>
           <ResultImageGrid
@@ -156,7 +194,11 @@ export default function ResultPanel({
         </div>
       ) : showModelGrid ? (
         <div className={styles.scroll}>
-          <ResultImageGrid images={modelImages} expectedCount={1} aspectRatio={modelAspectRatio} />
+          <ResultImageGrid
+            images={modelImages}
+            expectedCount={expectedModelCount}
+            aspectRatio={modelAspectRatio}
+          />
         </div>
       ) : (
         <div className={styles.body}>
