@@ -18,16 +18,13 @@ import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 import { ANALYZE_INSTRUCTIONS } from './analyze-instructions';
 import {
   ANALYZE_FAILED,
-  DESIGN_TYPE_LABEL,
   INVALID_FORM,
   INVALID_JSON,
-  LANGUAGE_LABEL,
   MISSING_PRODUCT_IMAGE,
-  PLATFORM_LABEL,
-  SLOTS_PARSE_FAILED,
+  PDF_MEDIA_TYPE,
 } from './constants';
+import { extractStudioDocuments, formatDocumentsPrompt } from './extract-documents';
 import { parseAnalyzeBody } from './parse-request';
-import { parseSlotsFromModelText, splitVisibleMarkdown } from './parse-slots';
 import {
   createPushStreamResponse,
   encodeSseEvent,
@@ -38,32 +35,12 @@ import {
 type SseSend = (event: string, data: unknown) => Promise<void>;
 
 /**
- * 把表单锁定项与识图结果拼成 streamText 的用户 prompt。
+ * 把识图结果与产品资料拼成 streamText 的用户 prompt。
  */
-function buildAnalyzePrompt(input: {
-  designType: string;
-  platform: string;
-  requirement: string;
-  language: string;
-  model: string;
-  aspectRatio: string;
-  quality: string;
-  clarity: string;
-  count: number;
-  visionText: string;
-}): string {
-  const visual = input.language === 'visual';
+function buildAnalyzePrompt(input: { documentsText: string; visionText: string }): string {
   return [
-    '【工作台分析】请按指令输出可见规划 Markdown，文末再给 slots JSON。本轮不要出图。',
-    `- 类型：${DESIGN_TYPE_LABEL[input.designType] ?? input.designType}`,
-    `- 平台：${PLATFORM_LABEL[input.platform] ?? input.platform}`,
-    `- 语言：${LANGUAGE_LABEL[input.language] ?? input.language}${visual ? '（图上不入字）' : ''}`,
-    `- 模型：${input.model}`,
-    `- 比例：${input.aspectRatio}`,
-    `- 质量：${input.quality}`,
-    `- 清晰度：${input.clarity}`,
-    `- 数量：${input.count} 张`,
-    `- 需求：${input.requirement.trim() || '（用户未填写，按识图推断）'}`,
+    '【工作台商业分析】请按指令输出九段可见 Markdown。本轮不要出图、不要 slots JSON。',
+    `- 产品资料：${input.documentsText}`,
     input.visionText,
   ].join('\n');
 }
@@ -101,54 +78,84 @@ async function pipeAnalyzeEvents(
     return;
   }
 
-  const provider = getChatProvider();
-  const runtime = getChatProviderRuntimeFor(provider);
-  const capabilities = runtime.getCapabilities();
+  const extracted = await extractStudioDocuments(body.documents);
+  for (const image of extracted.images) {
+    if (signal.aborted) return;
+    const vision = await analyzeImage(
+      image.dataUrl,
+      '这是产品资料图。请描述其中的品牌、包装、文案、色板、卖点、版式与可复用的视觉线索',
+      signal,
+    );
+    if (vision.ok) {
+      extracted.texts.push(
+        `资料图「${image.filename}」：\n${formatVisionAnalysisText(vision.analysis)}`,
+      );
+    } else {
+      console.error('[ecommerce/analyze] document image', vision.error);
+    }
+  }
+
   const prompt = buildAnalyzePrompt({
-    ...body,
+    documentsText: formatDocumentsPrompt(extracted),
     visionText: visionChunks.join('\n\n'),
   });
 
-  const result = streamText({
-    model: runtime.getMainModel(getModelId(provider, 'pro')),
-    instructions: ANALYZE_INSTRUCTIONS,
-    prompt,
-    abortSignal: signal,
-    providerOptions: {
-      openai: {
-        ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
-        ...runtime.getOpenAIOptions(),
-        // 规划只要可见 Markdown 尽快流出；长思考会让前端长时间停在空结果
-        reasoningEffort: getTitleReasoningEffort(provider),
-      },
-    },
-  });
+  const provider = getChatProvider();
+  const runtime = getChatProviderRuntimeFor(provider);
+  const capabilities = runtime.getCapabilities();
+  const openaiOptions = {
+    ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
+    ...runtime.getOpenAIOptions(),
+    // 可见 Markdown 尽快流出；长思考会让前端长时间停在空结果
+    reasoningEffort: getTitleReasoningEffort(provider),
+  };
 
-  let accumulated = '';
-  let flushedVisible = '';
+  const result =
+    extracted.pdfs.length > 0
+      ? streamText({
+          model: runtime.getMainModel(getModelId(provider, 'pro')),
+          instructions: ANALYZE_INSTRUCTIONS,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text' as const, text: prompt },
+                ...extracted.pdfs.map((pdf) => ({
+                  type: 'file' as const,
+                  data: pdf.bytes,
+                  mediaType: PDF_MEDIA_TYPE,
+                  filename: pdf.filename,
+                })),
+              ],
+            },
+          ],
+          abortSignal: signal,
+          providerOptions: { openai: openaiOptions },
+        })
+      : streamText({
+          model: runtime.getMainModel(getModelId(provider, 'pro')),
+          instructions: ANALYZE_INSTRUCTIONS,
+          prompt,
+          abortSignal: signal,
+          providerOptions: { openai: openaiOptions },
+        });
+
   for await (const delta of result.textStream) {
     if (signal.aborted) return;
-    accumulated += delta;
-    const { visible } = splitVisibleMarkdown(accumulated);
-    if (visible.length > flushedVisible.length) {
-      const nextDelta = visible.slice(flushedVisible.length);
-      flushedVisible = visible;
-      const payload: EcommerceAnalyzeTextEvent = { delta: nextDelta };
-      await send(ANALYZE_SSE_EVENT.text, payload);
-    }
+    if (!delta) continue;
+    const payload: EcommerceAnalyzeTextEvent = { delta };
+    await send(ANALYZE_SSE_EVENT.text, payload);
   }
 
   if (signal.aborted) return;
 
-  const fullText = (await result.text).trim() || accumulated;
-  const slots = parseSlotsFromModelText(fullText);
-  if (!slots) {
-    console.error('[ecommerce/analyze] slots parse failed');
-    await send(ANALYZE_SSE_EVENT.error, { message: SLOTS_PARSE_FAILED });
+  const fullText = ((await result.text) || '').trim();
+  if (!fullText) {
+    await send(ANALYZE_SSE_EVENT.error, { message: ANALYZE_FAILED });
     return;
   }
 
-  await send(ANALYZE_SSE_EVENT.done, { slots: slots.slice(0, body.count) });
+  await send(ANALYZE_SSE_EVENT.done, {});
 }
 
 /**

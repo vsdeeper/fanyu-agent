@@ -16,7 +16,7 @@ import {
 } from './constants';
 import ResultImageGrid from './ResultImageGrid';
 import { usePlanStreamScroll } from './usePlanStreamScroll';
-import { isNextDisabled, isPrevDisabled } from './utils';
+import { isNextDisabled, isPlanPhase, isPrevVisible, toResultHeadTitle } from './utils';
 import styles from './ResultPanel.module.css';
 
 type ResultPanelProps = {
@@ -33,7 +33,8 @@ type ResultPanelProps = {
 };
 
 /**
- * 右侧结果区：空态、分析等待 Spin、流式规划 Markdown（贴底跟随，可编辑）、出图网格，右下角上一步/下一步。
+ * 右侧结果区：空态、分析等待 Spin、流式规划 Markdown（贴底跟随，可编辑）、出图网格；
+ * 右下角下一步，上一步仅第二步起显示。
  */
 export default function ResultPanel({
   phase,
@@ -49,11 +50,11 @@ export default function ResultPanel({
   const { mode } = useThemeMode();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const showPlan = (phase === 'analyzing' || phase === 'confirm') && Boolean(analysisText);
+  const showPlan = isPlanPhase(phase) && Boolean(analysisText);
   const showImages = phase === 'generating' || phase === 'done';
-  // 编辑态仅在确认阶段生效（footer 在上一步/下一步期间被禁用，故编辑时不会离开 confirm）
+  // 编辑态仅在确认规划生效（分析完成仍停在第一步，由下一步进入后再改稿）
   const isEditing = editing && phase === 'confirm';
-  // 仅确认阶段（内容已输出完毕）且已有内容时才可进入编辑
+  // 仅确认规划（内容已输出完毕）且已有内容时才可进入编辑
   const canEdit = phase === 'confirm' && Boolean(analysisText) && !editing;
   const { scrollRef, contentRef, onScroll } = usePlanStreamScroll(
     showPlan,
@@ -76,7 +77,7 @@ export default function ResultPanel({
     <section className={styles.panel}>
       <div className={styles.head}>
         <StarOutlined className={styles.star} />
-        生成结果
+        {toResultHeadTitle(phase)}
         <div className={styles.headActions}>
           {isEditing ? (
             <>
@@ -139,9 +140,11 @@ export default function ResultPanel({
         </div>
       )}
       <div className={styles.footer}>
-        <Button size="large" disabled={isEditing || isPrevDisabled(phase)} onClick={onPrev}>
-          {PREV_BUTTON}
-        </Button>
+        {isPrevVisible(phase) ? (
+          <Button size="large" disabled={isEditing} onClick={onPrev}>
+            {PREV_BUTTON}
+          </Button>
+        ) : null}
         <Button
           size="large"
           type="primary"

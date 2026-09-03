@@ -72,3 +72,9 @@
 .download:hover {
   color: var(--one-color-primary);
 }
+
+.downloadDisabled {
+  color: var(--one-color-text-disabled);
+  cursor: not-allowed;
+  pointer-events: none;
+}

@@ -112,66 +112,76 @@
   white-space: pre-line;
 }
 
-.thumbs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+.list {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-.thumb {
+.item {
   position: relative;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--one-color-fill-tertiary);
+  display: flex;
 }
 
-.thumb :global(.ant-image),
-.thumb :global(.ant-image-img) {
+.card {
+  max-width: none;
   width: 100%;
-  height: 100%;
 }
 
-.thumb :global(.ant-image-img) {
+.imageRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--one-color-border);
+  border-radius: var(--one-border-radius);
+  background: var(--one-color-bg-container);
+}
+
+.imageRow :global(.ant-image),
+.imageRow :global(.ant-image-img) {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.imageRow :global(.ant-image-img) {
   object-fit: cover;
   display: block;
 }
 
-.mark {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #000;
-  color: #fff;
-  font-size: 11px;
-  line-height: 1;
-}
-
-.index {
-  left: 6px;
-  bottom: 6px;
-  pointer-events: none;
+.imageName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--one-color-text);
 }
 
 .remove {
-  top: 6px;
-  right: 6px;
-  margin: 0;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   border: none;
+  transform: translate(40%, -40%);
+  font-size: 16px;
+  color: var(--one-color-text-secondary);
+  background: transparent;
   cursor: pointer;
 }
 
-.remove :global(.anticon) {
-  font-size: 10px;
-}
-
 .remove:hover:not(:disabled) {
-  background: #222;
+  color: var(--one-color-text);
 }
 
 .remove:disabled {
@@ -179,38 +189,6 @@
   opacity: 0.55;
 }
 
-.addUpload {
+.addBtn {
   width: 100%;
-  aspect-ratio: 1;
-}
-
-.addUpload :global(.ant-upload) {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.addSlot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border: 1px dashed var(--one-color-border);
-  border-radius: 8px;
-  background: var(--one-color-bg-container);
-  color: var(--one-color-text-tertiary);
-  font-size: 22px;
-  cursor: pointer;
-}
-
-.addSlot:hover:not(:disabled) {
-  border-color: var(--one-color-primary);
-}
-
-.addSlot:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
 }

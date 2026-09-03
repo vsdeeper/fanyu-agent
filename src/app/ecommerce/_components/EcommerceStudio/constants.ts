@@ -8,8 +8,7 @@ export const STUDIO_TITLE = '电商设计';
 export const STUDIO_SUBTITLE = 'AI 商业分析到设计出图，一站式专业引导';
 
 export const STUDIO_STEPS: { title: string }[] = [
-  { title: '输入' },
-  { title: '分析中' },
+  { title: '商业分析' },
   { title: '确认规划' },
   { title: '生成中' },
   { title: '完成' },
@@ -42,10 +41,11 @@ export const DEFAULT_ASPECT_BY_TYPE: Record<DesignType, string> = {
 
 export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
   input: 0,
-  analyzing: 1,
-  confirm: 2,
-  generating: 3,
-  done: 4,
+  analyzing: 0,
+  analyzed: 0,
+  confirm: 1,
+  generating: 2,
+  done: 3,
 };
 
 export const NO_IMAGE_WARNING = '请先上传产品图';
@@ -56,15 +56,22 @@ export const ANALYZE_FAILED = '产品分析失败，请稍后重试';
 export const GENERATE_FAILED = '生图失败，请稍后重试';
 export const SLOTS_MISSING = '请先完成产品分析';
 
-export const COMING_SOON_MESSAGE = '功能即将开放';
+export const EMPTY_RESULT_HINT = '上传产品资料和产品图，点击「分析产品」开始';
 
-export const EMPTY_RESULT_HINT = '上传产品图并填写要求后 点击「分析产品」开始';
+export const RESULT_TITLE_ANALYSIS = '分析结果';
+export const RESULT_TITLE_GENERATE = '生成结果';
 
 export const UPLOAD_SUBTITLE = '上传清晰的产品图片';
 
 export const UPLOAD_HINT = '多图上传时建议仅上传必要的视角或 sku 图，\n干净的白底产品图最佳';
 
-export const RETOUCH_HINT = '没有白底图？去精修获得白底图';
+export const MAX_PRODUCT_DOCS = 6;
+export const MAX_PRODUCT_DOC_BYTES = 10 * 1024 * 1024;
+export const PRODUCT_DOC_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,.pdf,.txt,.md,.docx';
+export const PRODUCT_DOC_SUBTITLE = '支持图片、PDF / TXT / MD / DOCX';
+export const PRODUCT_DOC_HINT = '可上传产品说明、卖点清单、品牌资料或参考图';
+export const DOC_TOO_LARGE_WARNING = '单个资料不超过 10MB';
+export const DOC_TYPE_WARNING = '仅支持图片、PDF、TXT、MD、DOCX';
 
 export const PLATFORM_OPTIONS = [
   { value: 'auto', label: '智能匹配' },
@@ -105,3 +112,17 @@ export const DEFAULT_FORM_STATE: StudioFormState = {
 };
 
 export const PRODUCT_IMAGE_ACCEPT = 'image/*';
+
+export const PRODUCT_DOC_EXT_SET = new Set([
+  'pdf',
+  'txt',
+  'md',
+  'docx',
+  'png',
+  'jpg',
+  'jpeg',
+  'webp',
+  'gif',
+]);
+
+export const PRODUCT_DOC_IMAGE_EXT_SET = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif']);

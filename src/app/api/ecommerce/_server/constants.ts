@@ -35,5 +35,12 @@ export const LANGUAGE_LABEL: Record<string, string> = {
 };
 
 export const MAX_STUDIO_PRODUCT_IMAGES = 6;
+export const MAX_STUDIO_PRODUCT_DOCS = 6;
+export const MAX_STUDIO_DOCUMENT_BYTES = 10 * 1024 * 1024;
+export const DOCX_MEDIA_TYPE =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+export const PDF_MEDIA_TYPE = 'application/pdf';
+export const STUDIO_DOC_EXTS = ['pdf', 'txt', 'md', 'docx'] as const;
+export const STUDIO_DOC_IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'gif'] as const;
 // 覆盖各生图类型/平台可选数量（主图随平台至 5，详情图 2/4/6/8，广告图 1/2/4）的并集。
 export const STUDIO_COUNT_VALUES = [1, 2, 3, 4, 5, 6, 8] as const;

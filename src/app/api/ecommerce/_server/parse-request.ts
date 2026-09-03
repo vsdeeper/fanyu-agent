@@ -7,7 +7,12 @@ import type {
   EcommerceGenerateRequest,
   EcommercePlanSlot,
 } from '@/app/api/ecommerce/_shared/types';
-import { MAX_STUDIO_PRODUCT_IMAGES, STUDIO_COUNT_VALUES } from './constants';
+import {
+  MAX_STUDIO_PRODUCT_DOCS,
+  MAX_STUDIO_PRODUCT_IMAGES,
+  STUDIO_COUNT_VALUES,
+} from './constants';
+import { isAllowedStudioDocument } from './document-guard';
 
 const formFieldsSchema = z.object({
   designType: z.enum(['main', 'detail', 'ad']),
@@ -30,8 +35,17 @@ const imageInputSchema = z.object({
   dataUrl: z.string().startsWith('data:image/'),
 });
 
-const analyzeBodySchema = formFieldsSchema.extend({
+const documentInputSchema = z
+  .object({
+    filename: z.string().min(1),
+    mediaType: z.string().min(1),
+    dataUrl: z.string().startsWith('data:'),
+  })
+  .refine((value) => isAllowedStudioDocument(value.filename, value.mediaType));
+
+const analyzeBodySchema = z.object({
   images: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
+  documents: z.array(documentInputSchema).max(MAX_STUDIO_PRODUCT_DOCS).optional(),
 });
 
 const planSlotSchema = z.object({

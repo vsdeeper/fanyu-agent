@@ -1,10 +1,8 @@
 import { CloseOutlined, PictureOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
-import { App, Button, Image, Upload } from 'antd';
+import { Image, Upload } from 'antd';
 import {
-  COMING_SOON_MESSAGE,
   MAX_PRODUCT_IMAGES,
   PRODUCT_IMAGE_ACCEPT,
-  RETOUCH_HINT,
   UPLOAD_HINT,
   UPLOAD_SUBTITLE,
 } from '../../constants';
@@ -28,7 +26,6 @@ export default function ProductUpload({
   onAppend,
   onRemove,
 }: ProductUploadProps) {
-  const { message } = App.useApp();
   const remaining = MAX_PRODUCT_IMAGES - images.length;
   const empty = images.length === 0;
 
@@ -108,15 +105,6 @@ export default function ProductUpload({
           ) : null}
         </div>
       )}
-
-      <Button
-        type="link"
-        className={styles.retouch}
-        disabled={disabled}
-        onClick={() => message.info(COMING_SOON_MESSAGE)}
-      >
-        {RETOUCH_HINT}
-      </Button>
     </section>
   );
 }

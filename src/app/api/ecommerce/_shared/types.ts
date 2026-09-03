@@ -5,7 +5,7 @@ export type EcommerceHelpWriteData = {
 
 export type EcommerceDesignType = 'main' | 'detail' | 'ad';
 
-/** 工作室表单字段，与左侧 ControlPanel 对齐；不落会话库 */
+/** 出图表单字段，与确认规划步左侧栏对齐；不落会话库 */
 export type EcommerceStudioFormInput = {
   designType: EcommerceDesignType;
   platform: string;
@@ -24,8 +24,16 @@ export type EcommerceImageInput = {
   dataUrl: string;
 };
 
-export type EcommerceAnalyzeRequest = EcommerceStudioFormInput & {
+export type EcommerceDocumentInput = {
+  filename: string;
+  mediaType: string;
+  dataUrl: string;
+};
+
+/** POST /api/ecommerce/analyze：仅产品图与资料，对齐商业分析左栏 */
+export type EcommerceAnalyzeRequest = {
   images: EcommerceImageInput[];
+  documents?: EcommerceDocumentInput[];
 };
 
 export type EcommercePlanSlot = {
@@ -41,9 +49,7 @@ export type EcommerceAnalyzeTextEvent = {
   delta: string;
 };
 
-export type EcommerceAnalyzeDoneEvent = {
-  slots: EcommercePlanSlot[];
-};
+export type EcommerceAnalyzeDoneEvent = Record<string, never>;
 
 export type EcommerceAnalyzeErrorEvent = {
   message: string;

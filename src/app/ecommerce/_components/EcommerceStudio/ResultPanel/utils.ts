@@ -1,8 +1,20 @@
+import { RESULT_TITLE_ANALYSIS, RESULT_TITLE_GENERATE } from '../constants';
 import type { StudioPhase } from '../types';
 
-/** 输入阶段不可回退 */
-export function isPrevDisabled(phase: StudioPhase): boolean {
-  return phase === 'input';
+/** 商业分析/确认规划显示分析结果；出图阶段显示生成结果 */
+export function toResultHeadTitle(phase: StudioPhase): string {
+  if (phase === 'generating' || phase === 'done') return RESULT_TITLE_GENERATE;
+  return RESULT_TITLE_ANALYSIS;
+}
+
+/** 右侧是否展示规划 Markdown（分析中、分析完成、确认规划） */
+export function isPlanPhase(phase: StudioPhase): boolean {
+  return phase === 'analyzing' || phase === 'analyzed' || phase === 'confirm';
+}
+
+/** 第一步（商业分析）不展示上一步 */
+export function isPrevVisible(phase: StudioPhase): boolean {
+  return phase === 'confirm' || phase === 'generating' || phase === 'done';
 }
 
 /** 规划滚动区是否贴底（普通 overflow，底部 ≈ scrollHeight - clientHeight） */
@@ -46,9 +58,9 @@ export function reconcilePlanScrollPin(
   };
 }
 
-/** 仅确认规划后可点下一步出图 */
+/** 分析完成后可进确认规划；确认规划后可出图 */
 export function isNextDisabled(phase: StudioPhase): boolean {
-  return phase !== 'confirm';
+  return phase !== 'analyzed' && phase !== 'confirm';
 }
 
 /** 出图预览地址（工作台结果为 data URL） */

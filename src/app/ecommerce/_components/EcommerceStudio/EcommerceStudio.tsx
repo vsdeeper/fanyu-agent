@@ -18,8 +18,15 @@ import {
   STUDIO_TITLE,
 } from './constants';
 import ResultPanel from './ResultPanel';
-import type { ProductImageItem, StudioFormState, StudioPhase, StudioResultImage } from './types';
+import type {
+  ProductDocItem,
+  ProductImageItem,
+  StudioFormState,
+  StudioPhase,
+  StudioResultImage,
+} from './types';
 import {
+  appendProductDocs,
   appendProductImages,
   applyGenerateEvent,
   assertOkOrJsonFail,
@@ -28,13 +35,15 @@ import {
   createRafTextBuffer,
   isAbortError,
   pendingImagesFromSlots,
+  phaseAfterNext,
   phaseAfterPrev,
   readFileAsDataUrl,
+  removeProductDoc,
   removeProductImage,
+  revokeProductDocUrls,
   revokeProductImageUrls,
-  toAnalyzeImages,
+  toAnalyzePayload,
   toGeneratePayload,
-  toStudioFormPayload,
 } from './utils';
 import styles from './EcommerceStudio.module.css';
 
@@ -44,6 +53,7 @@ import styles from './EcommerceStudio.module.css';
 export default function EcommerceStudio() {
   const { message } = App.useApp();
   const [images, setImages] = useState<ProductImageItem[]>([]);
+  const [documents, setDocuments] = useState<ProductDocItem[]>([]);
   const [form, setForm] = useState<StudioFormState>(DEFAULT_FORM_STATE);
   const [phase, setPhase] = useState<StudioPhase>('input');
   const [helpWriteLoading, setHelpWriteLoading] = useState(false);
@@ -52,6 +62,7 @@ export default function EcommerceStudio() {
   const [resultImages, setResultImages] = useState<StudioResultImage[]>([]);
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
   const imagesRef = useRef(images);
+  const documentsRef = useRef(documents);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -59,10 +70,15 @@ export default function EcommerceStudio() {
   }, [images]);
 
   useEffect(() => {
+    documentsRef.current = documents;
+  }, [documents]);
+
+  useEffect(() => {
     return () => {
       abortRef.current?.abort();
       analysisBuffer.dispose();
       revokeProductImageUrls(imagesRef.current);
+      revokeProductDocUrls(documentsRef.current);
     };
   }, [analysisBuffer]);
 
@@ -88,10 +104,7 @@ export default function EcommerceStudio() {
     analysisBuffer.reset();
     setSlots([]);
     try {
-      const payload = {
-        ...toStudioFormPayload(form),
-        images: await toAnalyzeImages(images),
-      };
+      const payload = await toAnalyzePayload(images, documents);
       const res = await fetch('/api/ecommerce/analyze', {
         method: 'POST',
         headers: {
@@ -105,9 +118,8 @@ export default function EcommerceStudio() {
       let receivedDone = false;
       await consumeAnalyzeSse(res, {
         onText: (delta) => analysisBuffer.append(delta),
-        onDone: (nextSlots) => {
+        onDone: () => {
           receivedDone = true;
-          setSlots(nextSlots);
         },
         onError: (text) => {
           message.error(text);
@@ -119,7 +131,7 @@ export default function EcommerceStudio() {
         return;
       }
       if (receivedDone) {
-        setPhase('confirm');
+        setPhase('analyzed');
         return;
       }
       setPhase('input');
@@ -134,7 +146,7 @@ export default function EcommerceStudio() {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, analysisBuffer, form, images, message]);
+  }, [abortCurrent, analysisBuffer, documents, images, message]);
 
   const handleGenerate = useCallback(async () => {
     if (slots.length === 0 || images.length === 0) {
@@ -183,12 +195,28 @@ export default function EcommerceStudio() {
     setImages((current) => removeProductImage(current, uid));
   }, []);
 
+  const handleDocsAppend = useCallback((files: File[]) => {
+    setDocuments((current) => appendProductDocs(current, files));
+  }, []);
+
+  const handleDocRemove = useCallback((uid: string) => {
+    setDocuments((current) => removeProductDoc(current, uid));
+  }, []);
+
   const handlePrev = useCallback(() => {
     if (phase === 'analyzing' || phase === 'generating') {
       abortCurrent();
     }
     setPhase((current) => phaseAfterPrev(current));
   }, [abortCurrent, phase]);
+
+  const handleNext = useCallback(() => {
+    if (phase === 'analyzed') {
+      setPhase(phaseAfterNext(phase));
+      return;
+    }
+    void handleGenerate();
+  }, [handleGenerate, phase]);
 
   const handleHelpWrite = useCallback(async () => {
     if (images.length === 0) {
@@ -241,12 +269,15 @@ export default function EcommerceStudio() {
       <Layout.Content className={styles.content}>
         <ControlPanel
           images={images}
+          documents={documents}
           form={form}
           phase={phase}
           formLocked={formLocked}
           helpWriteLoading={helpWriteLoading}
           onImagesAppend={handleImagesAppend}
           onImageRemove={handleImageRemove}
+          onDocsAppend={handleDocsAppend}
+          onDocRemove={handleDocRemove}
           onFormChange={setForm}
           onAnalyze={handleAnalyze}
           onHelpWrite={handleHelpWrite}
@@ -259,7 +290,7 @@ export default function EcommerceStudio() {
           expectedImageCount={expectedImageCount}
           aspectRatio={form.aspectRatio}
           onPrev={handlePrev}
-          onNext={() => void handleGenerate()}
+          onNext={handleNext}
           onAnalysisTextChange={setAnalysisText}
         />
       </Layout.Content>

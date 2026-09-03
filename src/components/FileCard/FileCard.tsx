@@ -21,6 +21,7 @@ export default function FileCard({
   icon,
   byteSize,
   href,
+  showDownload = true,
   onPreview,
   className,
 }: FileCardProps) {
@@ -56,16 +57,22 @@ export default function FileCard({
           {meta ? <div className={styles.hint}>{meta}</div> : null}
         </div>
       </div>
-      {isReady && href ? (
-        <a
-          className={styles.download}
-          href={href}
-          download={fileName}
-          aria-label={`下载 ${fileName ?? ''}`.trim()}
-          onClick={handleDownloadClick}
-        >
-          <DownloadOutlined />
-        </a>
+      {showDownload ? (
+        isReady && href ? (
+          <a
+            className={styles.download}
+            href={href}
+            download={fileName}
+            aria-label={`下载 ${fileName ?? ''}`.trim()}
+            onClick={handleDownloadClick}
+          >
+            <DownloadOutlined />
+          </a>
+        ) : (
+          <span className={`${styles.download} ${styles.downloadDisabled}`} aria-hidden>
+            <DownloadOutlined />
+          </span>
+        )
       ) : null}
     </div>
   );

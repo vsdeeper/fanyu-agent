@@ -1,8 +1,14 @@
 export type DesignType = 'main' | 'detail' | 'ad';
 
-export type StudioPhase = 'input' | 'analyzing' | 'confirm' | 'generating' | 'done';
+export type StudioPhase = 'input' | 'analyzing' | 'analyzed' | 'confirm' | 'generating' | 'done';
 
 export type ProductImageItem = {
+  uid: string;
+  file: File;
+  previewUrl: string;
+};
+
+export type ProductDocItem = {
   uid: string;
   file: File;
   previewUrl: string;

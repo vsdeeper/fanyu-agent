@@ -1,202 +1,89 @@
 import { HighlightOutlined } from '@ant-design/icons';
-import { Badge, Button, Input, Segmented, Select } from 'antd';
-import {
-  ANALYZE_BUTTON,
-  ASPECT_RATIO_OPTIONS,
-  DESIGN_TYPE_ITEMS,
-  LANGUAGE_OPTIONS,
-  MODEL_OPTIONS,
-  PLATFORM_OPTIONS,
-  REQUIREMENT_LABELS,
-  REQUIREMENT_PLACEHOLDER,
-} from '../constants';
-import {
-  isQualitySupported,
-  toClarityOptions,
-  toCountOptions,
-  toQualityOptions,
-} from '../model-options';
-import type { ProductImageItem, StudioFormState, StudioPhase } from '../types';
-import ProductUpload from './ProductUpload';
-import { patchDesignType, patchFormState, patchModel, patchPlatform, toDesignType } from './utils';
+import { Button } from 'antd';
+import { ANALYZE_BUTTON } from '../constants';
+import type { ProductDocItem, ProductImageItem, StudioFormState, StudioPhase } from '../types';
+import AnalyzeForm from './AnalyzeForm';
+import GenerateForm from './GenerateForm';
+import { isAnalyzePhase } from './utils';
 import styles from './ControlPanel.module.css';
-
-const TYPE_OPTIONS = DESIGN_TYPE_ITEMS.map((item) => ({
-  value: item.value,
-  label: item.isNew ? (
-    <span className={styles.typeLabel}>
-      {item.label}
-      <Badge className={styles.newBadge} count="NEW" color="#ff4d4f" />
-    </span>
-  ) : (
-    item.label
-  ),
-}));
 
 type ControlPanelProps = {
   images: ProductImageItem[];
+  documents: ProductDocItem[];
   form: StudioFormState;
   phase: StudioPhase;
   formLocked: boolean;
   helpWriteLoading: boolean;
   onImagesAppend: (files: File[]) => void;
   onImageRemove: (uid: string) => void;
+  onDocsAppend: (files: File[]) => void;
+  onDocRemove: (uid: string) => void;
   onFormChange: (next: StudioFormState) => void;
   onAnalyze: () => void;
   onHelpWrite: () => void;
 };
 
 /**
- * 电商工作台左侧控制栏：上传、类型、生成参数；主按钮恒为分析产品。
+ * 电商工作台左侧栏：商业分析步骤为资料与产品图，确认规划起为出图参数。
  */
 export default function ControlPanel({
   images,
+  documents,
   form,
   phase,
   formLocked,
   helpWriteLoading,
   onImagesAppend,
   onImageRemove,
+  onDocsAppend,
+  onDocRemove,
   onFormChange,
   onAnalyze,
   onHelpWrite,
 }: ControlPanelProps) {
   const analyzing = phase === 'analyzing';
-  const analyzeDisabled = images.length === 0 || phase === 'generating';
+  const showAnalyzeForm = isAnalyzePhase(phase);
+  const analyzeDisabled = images.length === 0;
 
   return (
     <aside className={styles.panel}>
       <div className={styles.scroll}>
-        <ProductUpload
-          images={images}
-          disabled={formLocked}
-          onAppend={onImagesAppend}
-          onRemove={onImageRemove}
-        />
-
-        <Segmented
-          block
-          disabled={formLocked}
-          value={form.designType}
-          options={TYPE_OPTIONS}
-          onChange={(value) => onFormChange(patchDesignType(form, toDesignType(value)))}
-        />
-
-        <label className={styles.field}>
-          <span className={styles.label}>目标平台</span>
-          <Select
-            value={form.platform}
-            options={PLATFORM_OPTIONS}
+        {showAnalyzeForm ? (
+          <AnalyzeForm
+            images={images}
+            documents={documents}
             disabled={formLocked}
-            onChange={(value) => onFormChange(patchPlatform(form, value))}
+            onImagesAppend={onImagesAppend}
+            onImageRemove={onImageRemove}
+            onDocsAppend={onDocsAppend}
+            onDocRemove={onDocRemove}
           />
-        </label>
-
-        <label className={styles.field}>
-          <span className={styles.label}>{REQUIREMENT_LABELS[form.designType]}</span>
-          <div className={styles.requirementWrap}>
-            <Input.TextArea
-              className={styles.requirement}
-              value={form.requirement}
-              placeholder={REQUIREMENT_PLACEHOLDER}
-              autoSize={{ minRows: 3, maxRows: 10 }}
-              disabled={formLocked}
-              onChange={(event) =>
-                onFormChange(patchFormState(form, 'requirement', event.target.value))
-              }
-            />
-            <Button
-              className={styles.helpWrite}
-              size="small"
-              icon={<HighlightOutlined />}
-              loading={helpWriteLoading}
-              disabled={formLocked}
-              onClick={onHelpWrite}
-            >
-              AI 帮写
-            </Button>
-          </div>
-        </label>
-
-        <label className={styles.field}>
-          <span className={styles.label}>目标语言</span>
-          <Select
-            value={form.language}
-            options={LANGUAGE_OPTIONS}
+        ) : (
+          <GenerateForm
+            form={form}
             disabled={formLocked}
-            onChange={(value) => onFormChange(patchFormState(form, 'language', value))}
+            helpWriteLoading={helpWriteLoading}
+            onFormChange={onFormChange}
+            onHelpWrite={onHelpWrite}
           />
-        </label>
-
-        <div className={styles.pair}>
-          <label className={styles.field}>
-            <span className={styles.label}>模型</span>
-            <Select
-              value={form.model}
-              options={MODEL_OPTIONS}
-              disabled={formLocked}
-              onChange={(value) => onFormChange(patchModel(form, value))}
-            />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.label}>尺寸比例</span>
-            <Select
-              value={form.aspectRatio}
-              options={ASPECT_RATIO_OPTIONS}
-              disabled={formLocked}
-              onChange={(value) => onFormChange(patchFormState(form, 'aspectRatio', value))}
-            />
-          </label>
-        </div>
-
-        <div className={styles.pair}>
-          {isQualitySupported(form.model) && (
-            <label className={styles.field}>
-              <span className={styles.label}>质量</span>
-              <Select
-                value={form.quality}
-                options={toQualityOptions(form.model)}
-                disabled={formLocked}
-                onChange={(value) => onFormChange(patchFormState(form, 'quality', value))}
-              />
-            </label>
-          )}
-          <label className={styles.field}>
-            <span className={styles.label}>清晰度</span>
-            <Select
-              value={form.clarity}
-              options={toClarityOptions(form.model)}
-              disabled={formLocked}
-              onChange={(value) => onFormChange(patchFormState(form, 'clarity', value))}
-            />
-          </label>
-        </div>
-
-        <label className={styles.field}>
-          <span className={styles.label}>生成数量</span>
-          <Select
-            value={form.count}
-            options={toCountOptions(form.designType, form.platform)}
-            disabled={formLocked}
-            onChange={(value) => onFormChange(patchFormState(form, 'count', value))}
-          />
-        </label>
+        )}
       </div>
-
-      <div className={styles.footer}>
-        <Button
-          className={styles.analyzeBtn}
-          type="primary"
-          block
-          size="large"
-          icon={<HighlightOutlined />}
-          loading={analyzing}
-          disabled={analyzeDisabled}
-          onClick={onAnalyze}
-        >
-          {ANALYZE_BUTTON}
-        </Button>
-      </div>
+      {showAnalyzeForm ? (
+        <div className={styles.footer}>
+          <Button
+            className={styles.analyzeBtn}
+            type="primary"
+            block
+            size="large"
+            icon={<HighlightOutlined />}
+            loading={analyzing}
+            disabled={analyzeDisabled}
+            onClick={onAnalyze}
+          >
+            {ANALYZE_BUTTON}
+          </Button>
+        </div>
+      ) : null}
     </aside>
   );
 }

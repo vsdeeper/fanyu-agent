@@ -1,6 +1,11 @@
 import { DEFAULT_ASPECT_BY_TYPE } from '../constants';
 import { getCountSpec, getModelCapability } from '../model-options';
-import type { DesignType, StudioFormState } from '../types';
+import type { DesignType, StudioFormState, StudioPhase } from '../types';
+
+/** 商业分析步骤（输入、分析中、分析完成同属一步，不自动进入确认规划） */
+export function isAnalyzePhase(phase: StudioPhase): boolean {
+  return phase === 'input' || phase === 'analyzing' || phase === 'analyzed';
+}
 
 /** 更新表单中的单个字段 */
 export function patchFormState<K extends keyof StudioFormState>(
