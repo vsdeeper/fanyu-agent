@@ -95,7 +95,7 @@ export type EcommerceModelGenerateRequest = EcommerceGenerateBase & {
   modelImages?: EcommerceImageInput[];
 };
 
-/** 视觉设计：表单配置 + 分析结果 + 产品标准图 + 开关控制的视觉/模特标准图 */
+/** 视觉设计：表单配置 + 分析结果 + 产品标准图 + 开关控制的视觉/模特标准图；营销海报可附带可选模特形象 */
 export type EcommerceDesignGenerateRequest = EcommerceGenerateBase & {
   kind: 'design';
   count: number;
@@ -106,6 +106,7 @@ export type EcommerceDesignGenerateRequest = EcommerceGenerateBase & {
   productViewDataUrl: string;
   visualDataUrl?: string;
   modelDataUrl?: string;
+  modelImages?: EcommerceImageInput[];
 };
 
 export type EcommerceGenerateRequest =

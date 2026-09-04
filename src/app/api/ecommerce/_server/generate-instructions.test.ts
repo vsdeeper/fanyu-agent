@@ -134,14 +134,36 @@ describe('电商生图指令', () => {
     expect(prompt).toContain('【商业分析】\n目标人群偏好暖色');
     expect(prompt).toContain('第1个参考图=用户上传的产品图');
     expect(prompt).toContain('第2个参考图=已选营销主视觉');
-    expect(prompt).toContain('第3个参考图=已选模特标准图');
+    expect(prompt).toContain('第3个及之后的参考图=同一位模特的身份与着装参考');
+    expect(prompt).toContain('必须把该人物融合进成品画面并参与构图');
+    expect(prompt).toContain('姿势、站位、动作与取景可按当前物料的广告设计需要调整');
   });
 
   it('视觉设计参考图编号随开关保持一致', () => {
     const prompt = buildDesignPrompt('主图', '分析', false, true);
 
     expect(prompt).toContain('未带入营销主视觉');
-    expect(prompt).toContain('第2个参考图=已选模特标准图');
+    expect(prompt).toContain('第2个及之后的参考图=同一位模特的身份与着装参考');
+  });
+
+  it('营销海报在有模特参考时将人物融入构图并锁定外貌与服装', () => {
+    const prompt = buildDesignPrompt('营销海报', '分析', false, true);
+
+    expect(prompt).toContain('该人物必须出现在海报中');
+    expect(prompt).toContain(
+      '锁定性别、五官、脸型、肤色、发型、气质，以及服装款式、颜色、材质与关键服饰细节',
+    );
+    expect(prompt).toContain(
+      '姿势、站位、动作与取景可按当前物料的广告设计需要调整，不必照搬参考图',
+    );
+    expect(prompt).not.toContain('不得沿用');
+  });
+
+  it('营销海报未带模特参考时不强制入画', () => {
+    const prompt = buildDesignPrompt('营销海报', '分析', false, false);
+
+    expect(prompt).not.toContain('该人物必须出现在海报中');
+    expect(prompt).toContain('未带入模特参考图');
   });
 });
 
@@ -290,6 +312,24 @@ describe('视觉设计请求契约', () => {
     });
 
     expect(parsed?.kind).toBe('design');
+  });
+
+  it('接受可选模特形象参考图', () => {
+    const parsed = parseGenerateBody({
+      ...BASE_DESIGN_REQUEST,
+      referenceVisual: false,
+      includeModel: true,
+      modelImages: [
+        {
+          filename: 'model.png',
+          mediaType: 'image/png',
+          dataUrl: 'data:image/png;base64,MODEL',
+        },
+      ],
+    });
+
+    expect(parsed?.kind).toBe('design');
+    expect(parsed && parsed.kind === 'design' ? parsed.modelImages : []).toHaveLength(1);
   });
 
   it('两个开关关闭时仅需产品标准图', () => {

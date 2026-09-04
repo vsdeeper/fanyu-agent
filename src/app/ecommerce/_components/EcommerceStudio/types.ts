@@ -70,4 +70,5 @@ export type VisualStepSnapshot = {
 export type DesignStepSnapshot = {
   form: DesignFormState;
   designResultGroups: DesignResultGroups;
+  modelImages: ProductImageItem[];
 };

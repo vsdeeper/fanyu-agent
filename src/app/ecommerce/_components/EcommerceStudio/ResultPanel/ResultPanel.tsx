@@ -7,6 +7,7 @@ import './XMarkdownTheme.css';
 import { useState } from 'react';
 import { useThemeMode } from '@/components/theme';
 import { COMPLETE_BUTTON, NEXT_BUTTON, PREV_BUTTON, VISUAL_STANDARD_BADGE } from '../constants';
+import type { EcommerceTaskType } from '@/app/api/ecommerce/_shared/task-types';
 import type { DesignResultGroups, StudioPhase, StudioResultImage } from '../types';
 import {
   MARKDOWN_COMPONENTS,
@@ -29,6 +30,7 @@ import {
 import styles from './ResultPanel.module.css';
 
 type ResultPanelProps = {
+  taskType: EcommerceTaskType;
   phase: StudioPhase;
   analysisText: string;
   analysisStreaming: boolean;
@@ -48,6 +50,7 @@ type ResultPanelProps = {
  * 右下角下一步，上一步仅第二步起显示。
  */
 export default function ResultPanel({
+  taskType,
   phase,
   analysisText,
   analysisStreaming,
@@ -97,7 +100,7 @@ export default function ResultPanel({
     <section className={styles.panel}>
       <div className={styles.head}>
         <StarOutlined className={styles.star} />
-        {toResultHeadTitle(phase)}
+        {toResultHeadTitle(phase, taskType)}
         <div className={styles.headActions}>
           {isEditing ? (
             <>
@@ -164,7 +167,7 @@ export default function ResultPanel({
       ) : (
         <div className={styles.body}>
           <StarOutlined className={styles.icon} />
-          <p className={styles.hint}>{toEmptyHint(phase)}</p>
+          <p className={styles.hint}>{toEmptyHint(phase, taskType)}</p>
         </div>
       )}
       <div className={styles.footer}>

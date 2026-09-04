@@ -147,13 +147,15 @@ export function toVisualGeneratePayload(
   };
 }
 
-/** 视觉设计请求体：表单 + 分析/原始产品图 + 可选主视觉标准 */
+/** 视觉设计请求体：表单 + 分析/原始产品图 + 可选主视觉标准 + 可选模特形象 */
 export function toDesignGeneratePayload(
   form: DesignFormState,
   analysisText: string,
   productImageDataUrl: string,
   visualDataUrl: string | null,
+  modelImages: EcommerceImageInput[] = [],
 ): EcommerceGenerateRequest {
+  const includeModel = modelImages.length > 0;
   return {
     kind: 'design',
     model: form.model,
@@ -163,10 +165,11 @@ export function toDesignGeneratePayload(
     count: Number.parseInt(form.count, 10) || 1,
     designType: form.designType,
     referenceVisual: form.referenceVisual,
-    includeModel: false,
+    includeModel,
     analysisText: analysisText.trim(),
     productViewDataUrl: productImageDataUrl,
     ...(form.referenceVisual && visualDataUrl ? { visualDataUrl } : {}),
+    ...(includeModel ? { modelImages } : {}),
   };
 }
 
@@ -541,6 +544,20 @@ export function readDesignStepSnapshot(value: unknown): DesignStepSnapshot | und
   return {
     form: snapshot.form,
     designResultGroups: snapshot.designResultGroups,
+    modelImages: Array.isArray(snapshot.modelImages) ? snapshot.modelImages : [],
+  };
+}
+
+/** 构造视觉设计步骤的完整持久化快照，含可选模特形象。 */
+export async function createDesignStepSnapshot(
+  form: DesignFormState,
+  designResultGroups: DesignResultGroups,
+  modelImages: ProductImageItem[],
+): Promise<DesignStepSnapshot> {
+  return {
+    form,
+    designResultGroups,
+    modelImages: (await Promise.all(modelImages.map(serializeUploadItem))) as ProductImageItem[],
   };
 }
 

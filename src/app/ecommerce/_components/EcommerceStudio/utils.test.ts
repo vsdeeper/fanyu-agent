@@ -95,9 +95,34 @@ describe('视觉设计请求体', () => {
     );
 
     expect(payload).not.toHaveProperty('visualDataUrl');
-    expect(payload).not.toHaveProperty('modelDataUrl');
+    expect(payload).not.toHaveProperty('modelImages');
     expect(payload).toHaveProperty('includeModel', false);
     expect(payload).toHaveProperty('productViewDataUrl');
+  });
+
+  it('营销海报可附带可选模特形象', () => {
+    const payload = toDesignGeneratePayload(
+      { ...DEFAULT_DESIGN_FORM_STATE, designType: '营销海报', referenceVisual: false },
+      '商业分析',
+      'data:image/png;base64,product',
+      'data:image/png;base64,visual',
+      [
+        {
+          filename: 'model.png',
+          mediaType: 'image/png',
+          dataUrl: 'data:image/png;base64,model',
+        },
+      ],
+    );
+
+    expect(payload).toMatchObject({
+      kind: 'design',
+      designType: '营销海报',
+      referenceVisual: false,
+      includeModel: true,
+    });
+    expect(payload).not.toHaveProperty('visualDataUrl');
+    expect(payload).toHaveProperty('modelImages');
   });
 });
 
@@ -151,6 +176,7 @@ describe('步骤快照水合', () => {
     expect(analysis?.images[0]?.file).toBeUndefined();
     expect(visual?.selectedVisualIndex).toBe(0);
     expect(design?.designResultGroups['主图']).toHaveLength(1);
+    expect(design?.modelImages).toEqual([]);
     expect(readAnalysisStepSnapshot({ images: [] })).toBeUndefined();
   });
 

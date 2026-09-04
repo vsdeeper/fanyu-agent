@@ -11,6 +11,15 @@ describe('resolveEcommerceWorkflow', () => {
     ]);
   });
 
+  it('营销海报将视觉设计步标题改为营销海报', () => {
+    expect(resolveEcommerceWorkflow('营销海报', 1).map((step) => step.title)).toEqual([
+      '商业分析',
+      '营销主视觉',
+      '营销海报',
+      '完成',
+    ]);
+  });
+
   it('步骤下标由配置顺序决定而非硬编码序号', () => {
     const reordered = [
       { key: 'visual', title: '主视觉' },

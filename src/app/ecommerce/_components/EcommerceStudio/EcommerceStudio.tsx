@@ -15,7 +15,9 @@ import {
   DEFAULT_DESIGN_FORM_STATE,
   DEFAULT_FORM_STATE,
   GENERATE_FAILED,
+  MAX_MODEL_IMAGES,
   NO_IMAGE_WARNING,
+  POSTER_RESULT_MISSING,
   VISUAL_SELECT_MISSING,
 } from './constants';
 import ResultPanel from './ResultPanel';
@@ -38,6 +40,7 @@ import {
   consumeAnalyzeSse,
   consumeGenerateNdjson,
   createAnalysisStepSnapshot,
+  createDesignStepSnapshot,
   deleteStudioStep,
   createRafTextBuffer,
   isAbortError,
@@ -57,10 +60,11 @@ import {
   revokeProductImageUrls,
   saveStudioStep,
   toAnalyzePayload,
+  toAnalyzeImages,
   toDesignGeneratePayload,
   toVisualGeneratePayload,
 } from './utils';
-import { getWorkflowStepIndex, resolveEcommerceWorkflow } from './workflow';
+import { getWorkflowStepIndex, isPosterTask, resolveEcommerceWorkflow } from './workflow';
 import styles from './EcommerceStudio.module.css';
 
 /**
@@ -79,8 +83,17 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const [images, setImages] = useState<ProductImageItem[]>(initialAnalysis?.images ?? []);
   const [documents, setDocuments] = useState<ProductDocItem[]>(initialAnalysis?.documents ?? []);
   const [form, setForm] = useState<StudioFormState>(initialVisual?.form ?? DEFAULT_FORM_STATE);
-  const [designForm, setDesignForm] = useState<DesignFormState>(
-    initialDesign?.form ?? { ...DEFAULT_DESIGN_FORM_STATE, designType: task.taskType },
+  const [designForm, setDesignForm] = useState<DesignFormState>(() => {
+    const base = initialDesign?.form ?? {
+      ...DEFAULT_DESIGN_FORM_STATE,
+      designType: task.taskType,
+    };
+    return isPosterTask(task.taskType)
+      ? { ...base, designType: '营销海报', referenceVisual: false }
+      : base;
+  });
+  const [modelImages, setModelImages] = useState<ProductImageItem[]>(
+    initialDesign?.modelImages ?? [],
   );
   const [phase, setPhase] = useState<StudioPhase>(resolveInitialStudioPhase(initialAnalysis));
   const [analysisText, setAnalysisText] = useState(initialAnalysis?.analysisText ?? '');
@@ -96,6 +109,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
   const imagesRef = useRef(images);
   const documentsRef = useRef(documents);
+  const modelImagesRef = useRef(modelImages);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -107,10 +121,15 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   }, [documents]);
 
   useEffect(() => {
+    modelImagesRef.current = modelImages;
+  }, [modelImages]);
+
+  useEffect(() => {
     return () => {
       abortRef.current?.abort();
       analysisBuffer.dispose();
       revokeProductImageUrls(imagesRef.current);
+      revokeProductImageUrls(modelImagesRef.current);
       revokeProductDocUrls(documentsRef.current);
     };
   }, [analysisBuffer]);
@@ -182,6 +201,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
           deleteStudioStep(task.id, 'visual'),
           deleteStudioStep(task.id, 'design'),
         ]);
+        revokeProductImageUrls(modelImagesRef.current);
+        setModelImages([]);
         setPhase('analyzed');
         return;
       }
@@ -279,21 +300,25 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       message.warning(NO_IMAGE_WARNING);
       return;
     }
+    const poster = isPosterTask(task.taskType);
+    const nextDesignForm = poster
+      ? { ...designForm, designType: '营销海报' as const, referenceVisual: false }
+      : designForm;
     const visualDataUrl = getSelectedResultImageUrl(visualImages, selectedVisualIndex);
-    if (designForm.referenceVisual && !visualDataUrl) {
+    if (nextDesignForm.referenceVisual && !visualDataUrl) {
       message.warning(VISUAL_SELECT_MISSING);
       return;
     }
     abortCurrent();
     const controller = new AbortController();
     abortRef.current = controller;
-    const designType = designForm.designType;
+    const designType = nextDesignForm.designType;
     const batchStartIndex = designResultGroups[designType]?.length ?? 0;
     let nextDesignResultGroups = appendPendingDesignImages(
       designResultGroups,
       designType,
       expectedDesignCount,
-      designForm.aspectRatio,
+      nextDesignForm.aspectRatio,
     );
     setPhase('designGenerating');
     setDesignResultGroups(nextDesignResultGroups);
@@ -303,10 +328,11 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           toDesignGeneratePayload(
-            designForm,
+            nextDesignForm,
             analysisText,
             await readUploadItemAsDataUrl(productImage),
             visualDataUrl ? await readUrlAsDataUrl(visualDataUrl) : null,
+            await toAnalyzeImages(modelImages),
           ),
         ),
         signal: controller.signal,
@@ -326,11 +352,14 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
           .slice(batchStartIndex)
           .some((image) => image.status === 'ready')
       ) {
-        const saved = await saveStudioStep(task.id, 'design', {
-          form: designForm,
-          designResultGroups: nextDesignResultGroups,
-        });
+        const saved = await saveStudioStep(
+          task.id,
+          'design',
+          await createDesignStepSnapshot(nextDesignForm, nextDesignResultGroups, modelImages),
+        );
+        setDesignForm(saved.form);
         setDesignResultGroups(saved.designResultGroups);
+        setModelImages(saved.modelImages);
       }
       setPhase('design');
     } catch (err) {
@@ -350,8 +379,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     expectedDesignCount,
     images,
     message,
+    modelImages,
     selectedVisualIndex,
     task.id,
+    task.taskType,
     visualImages,
   ]);
 
@@ -382,6 +413,14 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     },
     [setDocuments],
   );
+
+  const handleModelImagesAppend = useCallback((files: File[]) => {
+    setModelImages((current) => appendProductImages(current, files, MAX_MODEL_IMAGES));
+  }, []);
+
+  const handleModelImageRemove = useCallback((uid: string) => {
+    setModelImages((current) => removeProductImage(current, uid));
+  }, []);
 
   const handleSelectVisual = useCallback(
     async (index: number) => {
@@ -414,11 +453,11 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         group?.some((image) => image.status === 'ready' && Boolean(image.url)),
       )
     ) {
-      message.warning(DESIGN_RESULT_MISSING);
+      message.warning(isPosterTask(task.taskType) ? POSTER_RESULT_MISSING : DESIGN_RESULT_MISSING);
       return;
     }
     setPhase((current) => phaseAfterNext(current));
-  }, [designResultGroups, message, phase, selectedVisualIndex]);
+  }, [designResultGroups, message, phase, selectedVisualIndex, task.taskType]);
 
   return (
     <Layout className={styles.studio}>
@@ -457,8 +496,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
           ) : (
             <>
               <ControlPanel
+                taskType={task.taskType}
                 images={images}
                 documents={documents}
+                modelImages={modelImages}
                 form={form}
                 designForm={designForm}
                 phase={phase}
@@ -467,6 +508,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 onImageRemove={handleImageRemove}
                 onDocsAppend={handleDocsAppend}
                 onDocRemove={handleDocRemove}
+                onModelImagesAppend={handleModelImagesAppend}
+                onModelImageRemove={handleModelImageRemove}
                 onFormChange={setForm}
                 onDesignFormChange={setDesignForm}
                 onAnalyze={handleAnalyze}
@@ -474,6 +517,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 onGenerateDesign={handleGenerateDesign}
               />
               <ResultPanel
+                taskType={task.taskType}
                 phase={phase}
                 analysisText={analysisText}
                 analysisStreaming={analysisStreaming}

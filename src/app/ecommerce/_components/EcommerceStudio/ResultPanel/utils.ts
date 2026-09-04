@@ -1,16 +1,22 @@
+import type { EcommerceTaskType } from '@/app/api/ecommerce/_shared/task-types';
 import {
   EMPTY_DESIGN_HINT,
+  EMPTY_POSTER_HINT,
   EMPTY_RESULT_HINT,
   EMPTY_VISUAL_HINT,
   RESULT_TITLE_DESIGN,
+  RESULT_TITLE_POSTER,
   RESULT_TITLE_ANALYSIS,
   RESULT_TITLE_VISUAL,
 } from '../constants';
 import type { StudioPhase } from '../types';
+import { isPosterTask } from '../workflow';
 
 /** 右侧标题随步骤切换 */
-export function toResultHeadTitle(phase: StudioPhase): string {
-  if (isDesignResultPhase(phase)) return RESULT_TITLE_DESIGN;
+export function toResultHeadTitle(phase: StudioPhase, taskType: EcommerceTaskType): string {
+  if (isDesignResultPhase(phase)) {
+    return isPosterTask(taskType) ? RESULT_TITLE_POSTER : RESULT_TITLE_DESIGN;
+  }
   if (isVisualResultPhase(phase)) return RESULT_TITLE_VISUAL;
   return RESULT_TITLE_ANALYSIS;
 }
@@ -92,8 +98,10 @@ export function isNextDisabled(
 }
 
 /** 空态提示随步骤切换 */
-export function toEmptyHint(phase: StudioPhase): string {
-  if (isDesignResultPhase(phase)) return EMPTY_DESIGN_HINT;
+export function toEmptyHint(phase: StudioPhase, taskType: EcommerceTaskType): string {
+  if (isDesignResultPhase(phase)) {
+    return isPosterTask(taskType) ? EMPTY_POSTER_HINT : EMPTY_DESIGN_HINT;
+  }
   if (isVisualResultPhase(phase)) return EMPTY_VISUAL_HINT;
   return EMPTY_RESULT_HINT;
 }

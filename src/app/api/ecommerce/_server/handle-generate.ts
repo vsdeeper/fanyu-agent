@@ -105,6 +105,7 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
       body.productViewDataUrl,
       ...(body.visualDataUrl ? [body.visualDataUrl] : []),
       ...(body.modelDataUrl ? [body.modelDataUrl] : []),
+      ...(body.modelImages?.map((image) => image.dataUrl) ?? []),
     ];
   }
 

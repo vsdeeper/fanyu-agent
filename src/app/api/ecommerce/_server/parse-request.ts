@@ -105,6 +105,7 @@ const designGenerateSchema = specFieldsSchema.extend({
   productViewDataUrl: imageDataUrlSchema,
   visualDataUrl: imageDataUrlSchema.optional(),
   modelDataUrl: imageDataUrlSchema.optional(),
+  modelImages: z.array(imageInputSchema).max(MAX_STUDIO_MODEL_IMAGES).optional(),
 });
 
 const modelHelpWriteBodySchema = z.object({
@@ -132,7 +133,7 @@ const generateBodySchema = z
         message: '主视觉开关与参考图不一致',
       });
     }
-    if (value.includeModel !== Boolean(value.modelDataUrl)) {
+    if (value.includeModel !== Boolean(value.modelDataUrl || value.modelImages?.length)) {
       context.addIssue({
         code: 'custom',
         path: ['modelDataUrl'],

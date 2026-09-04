@@ -1,6 +1,7 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
-import { ANALYZE_BUTTON, DESIGN_BUTTON, VISUAL_BUTTON } from '../constants';
+import type { EcommerceTaskType } from '@/app/api/ecommerce/_shared/task-types';
+import { ANALYZE_BUTTON, DESIGN_BUTTON, POSTER_BUTTON, VISUAL_BUTTON } from '../constants';
 import type {
   DesignFormState,
   ProductDocItem,
@@ -9,6 +10,7 @@ import type {
   StudioPhase,
   StudioSpecFields,
 } from '../types';
+import { isPosterTask } from '../workflow';
 import AnalyzeForm from './AnalyzeForm';
 import DesignForm from './DesignForm';
 import GenerateForm from './GenerateForm';
@@ -16,8 +18,10 @@ import { isAnalyzePhase, isDesignPhase, isVisualPhase } from './utils';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
+  taskType: EcommerceTaskType;
   images: ProductImageItem[];
   documents: ProductDocItem[];
+  modelImages: ProductImageItem[];
   form: StudioFormState;
   designForm: DesignFormState;
   phase: StudioPhase;
@@ -26,6 +30,8 @@ type ControlPanelProps = {
   onImageRemove: (uid: string) => void;
   onDocsAppend: (files: File[]) => void;
   onDocRemove: (uid: string) => void;
+  onModelImagesAppend: (files: File[]) => void;
+  onModelImageRemove: (uid: string) => void;
   onFormChange: (next: StudioFormState) => void;
   onDesignFormChange: (next: DesignFormState) => void;
   onAnalyze: () => void;
@@ -34,11 +40,13 @@ type ControlPanelProps = {
 };
 
 /**
- * 电商工作台左侧栏：分析资料、主视觉规格或视觉设计表单。
+ * 电商工作台左侧栏：分析资料、主视觉规格或视觉设计 / 营销海报表单。
  */
 export default function ControlPanel({
+  taskType,
   images,
   documents,
+  modelImages,
   form,
   designForm,
   phase,
@@ -47,6 +55,8 @@ export default function ControlPanel({
   onImageRemove,
   onDocsAppend,
   onDocRemove,
+  onModelImagesAppend,
+  onModelImageRemove,
   onFormChange,
   onDesignFormChange,
   onAnalyze,
@@ -86,7 +96,15 @@ export default function ControlPanel({
             onCountChange={(value) => onFormChange({ ...form, count: value })}
           />
         ) : showDesignForm ? (
-          <DesignForm form={designForm} disabled={formLocked} onFormChange={onDesignFormChange} />
+          <DesignForm
+            form={designForm}
+            taskType={taskType}
+            modelImages={modelImages}
+            disabled={formLocked}
+            onFormChange={onDesignFormChange}
+            onModelImagesAppend={onModelImagesAppend}
+            onModelImageRemove={onModelImageRemove}
+          />
         ) : null}
       </div>
       {showAnalyzeForm ? (
@@ -131,7 +149,7 @@ export default function ControlPanel({
             loading={designGenerating}
             onClick={onGenerateDesign}
           >
-            {DESIGN_BUTTON}
+            {isPosterTask(taskType) ? POSTER_BUTTON : DESIGN_BUTTON}
           </Button>
         </div>
       ) : null}

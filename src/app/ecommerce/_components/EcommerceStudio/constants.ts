@@ -28,9 +28,11 @@ export const NO_IMAGE_WARNING = '请先上传产品图';
 export const ANALYSIS_MISSING = '请先完成产品分析';
 export const VISUAL_SELECT_MISSING = '请先点选一张主视觉作为视觉标准';
 export const DESIGN_RESULT_MISSING = '请先生成至少一张视觉设计';
+export const POSTER_RESULT_MISSING = '请先生成至少一张营销海报';
 export const ANALYZE_BUTTON = '开始分析';
 export const VISUAL_BUTTON = '生成营销主视觉';
 export const DESIGN_BUTTON = '生成视觉设计';
+export const POSTER_BUTTON = '生成营销海报';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
 export const COMPLETE_BUTTON = '完成';
@@ -41,11 +43,17 @@ export const MODEL_HELP_WRITE_FAILED = '模特要求生成失败，请稍后重�
 export const EMPTY_RESULT_HINT = '上传产品资料和产品图，点击「分析产品」开始';
 export const EMPTY_VISUAL_HINT = '设置参数后点击「生成主视觉」';
 export const EMPTY_DESIGN_HINT = '设置视觉设计参数后点击「生成视觉设计」';
+export const EMPTY_POSTER_HINT = '设置参数后点击「生成营销海报」';
 
 export const RESULT_TITLE_ANALYSIS = '分析结果';
 export const RESULT_TITLE_VISUAL = '营销主视觉';
 export const RESULT_TITLE_DESIGN = '视觉设计';
+export const RESULT_TITLE_POSTER = '营销海报';
 export const VISUAL_STANDARD_BADGE = '视觉标准';
+
+export const MAX_MODEL_IMAGES = 3;
+export const MODEL_IMAGE_SUBTITLE = '可选，锁定外貌与服装并融入海报构图；姿势可按设计调整';
+export const MODEL_IMAGE_HINT = '上传模特身份参考图（可选）';
 
 /** 模型下拉（id + label），派生自 model-options，与服务端模型清单一致 */
 export const MODEL_OPTIONS = toModelOptions();
