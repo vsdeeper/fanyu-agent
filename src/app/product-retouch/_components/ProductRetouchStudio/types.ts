@@ -1,5 +1,5 @@
 export type ProductRetouchPhase =
-  'refine' | 'refineGenerating' | 'multiview' | 'multiviewGenerating';
+  'refine' | 'refineGenerating' | 'multiview' | 'multiviewGenerating' | 'complete';
 
 export type ProductImageItem = {
   uid: string;

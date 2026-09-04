@@ -3,6 +3,7 @@
 import { Layout, Steps, Typography } from 'antd';
 import ModeSwitch from '@/components/ModeSwitch';
 import { STUDIO_STEP_INDEX, STUDIO_STEPS, STUDIO_SUBTITLE, STUDIO_TITLE } from './constants';
+import CompletionPanel from './CompletionPanel';
 import ControlPanel from './ControlPanel';
 import ResultPanel from './ResultPanel';
 import { useProductRetouchStudio } from './useProductRetouchStudio';
@@ -34,32 +35,46 @@ export default function ProductRetouchStudio() {
         />
       </div>
       <Layout.Content className={styles.content}>
-        <ControlPanel
-          phase={studio.phase}
-          images={studio.images}
-          refineForm={studio.refineForm}
-          multiviewForm={studio.multiviewForm}
-          locked={studio.locked}
-          onImagesAppend={studio.handleImagesAppend}
-          onImageRemove={studio.handleImageRemove}
-          onRefineFormChange={studio.setRefineForm}
-          onMultiviewFormChange={studio.setMultiviewForm}
-          onRefine={studio.handleRefine}
-          onMultiview={studio.handleMultiview}
-        />
-        <ResultPanel
-          phase={studio.phase}
-          refineImages={studio.refineImages}
-          multiviewImages={studio.multiviewImages}
-          refineExpectedCount={Number.parseInt(studio.refineForm.count, 10) || 1}
-          multiviewExpectedCount={Number.parseInt(studio.multiviewForm.count, 10) || 1}
-          refineAspectRatio={studio.refineForm.aspectRatio}
-          multiviewAspectRatio={studio.multiviewForm.aspectRatio}
-          selectedRefineIndex={studio.selectedRefineIndex}
-          onSelectRefine={studio.setSelectedRefineIndex}
-          onPrev={studio.handlePrev}
-          onNext={studio.handleNext}
-        />
+        {studio.phase === 'complete' ? (
+          <CompletionPanel
+            refineImages={studio.refineImages}
+            multiviewImages={studio.multiviewImages}
+            onPrev={studio.handlePrev}
+          />
+        ) : (
+          <>
+            <ControlPanel
+              phase={studio.phase}
+              needsMultiview={studio.needsMultiview}
+              images={studio.images}
+              refineForm={studio.refineForm}
+              multiviewForm={studio.multiviewForm}
+              locked={studio.locked}
+              onImagesAppend={studio.handleImagesAppend}
+              onImageRemove={studio.handleImageRemove}
+              onNeedsMultiviewChange={studio.setNeedsMultiview}
+              onRefineFormChange={studio.setRefineForm}
+              onMultiviewFormChange={studio.setMultiviewForm}
+              onRefine={studio.handleRefine}
+              onMultiview={studio.handleMultiview}
+            />
+            <ResultPanel
+              phase={studio.phase}
+              needsMultiview={studio.needsMultiview}
+              refineImages={studio.refineImages}
+              multiviewImages={studio.multiviewImages}
+              refineExpectedCount={Number.parseInt(studio.refineForm.count, 10) || 1}
+              multiviewExpectedCount={Number.parseInt(studio.multiviewForm.count, 10) || 1}
+              refineAspectRatio={studio.refineForm.aspectRatio}
+              multiviewAspectRatio={studio.multiviewForm.aspectRatio}
+              selectedRefineIndex={studio.selectedRefineIndex}
+              onSelectRefine={studio.setSelectedRefineIndex}
+              onPrev={studio.handlePrev}
+              onNext={studio.handleNext}
+              onComplete={studio.handleComplete}
+            />
+          </>
+        )}
       </Layout.Content>
     </Layout>
   );

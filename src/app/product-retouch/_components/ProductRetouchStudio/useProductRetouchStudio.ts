@@ -5,6 +5,7 @@ import {
   DEFAULT_REFINE_FORM,
   GENERATE_FAILED,
   NO_IMAGE_WARNING,
+  REFINE_RESULT_MISSING,
   REFINE_SELECT_MISSING,
   REQUIREMENT_MISSING,
 } from './constants';
@@ -21,6 +22,7 @@ import {
   assertOkOrJsonFail,
   consumeGenerateNdjson,
   getSelectedImageUrl,
+  hasReadyImage,
   isAbortError,
   pendingImages,
   phaseAfterNext,
@@ -31,10 +33,11 @@ import {
   toRefinePayload,
 } from './utils';
 
-/** 管理产品精修两步工作流的表单、选择、请求与结果状态。 */
+/** 管理产品精修三步工作流的表单、选择、请求与结果状态。 */
 export function useProductRetouchStudio() {
   const { message } = App.useApp();
   const [phase, setPhase] = useState<ProductRetouchPhase>('refine');
+  const [needsMultiview, setNeedsMultiview] = useState(true);
   const [images, setImages] = useState<ProductImageItem[]>([]);
   const [refineForm, setRefineForm] = useState<RefineFormState>(DEFAULT_REFINE_FORM);
   const [multiviewForm, setMultiviewForm] = useState<MultiviewFormState>(DEFAULT_MULTIVIEW_FORM);
@@ -185,23 +188,33 @@ export function useProductRetouchStudio() {
     selectedRefineIndex,
   ]);
 
-  /** 进入多视角步骤前确认已选择精修标准图。 */
+  /** 根据多视角选项进入第二步或直接完成。 */
   const handleNext = useCallback(() => {
-    if (!getSelectedImageUrl(refineImages, selectedRefineIndex)) {
+    if (!hasReadyImage(refineImages)) {
+      message.warning(REFINE_RESULT_MISSING);
+      return;
+    }
+    if (needsMultiview && !getSelectedImageUrl(refineImages, selectedRefineIndex)) {
       message.warning(REFINE_SELECT_MISSING);
       return;
     }
-    setPhase((current) => phaseAfterNext(current));
-  }, [message, refineImages, selectedRefineIndex]);
+    setPhase((current) => phaseAfterNext(current, needsMultiview));
+  }, [message, needsMultiview, refineImages, selectedRefineIndex]);
 
-  /** 返回精修步骤，并在必要时中止多视角生成。 */
+  /** 从多视角步骤进入完成页。 */
+  const handleComplete = useCallback(() => {
+    setPhase('complete');
+  }, []);
+
+  /** 返回实际访问的上一步，并在必要时中止多视角生成。 */
   const handlePrev = useCallback(() => {
     abortCurrent();
-    setPhase(phaseAfterPrev());
-  }, [abortCurrent]);
+    setPhase((current) => phaseAfterPrev(current, needsMultiview));
+  }, [abortCurrent, needsMultiview]);
 
   return {
     phase,
+    needsMultiview,
     images,
     refineForm,
     multiviewForm,
@@ -211,12 +224,14 @@ export function useProductRetouchStudio() {
     locked: phase === 'refineGenerating' || phase === 'multiviewGenerating',
     setRefineForm,
     setMultiviewForm,
+    setNeedsMultiview,
     setSelectedRefineIndex,
     handleImagesAppend,
     handleImageRemove,
     handleRefine,
     handleMultiview,
     handleNext,
+    handleComplete,
     handlePrev,
   };
 }

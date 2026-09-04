@@ -1,0 +1,17 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title {
+  margin: 0 !important;
+  color: var(--one-color-text) !important;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}

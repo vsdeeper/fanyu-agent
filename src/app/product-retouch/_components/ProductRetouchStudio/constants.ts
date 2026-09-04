@@ -3,12 +3,13 @@ import type { MultiviewFormState, ProductRetouchPhase, RefineFormState } from '.
 
 export const STUDIO_TITLE = '产品精修';
 export const STUDIO_SUBTITLE = '产品精修与多视角生成，一站式标准化出图';
-export const STUDIO_STEPS = [{ title: '产品精修' }, { title: '产品多视角' }];
+export const STUDIO_STEPS = [{ title: '产品精修' }, { title: '产品多视角' }, { title: '完成' }];
 export const STUDIO_STEP_INDEX: Record<ProductRetouchPhase, number> = {
   refine: 0,
   refineGenerating: 0,
   multiview: 1,
   multiviewGenerating: 1,
+  complete: 3,
 };
 
 export const DEFAULT_REFINE_REQUIREMENT =
@@ -41,15 +42,21 @@ export const ASPECT_RATIO_OPTIONS = [
   { value: '9:16', label: '9:16 竖版' },
   { value: '16:9', label: '16:9 横版' },
 ];
+export const MULTIVIEW_NEED_OPTIONS = [
+  { label: '需要', value: true },
+  { label: '不需要', value: false },
+];
 
 export const NO_IMAGE_WARNING = '请先上传产品图';
 export const REQUIREMENT_MISSING = '请填写生成要求';
 export const REFINE_SELECT_MISSING = '请先点选一张精修图作为精修标准';
+export const REFINE_RESULT_MISSING = '请先完成产品精修';
 export const GENERATE_FAILED = '生图失败，请稍后重试';
 export const REFINE_BUTTON = '开始精修';
 export const MULTIVIEW_BUTTON = '生成产品多视角';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
+export const COMPLETE_BUTTON = '完成';
 export const REFINE_STANDARD_BADGE = '精修标准';
 export const EMPTY_REFINE_HINT = '上传产品图并设置精修要求后，点击「开始精修」';
 export const EMPTY_MULTIVIEW_HINT = '设置多视角要求后，点击「生成产品多视角」';

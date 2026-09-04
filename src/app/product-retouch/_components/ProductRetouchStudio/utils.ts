@@ -170,13 +170,26 @@ export function getSelectedImageUrl(
   return image?.status === 'ready' && image.url ? image.url : null;
 }
 
-/** 返回“下一步”对应阶段；仅精修完成态可进入多视角。 */
-export function phaseAfterNext(phase: ProductRetouchPhase): ProductRetouchPhase {
-  return phase === 'refine' ? 'multiview' : phase;
+/** 判断结果集中是否至少有一张已生成图片。 */
+export function hasReadyImage(images: readonly ResultImage[]): boolean {
+  return images.some((item) => item.status === 'ready' && Boolean(item.url));
 }
 
-/** 返回“上一步”对应阶段。 */
-export function phaseAfterPrev(): ProductRetouchPhase {
+/** 根据多视角选项返回精修步骤的后续阶段。 */
+export function phaseAfterNext(
+  phase: ProductRetouchPhase,
+  needsMultiview: boolean,
+): ProductRetouchPhase {
+  if (phase !== 'refine') return phase;
+  return needsMultiview ? 'multiview' : 'complete';
+}
+
+/** 根据当前阶段与多视角选项返回“上一步”阶段。 */
+export function phaseAfterPrev(
+  phase: ProductRetouchPhase,
+  needsMultiview: boolean,
+): ProductRetouchPhase {
+  if (phase === 'complete' && needsMultiview) return 'multiview';
   return 'refine';
 }
 

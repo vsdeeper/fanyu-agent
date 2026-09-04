@@ -3,6 +3,7 @@ import type { ResultImage } from './types';
 import {
   applyGenerateEvent,
   getSelectedImageUrl,
+  hasReadyImage,
   pendingImages,
   phaseAfterNext,
   phaseAfterPrev,
@@ -35,14 +36,18 @@ describe('产品精修结果流', () => {
 
     expect(getSelectedImageUrl(images, 0)).toBeNull();
     expect(getSelectedImageUrl(images, 1)).toBe('data:image/png;base64,READY');
+    expect(hasReadyImage(images)).toBe(true);
   });
 });
 
 describe('产品精修步骤与请求', () => {
-  it('精修完成态进入多视角，返回时回到精修', () => {
-    expect(phaseAfterNext('refine')).toBe('multiview');
-    expect(phaseAfterNext('refineGenerating')).toBe('refineGenerating');
-    expect(phaseAfterPrev()).toBe('refine');
+  it('按多视角选项进入第二步或直接完成', () => {
+    expect(phaseAfterNext('refine', true)).toBe('multiview');
+    expect(phaseAfterNext('refine', false)).toBe('complete');
+    expect(phaseAfterNext('refineGenerating', false)).toBe('refineGenerating');
+    expect(phaseAfterPrev('multiview', true)).toBe('refine');
+    expect(phaseAfterPrev('complete', true)).toBe('multiview');
+    expect(phaseAfterPrev('complete', false)).toBe('refine');
   });
 
   it('多视角请求携带用户要求与精修标准图', () => {

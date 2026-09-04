@@ -1,6 +1,7 @@
 import { StarOutlined } from '@ant-design/icons';
 import { Button, Skeleton } from 'antd';
 import {
+  COMPLETE_BUTTON,
   EMPTY_MULTIVIEW_HINT,
   EMPTY_REFINE_HINT,
   NEXT_BUTTON,
@@ -8,12 +9,13 @@ import {
   REFINE_STANDARD_BADGE,
 } from '../constants';
 import type { ProductRetouchPhase, ResultImage } from '../types';
-import { aspectRatioToSize } from '../utils';
+import { aspectRatioToSize, hasReadyImage } from '../utils';
 import ResultImageItem from './ResultImageItem';
 import styles from './ResultPanel.module.css';
 
 type ResultPanelProps = {
   phase: ProductRetouchPhase;
+  needsMultiview: boolean;
   refineImages: readonly ResultImage[];
   multiviewImages: readonly ResultImage[];
   refineExpectedCount: number;
@@ -24,11 +26,13 @@ type ResultPanelProps = {
   onSelectRefine: (index: number) => void;
   onPrev: () => void;
   onNext: () => void;
+  onComplete: () => void;
 };
 
 /** 产品精修工作台右栏：展示当前步骤结果并承载步骤导航。 */
 export default function ResultPanel({
   phase,
+  needsMultiview,
   refineImages,
   multiviewImages,
   refineExpectedCount,
@@ -39,6 +43,7 @@ export default function ResultPanel({
   onSelectRefine,
   onPrev,
   onNext,
+  onComplete,
 }: ResultPanelProps) {
   const showRefine = phase === 'refine' || phase === 'refineGenerating';
   const generating = phase === 'refineGenerating' || phase === 'multiviewGenerating';
@@ -96,18 +101,27 @@ export default function ResultPanel({
       )}
       <div className={styles.footer}>
         {!showRefine ? (
-          <Button size="large" disabled={generating} onClick={onPrev}>
-            {PREV_BUTTON}
-          </Button>
+          <>
+            <Button size="large" disabled={generating} onClick={onPrev}>
+              {PREV_BUTTON}
+            </Button>
+            <Button size="large" type="primary" disabled={generating} onClick={onComplete}>
+              {COMPLETE_BUTTON}
+            </Button>
+          </>
         ) : null}
         {showRefine ? (
           <Button
             size="large"
             type="primary"
-            disabled={generating || selectedRefineIndex === null}
+            disabled={
+              generating ||
+              !hasReadyImage(refineImages) ||
+              (needsMultiview && selectedRefineIndex === null)
+            }
             onClick={onNext}
           >
-            {NEXT_BUTTON}
+            {needsMultiview ? NEXT_BUTTON : COMPLETE_BUTTON}
           </Button>
         ) : null}
       </div>
