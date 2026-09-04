@@ -8,10 +8,17 @@ import type {
   EcommerceGenerateRequest,
   EcommerceImageInput,
 } from '@/app/api/ecommerce/_shared/types';
+import { ECOMMERCE_STEP_SNAPSHOT_VERSION } from '@/app/api/ecommerce/_shared/task-constants';
+import type {
+  EcommerceStepKey,
+  EcommerceTaskStepRecord,
+} from '@/app/api/ecommerce/_shared/task-types';
 import { MAX_PRODUCT_DOCS } from '@/business-components/ProductDocsUpload';
 import { MAX_PRODUCT_IMAGES } from '@/business-components/ProductUpload';
-import { ApiClientError } from '@/lib/shared/client/api-client';
+import { ApiClientError, apiDelete, apiPut } from '@/lib/shared/client/api-client';
 import type {
+  AnalysisStepSnapshot,
+  DesignStepSnapshot,
   DesignFormState,
   DesignResultGroups,
   ProductDocItem,
@@ -19,6 +26,7 @@ import type {
   StudioFormState,
   StudioPhase,
   StudioResultImage,
+  VisualStepSnapshot,
 } from './types';
 import type { EcommerceDesignType } from '@/app/api/ecommerce/_shared/types';
 
@@ -36,6 +44,9 @@ export function appendProductImages(
     uid: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
     file,
     previewUrl: URL.createObjectURL(file),
+    name: file.name,
+    mimeType: file.type || 'image/jpeg',
+    size: file.size,
   }));
   return [...current, ...next];
 }
@@ -43,14 +54,14 @@ export function appendProductImages(
 /** 按 uid 移除预览项并释放 object URL */
 export function removeProductImage(current: ProductImageItem[], uid: string): ProductImageItem[] {
   const target = current.find((item) => item.uid === uid);
-  if (target) URL.revokeObjectURL(target.previewUrl);
+  if (target?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(target.previewUrl);
   return current.filter((item) => item.uid !== uid);
 }
 
 /** 卸载时释放全部 object URL */
 export function revokeProductImageUrls(items: ProductImageItem[]): void {
   for (const item of items) {
-    URL.revokeObjectURL(item.previewUrl);
+    if (item.previewUrl.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl);
   }
 }
 
@@ -64,6 +75,9 @@ export function appendProductDocs(current: ProductDocItem[], files: File[]): Pro
     uid: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
     file,
     previewUrl: URL.createObjectURL(file),
+    name: file.name,
+    mimeType: toDocMediaType(file),
+    size: file.size,
   }));
   return [...current, ...next];
 }
@@ -71,25 +85,40 @@ export function appendProductDocs(current: ProductDocItem[], files: File[]): Pro
 /** 按 uid 移除资料并释放 object URL */
 export function removeProductDoc(current: ProductDocItem[], uid: string): ProductDocItem[] {
   const target = current.find((item) => item.uid === uid);
-  if (target) URL.revokeObjectURL(target.previewUrl);
+  if (target?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(target.previewUrl);
   return current.filter((item) => item.uid !== uid);
 }
 
 /** 卸载时释放资料 object URL */
 export function revokeProductDocUrls(items: ProductDocItem[]): void {
   for (const item of items) {
-    URL.revokeObjectURL(item.previewUrl);
+    if (item.previewUrl.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl);
   }
 }
 
-/** 把本地文件读成 data URL，供 JSON 入参 */
-export function readFileAsDataUrl(file: File): Promise<string> {
+/** 把本地文件或响应 Blob 读成 data URL，供 JSON 入参 */
+export function readFileAsDataUrl(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
     reader.onerror = () => reject(reader.error ?? new Error('读取图片失败'));
     reader.readAsDataURL(file);
   });
+}
+
+/** 将站内资产 URL 或已有 data URL 转为模型接口所需的 data URL。 */
+export async function readUrlAsDataUrl(url: string): Promise<string> {
+  if (url.startsWith('data:')) return url;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('读取历史资产失败');
+  return readFileAsDataUrl(await response.blob());
+}
+
+/** 读取新上传文件或已持久化资产。 */
+export function readUploadItemAsDataUrl(
+  item: Pick<ProductImageItem | ProductDocItem, 'file' | 'previewUrl'>,
+): Promise<string> {
+  return item.file ? readFileAsDataUrl(item.file) : readUrlAsDataUrl(item.previewUrl);
 }
 
 /** 是否为用户主动中止 */
@@ -173,9 +202,9 @@ export function toDocMediaType(file: File): string {
 export async function toAnalyzeImages(images: ProductImageItem[]): Promise<EcommerceImageInput[]> {
   return Promise.all(
     images.map(async (item) => ({
-      filename: item.file.name,
-      mediaType: item.file.type || 'image/jpeg',
-      dataUrl: await readFileAsDataUrl(item.file),
+      filename: item.name,
+      mediaType: item.mimeType || 'image/jpeg',
+      dataUrl: await readUploadItemAsDataUrl(item),
     })),
   );
 }
@@ -186,9 +215,9 @@ export async function toAnalyzeDocuments(
 ): Promise<EcommerceDocumentInput[]> {
   return Promise.all(
     documents.map(async (item) => ({
-      filename: item.file.name,
-      mediaType: toDocMediaType(item.file),
-      dataUrl: await readFileAsDataUrl(item.file),
+      filename: item.name,
+      mediaType: item.mimeType,
+      dataUrl: await readUploadItemAsDataUrl(item),
     })),
   );
 }
@@ -422,6 +451,96 @@ export function applyDesignGenerateEvent(
   return {
     ...current,
     [designType]: applyGenerateEvent(current[designType] ?? [], event, batchStartIndex),
+  };
+}
+
+/** 将上传项转换为可持久化快照；本地 blob URL 会替换为 data URL。 */
+async function serializeUploadItem<T extends ProductImageItem | ProductDocItem>(
+  item: T,
+): Promise<Omit<T, 'file'>> {
+  const serializable = Object.fromEntries(
+    Object.entries(item).filter(([key]) => key !== 'file'),
+  ) as Omit<T, 'file'>;
+  return {
+    ...serializable,
+    previewUrl: item.file ? await readFileAsDataUrl(item.file) : item.previewUrl,
+  };
+}
+
+/** 构造商业分析步骤的完整持久化快照。 */
+export async function createAnalysisStepSnapshot(
+  images: ProductImageItem[],
+  documents: ProductDocItem[],
+  analysisText: string,
+): Promise<AnalysisStepSnapshot> {
+  return {
+    images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
+    documents: (await Promise.all(documents.map(serializeUploadItem))) as ProductDocItem[],
+    analysisText,
+  };
+}
+
+/** 保存步骤快照，并返回服务端替换资产 URL 后的数据。 */
+export async function saveStudioStep<T>(
+  taskId: string,
+  stepKey: EcommerceStepKey,
+  data: T,
+): Promise<T> {
+  const record = await apiPut<EcommerceTaskStepRecord>(
+    `/api/ecommerce/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`,
+    {
+      snapshotVersion: ECOMMERCE_STEP_SNAPSHOT_VERSION,
+      data,
+    },
+  );
+  return record.data as T;
+}
+
+/** 删除已失效的下游步骤快照。 */
+export async function deleteStudioStep(taskId: string, stepKey: EcommerceStepKey): Promise<void> {
+  await apiDelete(`/api/ecommerce/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`, {
+    silent: true,
+  });
+}
+
+/** 再次进入流程时始终停在第一步：有分析正文则视为已完成分析。 */
+export function resolveInitialStudioPhase(analysis: AnalysisStepSnapshot | undefined): StudioPhase {
+  return analysis?.analysisText.trim() ? 'analyzed' : 'input';
+}
+
+/** 从未知 JSON 中读取商业分析快照。 */
+export function readAnalysisStepSnapshot(value: unknown): AnalysisStepSnapshot | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const snapshot = value as Partial<AnalysisStepSnapshot>;
+  if (!Array.isArray(snapshot.images) || !Array.isArray(snapshot.documents)) return undefined;
+  return {
+    images: snapshot.images,
+    documents: snapshot.documents,
+    analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : '',
+  };
+}
+
+/** 从未知 JSON 中读取营销主视觉快照。 */
+export function readVisualStepSnapshot(value: unknown): VisualStepSnapshot | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const snapshot = value as Partial<VisualStepSnapshot>;
+  if (!snapshot.form || !Array.isArray(snapshot.visualImages)) return undefined;
+  return {
+    form: snapshot.form,
+    visualImages: snapshot.visualImages,
+    selectedVisualIndex:
+      typeof snapshot.selectedVisualIndex === 'number' ? snapshot.selectedVisualIndex : null,
+  };
+}
+
+/** 从未知 JSON 中读取视觉设计快照。 */
+export function readDesignStepSnapshot(value: unknown): DesignStepSnapshot | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const snapshot = value as Partial<DesignStepSnapshot>;
+  if (!snapshot.form || !snapshot.designResultGroups) return undefined;
+  return {
+    form: snapshot.form,
+    designResultGroups: snapshot.designResultGroups,
   };
 }
 

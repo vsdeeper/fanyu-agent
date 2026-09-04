@@ -12,14 +12,20 @@ export type StudioPhase =
 
 export type ProductImageItem = {
   uid: string;
-  file: File;
+  file?: File;
   previewUrl: string;
+  name: string;
+  mimeType: string;
+  size: number;
 };
 
 export type ProductDocItem = {
   uid: string;
-  file: File;
+  file?: File;
   previewUrl: string;
+  name: string;
+  mimeType: string;
+  size: number;
 };
 
 /** 生图规格字段，主视觉与产品模特表单共用 */
@@ -48,3 +54,20 @@ export type StudioResultImage = {
 };
 
 export type DesignResultGroups = Partial<Record<EcommerceDesignType, StudioResultImage[]>>;
+
+export type AnalysisStepSnapshot = {
+  images: ProductImageItem[];
+  documents: ProductDocItem[];
+  analysisText: string;
+};
+
+export type VisualStepSnapshot = {
+  form: StudioFormState;
+  visualImages: StudioResultImage[];
+  selectedVisualIndex: number | null;
+};
+
+export type DesignStepSnapshot = {
+  form: DesignFormState;
+  designResultGroups: DesignResultGroups;
+};

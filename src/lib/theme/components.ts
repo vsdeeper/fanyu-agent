@@ -20,6 +20,10 @@ export const componentTokens: ThemeConfig['components'] = {
     headerHeight: 56, // 接近原 min-height40 + padding20 的实际高度
     headerPadding: '0 24px',
   },
+  // headerMarginBottom 是 Modal 内部 token，未列入公开 ComponentToken；断言后运行时仍会合并并生成 --one-modal-header-margin-bottom
+  Modal: {
+    headerMarginBottom: 30,
+  } as NonNullable<ThemeConfig['components']>['Modal'],
   // ===== @ant-design/x 组件 =====
   // Sender: {
   //   colorBgSlot: 'var(--one-color-bg-layout)',

@@ -95,6 +95,30 @@ export function apiPost<T>(url: string, body?: unknown, init?: ApiRequestInit): 
   });
 }
 
+/** 发送 JSON PATCH 请求。 */
+export function apiPatch<T>(url: string, body: unknown, init?: ApiRequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  return apiRequest<T>(url, {
+    ...init,
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(body),
+  });
+}
+
+/** 发送 JSON PUT 请求。 */
+export function apiPut<T>(url: string, body: unknown, init?: ApiRequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  return apiRequest<T>(url, {
+    ...init,
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(body),
+  });
+}
+
 export function apiDelete<T>(url: string, init?: ApiRequestInit): Promise<T> {
   return apiRequest<T>(url, { ...init, method: 'DELETE' });
 }

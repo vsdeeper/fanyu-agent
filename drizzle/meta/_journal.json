@@ -15,6 +15,13 @@
       "when": 1785387285057,
       "tag": "0001_normal_starfox",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788538300617,
+      "tag": "0002_little_blacklash",
+      "breakpoints": true
     }
   ]
 }

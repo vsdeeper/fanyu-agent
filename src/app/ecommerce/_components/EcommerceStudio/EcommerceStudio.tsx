@@ -1,7 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { App, Layout, Steps, Typography } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
+import { App, Button, Layout, Steps, Tag, Typography } from 'antd';
+import { useRouter } from 'next/navigation';
+import type { EcommerceTaskDetail } from '@/app/api/ecommerce/_shared/task-types';
 import ModeSwitch from '@/components/ModeSwitch';
 import CompletionPanel from './CompletionPanel';
 import ControlPanel from './ControlPanel';
@@ -13,10 +16,6 @@ import {
   DEFAULT_FORM_STATE,
   GENERATE_FAILED,
   NO_IMAGE_WARNING,
-  STUDIO_STEP_INDEX,
-  STUDIO_STEPS,
-  STUDIO_SUBTITLE,
-  STUDIO_TITLE,
   VISUAL_SELECT_MISSING,
 } from './constants';
 import ResultPanel from './ResultPanel';
@@ -38,37 +37,62 @@ import {
   assertOkOrJsonFail,
   consumeAnalyzeSse,
   consumeGenerateNdjson,
+  createAnalysisStepSnapshot,
+  deleteStudioStep,
   createRafTextBuffer,
   isAbortError,
+  resolveInitialStudioPhase,
   getSelectedResultImageUrl,
   pendingImagesFromCount,
   phaseAfterNext,
   phaseAfterPrev,
   removeProductDoc,
   removeProductImage,
-  readFileAsDataUrl,
+  readAnalysisStepSnapshot,
+  readDesignStepSnapshot,
+  readUploadItemAsDataUrl,
+  readUrlAsDataUrl,
+  readVisualStepSnapshot,
   revokeProductDocUrls,
   revokeProductImageUrls,
+  saveStudioStep,
   toAnalyzePayload,
   toDesignGeneratePayload,
   toVisualGeneratePayload,
 } from './utils';
+import { getWorkflowStepIndex, resolveEcommerceWorkflow } from './workflow';
 import styles from './EcommerceStudio.module.css';
 
 /**
  * 电商设计工作台：左侧参数，右侧流式规划与出图。
  */
-export default function EcommerceStudio() {
+type EcommerceStudioProps = {
+  task: EcommerceTaskDetail;
+};
+
+export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const { message } = App.useApp();
-  const [images, setImages] = useState<ProductImageItem[]>([]);
-  const [documents, setDocuments] = useState<ProductDocItem[]>([]);
-  const [form, setForm] = useState<StudioFormState>(DEFAULT_FORM_STATE);
-  const [designForm, setDesignForm] = useState<DesignFormState>(DEFAULT_DESIGN_FORM_STATE);
-  const [phase, setPhase] = useState<StudioPhase>('input');
-  const [analysisText, setAnalysisText] = useState('');
-  const [visualImages, setVisualImages] = useState<StudioResultImage[]>([]);
-  const [designResultGroups, setDesignResultGroups] = useState<DesignResultGroups>({});
-  const [selectedVisualIndex, setSelectedVisualIndex] = useState<number | null>(null);
+  const router = useRouter();
+  const initialAnalysis = readAnalysisStepSnapshot(task.steps.analysis?.data);
+  const initialVisual = readVisualStepSnapshot(task.steps.visual?.data);
+  const initialDesign = readDesignStepSnapshot(task.steps.design?.data);
+  const [images, setImages] = useState<ProductImageItem[]>(initialAnalysis?.images ?? []);
+  const [documents, setDocuments] = useState<ProductDocItem[]>(initialAnalysis?.documents ?? []);
+  const [form, setForm] = useState<StudioFormState>(initialVisual?.form ?? DEFAULT_FORM_STATE);
+  const [designForm, setDesignForm] = useState<DesignFormState>(
+    initialDesign?.form ?? { ...DEFAULT_DESIGN_FORM_STATE, designType: task.taskType },
+  );
+  const [phase, setPhase] = useState<StudioPhase>(resolveInitialStudioPhase(initialAnalysis));
+  const [analysisText, setAnalysisText] = useState(initialAnalysis?.analysisText ?? '');
+  const [visualImages, setVisualImages] = useState<StudioResultImage[]>(
+    initialVisual?.visualImages ?? [],
+  );
+  const [designResultGroups, setDesignResultGroups] = useState<DesignResultGroups>(
+    initialDesign?.designResultGroups ?? {},
+  );
+  const [selectedVisualIndex, setSelectedVisualIndex] = useState<number | null>(
+    initialVisual?.selectedVisualIndex ?? null,
+  );
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
   const imagesRef = useRef(images);
   const documentsRef = useRef(documents);
@@ -96,6 +120,7 @@ export default function EcommerceStudio() {
   const analysisStreaming = phase === 'analyzing';
   const expectedVisualCount = Number.parseInt(form.count, 10) || 1;
   const expectedDesignCount = Number.parseInt(designForm.count, 10) || 1;
+  const workflow = resolveEcommerceWorkflow(task.taskType, task.workflowVersion);
 
   const abortCurrent = useCallback(() => {
     abortRef.current?.abort();
@@ -129,8 +154,12 @@ export default function EcommerceStudio() {
       });
       await assertOkOrJsonFail(res);
       let receivedDone = false;
+      let streamedText = '';
       await consumeAnalyzeSse(res, {
-        onText: (delta) => analysisBuffer.append(delta),
+        onText: (delta) => {
+          streamedText += delta;
+          analysisBuffer.append(delta);
+        },
         onDone: () => {
           receivedDone = true;
         },
@@ -144,6 +173,15 @@ export default function EcommerceStudio() {
         return;
       }
       if (receivedDone) {
+        const snapshot = await createAnalysisStepSnapshot(images, documents, streamedText);
+        const saved = await saveStudioStep(task.id, 'analysis', snapshot);
+        setImages(saved.images);
+        setDocuments(saved.documents);
+        setAnalysisText(saved.analysisText);
+        await Promise.all([
+          deleteStudioStep(task.id, 'visual'),
+          deleteStudioStep(task.id, 'design'),
+        ]);
         setPhase('analyzed');
         return;
       }
@@ -159,7 +197,7 @@ export default function EcommerceStudio() {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, analysisBuffer, documents, images, message]);
+  }, [abortCurrent, analysisBuffer, documents, images, message, setDocuments, setImages, task.id]);
 
   const handleGenerateVisual = useCallback(async () => {
     const productImage = images[0];
@@ -176,27 +214,37 @@ export default function EcommerceStudio() {
     abortRef.current = controller;
     const count = Number.parseInt(form.count, 10) || 1;
     const batchStartIndex = visualImages.length;
-    setPhase('visualGenerating');
-    setVisualImages((current) => [
-      ...current,
+    let nextVisualImages = [
+      ...visualImages,
       ...pendingImagesFromCount(count, batchStartIndex, form.aspectRatio),
-    ]);
+    ];
+    setPhase('visualGenerating');
+    setVisualImages(nextVisualImages);
     try {
       const res = await fetch('/api/ecommerce/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
-          toVisualGeneratePayload(form, analysisText, await readFileAsDataUrl(productImage.file)),
+          toVisualGeneratePayload(form, analysisText, await readUploadItemAsDataUrl(productImage)),
         ),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);
       await consumeGenerateNdjson(res, (event) => {
-        setVisualImages((current) => applyGenerateEvent(current, event, batchStartIndex));
+        nextVisualImages = applyGenerateEvent(nextVisualImages, event, batchStartIndex);
+        setVisualImages(nextVisualImages);
       });
       if (controller.signal.aborted) {
         setPhase('visual');
         return;
+      }
+      if (nextVisualImages.slice(batchStartIndex).some((image) => image.status === 'ready')) {
+        const saved = await saveStudioStep(task.id, 'visual', {
+          form,
+          visualImages: nextVisualImages,
+          selectedVisualIndex,
+        });
+        setVisualImages(saved.visualImages);
       }
       setPhase('visual');
     } catch (err) {
@@ -210,7 +258,16 @@ export default function EcommerceStudio() {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, analysisText, form, images, message, visualImages.length]);
+  }, [
+    abortCurrent,
+    analysisText,
+    form,
+    images,
+    message,
+    selectedVisualIndex,
+    task.id,
+    visualImages,
+  ]);
 
   const handleGenerateDesign = useCallback(async () => {
     if (!analysisText.trim()) {
@@ -232,10 +289,14 @@ export default function EcommerceStudio() {
     abortRef.current = controller;
     const designType = designForm.designType;
     const batchStartIndex = designResultGroups[designType]?.length ?? 0;
-    setPhase('designGenerating');
-    setDesignResultGroups((current) =>
-      appendPendingDesignImages(current, designType, expectedDesignCount, designForm.aspectRatio),
+    let nextDesignResultGroups = appendPendingDesignImages(
+      designResultGroups,
+      designType,
+      expectedDesignCount,
+      designForm.aspectRatio,
     );
+    setPhase('designGenerating');
+    setDesignResultGroups(nextDesignResultGroups);
     try {
       const res = await fetch('/api/ecommerce/generate', {
         method: 'POST',
@@ -244,18 +305,33 @@ export default function EcommerceStudio() {
           toDesignGeneratePayload(
             designForm,
             analysisText,
-            await readFileAsDataUrl(productImage.file),
-            visualDataUrl,
+            await readUploadItemAsDataUrl(productImage),
+            visualDataUrl ? await readUrlAsDataUrl(visualDataUrl) : null,
           ),
         ),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);
       await consumeGenerateNdjson(res, (event) => {
-        setDesignResultGroups((current) =>
-          applyDesignGenerateEvent(current, designType, event, batchStartIndex),
+        nextDesignResultGroups = applyDesignGenerateEvent(
+          nextDesignResultGroups,
+          designType,
+          event,
+          batchStartIndex,
         );
+        setDesignResultGroups(nextDesignResultGroups);
       });
+      if (
+        (nextDesignResultGroups[designType] ?? [])
+          .slice(batchStartIndex)
+          .some((image) => image.status === 'ready')
+      ) {
+        const saved = await saveStudioStep(task.id, 'design', {
+          form: designForm,
+          designResultGroups: nextDesignResultGroups,
+        });
+        setDesignResultGroups(saved.designResultGroups);
+      }
       setPhase('design');
     } catch (err) {
       if (!isAbortError(err) && !controller.signal.aborted) {
@@ -275,24 +351,50 @@ export default function EcommerceStudio() {
     images,
     message,
     selectedVisualIndex,
+    task.id,
     visualImages,
   ]);
 
-  const handleImagesAppend = useCallback((files: File[]) => {
-    setImages((current) => appendProductImages(current, files));
-  }, []);
+  const handleImagesAppend = useCallback(
+    (files: File[]) => {
+      setImages((current) => appendProductImages(current, files));
+    },
+    [setImages],
+  );
 
-  const handleImageRemove = useCallback((uid: string) => {
-    setImages((current) => removeProductImage(current, uid));
-  }, []);
+  const handleImageRemove = useCallback(
+    (uid: string) => {
+      setImages((current) => removeProductImage(current, uid));
+    },
+    [setImages],
+  );
 
-  const handleDocsAppend = useCallback((files: File[]) => {
-    setDocuments((current) => appendProductDocs(current, files));
-  }, []);
+  const handleDocsAppend = useCallback(
+    (files: File[]) => {
+      setDocuments((current) => appendProductDocs(current, files));
+    },
+    [setDocuments],
+  );
 
-  const handleDocRemove = useCallback((uid: string) => {
-    setDocuments((current) => removeProductDoc(current, uid));
-  }, []);
+  const handleDocRemove = useCallback(
+    (uid: string) => {
+      setDocuments((current) => removeProductDoc(current, uid));
+    },
+    [setDocuments],
+  );
+
+  const handleSelectVisual = useCallback(
+    async (index: number) => {
+      setSelectedVisualIndex(index);
+      const saved = await saveStudioStep(task.id, 'visual', {
+        form,
+        visualImages,
+        selectedVisualIndex: index,
+      });
+      setVisualImages(saved.visualImages);
+    },
+    [form, task.id, visualImages],
+  );
 
   const handlePrev = useCallback(() => {
     if (phase === 'analyzing' || phase === 'visualGenerating' || phase === 'designGenerating') {
@@ -321,13 +423,17 @@ export default function EcommerceStudio() {
   return (
     <Layout className={styles.studio}>
       <Layout.Header className={styles.header}>
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          aria-label="返回电商设计任务列表"
+          onClick={() => router.push('/ecommerce')}
+        />
         <div className={styles.brand}>
           <Typography.Title level={5} className={styles.title} ellipsis>
-            {STUDIO_TITLE}
+            {task.name}
           </Typography.Title>
-          <Typography.Text className={styles.subtitle} ellipsis>
-            {STUDIO_SUBTITLE}
-          </Typography.Text>
+          <Tag className={styles.typeTag}>{task.taskType}</Tag>
         </div>
         <div className={styles.headerSpacer} />
         <ModeSwitch />
@@ -335,53 +441,55 @@ export default function EcommerceStudio() {
       <div className={styles.stepsRow}>
         <Steps
           className={styles.steps}
-          current={STUDIO_STEP_INDEX[phase]}
+          current={getWorkflowStepIndex(workflow, phase)}
           size="small"
-          items={STUDIO_STEPS}
+          items={workflow}
         />
       </div>
       <Layout.Content className={styles.content}>
-        {phase === 'complete' ? (
-          <CompletionPanel
-            visualImages={visualImages}
-            designResultGroups={designResultGroups}
-            onPrev={handlePrev}
-          />
-        ) : (
-          <>
-            <ControlPanel
-              images={images}
-              documents={documents}
-              form={form}
-              designForm={designForm}
-              phase={phase}
-              formLocked={formLocked}
-              onImagesAppend={handleImagesAppend}
-              onImageRemove={handleImageRemove}
-              onDocsAppend={handleDocsAppend}
-              onDocRemove={handleDocRemove}
-              onFormChange={setForm}
-              onDesignFormChange={setDesignForm}
-              onAnalyze={handleAnalyze}
-              onGenerateVisual={handleGenerateVisual}
-              onGenerateDesign={handleGenerateDesign}
-            />
-            <ResultPanel
-              phase={phase}
-              analysisText={analysisText}
-              analysisStreaming={analysisStreaming}
+        <div className={styles.workspace}>
+          {phase === 'complete' ? (
+            <CompletionPanel
               visualImages={visualImages}
               designResultGroups={designResultGroups}
-              expectedVisualCount={expectedVisualCount}
-              visualAspectRatio={form.aspectRatio}
-              selectedVisualIndex={selectedVisualIndex}
-              onSelectVisual={setSelectedVisualIndex}
               onPrev={handlePrev}
-              onNext={handleNext}
-              onAnalysisTextChange={setAnalysisText}
             />
-          </>
-        )}
+          ) : (
+            <>
+              <ControlPanel
+                images={images}
+                documents={documents}
+                form={form}
+                designForm={designForm}
+                phase={phase}
+                formLocked={formLocked}
+                onImagesAppend={handleImagesAppend}
+                onImageRemove={handleImageRemove}
+                onDocsAppend={handleDocsAppend}
+                onDocRemove={handleDocRemove}
+                onFormChange={setForm}
+                onDesignFormChange={setDesignForm}
+                onAnalyze={handleAnalyze}
+                onGenerateVisual={handleGenerateVisual}
+                onGenerateDesign={handleGenerateDesign}
+              />
+              <ResultPanel
+                phase={phase}
+                analysisText={analysisText}
+                analysisStreaming={analysisStreaming}
+                visualImages={visualImages}
+                designResultGroups={designResultGroups}
+                expectedVisualCount={expectedVisualCount}
+                visualAspectRatio={form.aspectRatio}
+                selectedVisualIndex={selectedVisualIndex}
+                onSelectVisual={handleSelectVisual}
+                onPrev={handlePrev}
+                onNext={handleNext}
+                onAnalysisTextChange={setAnalysisText}
+              />
+            </>
+          )}
+        </div>
       </Layout.Content>
     </Layout>
   );

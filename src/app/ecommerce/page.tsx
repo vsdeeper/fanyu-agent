@@ -1,5 +1,5 @@
-import EcommerceStudio from './_components/EcommerceStudio';
+import EcommerceTaskList from './_components/EcommerceTaskList';
 
 export default function EcommercePage() {
-  return <EcommerceStudio />;
+  return <EcommerceTaskList />;
 }

@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const chats = sqliteTable('chats', {
   id: text('id').primaryKey(),
@@ -31,4 +31,41 @@ export const messages = sqliteTable('messages', {
   ord: integer('ord').notNull(),
   /** 完整 UIMessage JSON，避免拆 parts 丢 reasoning / source-url 等字段 */
   data: text('data').notNull(),
+});
+
+export const ecommerceTasks = sqliteTable('ecommerce_tasks', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  taskType: text('task_type').notNull(),
+  workflowVersion: integer('workflow_version').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const ecommerceTaskSteps = sqliteTable(
+  'ecommerce_task_steps',
+  {
+    taskId: text('task_id')
+      .notNull()
+      .references(() => ecommerceTasks.id, { onDelete: 'cascade' }),
+    stepKey: text('step_key').notNull(),
+    snapshotVersion: integer('snapshot_version').notNull(),
+    data: text('data').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.taskId, table.stepKey] })],
+);
+
+export const ecommerceTaskAssets = sqliteTable('ecommerce_task_assets', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id')
+    .notNull()
+    .references(() => ecommerceTasks.id, { onDelete: 'cascade' }),
+  stepKey: text('step_key').notNull(),
+  kind: text('kind').notNull(),
+  fileName: text('file_name').notNull(),
+  originalName: text('original_name').notNull(),
+  mimeType: text('mime_type').notNull(),
+  createdAt: text('created_at').notNull(),
 });

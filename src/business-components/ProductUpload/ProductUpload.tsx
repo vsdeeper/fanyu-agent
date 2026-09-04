@@ -7,7 +7,7 @@ import {
   UPLOAD_SUBTITLE,
 } from './constants';
 import type { ProductUploadItem } from './types';
-import { interceptLocalFiles } from './utils';
+import { getProductUploadItemName, interceptLocalFiles } from './utils';
 import styles from './ProductUpload.module.css';
 
 type ProductUploadProps = {
@@ -81,12 +81,12 @@ export default function ProductUpload({
         <div className={styles.thumbs}>
           {images.map((item, index) => (
             <div key={item.uid} className={styles.thumb}>
-              <Image src={item.previewUrl} alt={item.file.name} preview={false} />
+              <Image src={item.previewUrl} alt={getProductUploadItemName(item)} preview={false} />
               <span className={`${styles.mark} ${styles.index}`}>{index + 1}</span>
               <button
                 type="button"
                 className={`${styles.mark} ${styles.remove}`}
-                aria-label={`移除 ${item.file.name}`}
+                aria-label={`移除 ${getProductUploadItemName(item)}`}
                 disabled={disabled}
                 onClick={() => onRemove(item.uid)}
               >

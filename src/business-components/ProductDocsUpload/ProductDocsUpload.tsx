@@ -12,7 +12,7 @@ import {
   PRODUCT_DOC_SUBTITLE,
 } from './constants';
 import type { ProductDocUploadItem } from './types';
-import { isAllowedProductDoc, isImageProductDoc, toDocIcon } from './utils';
+import { getProductDocDisplay, isAllowedProductDoc, isImageProductDoc, toDocIcon } from './utils';
 import styles from './ProductDocsUpload.module.css';
 
 type ProductDocsUploadProps = {
@@ -91,33 +91,36 @@ export default function ProductDocsUpload({
         </Upload>
       ) : (
         <div className={styles.list}>
-          {documents.map((item) => (
-            <div key={item.uid} className={styles.item}>
-              {isImageProductDoc(item.file) ? (
-                <div className={styles.imageRow}>
-                  <Image src={item.previewUrl} alt={item.file.name} preview={false} />
-                  <span className={styles.imageName}>{item.file.name}</span>
-                </div>
-              ) : (
-                <FileCard
-                  className={styles.card}
-                  fileName={item.file.name}
-                  byteSize={item.file.size}
-                  icon={toDocIcon(item.file.name)}
-                  showDownload={false}
-                />
-              )}
-              <button
-                type="button"
-                className={styles.remove}
-                aria-label={`移除 ${item.file.name}`}
-                disabled={disabled}
-                onClick={() => onRemove(item.uid)}
-              >
-                <CloseOutlined />
-              </button>
-            </div>
-          ))}
+          {documents.map((item) => {
+            const display = getProductDocDisplay(item);
+            return (
+              <div key={item.uid} className={styles.item}>
+                {isImageProductDoc(display) ? (
+                  <div className={styles.imageRow}>
+                    <Image src={item.previewUrl} alt={display.name} preview={false} />
+                    <span className={styles.imageName}>{display.name}</span>
+                  </div>
+                ) : (
+                  <FileCard
+                    className={styles.card}
+                    fileName={display.name}
+                    byteSize={display.size}
+                    icon={toDocIcon(display.name)}
+                    showDownload={false}
+                  />
+                )}
+                <button
+                  type="button"
+                  className={styles.remove}
+                  aria-label={`移除 ${display.name}`}
+                  disabled={disabled}
+                  onClick={() => onRemove(item.uid)}
+                >
+                  <CloseOutlined />
+                </button>
+              </div>
+            );
+          })}
           {remaining > 0 ? (
             <Upload
               accept={PRODUCT_DOC_ACCEPT}

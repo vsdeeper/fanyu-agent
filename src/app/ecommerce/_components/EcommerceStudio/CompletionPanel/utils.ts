@@ -46,18 +46,34 @@ export function decodeImageDataUrl(dataUrl: string): {
   };
 }
 
+/** 读取新生成的 data URL 或已持久化的站内资产 URL。 */
+export async function readImageBytes(source: string): Promise<{
+  mediaType: string;
+  bytes: Uint8Array;
+}> {
+  if (source.startsWith('data:')) return decodeImageDataUrl(source);
+  const response = await fetch(source);
+  if (!response.ok) throw new Error('读取生成物料失败');
+  return {
+    mediaType: response.headers.get('content-type')?.split(';')[0] ?? 'image/png',
+    bytes: new Uint8Array(await response.arrayBuffer()),
+  };
+}
+
 /** 将一类图片按稳定序号写入待打包文件表。 */
-function appendGroupFiles(
+async function appendGroupFiles(
   files: Record<string, Uint8Array>,
   groupName: string,
   prefix: string,
   images: readonly StudioResultImage[],
-): void {
-  getGeneratedImages(images).forEach((image, index) => {
-    const { mediaType, bytes } = decodeImageDataUrl(image.url);
-    const extension = IMAGE_EXTENSION_BY_MEDIA_TYPE[mediaType] ?? 'png';
-    files[`${groupName}/${prefix}-${String(index + 1).padStart(2, '0')}.${extension}`] = bytes;
-  });
+): Promise<void> {
+  await Promise.all(
+    getGeneratedImages(images).map(async (image, index) => {
+      const { mediaType, bytes } = await readImageBytes(image.url);
+      const extension = IMAGE_EXTENSION_BY_MEDIA_TYPE[mediaType] ?? 'png';
+      files[`${groupName}/${prefix}-${String(index + 1).padStart(2, '0')}.${extension}`] = bytes;
+    }),
+  );
 }
 
 /** 将营销主视觉与各类视觉设计打包为 ZIP 字节。 */
@@ -66,20 +82,23 @@ export function createResultArchive(
   designGroups: DesignResultGroups,
 ): Promise<Uint8Array> {
   const files: Record<string, Uint8Array> = {};
-  appendGroupFiles(files, VISUAL_GROUP_TITLE, 'visual', visualImages);
-  ECOMMERCE_DESIGN_TYPES.forEach((designType) => {
-    appendGroupFiles(files, designType, 'design', designGroups[designType] ?? []);
-  });
-
-  return new Promise((resolve, reject) => {
-    zip(files, { level: 0 }, (error, archive) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve(archive);
-    });
-  });
+  return Promise.all([
+    appendGroupFiles(files, VISUAL_GROUP_TITLE, 'visual', visualImages),
+    ...ECOMMERCE_DESIGN_TYPES.map((designType) =>
+      appendGroupFiles(files, designType, 'design', designGroups[designType] ?? []),
+    ),
+  ]).then(
+    () =>
+      new Promise((resolve, reject) => {
+        zip(files, { level: 0 }, (error, archive) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(archive);
+        });
+      }),
+  );
 }
 
 /** 在浏览器中生成并下载电商设计成果 ZIP。 */

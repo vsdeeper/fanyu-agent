@@ -33,7 +33,7 @@ export default function Sidebar({ chats }: SidebarProps) {
   const activeChatId = getActiveChatIdFromPathname(pathname);
   const isProductRetouch = pathname === PRODUCT_RETOUCH_PATH;
   const isProductModel = pathname === PRODUCT_MODEL_PATH;
-  const isEcommerce = pathname === ECOMMERCE_PATH;
+  const isEcommerce = pathname === ECOMMERCE_PATH || pathname.startsWith(`${ECOMMERCE_PATH}/`);
 
   const items = useMemo<ConversationItemType[]>(
     () =>
@@ -180,7 +180,7 @@ export default function Sidebar({ chats }: SidebarProps) {
               icon={<ShoppingOutlined />}
               aria-current={isEcommerce ? 'page' : undefined}
               onClick={() => {
-                if (isEcommerce) return;
+                if (pathname === ECOMMERCE_PATH) return;
                 goRefresh(ECOMMERCE_PATH);
               }}
             >

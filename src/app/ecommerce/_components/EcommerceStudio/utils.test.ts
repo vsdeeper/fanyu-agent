@@ -9,6 +9,10 @@ import {
   pendingImagesFromCount,
   phaseAfterNext,
   phaseAfterPrev,
+  readAnalysisStepSnapshot,
+  readDesignStepSnapshot,
+  readVisualStepSnapshot,
+  resolveInitialStudioPhase,
   toDesignGeneratePayload,
 } from './utils';
 
@@ -113,6 +117,52 @@ describe('视觉设计结果分组', () => {
     expect(groups['主图']?.[0].status).toBe('ready');
     expect(groups['主图']?.[1]).toMatchObject({ index: 1, aspectRatio: '16:9' });
     expect(groups['营销海报']).toEqual([{ index: 0, aspectRatio: '3:4', status: 'pending' }]);
+  });
+});
+
+describe('步骤快照水合', () => {
+  it('恢复分析、主视觉与视觉设计历史数据', () => {
+    const analysis = readAnalysisStepSnapshot({
+      images: [{ uid: 'img-1', previewUrl: '/api/ecommerce/tasks/t1/assets/a1', name: 'p.png' }],
+      documents: [{ uid: 'doc-1', previewUrl: '/api/ecommerce/tasks/t1/assets/a2', name: 's.md' }],
+      analysisText: '商业分析正文',
+    });
+    const visual = readVisualStepSnapshot({
+      form: {
+        model: 'gpt-image-2-vip',
+        aspectRatio: '1:1',
+        quality: 'high',
+        clarity: '2K',
+        count: '2',
+      },
+      visualImages: [
+        { index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/ecommerce/tasks/t1/assets/v1' },
+      ],
+      selectedVisualIndex: 0,
+    });
+    const design = readDesignStepSnapshot({
+      form: DEFAULT_DESIGN_FORM_STATE,
+      designResultGroups: {
+        主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/a' }],
+      },
+    });
+
+    expect(analysis?.analysisText).toBe('商业分析正文');
+    expect(analysis?.images[0]?.file).toBeUndefined();
+    expect(visual?.selectedVisualIndex).toBe(0);
+    expect(design?.designResultGroups['主图']).toHaveLength(1);
+    expect(readAnalysisStepSnapshot({ images: [] })).toBeUndefined();
+  });
+
+  it('再次进入流程时默认停在第一步', () => {
+    expect(resolveInitialStudioPhase(undefined)).toBe('input');
+    expect(
+      resolveInitialStudioPhase({
+        images: [],
+        documents: [],
+        analysisText: '已完成分析',
+      }),
+    ).toBe('analyzed');
   });
 });
 

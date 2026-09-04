@@ -1,3 +1,5 @@
+import type { ProductUploadItem } from './types';
+
 /**
  * antd Upload `beforeUpload` 会对每个文件回调一次；只在首个文件时取出整批，避免重复追加。
  */
@@ -18,4 +20,9 @@ export function interceptLocalFiles(
     onAppend(files);
   }
   return false;
+}
+
+/** 返回本地文件或历史资产的显示名称。 */
+export function getProductUploadItemName(item: ProductUploadItem): string {
+  return item.file?.name ?? item.name ?? '产品图';
 }
