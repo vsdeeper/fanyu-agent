@@ -7,6 +7,7 @@ import type {
   EcommerceGenerateRequest,
   EcommerceModelHelpWriteRequest,
 } from '@/app/api/ecommerce/_shared/types';
+import { ECOMMERCE_DESIGN_TYPES } from '@/app/api/ecommerce/_shared/constants';
 import {
   MAX_STUDIO_MODEL_IMAGES,
   MAX_STUDIO_PRODUCT_DOCS,
@@ -72,17 +73,48 @@ const modelGenerateSchema = specFieldsSchema.extend({
   modelImages: z.array(imageInputSchema).max(MAX_STUDIO_MODEL_IMAGES).optional(),
 });
 
+const designGenerateSchema = specFieldsSchema.extend({
+  kind: z.literal('design'),
+  count: countSchema,
+  designType: z.enum(ECOMMERCE_DESIGN_TYPES),
+  referenceVisual: z.boolean(),
+  includeModel: z.boolean(),
+  analysisText: z.string().min(1),
+  productViewDataUrl: imageDataUrlSchema,
+  visualDataUrl: imageDataUrlSchema.optional(),
+  modelDataUrl: imageDataUrlSchema.optional(),
+});
+
 const modelHelpWriteBodySchema = z.object({
   analysisText: z.string().min(1),
   visualDataUrl: imageDataUrlSchema,
   modelImageDataUrl: imageDataUrlSchema.optional(),
 });
 
-const generateBodySchema = z.discriminatedUnion('kind', [
-  productViewGenerateSchema,
-  visualGenerateSchema,
-  modelGenerateSchema,
-]);
+const generateBodySchema = z
+  .discriminatedUnion('kind', [
+    productViewGenerateSchema,
+    visualGenerateSchema,
+    modelGenerateSchema,
+    designGenerateSchema,
+  ])
+  .superRefine((value, context) => {
+    if (value.kind !== 'design') return;
+    if (value.referenceVisual !== Boolean(value.visualDataUrl)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['visualDataUrl'],
+        message: '主视觉开关与参考图不一致',
+      });
+    }
+    if (value.includeModel !== Boolean(value.modelDataUrl)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['modelDataUrl'],
+        message: '模特开关与参考图不一致',
+      });
+    }
+  });
 
 /** 校验分析请求体；失败返回 null */
 export function parseAnalyzeBody(json: unknown): EcommerceAnalyzeRequest | null {

@@ -1,5 +1,14 @@
-import type { ModelFormState, ProductViewFormState, StudioFormState, StudioPhase } from './types';
-import { DEFAULT_MODEL_REQUIREMENT } from '@/app/api/ecommerce/_shared/constants';
+import type {
+  DesignFormState,
+  ModelFormState,
+  ProductViewFormState,
+  StudioFormState,
+  StudioPhase,
+} from './types';
+import {
+  DEFAULT_MODEL_REQUIREMENT,
+  ECOMMERCE_DESIGN_TYPES,
+} from '@/app/api/ecommerce/_shared/constants';
 import { toModelOptions } from './model-options';
 
 export const MAX_PRODUCT_IMAGES = 6;
@@ -13,7 +22,7 @@ export const STUDIO_STEPS: { title: string }[] = [
   { title: '产品多视角' },
   { title: '营销主视觉' },
   { title: '模特多视角' },
-  { title: '完成' },
+  { title: '视觉设计' },
 ];
 
 export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
@@ -26,17 +35,20 @@ export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
   visualGenerating: 2,
   model: 3,
   modelGenerating: 3,
-  done: 4,
+  design: 4,
+  designGenerating: 4,
 };
 
 export const NO_IMAGE_WARNING = '请先上传产品图';
 export const ANALYSIS_MISSING = '请先完成产品分析';
 export const PRODUCT_VIEW_SELECT_MISSING = '请先点选一张产品多视角图作为产品标准';
 export const VISUAL_SELECT_MISSING = '请先点选一张主视觉作为视觉标准';
+export const MODEL_SELECT_MISSING = '请先点选一张模特图作为模特标准';
 export const ANALYZE_BUTTON = '开始分析';
 export const PRODUCT_VIEW_BUTTON = '生成产品多视角';
 export const VISUAL_BUTTON = '生成营销主视觉';
 export const MODEL_BUTTON = '生成模特多视角';
+export const DESIGN_BUTTON = '生成视觉设计';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
 export const ANALYZE_FAILED = '产品分析失败，请稍后重试';
@@ -47,13 +59,16 @@ export const EMPTY_RESULT_HINT = '上传产品资料和产品图，点击「分�
 export const EMPTY_PRODUCT_VIEW_HINT = '设置参数后点击「生成产品」';
 export const EMPTY_VISUAL_HINT = '设置参数后点击「生成主视觉」';
 export const EMPTY_MODEL_HINT = '可上传模特形象，填写要求后点击「生成模特」';
+export const EMPTY_DESIGN_HINT = '设置视觉设计参数后点击「生成视觉设计」';
 
 export const RESULT_TITLE_ANALYSIS = '分析结果';
 export const RESULT_TITLE_PRODUCT_VIEW = '产品多视角';
 export const RESULT_TITLE_VISUAL = '营销主视觉';
 export const RESULT_TITLE_MODEL = '产品模特';
+export const RESULT_TITLE_DESIGN = '视觉设计';
 export const PRODUCT_STANDARD_BADGE = '产品标准';
 export const VISUAL_STANDARD_BADGE = '视觉标准';
+export const MODEL_STANDARD_BADGE = '模特标准';
 
 export const UPLOAD_SUBTITLE = '上传清晰的产品图片';
 
@@ -84,6 +99,16 @@ export const ASPECT_RATIO_OPTIONS = [
   { value: '16:9', label: '16:9 横版' },
 ];
 
+export const DESIGN_TYPE_OPTIONS = ECOMMERCE_DESIGN_TYPES.map((value) => ({
+  value,
+  label: value,
+}));
+
+export const BOOLEAN_OPTIONS = [
+  { value: true, label: '是' },
+  { value: false, label: '否' },
+];
+
 export const DEFAULT_FORM_STATE: StudioFormState = {
   model: 'gpt-image-2-vip',
   aspectRatio: '1:1',
@@ -104,6 +129,17 @@ export const DEFAULT_MODEL_FORM_STATE: ModelFormState = {
   modelRequirement: DEFAULT_MODEL_REQUIREMENT,
   model: 'gpt-image-2-vip',
   aspectRatio: '16:9',
+  quality: 'high',
+  clarity: '2K',
+  count: '1',
+};
+
+export const DEFAULT_DESIGN_FORM_STATE: DesignFormState = {
+  model: 'gpt-image-2-vip',
+  designType: '主图',
+  aspectRatio: '1:1',
+  referenceVisual: true,
+  includeModel: true,
   quality: 'high',
   clarity: '2K',
   count: '1',

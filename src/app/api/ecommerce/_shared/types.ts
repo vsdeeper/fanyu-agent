@@ -1,3 +1,5 @@
+import type { ECOMMERCE_DESIGN_TYPES } from './constants';
+
 export type EcommerceImageInput = {
   filename: string;
   mediaType: string;
@@ -26,7 +28,9 @@ export type EcommerceAnalyzeErrorEvent = {
   message: string;
 };
 
-export type EcommerceGenerateKind = 'productView' | 'visual' | 'model';
+export type EcommerceDesignType = (typeof ECOMMERCE_DESIGN_TYPES)[number];
+
+export type EcommerceGenerateKind = 'productView' | 'visual' | 'model' | 'design';
 
 type EcommerceGenerateBase = {
   model: string;
@@ -59,10 +63,24 @@ export type EcommerceModelGenerateRequest = EcommerceGenerateBase & {
   modelImages?: EcommerceImageInput[];
 };
 
+/** 视觉设计：表单配置 + 分析结果 + 产品标准图 + 开关控制的视觉/模特标准图 */
+export type EcommerceDesignGenerateRequest = EcommerceGenerateBase & {
+  kind: 'design';
+  count: number;
+  designType: EcommerceDesignType;
+  referenceVisual: boolean;
+  includeModel: boolean;
+  analysisText: string;
+  productViewDataUrl: string;
+  visualDataUrl?: string;
+  modelDataUrl?: string;
+};
+
 export type EcommerceGenerateRequest =
   | EcommerceProductViewGenerateRequest
   | EcommerceVisualGenerateRequest
-  | EcommerceModelGenerateRequest;
+  | EcommerceModelGenerateRequest
+  | EcommerceDesignGenerateRequest;
 
 export type EcommerceGenerateImageEvent = {
   index: number;

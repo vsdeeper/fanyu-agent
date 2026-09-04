@@ -1,7 +1,12 @@
 import 'server-only';
 
 import { DEFAULT_MODEL_REQUIREMENT } from '@/app/api/ecommerce/_shared/constants';
-import { PRODUCT_FIDELITY_PROMPT_GUARD, VISUAL_AD_PROMPT_GUARD } from './constants';
+import type { EcommerceDesignType } from '@/app/api/ecommerce/_shared/types';
+import {
+  DESIGN_TYPE_PROMPT_BY_TYPE,
+  PRODUCT_FIDELITY_PROMPT_GUARD,
+  VISUAL_AD_PROMPT_GUARD,
+} from './constants';
 
 /**
  * 产品多视角出站 prompt：先建立精修产品基准，再从同一基准生成多视角视图板。
@@ -33,6 +38,37 @@ export function buildVisualPrompt(analysisText: string): string {
     analysisText.trim(),
     PRODUCT_FIDELITY_PROMPT_GUARD,
     VISUAL_AD_PROMPT_GUARD,
+  ].join('\n');
+}
+
+/**
+ * 视觉设计出站 prompt：以分析和物料类型定目标，产品标准图定产品，可选图补充风格与模特。
+ */
+export function buildDesignPrompt(
+  designType: EcommerceDesignType,
+  analysisText: string,
+  referenceVisual: boolean,
+  includeModel: boolean,
+): string {
+  const referenceRules = [
+    '第1个参考图=已选产品多视角标准图，是产品外观、颜色、比例、结构、材质与细节的唯一事实依据。',
+    referenceVisual
+      ? '第2个参考图=已选营销主视觉，用于延续配色、光影、品牌氛围与视觉语言，不要求照搬原构图。'
+      : '未带入营销主视觉：根据商业分析独立建立与品牌定位一致的配色、光影与视觉语言。',
+    includeModel
+      ? `第${referenceVisual ? '3' : '2'}个参考图=已选模特标准图；如当前物料需要人物，须保持该人物身份、外貌和造型一致。`
+      : '未带入模特标准图：除非物料表达确有必要，否则不要凭空加入人物。',
+  ];
+
+  return [
+    `生成恰好一张“${designType}”视觉设计成品，不要输出说明、草图或多方案拼图。`,
+    DESIGN_TYPE_PROMPT_BY_TYPE[designType],
+    ...referenceRules,
+    '根据商业分析确定目标人群、卖点优先级、品牌调性、使用场景与信息层级；最终画面须是可直接评审的完整设计成品。',
+    '文字内容只使用商业分析中已有或可安全概括的信息，避免编造参数、功效、认证、价格和促销承诺；文字应简洁、清晰、可读。',
+    '【商业分析】',
+    analysisText.trim(),
+    PRODUCT_FIDELITY_PROMPT_GUARD,
   ].join('\n');
 }
 

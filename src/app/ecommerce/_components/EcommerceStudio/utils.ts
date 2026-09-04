@@ -11,6 +11,8 @@ import type {
 import { ApiClientError } from '@/lib/shared/client/api-client';
 import { MAX_PRODUCT_DOCS, MAX_PRODUCT_IMAGES } from './constants';
 import type {
+  DesignFormState,
+  DesignResultGroups,
   ModelFormState,
   ProductDocItem,
   ProductImageItem,
@@ -19,6 +21,7 @@ import type {
   StudioPhase,
   StudioResultImage,
 } from './types';
+import type { EcommerceDesignType } from '@/app/api/ecommerce/_shared/types';
 
 /**
  * 将选择的文件追加为本地预览项；超出上限的部分丢弃。
@@ -129,6 +132,31 @@ export function toVisualGeneratePayload(
     count: Number.parseInt(form.count, 10) || 1,
     analysisText: analysisText.trim(),
     productViewDataUrl,
+  };
+}
+
+/** 视觉设计请求体：表单 + 分析/产品标准 + 开关控制的主视觉与模特标准 */
+export function toDesignGeneratePayload(
+  form: DesignFormState,
+  analysisText: string,
+  productViewDataUrl: string,
+  visualDataUrl: string | null,
+  modelDataUrl: string | null,
+): EcommerceGenerateRequest {
+  return {
+    kind: 'design',
+    model: form.model,
+    aspectRatio: form.aspectRatio,
+    quality: form.quality,
+    clarity: form.clarity,
+    count: Number.parseInt(form.count, 10) || 1,
+    designType: form.designType,
+    referenceVisual: form.referenceVisual,
+    includeModel: form.includeModel,
+    analysisText: analysisText.trim(),
+    productViewDataUrl,
+    ...(form.referenceVisual && visualDataUrl ? { visualDataUrl } : {}),
+    ...(form.includeModel && modelDataUrl ? { modelDataUrl } : {}),
   };
 }
 
@@ -427,21 +455,48 @@ export function pendingImagesFromCount(
   }));
 }
 
-/** 上一步：生图中取消回本步空闲，产品多视角回分析完成，视觉回产品多视角，模特回视觉，完成回模特 */
+/** 向指定设计类型追加一个 pending 批次，不影响其他类型和既有结果 */
+export function appendPendingDesignImages(
+  current: DesignResultGroups,
+  designType: EcommerceDesignType,
+  count: number,
+  aspectRatio: string,
+): DesignResultGroups {
+  const images = current[designType] ?? [];
+  return {
+    ...current,
+    [designType]: [...images, ...pendingImagesFromCount(count, images.length, aspectRatio)],
+  };
+}
+
+/** 将一条流式生图事件写入指定设计类型的当前批次 */
+export function applyDesignGenerateEvent(
+  current: DesignResultGroups,
+  designType: EcommerceDesignType,
+  event: EcommerceGenerateImageEvent,
+  batchStartIndex: number,
+): DesignResultGroups {
+  return {
+    ...current,
+    [designType]: applyGenerateEvent(current[designType] ?? [], event, batchStartIndex),
+  };
+}
+
+/** 上一步：生图中取消回本步空闲，后续各步依次返回前一步 */
 export function phaseAfterPrev(phase: StudioPhase): StudioPhase {
   if (phase === 'analyzing') return 'input';
   if (phase === 'productView' || phase === 'productViewGenerating') return 'analyzed';
   if (phase === 'visual' || phase === 'visualGenerating') return 'productView';
   if (phase === 'model' || phase === 'modelGenerating') return 'visual';
-  if (phase === 'done') return 'model';
+  if (phase === 'design' || phase === 'designGenerating') return 'model';
   return phase;
 }
 
-/** 下一步：分析完成进产品多视角；产品多视角进视觉；视觉进模特；模特进完成 */
+/** 下一步：分析完成后依次进入产品多视角、营销主视觉、模特与视觉设计 */
 export function phaseAfterNext(phase: StudioPhase): StudioPhase {
   if (phase === 'analyzed') return 'productView';
   if (phase === 'productView') return 'visual';
   if (phase === 'visual') return 'model';
-  if (phase === 'model') return 'done';
+  if (phase === 'model') return 'design';
   return phase;
 }

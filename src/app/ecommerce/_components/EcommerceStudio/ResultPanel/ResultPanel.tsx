@@ -8,11 +8,12 @@ import { useState } from 'react';
 import { useThemeMode } from '@/components/theme';
 import {
   NEXT_BUTTON,
+  MODEL_STANDARD_BADGE,
   PREV_BUTTON,
   PRODUCT_STANDARD_BADGE,
   VISUAL_STANDARD_BADGE,
 } from '../constants';
-import type { StudioPhase, StudioResultImage } from '../types';
+import type { DesignResultGroups, StudioPhase, StudioResultImage } from '../types';
 import {
   MARKDOWN_COMPONENTS,
   MARKDOWN_DISABLE_STYLES,
@@ -20,8 +21,10 @@ import {
   MARKDOWN_STREAMING_ON,
 } from './constants';
 import ResultImageGrid from './ResultImageGrid';
+import DesignResultGroupsView from './DesignResultGroups';
 import { usePlanStreamScroll } from './usePlanStreamScroll';
 import {
+  isDesignResultPhase,
   isModelResultPhase,
   isNextDisabled,
   isPlanPhase,
@@ -40,6 +43,7 @@ type ResultPanelProps = {
   productViewImages: readonly StudioResultImage[];
   visualImages: readonly StudioResultImage[];
   modelImages: readonly StudioResultImage[];
+  designResultGroups: DesignResultGroups;
   expectedProductViewCount: number;
   expectedVisualCount: number;
   expectedModelCount: number;
@@ -48,8 +52,10 @@ type ResultPanelProps = {
   modelAspectRatio: string;
   selectedProductViewIndex: number | null;
   selectedVisualIndex: number | null;
+  selectedModelIndex: number | null;
   onSelectProductView: (index: number) => void;
   onSelectVisual: (index: number) => void;
+  onSelectModel: (index: number) => void;
   onPrev: () => void;
   onNext: () => void;
   onAnalysisTextChange: (next: string) => void;
@@ -66,6 +72,7 @@ export default function ResultPanel({
   productViewImages,
   visualImages,
   modelImages,
+  designResultGroups,
   expectedProductViewCount,
   expectedVisualCount,
   expectedModelCount,
@@ -74,8 +81,10 @@ export default function ResultPanel({
   modelAspectRatio,
   selectedProductViewIndex,
   selectedVisualIndex,
+  selectedModelIndex,
   onSelectProductView,
   onSelectVisual,
+  onSelectModel,
   onPrev,
   onNext,
   onAnalysisTextChange,
@@ -87,9 +96,11 @@ export default function ResultPanel({
   const showProductViewGrid = isProductViewResultPhase(phase) && productViewImages.length > 0;
   const showVisualGrid = isVisualResultPhase(phase) && visualImages.length > 0;
   const showModelGrid = isModelResultPhase(phase) && modelImages.length > 0;
+  const showDesignGroups =
+    isDesignResultPhase(phase) &&
+    Object.values(designResultGroups).some((images) => Boolean(images?.length));
   const isEditing = editing && phase === 'analyzed';
   const canEdit = phase === 'analyzed' && Boolean(analysisText) && !editing;
-  const hasReadyModelImage = modelImages.some((item) => item.status === 'ready');
   const nextDisabled =
     isEditing ||
     isNextDisabled(
@@ -97,7 +108,7 @@ export default function ResultPanel({
       analysisText,
       selectedProductViewIndex,
       selectedVisualIndex,
-      hasReadyModelImage,
+      selectedModelIndex,
     );
   const { scrollRef, contentRef, onScroll } = usePlanStreamScroll(
     showPlan,
@@ -198,7 +209,15 @@ export default function ResultPanel({
             images={modelImages}
             expectedCount={expectedModelCount}
             aspectRatio={modelAspectRatio}
+            selectable={phase === 'model'}
+            selectedIndex={selectedModelIndex}
+            selectedBadge={MODEL_STANDARD_BADGE}
+            onSelect={onSelectModel}
           />
+        </div>
+      ) : showDesignGroups ? (
+        <div className={styles.scroll}>
+          <DesignResultGroupsView groups={designResultGroups} />
         </div>
       ) : (
         <div className={styles.body}>

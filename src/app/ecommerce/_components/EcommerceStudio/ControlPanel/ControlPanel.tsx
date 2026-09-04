@@ -1,7 +1,14 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
-import { ANALYZE_BUTTON, MODEL_BUTTON, PRODUCT_VIEW_BUTTON, VISUAL_BUTTON } from '../constants';
+import {
+  ANALYZE_BUTTON,
+  DESIGN_BUTTON,
+  MODEL_BUTTON,
+  PRODUCT_VIEW_BUTTON,
+  VISUAL_BUTTON,
+} from '../constants';
 import type {
+  DesignFormState,
   ModelFormState,
   ProductViewFormState,
   ProductDocItem,
@@ -11,9 +18,16 @@ import type {
   StudioSpecFields,
 } from '../types';
 import AnalyzeForm from './AnalyzeForm';
+import DesignForm from './DesignForm';
 import GenerateForm from './GenerateForm';
 import ModelForm from './ModelForm';
-import { isAnalyzePhase, isModelPhase, isProductViewPhase, isVisualPhase } from './utils';
+import {
+  isAnalyzePhase,
+  isDesignPhase,
+  isModelPhase,
+  isProductViewPhase,
+  isVisualPhase,
+} from './utils';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
@@ -23,6 +37,7 @@ type ControlPanelProps = {
   form: StudioFormState;
   productViewForm: ProductViewFormState;
   modelForm: ModelFormState;
+  designForm: DesignFormState;
   phase: StudioPhase;
   formLocked: boolean;
   modelHelpWriteLoading: boolean;
@@ -35,10 +50,12 @@ type ControlPanelProps = {
   onFormChange: (next: StudioFormState) => void;
   onProductViewFormChange: (next: ProductViewFormState) => void;
   onModelFormChange: (next: ModelFormState) => void;
+  onDesignFormChange: (next: DesignFormState) => void;
   onAnalyze: () => void;
   onGenerateProductView: () => void;
   onGenerateVisual: () => void;
   onGenerateModel: () => void;
+  onGenerateDesign: () => void;
   onModelHelpWrite: () => void;
 };
 
@@ -52,6 +69,7 @@ export default function ControlPanel({
   form,
   productViewForm,
   modelForm,
+  designForm,
   phase,
   formLocked,
   modelHelpWriteLoading,
@@ -64,20 +82,24 @@ export default function ControlPanel({
   onFormChange,
   onProductViewFormChange,
   onModelFormChange,
+  onDesignFormChange,
   onAnalyze,
   onGenerateProductView,
   onGenerateVisual,
   onGenerateModel,
+  onGenerateDesign,
   onModelHelpWrite,
 }: ControlPanelProps) {
   const analyzing = phase === 'analyzing';
   const productViewGenerating = phase === 'productViewGenerating';
   const visualGenerating = phase === 'visualGenerating';
   const modelGenerating = phase === 'modelGenerating';
+  const designGenerating = phase === 'designGenerating';
   const showAnalyzeForm = isAnalyzePhase(phase);
   const showProductViewForm = isProductViewPhase(phase);
   const showVisualForm = isVisualPhase(phase);
   const showModelForm = isModelPhase(phase);
+  const showDesignForm = isDesignPhase(phase);
   const analyzeDisabled = images.length === 0;
 
   const handleVisualSpecChange = (next: StudioSpecFields) => {
@@ -127,6 +149,8 @@ export default function ControlPanel({
             onFormChange={onModelFormChange}
             onHelpWrite={onModelHelpWrite}
           />
+        ) : showDesignForm ? (
+          <DesignForm form={designForm} disabled={formLocked} onFormChange={onDesignFormChange} />
         ) : null}
       </div>
       {showAnalyzeForm ? (
@@ -187,6 +211,21 @@ export default function ControlPanel({
             onClick={onGenerateModel}
           >
             {MODEL_BUTTON}
+          </Button>
+        </div>
+      ) : null}
+      {showDesignForm ? (
+        <div className={styles.footer}>
+          <Button
+            className={styles.analyzeBtn}
+            type="primary"
+            block
+            size="large"
+            icon={<HighlightOutlined />}
+            loading={designGenerating}
+            onClick={onGenerateDesign}
+          >
+            {DESIGN_BUTTON}
           </Button>
         </div>
       ) : null}

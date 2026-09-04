@@ -151,8 +151,8 @@ async function generateOpenAIImage(
       headers,
       body: payload.body,
       signal: req.abortSignal
-        ? AbortSignal.any([req.abortSignal, AbortSignal.timeout(180_000)])
-        : AbortSignal.timeout(180_000),
+        ? AbortSignal.any([req.abortSignal, AbortSignal.timeout(300_000)])
+        : AbortSignal.timeout(300_000),
     });
     let payloadJson: OpenAIImageResponse = {};
     try {
@@ -276,10 +276,10 @@ export const laozhangProvider: ImageProvider = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(candidateBody),
-        // 对齐参照脚本 timeout=180；生图耗时长，缺省 fetch 无超时风险更高。
+        // 生图耗时长，显式设置 5 分钟超时，避免缺省 fetch 无限等待。
         signal: req.abortSignal
-          ? AbortSignal.any([req.abortSignal, AbortSignal.timeout(180_000)])
-          : AbortSignal.timeout(180_000),
+          ? AbortSignal.any([req.abortSignal, AbortSignal.timeout(300_000)])
+          : AbortSignal.timeout(300_000),
       });
       let payload: GeminiGenerateResponse = {};
       try {

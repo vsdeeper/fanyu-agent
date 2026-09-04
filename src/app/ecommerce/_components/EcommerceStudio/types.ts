@@ -1,3 +1,5 @@
+import type { EcommerceDesignType } from '@/app/api/ecommerce/_shared/types';
+
 export type StudioPhase =
   | 'input'
   | 'analyzing'
@@ -8,7 +10,8 @@ export type StudioPhase =
   | 'visualGenerating'
   | 'model'
   | 'modelGenerating'
-  | 'done';
+  | 'design'
+  | 'designGenerating';
 
 export type ProductImageItem = {
   uid: string;
@@ -41,6 +44,12 @@ export type ModelFormState = StudioSpecFields & {
   count: string;
 };
 
+export type DesignFormState = StudioFormState & {
+  designType: EcommerceDesignType;
+  referenceVisual: boolean;
+  includeModel: boolean;
+};
+
 export type StudioResultImage = {
   index: number;
   aspectRatio: string;
@@ -48,3 +57,5 @@ export type StudioResultImage = {
   url?: string;
   error?: string;
 };
+
+export type DesignResultGroups = Partial<Record<EcommerceDesignType, StudioResultImage[]>>;

@@ -44,8 +44,8 @@ export const arkSeedreamProvider: ImageProvider = {
 
     const doFetch = async (candidateBody: Record<string, unknown>) => {
       const signal = req.abortSignal
-        ? AbortSignal.any([req.abortSignal, AbortSignal.timeout(180_000)])
-        : AbortSignal.timeout(180_000);
+        ? AbortSignal.any([req.abortSignal, AbortSignal.timeout(300_000)])
+        : AbortSignal.timeout(300_000);
       const response = await fetch(`${baseURL}/images/generations`, {
         method: 'POST',
         headers: {

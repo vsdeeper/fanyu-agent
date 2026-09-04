@@ -16,9 +16,14 @@ export function isVisualPhase(phase: StudioPhase): boolean {
   return phase === 'visual' || phase === 'visualGenerating';
 }
 
-/** 产品模特及完成（左栏展示模特表单） */
+/** 产品模特步骤（含生图中） */
 export function isModelPhase(phase: StudioPhase): boolean {
-  return phase === 'model' || phase === 'modelGenerating' || phase === 'done';
+  return phase === 'model' || phase === 'modelGenerating';
+}
+
+/** 视觉设计步骤（含生图中） */
+export function isDesignPhase(phase: StudioPhase): boolean {
+  return phase === 'design' || phase === 'designGenerating';
 }
 
 /** 更新表单中的单个字段 */

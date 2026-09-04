@@ -1,3 +1,5 @@
+import type { EcommerceDesignType } from '@/app/api/ecommerce/_shared/types';
+
 export const MISSING_PRODUCT_IMAGE = '请先上传产品图';
 export const INVALID_JSON = '无效 JSON';
 export const INVALID_FORM = '缺少表单内容';
@@ -27,3 +29,20 @@ export const PDF_MEDIA_TYPE = 'application/pdf';
 export const STUDIO_DOC_EXTS = ['pdf', 'txt', 'md', 'docx'] as const;
 export const STUDIO_DOC_IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'gif'] as const;
 export const STUDIO_COUNT_VALUES = [1, 2, 3, 4] as const;
+
+/** 各视觉设计物料的核心构图与交付要求。 */
+export const DESIGN_TYPE_PROMPT_BY_TYPE: Record<EcommerceDesignType, string> = {
+  主图: '制作聚焦单一商品主体的电商主图，产品醒目、轮廓清晰、卖点一眼可辨，适合商品列表与首屏展示。',
+  详情图:
+    '制作电商详情页视觉，清晰呈现产品结构、材质、使用场景与核心卖点，版式具有可向下延展的详情页节奏。',
+  营销海报: '制作完整营销海报，以强主视觉、清晰信息层级和具有传播力的广告构图呈现产品与品牌主题。',
+  手机界面:
+    '制作适配手机竖屏浏览的商业界面视觉，建立明确的移动端信息层级、触控友好布局与产品展示区域。',
+  产品包装: '制作可实际落地的产品包装视觉，包装结构、品牌识别、产品信息区与货架辨识度协调统一。',
+  广告牌:
+    '制作适合远距离观看的广告牌视觉，主体和核心信息足够醒目，构图简洁，避免依赖细小文字与复杂细节。',
+  展架: '制作适合线下展架的竖向宣传视觉，远近阅读层级明确，产品、品牌和核心卖点在有限版面中清晰呈现。',
+  橱窗: '制作完整橱窗陈列视觉，兼顾空间纵深、产品焦点、品牌氛围和街道观看视角，形成有吸引力的展示场景。',
+  线下展示空间:
+    '制作可落地的品牌线下展示空间视觉，统筹空间动线、产品陈列、灯光、材质和品牌识别，呈现真实尺度感。',
+};

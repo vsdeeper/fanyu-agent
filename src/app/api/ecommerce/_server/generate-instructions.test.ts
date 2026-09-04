@@ -2,8 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { DEFAULT_MODEL_REQUIREMENT } from '@/app/api/ecommerce/_shared/constants';
 import {
+  DEFAULT_MODEL_REQUIREMENT,
+  ECOMMERCE_DESIGN_TYPES,
+} from '@/app/api/ecommerce/_shared/constants';
+import {
+  buildDesignPrompt,
   buildModelHelpWriteInstructions,
   buildModelIdentityVisionPrompt,
   buildModelPrompt,
@@ -75,6 +79,23 @@ describe('电商生图指令', () => {
     expect(visionPrompt).toContain('可用于跨角度保持身份一致的外貌特征');
     expect(visionPrompt).toContain('不要描述人物当前的姿态、动作');
   });
+
+  it.each(ECOMMERCE_DESIGN_TYPES)('视觉设计为“%s”时包含类型要求与商业分析', (designType) => {
+    const prompt = buildDesignPrompt(designType, '目标人群偏好暖色', true, true);
+
+    expect(prompt).toContain(`“${designType}”视觉设计成品`);
+    expect(prompt).toContain('【商业分析】\n目标人群偏好暖色');
+    expect(prompt).toContain('第1个参考图=已选产品多视角标准图');
+    expect(prompt).toContain('第2个参考图=已选营销主视觉');
+    expect(prompt).toContain('第3个参考图=已选模特标准图');
+  });
+
+  it('视觉设计参考图编号随开关保持一致', () => {
+    const prompt = buildDesignPrompt('主图', '分析', false, true);
+
+    expect(prompt).toContain('未带入营销主视觉');
+    expect(prompt).toContain('第2个参考图=已选模特标准图');
+  });
 });
 
 describe('产品多视角请求契约', () => {
@@ -93,5 +114,56 @@ describe('产品多视角请求契约', () => {
     });
 
     expect(parsed?.kind).toBe('productView');
+  });
+});
+
+describe('视觉设计请求契约', () => {
+  const BASE_DESIGN_REQUEST = {
+    kind: 'design',
+    ...SPEC_FIELDS,
+    count: 1,
+    designType: '主图',
+    analysisText: '商业分析',
+    productViewDataUrl: 'data:image/png;base64,PRODUCT',
+  } as const;
+
+  it('接受商业分析、产品标准图和两个已开启的可选参考', () => {
+    const parsed = parseGenerateBody({
+      ...BASE_DESIGN_REQUEST,
+      referenceVisual: true,
+      includeModel: true,
+      visualDataUrl: 'data:image/png;base64,VISUAL',
+      modelDataUrl: 'data:image/png;base64,MODEL',
+    });
+
+    expect(parsed?.kind).toBe('design');
+  });
+
+  it('两个开关关闭时仅需产品标准图', () => {
+    const parsed = parseGenerateBody({
+      ...BASE_DESIGN_REQUEST,
+      referenceVisual: false,
+      includeModel: false,
+    });
+
+    expect(parsed?.kind).toBe('design');
+  });
+
+  it('拒绝开关与参考图不一致的请求', () => {
+    expect(
+      parseGenerateBody({
+        ...BASE_DESIGN_REQUEST,
+        referenceVisual: true,
+        includeModel: false,
+      }),
+    ).toBeNull();
+    expect(
+      parseGenerateBody({
+        ...BASE_DESIGN_REQUEST,
+        referenceVisual: false,
+        includeModel: false,
+        visualDataUrl: 'data:image/png;base64,VISUAL',
+      }),
+    ).toBeNull();
   });
 });

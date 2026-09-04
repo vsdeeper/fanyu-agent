@@ -9,11 +9,13 @@ import ControlPanel from './ControlPanel';
 import {
   ANALYZE_FAILED,
   ANALYSIS_MISSING,
+  DEFAULT_DESIGN_FORM_STATE,
   DEFAULT_FORM_STATE,
   DEFAULT_MODEL_FORM_STATE,
   DEFAULT_PRODUCT_VIEW_FORM_STATE,
   GENERATE_FAILED,
   MAX_MODEL_IMAGES,
+  MODEL_SELECT_MISSING,
   NO_IMAGE_WARNING,
   PRODUCT_VIEW_SELECT_MISSING,
   STUDIO_STEP_INDEX,
@@ -24,6 +26,8 @@ import {
 } from './constants';
 import ResultPanel from './ResultPanel';
 import type {
+  DesignFormState,
+  DesignResultGroups,
   ModelFormState,
   ProductDocItem,
   ProductImageItem,
@@ -35,6 +39,8 @@ import type {
 import {
   appendProductDocs,
   appendProductImages,
+  appendPendingDesignImages,
+  applyDesignGenerateEvent,
   applyGenerateEvent,
   assertOkOrJsonFail,
   consumeAnalyzeSse,
@@ -50,6 +56,7 @@ import {
   revokeProductDocUrls,
   revokeProductImageUrls,
   toAnalyzePayload,
+  toDesignGeneratePayload,
   toModelGeneratePayload,
   toModelHelpWritePayload,
   toProductViewGeneratePayload,
@@ -70,14 +77,17 @@ export default function EcommerceStudio() {
     DEFAULT_PRODUCT_VIEW_FORM_STATE,
   );
   const [modelForm, setModelForm] = useState<ModelFormState>(DEFAULT_MODEL_FORM_STATE);
+  const [designForm, setDesignForm] = useState<DesignFormState>(DEFAULT_DESIGN_FORM_STATE);
   const [phase, setPhase] = useState<StudioPhase>('input');
   const [modelHelpWriteLoading, setModelHelpWriteLoading] = useState(false);
   const [analysisText, setAnalysisText] = useState('');
   const [productViewImages, setProductViewImages] = useState<StudioResultImage[]>([]);
   const [visualImages, setVisualImages] = useState<StudioResultImage[]>([]);
   const [modelImages, setModelImages] = useState<StudioResultImage[]>([]);
+  const [designResultGroups, setDesignResultGroups] = useState<DesignResultGroups>({});
   const [selectedProductViewIndex, setSelectedProductViewIndex] = useState<number | null>(null);
   const [selectedVisualIndex, setSelectedVisualIndex] = useState<number | null>(null);
+  const [selectedModelIndex, setSelectedModelIndex] = useState<number | null>(null);
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
   const imagesRef = useRef(images);
   const documentsRef = useRef(documents);
@@ -110,11 +120,13 @@ export default function EcommerceStudio() {
     phase === 'analyzing' ||
     phase === 'productViewGenerating' ||
     phase === 'visualGenerating' ||
-    phase === 'modelGenerating';
+    phase === 'modelGenerating' ||
+    phase === 'designGenerating';
   const analysisStreaming = phase === 'analyzing';
   const expectedProductViewCount = Number.parseInt(productViewForm.count, 10) || 1;
   const expectedVisualCount = Number.parseInt(form.count, 10) || 1;
   const expectedModelCount = Number.parseInt(modelForm.count, 10) || 1;
+  const expectedDesignCount = Number.parseInt(designForm.count, 10) || 1;
 
   const abortCurrent = useCallback(() => {
     abortRef.current?.abort();
@@ -135,8 +147,10 @@ export default function EcommerceStudio() {
     setProductViewImages([]);
     setVisualImages([]);
     setModelImages([]);
+    setDesignResultGroups({});
     setSelectedProductViewIndex(null);
     setSelectedVisualIndex(null);
+    setSelectedModelIndex(null);
     try {
       const payload = await toAnalyzePayload(images, documents);
       const res = await fetch('/api/ecommerce/analyze', {
@@ -339,6 +353,85 @@ export default function EcommerceStudio() {
     visualImages,
   ]);
 
+  const handleGenerateDesign = useCallback(async () => {
+    if (!analysisText.trim()) {
+      message.warning(ANALYSIS_MISSING);
+      return;
+    }
+    const productViewDataUrl = getSelectedResultImageUrl(
+      productViewImages,
+      selectedProductViewIndex,
+    );
+    if (!productViewDataUrl) {
+      message.warning(PRODUCT_VIEW_SELECT_MISSING);
+      return;
+    }
+    const visualDataUrl = getSelectedResultImageUrl(visualImages, selectedVisualIndex);
+    if (designForm.referenceVisual && !visualDataUrl) {
+      message.warning(VISUAL_SELECT_MISSING);
+      return;
+    }
+    const modelDataUrl = getSelectedResultImageUrl(modelImages, selectedModelIndex);
+    if (designForm.includeModel && !modelDataUrl) {
+      message.warning(MODEL_SELECT_MISSING);
+      return;
+    }
+
+    abortCurrent();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const designType = designForm.designType;
+    const batchStartIndex = designResultGroups[designType]?.length ?? 0;
+    setPhase('designGenerating');
+    setDesignResultGroups((current) =>
+      appendPendingDesignImages(current, designType, expectedDesignCount, designForm.aspectRatio),
+    );
+    try {
+      const res = await fetch('/api/ecommerce/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          toDesignGeneratePayload(
+            designForm,
+            analysisText,
+            productViewDataUrl,
+            visualDataUrl,
+            modelDataUrl,
+          ),
+        ),
+        signal: controller.signal,
+      });
+      await assertOkOrJsonFail(res);
+      await consumeGenerateNdjson(res, (event) => {
+        setDesignResultGroups((current) =>
+          applyDesignGenerateEvent(current, designType, event, batchStartIndex),
+        );
+      });
+      setPhase('design');
+    } catch (err) {
+      if (!isAbortError(err) && !controller.signal.aborted) {
+        console.error('[ecommerce-studio] generate design', err);
+        message.error(err instanceof Error && err.message ? err.message : GENERATE_FAILED);
+      }
+      setPhase('design');
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+    }
+  }, [
+    abortCurrent,
+    analysisText,
+    designForm,
+    designResultGroups,
+    expectedDesignCount,
+    message,
+    modelImages,
+    productViewImages,
+    selectedModelIndex,
+    selectedProductViewIndex,
+    selectedVisualIndex,
+    visualImages,
+  ]);
+
   const handleModelHelpWrite = useCallback(async () => {
     if (!analysisText.trim()) {
       message.warning(ANALYSIS_MISSING);
@@ -392,7 +485,8 @@ export default function EcommerceStudio() {
       phase === 'analyzing' ||
       phase === 'productViewGenerating' ||
       phase === 'visualGenerating' ||
-      phase === 'modelGenerating'
+      phase === 'modelGenerating' ||
+      phase === 'designGenerating'
     ) {
       abortCurrent();
     }
@@ -408,8 +502,12 @@ export default function EcommerceStudio() {
       message.warning(VISUAL_SELECT_MISSING);
       return;
     }
+    if (phase === 'model' && selectedModelIndex === null) {
+      message.warning(MODEL_SELECT_MISSING);
+      return;
+    }
     setPhase((current) => phaseAfterNext(current));
-  }, [message, phase, selectedProductViewIndex, selectedVisualIndex]);
+  }, [message, phase, selectedModelIndex, selectedProductViewIndex, selectedVisualIndex]);
 
   return (
     <Layout className={styles.studio}>
@@ -441,6 +539,7 @@ export default function EcommerceStudio() {
           form={form}
           productViewForm={productViewForm}
           modelForm={modelForm}
+          designForm={designForm}
           phase={phase}
           formLocked={formLocked}
           modelHelpWriteLoading={modelHelpWriteLoading}
@@ -453,10 +552,12 @@ export default function EcommerceStudio() {
           onFormChange={setForm}
           onProductViewFormChange={setProductViewForm}
           onModelFormChange={setModelForm}
+          onDesignFormChange={setDesignForm}
           onAnalyze={handleAnalyze}
           onGenerateProductView={handleGenerateProductView}
           onGenerateVisual={handleGenerateVisual}
           onGenerateModel={handleGenerateModel}
+          onGenerateDesign={handleGenerateDesign}
           onModelHelpWrite={handleModelHelpWrite}
         />
         <ResultPanel
@@ -466,6 +567,7 @@ export default function EcommerceStudio() {
           productViewImages={productViewImages}
           visualImages={visualImages}
           modelImages={modelImages}
+          designResultGroups={designResultGroups}
           expectedProductViewCount={expectedProductViewCount}
           expectedVisualCount={expectedVisualCount}
           expectedModelCount={expectedModelCount}
@@ -474,8 +576,10 @@ export default function EcommerceStudio() {
           modelAspectRatio={modelForm.aspectRatio}
           selectedProductViewIndex={selectedProductViewIndex}
           selectedVisualIndex={selectedVisualIndex}
+          selectedModelIndex={selectedModelIndex}
           onSelectProductView={setSelectedProductViewIndex}
           onSelectVisual={setSelectedVisualIndex}
+          onSelectModel={setSelectedModelIndex}
           onPrev={handlePrev}
           onNext={handleNext}
           onAnalysisTextChange={setAnalysisText}

@@ -1,8 +1,10 @@
 import {
+  EMPTY_DESIGN_HINT,
   EMPTY_MODEL_HINT,
   EMPTY_PRODUCT_VIEW_HINT,
   EMPTY_RESULT_HINT,
   EMPTY_VISUAL_HINT,
+  RESULT_TITLE_DESIGN,
   RESULT_TITLE_ANALYSIS,
   RESULT_TITLE_MODEL,
   RESULT_TITLE_PRODUCT_VIEW,
@@ -12,6 +14,7 @@ import type { StudioPhase } from '../types';
 
 /** 右侧标题随步骤切换 */
 export function toResultHeadTitle(phase: StudioPhase): string {
+  if (isDesignResultPhase(phase)) return RESULT_TITLE_DESIGN;
   if (isProductViewResultPhase(phase)) return RESULT_TITLE_PRODUCT_VIEW;
   if (isVisualResultPhase(phase)) return RESULT_TITLE_VISUAL;
   if (isModelResultPhase(phase)) return RESULT_TITLE_MODEL;
@@ -33,9 +36,14 @@ export function isVisualResultPhase(phase: StudioPhase): boolean {
   return phase === 'visual' || phase === 'visualGenerating';
 }
 
-/** 产品模特结果区（含完成） */
+/** 产品模特结果区（含生图中） */
 export function isModelResultPhase(phase: StudioPhase): boolean {
-  return phase === 'model' || phase === 'modelGenerating' || phase === 'done';
+  return phase === 'model' || phase === 'modelGenerating';
+}
+
+/** 视觉设计结果区（含生图中） */
+export function isDesignResultPhase(phase: StudioPhase): boolean {
+  return phase === 'design' || phase === 'designGenerating';
 }
 
 /** 第一步（商业分析）不展示上一步 */
@@ -85,24 +93,25 @@ export function reconcilePlanScrollPin(
 }
 
 /**
- * 下一步是否禁用：分析完成可进视觉；视觉须已点选标准；模特须至少一张成功。
+ * 下一步是否禁用：分析完成可进入下一步；三类标准图须完成点选。
  */
 export function isNextDisabled(
   phase: StudioPhase,
   analysisText: string,
   selectedProductViewIndex: number | null,
   selectedVisualIndex: number | null,
-  hasReadyModelImage: boolean,
+  selectedModelIndex: number | null,
 ): boolean {
   if (phase === 'analyzed') return !analysisText.trim();
   if (phase === 'productView') return selectedProductViewIndex === null;
   if (phase === 'visual') return selectedVisualIndex === null;
-  if (phase === 'model') return !hasReadyModelImage;
+  if (phase === 'model') return selectedModelIndex === null;
   return true;
 }
 
 /** 空态提示随步骤切换 */
 export function toEmptyHint(phase: StudioPhase): string {
+  if (isDesignResultPhase(phase)) return EMPTY_DESIGN_HINT;
   if (isProductViewResultPhase(phase)) return EMPTY_PRODUCT_VIEW_HINT;
   if (isVisualResultPhase(phase)) return EMPTY_VISUAL_HINT;
   if (isModelResultPhase(phase)) return EMPTY_MODEL_HINT;

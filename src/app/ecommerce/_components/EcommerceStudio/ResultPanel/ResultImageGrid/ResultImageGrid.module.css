@@ -19,8 +19,8 @@
 
 .failed :global(.ant-image-img),
 .image:global(.ant-image-error) :global(.ant-image-img) {
-  width: 48px !important;
-  height: 48px !important;
+  width: calc(var(--one-control-height) * 1) !important;
+  height: calc(var(--one-control-height) * 1) !important;
   object-fit: contain !important;
   background: none !important;
   background-image: none !important;
