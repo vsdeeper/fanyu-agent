@@ -19,7 +19,7 @@ export function appendImages(
   const room = max - current.length;
   if (room <= 0) return current;
   const next = files.slice(0, room).map((file) => ({
-    uid: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+    uid: crypto.randomUUID(),
     file,
     previewUrl: URL.createObjectURL(file),
   }));

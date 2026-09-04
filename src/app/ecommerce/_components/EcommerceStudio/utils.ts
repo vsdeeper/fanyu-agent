@@ -41,7 +41,7 @@ export function appendProductImages(
   const room = max - current.length;
   if (room <= 0) return current;
   const next = files.slice(0, room).map((file) => ({
-    uid: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+    uid: crypto.randomUUID(),
     file,
     previewUrl: URL.createObjectURL(file),
     name: file.name,
@@ -72,7 +72,7 @@ export function appendProductDocs(current: ProductDocItem[], files: File[]): Pro
   const room = MAX_PRODUCT_DOCS - current.length;
   if (room <= 0) return current;
   const next = files.slice(0, room).map((file) => ({
-    uid: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+    uid: crypto.randomUUID(),
     file,
     previewUrl: URL.createObjectURL(file),
     name: file.name,

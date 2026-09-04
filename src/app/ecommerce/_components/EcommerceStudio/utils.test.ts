@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DESIGN_FORM_STATE } from './constants';
 import { isNextDisabled } from './ResultPanel/utils';
 import type { StudioResultImage } from './types';
 import {
   appendPendingDesignImages,
+  appendProductDocs,
+  appendProductImages,
   applyDesignGenerateEvent,
   applyGenerateEvent,
   pendingImagesFromCount,
@@ -15,6 +17,34 @@ import {
   resolveInitialStudioPhase,
   toDesignGeneratePayload,
 } from './utils';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+describe('上传项 uid', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('新项使用 UUID 且不含文件名', () => {
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: () => 'blob:test',
+      revokeObjectURL: () => undefined,
+    });
+    const imageFile = new File(['img'], '美的台扇.png', { type: 'image/png' });
+    const docFile = new File(['doc'], '美的台扇FGAU40D说明书.md', { type: 'text/markdown' });
+
+    const images = appendProductImages([], [imageFile]);
+    const documents = appendProductDocs([], [docFile]);
+
+    expect(images[0]?.uid).toMatch(UUID_RE);
+    expect(images[0]?.uid).not.toContain(imageFile.name);
+    expect(images[0]?.name).toBe(imageFile.name);
+    expect(documents[0]?.uid).toMatch(UUID_RE);
+    expect(documents[0]?.uid).not.toContain(docFile.name);
+    expect(documents[0]?.name).toBe(docFile.name);
+  });
+});
 
 describe('pendingImagesFromCount', () => {
   it('连续批次使用不冲突的索引并保留各自尺寸比例', () => {

@@ -1,13 +1,16 @@
 import { unzipSync } from 'fflate';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ResultImage } from './types';
 import {
+  appendImages,
   applyGenerateEvent,
   createResultArchive,
   decodeImageDataUrl,
   getGeneratedImages,
   pendingImages,
 } from './utils';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const PNG_DATA_URL = 'data:image/png;base64,AQID';
 const READY_PNG: ResultImage = {
@@ -16,6 +19,25 @@ const READY_PNG: ResultImage = {
   status: 'ready',
   url: PNG_DATA_URL,
 };
+
+describe('上传项 uid', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('新项使用 UUID 且不含文件名', () => {
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: () => 'blob:test',
+      revokeObjectURL: () => undefined,
+    });
+    const file = new File(['img'], 'multiview-01.png', { type: 'image/png' });
+    const images = appendImages([], [file], 6);
+
+    expect(images[0]?.uid).toMatch(UUID_RE);
+    expect(images[0]?.uid).not.toContain(file.name);
+  });
+});
 
 describe('产品模特结果工具', () => {
   it('建立批次占位并按批次索引合并流事件', () => {
