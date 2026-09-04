@@ -4,6 +4,8 @@ vi.mock('server-only', () => ({}));
 
 import { DEFAULT_MODEL_REQUIREMENT } from '@/app/api/ecommerce/_shared/constants';
 import {
+  buildModelHelpWriteInstructions,
+  buildModelIdentityVisionPrompt,
   buildModelPrompt,
   buildProductViewPrompt,
   buildVisualPrompt,
@@ -42,6 +44,36 @@ describe('电商生图指令', () => {
 
   it('未填写模特要求时使用共享默认要求', () => {
     expect(buildModelPrompt('', false)).toContain(DEFAULT_MODEL_REQUIREMENT);
+  });
+
+  it('多张模特照片共同锁定同一人物外貌但不继承源照片姿态', () => {
+    const prompt = buildModelPrompt('', true);
+
+    expect(prompt).toContain('全部照片均视为同一人物在不同角度下的外貌参考');
+    expect(prompt).toContain('综合全部照片锁定并补全该人物');
+    expect(prompt).toContain('四格必须保持同一人物、身份稳定');
+    expect(prompt).toContain('不得沿用任一照片的姿态、肢体动作、身体朝向');
+    expect(prompt).not.toContain('五官、肤色、发型、体态、气质');
+  });
+
+  it('产品模特始终使用固定四格目标视角', () => {
+    const prompt = buildModelPrompt('', true);
+
+    expect(prompt).toContain('构图与姿态的唯一标准');
+    expect(prompt).toContain('左侧为胸以上半身特写、身体正面朝向镜头');
+    expect(prompt).toContain('从左到右严格依次为正视、侧视、背视');
+  });
+
+  it('帮写与身份识图均排除参考照片姿态', () => {
+    const instructions = buildModelHelpWriteInstructions();
+    const visionPrompt = buildModelIdentityVisionPrompt();
+
+    expect(instructions).toContain('仅根据识图结果描述参考人物的性别');
+    expect(instructions).toContain('不得描述或沿用参考图中的姿态、动作');
+    expect(instructions).toContain('左侧胸以上正面特写，右侧依次为正视、侧视、背视全身自然站姿');
+    expect(visionPrompt).toContain('同一人物多角度身份参考照片中的一张');
+    expect(visionPrompt).toContain('可用于跨角度保持身份一致的外貌特征');
+    expect(visionPrompt).toContain('不要描述人物当前的姿态、动作');
   });
 });
 

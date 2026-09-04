@@ -68,10 +68,10 @@ export const DOC_TOO_LARGE_WARNING = '单个资料不超过 10MB';
 export const DOC_TYPE_WARNING = '仅支持图片、PDF、TXT、MD、DOCX';
 
 export const MAX_MODEL_IMAGES = 3;
-export const MODEL_UPLOAD_SUBTITLE = '上传模特照片，非必须';
-export const MODEL_UPLOAD_HINT = '正面或全身清晰照更佳，用于锁定五官与体态';
+export const MODEL_UPLOAD_SUBTITLE = '可上传同一模特的不同角度照片';
+export const MODEL_UPLOAD_HINT = '用于共同锁定人物外貌，不沿用照片中的姿态';
 export const MODEL_REQUIREMENT_PLACEHOLDER =
-  '建议填写：性别年龄气质、体态发型；可穿戴品说明穿戴方式，非穿戴品注明画面不出现产品';
+  '建议填写：性别、年龄、气质与发型；可穿戴品说明穿戴方式，非穿戴品注明画面不出现产品';
 
 /** 模型下拉（id + label），派生自 model-options，与服务端模型清单一致 */
 export const MODEL_OPTIONS = toModelOptions();
