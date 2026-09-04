@@ -14,10 +14,8 @@ import { ApiClientError } from '@/lib/shared/client/api-client';
 import type {
   DesignFormState,
   DesignResultGroups,
-  ModelFormState,
   ProductDocItem,
   ProductImageItem,
-  ProductViewFormState,
   StudioFormState,
   StudioPhase,
   StudioResultImage,
@@ -102,27 +100,11 @@ export function isAbortError(err: unknown): boolean {
   );
 }
 
-/** 产品多视角请求体：本步表单 + 产品图 */
-export async function toProductViewGeneratePayload(
-  form: ProductViewFormState,
-  images: ProductImageItem[],
-): Promise<EcommerceGenerateRequest> {
-  return {
-    kind: 'productView',
-    model: form.model,
-    aspectRatio: form.aspectRatio,
-    quality: form.quality,
-    clarity: form.clarity,
-    count: Number.parseInt(form.count, 10) || 1,
-    images: await toAnalyzeImages(images),
-  };
-}
-
-/** 营销主视觉请求体：表单规格 + 商业分析 + 选中产品多视角图 */
+/** 营销主视觉请求体：表单规格 + 商业分析 + 原始产品参考图 */
 export function toVisualGeneratePayload(
   form: StudioFormState,
   analysisText: string,
-  productViewDataUrl: string,
+  productImageDataUrl: string,
 ): EcommerceGenerateRequest {
   return {
     kind: 'visual',
@@ -132,17 +114,16 @@ export function toVisualGeneratePayload(
     clarity: form.clarity,
     count: Number.parseInt(form.count, 10) || 1,
     analysisText: analysisText.trim(),
-    productViewDataUrl,
+    productViewDataUrl: productImageDataUrl,
   };
 }
 
-/** 视觉设计请求体：表单 + 分析/产品标准 + 开关控制的主视觉与模特标准 */
+/** 视觉设计请求体：表单 + 分析/原始产品图 + 可选主视觉标准 */
 export function toDesignGeneratePayload(
   form: DesignFormState,
   analysisText: string,
-  productViewDataUrl: string,
+  productImageDataUrl: string,
   visualDataUrl: string | null,
-  modelDataUrl: string | null,
 ): EcommerceGenerateRequest {
   return {
     kind: 'design',
@@ -153,30 +134,10 @@ export function toDesignGeneratePayload(
     count: Number.parseInt(form.count, 10) || 1,
     designType: form.designType,
     referenceVisual: form.referenceVisual,
-    includeModel: form.includeModel,
+    includeModel: false,
     analysisText: analysisText.trim(),
-    productViewDataUrl,
+    productViewDataUrl: productImageDataUrl,
     ...(form.referenceVisual && visualDataUrl ? { visualDataUrl } : {}),
-    ...(form.includeModel && modelDataUrl ? { modelDataUrl } : {}),
-  };
-}
-
-/** 产品模特请求体：本步表单 + 选中主视觉 + 可选模特形象 */
-export async function toModelGeneratePayload(
-  form: ModelFormState,
-  modelImages: ProductImageItem[],
-  visualDataUrl: string,
-): Promise<EcommerceGenerateRequest> {
-  return {
-    kind: 'model',
-    model: form.model,
-    aspectRatio: form.aspectRatio,
-    quality: form.quality,
-    clarity: form.clarity,
-    count: Number.parseInt(form.count, 10) || 1,
-    modelRequirement: form.modelRequirement,
-    visualDataUrl,
-    ...(modelImages.length > 0 ? { modelImages: await toAnalyzeImages(modelImages) } : {}),
   };
 }
 
@@ -189,25 +150,6 @@ export function getSelectedResultImageUrl(
   const item = resultImages.find((entry) => entry.index === selectedVisualIndex);
   if (!item || item.status !== 'ready' || !item.url) return null;
   return item.url;
-}
-
-/** 模特要求帮写请求体 */
-export async function toModelHelpWritePayload(input: {
-  analysisText: string;
-  visualDataUrl: string;
-  portraits: ProductImageItem[];
-}): Promise<{
-  analysisText: string;
-  visualDataUrl: string;
-  modelImageDataUrl?: string;
-}> {
-  const first = input.portraits[0];
-  const modelImageDataUrl = first ? await readFileAsDataUrl(first.file) : undefined;
-  return {
-    analysisText: input.analysisText.trim(),
-    visualDataUrl: input.visualDataUrl,
-    ...(modelImageDataUrl ? { modelImageDataUrl } : {}),
-  };
 }
 
 /** 按扩展名补全资料 MIME，避免空 type 无法通过服务端校验 */
@@ -483,21 +425,19 @@ export function applyDesignGenerateEvent(
   };
 }
 
-/** 上一步：生图中取消回本步空闲，后续各步依次返回前一步 */
+/** 上一步：生图中取消回本步空闲，完成页返回视觉设计 */
 export function phaseAfterPrev(phase: StudioPhase): StudioPhase {
   if (phase === 'analyzing') return 'input';
-  if (phase === 'productView' || phase === 'productViewGenerating') return 'analyzed';
-  if (phase === 'visual' || phase === 'visualGenerating') return 'productView';
-  if (phase === 'model' || phase === 'modelGenerating') return 'visual';
-  if (phase === 'design' || phase === 'designGenerating') return 'model';
+  if (phase === 'visual' || phase === 'visualGenerating') return 'analyzed';
+  if (phase === 'design' || phase === 'designGenerating') return 'visual';
+  if (phase === 'complete') return 'design';
   return phase;
 }
 
-/** 下一步：分析完成后依次进入产品多视角、营销主视觉、模特与视觉设计 */
+/** 下一步：分析完成后依次进入营销主视觉、视觉设计与完成页 */
 export function phaseAfterNext(phase: StudioPhase): StudioPhase {
-  if (phase === 'analyzed') return 'productView';
-  if (phase === 'productView') return 'visual';
-  if (phase === 'visual') return 'model';
-  if (phase === 'model') return 'design';
+  if (phase === 'analyzed') return 'visual';
+  if (phase === 'visual') return 'design';
+  if (phase === 'design') return 'complete';
   return phase;
 }

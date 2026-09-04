@@ -6,19 +6,9 @@ export function isAnalyzePhase(phase: StudioPhase): boolean {
   return phase === 'input' || phase === 'analyzing' || phase === 'analyzed';
 }
 
-/** 产品多视角步骤（含生图中，步进条停在第二步） */
-export function isProductViewPhase(phase: StudioPhase): boolean {
-  return phase === 'productView' || phase === 'productViewGenerating';
-}
-
-/** 营销主视觉步骤（含生图中，步进条停在第三步） */
+/** 营销主视觉步骤（含生图中） */
 export function isVisualPhase(phase: StudioPhase): boolean {
   return phase === 'visual' || phase === 'visualGenerating';
-}
-
-/** 产品模特步骤（含生图中） */
-export function isModelPhase(phase: StudioPhase): boolean {
-  return phase === 'model' || phase === 'modelGenerating';
 }
 
 /** 视觉设计步骤（含生图中） */

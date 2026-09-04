@@ -4,14 +4,11 @@ export type StudioPhase =
   | 'input'
   | 'analyzing'
   | 'analyzed'
-  | 'productView'
-  | 'productViewGenerating'
   | 'visual'
   | 'visualGenerating'
-  | 'model'
-  | 'modelGenerating'
   | 'design'
-  | 'designGenerating';
+  | 'designGenerating'
+  | 'complete';
 
 export type ProductImageItem = {
   uid: string;
@@ -37,17 +34,9 @@ export type StudioFormState = StudioSpecFields & {
   count: string;
 };
 
-export type ProductViewFormState = StudioFormState;
-
-export type ModelFormState = StudioSpecFields & {
-  modelRequirement: string;
-  count: string;
-};
-
 export type DesignFormState = StudioFormState & {
   designType: EcommerceDesignType;
   referenceVisual: boolean;
-  includeModel: boolean;
 };
 
 export type StudioResultImage = {

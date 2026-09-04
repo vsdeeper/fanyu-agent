@@ -132,7 +132,7 @@ describe('电商生图指令', () => {
 
     expect(prompt).toContain(`“${designType}”视觉设计成品`);
     expect(prompt).toContain('【商业分析】\n目标人群偏好暖色');
-    expect(prompt).toContain('第1个参考图=已选产品多视角标准图');
+    expect(prompt).toContain('第1个参考图=用户上传的产品图');
     expect(prompt).toContain('第2个参考图=已选营销主视觉');
     expect(prompt).toContain('第3个参考图=已选模特标准图');
   });

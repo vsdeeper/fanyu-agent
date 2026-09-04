@@ -17,7 +17,7 @@ type DesignFormProps = {
 };
 
 /**
- * 第五步视觉设计表单：配置物料类型、参考图开关与生成规格。
+ * 视觉设计表单：配置物料类型、主视觉参考与生成规格。
  */
 export default function DesignForm({ form, disabled, onFormChange }: DesignFormProps) {
   return (
@@ -53,26 +53,15 @@ export default function DesignForm({ form, disabled, onFormChange }: DesignFormP
         />
       </label>
 
-      <div className={styles.pair}>
-        <label className={styles.field}>
-          <span className={styles.label}>参考主视觉</span>
-          <Select
-            value={form.referenceVisual}
-            options={BOOLEAN_OPTIONS}
-            disabled={disabled}
-            onChange={(value) => onFormChange(patchFormState(form, 'referenceVisual', value))}
-          />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.label}>带入模特</span>
-          <Select
-            value={form.includeModel}
-            options={BOOLEAN_OPTIONS}
-            disabled={disabled}
-            onChange={(value) => onFormChange(patchFormState(form, 'includeModel', value))}
-          />
-        </label>
-      </div>
+      <label className={styles.field}>
+        <span className={styles.label}>参考主视觉</span>
+        <Select
+          value={form.referenceVisual}
+          options={BOOLEAN_OPTIONS}
+          disabled={disabled}
+          onChange={(value) => onFormChange(patchFormState(form, 'referenceVisual', value))}
+        />
+      </label>
 
       <label className={styles.field}>
         <span className={styles.label}>清晰度</span>

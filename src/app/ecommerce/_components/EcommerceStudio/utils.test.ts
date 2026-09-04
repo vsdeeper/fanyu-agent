@@ -63,38 +63,36 @@ describe('applyGenerateEvent', () => {
 });
 
 describe('视觉设计请求体', () => {
-  it('固定传分析与产品图，并按开关传主视觉和模特图', () => {
+  it('固定传分析与产品图，并按开关传主视觉', () => {
     expect(
       toDesignGeneratePayload(
         DEFAULT_DESIGN_FORM_STATE,
         ' 商业分析 ',
         'data:image/png;base64,product',
         'data:image/png;base64,visual',
-        'data:image/png;base64,model',
       ),
     ).toMatchObject({
       kind: 'design',
       designType: '主图',
       referenceVisual: true,
-      includeModel: true,
+      includeModel: false,
       analysisText: '商业分析',
       productViewDataUrl: 'data:image/png;base64,product',
       visualDataUrl: 'data:image/png;base64,visual',
-      modelDataUrl: 'data:image/png;base64,model',
     });
   });
 
-  it('关闭开关时省略对应参考图', () => {
+  it('关闭开关时省略主视觉参考图', () => {
     const payload = toDesignGeneratePayload(
-      { ...DEFAULT_DESIGN_FORM_STATE, referenceVisual: false, includeModel: false },
+      { ...DEFAULT_DESIGN_FORM_STATE, referenceVisual: false },
       '商业分析',
       'data:image/png;base64,product',
       'data:image/png;base64,visual',
-      'data:image/png;base64,model',
     );
 
     expect(payload).not.toHaveProperty('visualDataUrl');
     expect(payload).not.toHaveProperty('modelDataUrl');
+    expect(payload).toHaveProperty('includeModel', false);
     expect(payload).toHaveProperty('productViewDataUrl');
   });
 });
@@ -118,15 +116,17 @@ describe('视觉设计结果分组', () => {
   });
 });
 
-describe('第五步导航', () => {
-  it('模特步骤进入视觉设计，视觉设计返回模特步骤', () => {
-    expect(phaseAfterNext('model')).toBe('design');
-    expect(phaseAfterPrev('design')).toBe('model');
-    expect(phaseAfterPrev('designGenerating')).toBe('model');
+describe('四步导航', () => {
+  it('分析、主视觉、视觉设计与完成依次流转', () => {
+    expect(phaseAfterNext('analyzed')).toBe('visual');
+    expect(phaseAfterNext('visual')).toBe('design');
+    expect(phaseAfterNext('design')).toBe('complete');
+    expect(phaseAfterPrev('complete')).toBe('design');
+    expect(phaseAfterPrev('designGenerating')).toBe('visual');
   });
 
-  it('第四步未选择模特标准时禁止进入第五步', () => {
-    expect(isNextDisabled('model', '分析', 0, 0, null)).toBe(true);
-    expect(isNextDisabled('model', '分析', 0, 0, 2)).toBe(false);
+  it('视觉设计至少有一张成果时才能进入完成', () => {
+    expect(isNextDisabled('design', '分析', 0, false)).toBe(true);
+    expect(isNextDisabled('design', '分析', 0, true)).toBe(false);
   });
 });

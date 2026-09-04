@@ -1,13 +1,9 @@
 import {
   EMPTY_DESIGN_HINT,
-  EMPTY_MODEL_HINT,
-  EMPTY_PRODUCT_VIEW_HINT,
   EMPTY_RESULT_HINT,
   EMPTY_VISUAL_HINT,
   RESULT_TITLE_DESIGN,
   RESULT_TITLE_ANALYSIS,
-  RESULT_TITLE_MODEL,
-  RESULT_TITLE_PRODUCT_VIEW,
   RESULT_TITLE_VISUAL,
 } from '../constants';
 import type { StudioPhase } from '../types';
@@ -15,9 +11,7 @@ import type { StudioPhase } from '../types';
 /** 右侧标题随步骤切换 */
 export function toResultHeadTitle(phase: StudioPhase): string {
   if (isDesignResultPhase(phase)) return RESULT_TITLE_DESIGN;
-  if (isProductViewResultPhase(phase)) return RESULT_TITLE_PRODUCT_VIEW;
   if (isVisualResultPhase(phase)) return RESULT_TITLE_VISUAL;
-  if (isModelResultPhase(phase)) return RESULT_TITLE_MODEL;
   return RESULT_TITLE_ANALYSIS;
 }
 
@@ -26,19 +20,9 @@ export function isPlanPhase(phase: StudioPhase): boolean {
   return phase === 'analyzing' || phase === 'analyzed';
 }
 
-/** 产品多视角结果区（含生图中） */
-export function isProductViewResultPhase(phase: StudioPhase): boolean {
-  return phase === 'productView' || phase === 'productViewGenerating';
-}
-
 /** 营销主视觉结果区（含生图中） */
 export function isVisualResultPhase(phase: StudioPhase): boolean {
   return phase === 'visual' || phase === 'visualGenerating';
-}
-
-/** 产品模特结果区（含生图中） */
-export function isModelResultPhase(phase: StudioPhase): boolean {
-  return phase === 'model' || phase === 'modelGenerating';
 }
 
 /** 视觉设计结果区（含生图中） */
@@ -93,28 +77,24 @@ export function reconcilePlanScrollPin(
 }
 
 /**
- * 下一步是否禁用：分析完成可进入下一步；三类标准图须完成点选。
+ * 下一步是否禁用：分析须有正文，主视觉须点选，视觉设计须至少有一张成果。
  */
 export function isNextDisabled(
   phase: StudioPhase,
   analysisText: string,
-  selectedProductViewIndex: number | null,
   selectedVisualIndex: number | null,
-  selectedModelIndex: number | null,
+  hasDesignResults: boolean,
 ): boolean {
   if (phase === 'analyzed') return !analysisText.trim();
-  if (phase === 'productView') return selectedProductViewIndex === null;
   if (phase === 'visual') return selectedVisualIndex === null;
-  if (phase === 'model') return selectedModelIndex === null;
+  if (phase === 'design') return !hasDesignResults;
   return true;
 }
 
 /** 空态提示随步骤切换 */
 export function toEmptyHint(phase: StudioPhase): string {
   if (isDesignResultPhase(phase)) return EMPTY_DESIGN_HINT;
-  if (isProductViewResultPhase(phase)) return EMPTY_PRODUCT_VIEW_HINT;
   if (isVisualResultPhase(phase)) return EMPTY_VISUAL_HINT;
-  if (isModelResultPhase(phase)) return EMPTY_MODEL_HINT;
   return EMPTY_RESULT_HINT;
 }
 

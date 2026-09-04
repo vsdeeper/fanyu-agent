@@ -9,7 +9,7 @@ type DesignResultGroupsProps = {
 };
 
 /**
- * 按设计类型稳定排序展示第五步结果，各组内部保留连续生成的全部批次。
+ * 按设计类型稳定排序展示视觉设计结果，各组内部保留连续生成的全部批次。
  */
 export default function DesignResultGroups({ groups }: DesignResultGroupsProps) {
   return (
