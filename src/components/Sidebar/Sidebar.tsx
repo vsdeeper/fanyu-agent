@@ -8,10 +8,11 @@ import {
   MenuFoldOutlined,
   MessageOutlined,
   ShoppingOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { Button, Layout, Typography } from 'antd';
 import { useWorkspace } from '@/components/AppLayout/context';
-import { ECOMMERCE_PATH, PRODUCT_RETOUCH_PATH } from './constants';
+import { ECOMMERCE_PATH, PRODUCT_MODEL_PATH, PRODUCT_RETOUCH_PATH } from './constants';
 import { getActiveChatIdFromPathname, getChatGroupLabel } from './utils';
 import type { ChatListItem } from '@/app/api/chats/_shared/types';
 import { apiDelete } from '@/lib/shared/client/api-client';
@@ -31,6 +32,7 @@ export default function Sidebar({ chats }: SidebarProps) {
 
   const activeChatId = getActiveChatIdFromPathname(pathname);
   const isProductRetouch = pathname === PRODUCT_RETOUCH_PATH;
+  const isProductModel = pathname === PRODUCT_MODEL_PATH;
   const isEcommerce = pathname === ECOMMERCE_PATH;
 
   const items = useMemo<ConversationItemType[]>(
@@ -153,6 +155,21 @@ export default function Sidebar({ chats }: SidebarProps) {
               }}
             >
               产品精修
+            </Button>
+            <Button
+              block
+              className={`${styles.navBtn} ${isProductModel ? styles.navBtnActive : ''}`}
+              color="default"
+              variant="text"
+              size="medium"
+              icon={<UserOutlined />}
+              aria-current={isProductModel ? 'page' : undefined}
+              onClick={() => {
+                if (isProductModel) return;
+                goRefresh(PRODUCT_MODEL_PATH);
+              }}
+            >
+              产品模特
             </Button>
             <Button
               block

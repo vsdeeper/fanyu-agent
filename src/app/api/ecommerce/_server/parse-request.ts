@@ -69,6 +69,14 @@ const productViewGenerateSchema = specFieldsSchema.extend({
   images: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
 });
 
+const productModelGenerateSchema = specFieldsSchema.extend({
+  kind: z.literal('productModel'),
+  count: countSchema,
+  viewRequirement: z.string().trim().min(1),
+  images: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
+  modelImages: z.array(imageInputSchema).max(MAX_STUDIO_MODEL_IMAGES).optional(),
+});
+
 const visualGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('visual'),
   count: z
@@ -110,6 +118,7 @@ const generateBodySchema = z
     productRefineGenerateSchema,
     productMultiviewGenerateSchema,
     productViewGenerateSchema,
+    productModelGenerateSchema,
     visualGenerateSchema,
     modelGenerateSchema,
     designGenerateSchema,

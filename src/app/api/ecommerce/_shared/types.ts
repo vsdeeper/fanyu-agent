@@ -31,7 +31,13 @@ export type EcommerceAnalyzeErrorEvent = {
 export type EcommerceDesignType = (typeof ECOMMERCE_DESIGN_TYPES)[number];
 
 export type EcommerceGenerateKind =
-  'productRefine' | 'productMultiview' | 'productView' | 'visual' | 'model' | 'design';
+  | 'productRefine'
+  | 'productMultiview'
+  | 'productView'
+  | 'productModel'
+  | 'visual'
+  | 'model'
+  | 'design';
 
 type EcommerceGenerateBase = {
   model: string;
@@ -61,6 +67,15 @@ export type EcommerceProductViewGenerateRequest = EcommerceGenerateBase & {
   kind: 'productView';
   count: number;
   images: EcommerceImageInput[];
+};
+
+/** 独立产品模特：产品图定品类与风格，可选模特图锁定人物身份 */
+export type EcommerceProductModelGenerateRequest = EcommerceGenerateBase & {
+  kind: 'productModel';
+  count: number;
+  viewRequirement: string;
+  images: EcommerceImageInput[];
+  modelImages?: EcommerceImageInput[];
 };
 
 /** 营销主视觉：表单规格 + 商业分析 + 选中产品多视角图 */
@@ -97,6 +112,7 @@ export type EcommerceGenerateRequest =
   | EcommerceProductRefineGenerateRequest
   | EcommerceProductMultiviewGenerateRequest
   | EcommerceProductViewGenerateRequest
+  | EcommerceProductModelGenerateRequest
   | EcommerceVisualGenerateRequest
   | EcommerceModelGenerateRequest
   | EcommerceDesignGenerateRequest;

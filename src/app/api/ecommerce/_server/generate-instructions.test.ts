@@ -11,6 +11,7 @@ import {
   buildModelHelpWriteInstructions,
   buildModelIdentityVisionPrompt,
   buildModelPrompt,
+  buildProductModelPrompt,
   buildProductMultiviewPrompt,
   buildProductRefinePrompt,
   buildProductViewPrompt,
@@ -53,6 +54,34 @@ describe('电商生图指令', () => {
     expect(prompt).toContain('纯色背景和统一光线');
     expect(prompt).not.toContain('【商业分析】');
     expect(prompt).not.toContain('电影感');
+  });
+
+  it('独立产品模特以产品图确定品类、视觉气质与风格', () => {
+    const prompt = buildProductModelPrompt('正面、侧面、背面三种全身视角', 2, false);
+
+    expect(prompt).toContain('第1至第2个参考图=同一产品的事实参考');
+    expect(prompt).toContain('决定模特的视觉、气质、造型、配色、光影与整体风格');
+    expect(prompt).toContain('可穿戴品类');
+    expect(prompt).toContain('模特须正确穿戴参考产品');
+    expect(prompt).toContain('非可穿戴品类');
+    expect(prompt).toContain('画面中不得出现产品本体');
+    expect(prompt).toContain('只允许单行四栏横向拼图');
+    expect(prompt).toContain('左侧约占总宽度40%');
+    expect(prompt).toContain('右侧约占总宽度60%');
+    expect(prompt).toContain('先分别生成四张解剖结构正确、自然完整的人像');
+    expect(prompt).toContain('禁止为塞入窄栏而横向压扁、拉伸、扭曲身体');
+    expect(prompt).toContain('侧视栏必须是自然的90度全身侧面站姿');
+    expect(prompt).toContain('不得缺失、粘连躯干或长出额外肢体');
+    expect(prompt).toContain('禁止2×2宫格、上下两排');
+    expect(prompt).toContain('【视角要求】\n正面、侧面、背面三种全身视角');
+  });
+
+  it('独立产品模特用后续参考图锁定人物身份而不继承姿态', () => {
+    const prompt = buildProductModelPrompt('四格视角', 2, true);
+
+    expect(prompt).toContain('第3个及之后的参考图=同一位模特的身份参考照片');
+    expect(prompt).toContain('全部视角必须保持同一人物');
+    expect(prompt).toContain('不得沿用其姿态、动作、身体朝向');
   });
 
   it('营销主视觉保留商业分析并叠加广告视觉规则', () => {
@@ -188,6 +217,56 @@ describe('产品多视角请求契约', () => {
     });
 
     expect(parsed?.kind).toBe('productView');
+  });
+
+  it('接受产品图、视角要求和可选模特形象的独立产品模特请求', () => {
+    const parsed = parseGenerateBody({
+      kind: 'productModel',
+      ...SPEC_FIELDS,
+      count: 2,
+      viewRequirement: '左侧半身，右侧正面、侧面、背面全身',
+      images: [
+        {
+          filename: 'product.png',
+          mediaType: 'image/png',
+          dataUrl: 'data:image/png;base64,PRODUCT',
+        },
+      ],
+      modelImages: [
+        {
+          filename: 'model.png',
+          mediaType: 'image/png',
+          dataUrl: 'data:image/png;base64,MODEL',
+        },
+      ],
+    });
+
+    expect(parsed?.kind).toBe('productModel');
+  });
+
+  it('拒绝缺少产品图、空视角要求或超过三张模特图的请求', () => {
+    const base = {
+      kind: 'productModel',
+      ...SPEC_FIELDS,
+      count: 1,
+      viewRequirement: '四格视角',
+      images: [
+        {
+          filename: 'product.png',
+          mediaType: 'image/png',
+          dataUrl: 'data:image/png;base64,PRODUCT',
+        },
+      ],
+    } as const;
+    const modelImage = {
+      filename: 'model.png',
+      mediaType: 'image/png',
+      dataUrl: 'data:image/png;base64,MODEL',
+    };
+
+    expect(parseGenerateBody({ ...base, images: [] })).toBeNull();
+    expect(parseGenerateBody({ ...base, viewRequirement: ' ' })).toBeNull();
+    expect(parseGenerateBody({ ...base, modelImages: Array(4).fill(modelImage) })).toBeNull();
   });
 });
 

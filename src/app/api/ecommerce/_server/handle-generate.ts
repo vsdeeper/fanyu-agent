@@ -14,6 +14,7 @@ import {
 import {
   buildDesignPrompt,
   buildModelPrompt,
+  buildProductModelPrompt,
   buildProductMultiviewPrompt,
   buildProductRefinePrompt,
   buildProductViewPrompt,
@@ -39,7 +40,11 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
 
-  if (body.kind === 'productRefine' || body.kind === 'productView') {
+  if (
+    body.kind === 'productRefine' ||
+    body.kind === 'productView' ||
+    body.kind === 'productModel'
+  ) {
     if (body.images.length === 0) {
       return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_IMAGE, 400);
     }
@@ -70,6 +75,16 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
   } else if (body.kind === 'productView') {
     prompt = buildProductViewPrompt();
     referenceImageDataUrls = body.images.map((image) => image.dataUrl);
+  } else if (body.kind === 'productModel') {
+    prompt = buildProductModelPrompt(
+      body.viewRequirement,
+      body.images.length,
+      (body.modelImages?.length ?? 0) > 0,
+    );
+    referenceImageDataUrls = [
+      ...body.images.map((image) => image.dataUrl),
+      ...(body.modelImages?.map((image) => image.dataUrl) ?? []),
+    ];
   } else if (body.kind === 'visual') {
     prompt = buildVisualPrompt(body.analysisText);
     referenceImageDataUrls = [body.productViewDataUrl];
