@@ -218,7 +218,17 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, analysisBuffer, documents, images, message, setDocuments, setImages, task.id]);
+  }, [
+    abortCurrent,
+    analysisBuffer,
+    documents,
+    images,
+    message,
+    setDocuments,
+    setImages,
+    setModelImages,
+    task.id,
+  ]);
 
   const handleGenerateVisual = useCallback(async () => {
     const productImage = images[0];
@@ -381,6 +391,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     message,
     modelImages,
     selectedVisualIndex,
+    setDesignForm,
+    setModelImages,
     task.id,
     task.taskType,
     visualImages,
@@ -414,13 +426,19 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     [setDocuments],
   );
 
-  const handleModelImagesAppend = useCallback((files: File[]) => {
-    setModelImages((current) => appendProductImages(current, files, MAX_MODEL_IMAGES));
-  }, []);
+  const handleModelImagesAppend = useCallback(
+    (files: File[]) => {
+      setModelImages((current) => appendProductImages(current, files, MAX_MODEL_IMAGES));
+    },
+    [setModelImages],
+  );
 
-  const handleModelImageRemove = useCallback((uid: string) => {
-    setModelImages((current) => removeProductImage(current, uid));
-  }, []);
+  const handleModelImageRemove = useCallback(
+    (uid: string) => {
+      setModelImages((current) => removeProductImage(current, uid));
+    },
+    [setModelImages],
+  );
 
   const handleSelectVisual = useCallback(
     async (index: number) => {

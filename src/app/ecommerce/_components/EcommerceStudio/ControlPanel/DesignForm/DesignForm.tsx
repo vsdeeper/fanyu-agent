@@ -46,10 +46,10 @@ export default function DesignForm({
         <ProductUpload
           images={modelImages}
           max={MAX_MODEL_IMAGES}
-          label="模特形象"
+          label="产品模特"
           subtitle={MODEL_IMAGE_SUBTITLE}
           hint={MODEL_IMAGE_HINT}
-          ariaLabel="上传模特形象"
+          ariaLabel="上传产品模特"
           disabled={disabled}
           onAppend={onModelImagesAppend}
           onRemove={onModelImageRemove}
