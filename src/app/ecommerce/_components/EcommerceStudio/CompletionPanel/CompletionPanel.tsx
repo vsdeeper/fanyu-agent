@@ -1,7 +1,9 @@
 import { DownloadOutlined, StarOutlined } from '@ant-design/icons';
 import { Button, Empty, Typography } from 'antd';
+import type { EcommerceTaskType } from '@/app/api/ecommerce/_shared/task-types';
 import { PREV_BUTTON } from '../constants';
 import type { DesignResultGroups, StudioResultImage } from '../types';
+import { isPosterTask } from '../workflow';
 import DesignResultGroupsView from '../ResultPanel/DesignResultGroups';
 import ResultImageGrid from '../ResultPanel/ResultImageGrid';
 import { COMPLETION_TITLE, EXPORT_BUTTON, VISUAL_GROUP_TITLE } from './constants';
@@ -10,6 +12,7 @@ import { getGeneratedDesignGroups, getGeneratedImages } from './utils';
 import styles from './CompletionPanel.module.css';
 
 type CompletionPanelProps = {
+  taskType: EcommerceTaskType;
   visualImages: readonly StudioResultImage[];
   designResultGroups: DesignResultGroups;
   onPrev: () => void;
@@ -17,6 +20,7 @@ type CompletionPanelProps = {
 
 /** 汇总营销主视觉与各类视觉设计，并提供全部图片打包导出。 */
 export default function CompletionPanel({
+  taskType,
   visualImages,
   designResultGroups,
   onPrev,
@@ -48,7 +52,9 @@ export default function CompletionPanel({
                 />
               </section>
             ) : null}
-            {hasDesignResults ? <DesignResultGroupsView groups={designResults} /> : null}
+            {hasDesignResults ? (
+              <DesignResultGroupsView groups={designResults} showTitles={!isPosterTask(taskType)} />
+            ) : null}
           </div>
         ) : (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生成图片" />

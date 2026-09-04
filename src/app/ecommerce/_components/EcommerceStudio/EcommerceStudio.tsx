@@ -489,6 +489,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         <div className={styles.workspace}>
           {phase === 'complete' ? (
             <CompletionPanel
+              taskType={task.taskType}
               visualImages={visualImages}
               designResultGroups={designResultGroups}
               onPrev={handlePrev}

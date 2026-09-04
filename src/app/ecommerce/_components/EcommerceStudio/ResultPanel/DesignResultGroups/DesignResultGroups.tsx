@@ -6,12 +6,14 @@ import styles from './DesignResultGroups.module.css';
 
 type DesignResultGroupsProps = {
   groups: DesignResultGroupsState;
+  /** 是否展示物料类型标题；营销海报关闭以免与结果区标题重复 */
+  showTitles?: boolean;
 };
 
 /**
  * 按设计类型稳定排序展示视觉设计结果，各组内部保留连续生成的全部批次。
  */
-export default function DesignResultGroups({ groups }: DesignResultGroupsProps) {
+export default function DesignResultGroups({ groups, showTitles = true }: DesignResultGroupsProps) {
   return (
     <div className={styles.groups}>
       {ECOMMERCE_DESIGN_TYPES.map((designType) => {
@@ -19,9 +21,11 @@ export default function DesignResultGroups({ groups }: DesignResultGroupsProps) 
         if (!images?.length) return null;
         return (
           <section key={designType} className={styles.group}>
-            <Typography.Title level={5} className={styles.title}>
-              {designType}
-            </Typography.Title>
+            {showTitles ? (
+              <Typography.Title level={5} className={styles.title}>
+                {designType}
+              </Typography.Title>
+            ) : null}
             <ResultImageGrid
               images={images}
               expectedCount={images.length}
