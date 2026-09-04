@@ -43,6 +43,7 @@ export type ModelFormState = StudioSpecFields & {
 
 export type StudioResultImage = {
   index: number;
+  aspectRatio: string;
   status: 'pending' | 'ready' | 'failed';
   url?: string;
   error?: string;

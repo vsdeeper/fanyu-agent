@@ -393,13 +393,15 @@ export async function consumeGenerateNdjson(
   }
 }
 
-/** 按生图事件更新网格项 */
+/** 按生图事件和本批次起始索引更新对应网格项 */
 export function applyGenerateEvent(
   current: StudioResultImage[],
   event: EcommerceGenerateImageEvent,
+  batchStartIndex = 0,
 ): StudioResultImage[] {
+  const targetIndex = batchStartIndex + event.index;
   return current.map((item) => {
-    if (item.index !== event.index) return item;
+    if (item.index !== targetIndex) return item;
     if (event.error) {
       return { ...item, status: 'failed', error: event.error };
     }
@@ -411,11 +413,16 @@ export function applyGenerateEvent(
   });
 }
 
-/** 按张数铺 pending 网格 */
-export function pendingImagesFromCount(count: number): StudioResultImage[] {
+/** 从指定索引起按张数创建一个 pending 批次，并记录该批次的展示比例 */
+export function pendingImagesFromCount(
+  count: number,
+  startIndex: number,
+  aspectRatio: string,
+): StudioResultImage[] {
   const total = Math.max(1, count);
-  return Array.from({ length: total }, (_, index) => ({
-    index,
+  return Array.from({ length: total }, (_, offset) => ({
+    index: startIndex + offset,
+    aspectRatio,
     status: 'pending' as const,
   }));
 }

@@ -191,12 +191,12 @@ export default function EcommerceStudio() {
     const controller = new AbortController();
     abortRef.current = controller;
     const count = Number.parseInt(productViewForm.count, 10) || 1;
+    const batchStartIndex = productViewImages.length;
     setPhase('productViewGenerating');
-    setSelectedProductViewIndex(null);
-    setSelectedVisualIndex(null);
-    setProductViewImages(pendingImagesFromCount(count));
-    setVisualImages([]);
-    setModelImages([]);
+    setProductViewImages((current) => [
+      ...current,
+      ...pendingImagesFromCount(count, batchStartIndex, productViewForm.aspectRatio),
+    ]);
     try {
       const res = await fetch('/api/ecommerce/generate', {
         method: 'POST',
@@ -206,7 +206,7 @@ export default function EcommerceStudio() {
       });
       await assertOkOrJsonFail(res);
       await consumeGenerateNdjson(res, (event) => {
-        setProductViewImages((current) => applyGenerateEvent(current, event));
+        setProductViewImages((current) => applyGenerateEvent(current, event, batchStartIndex));
       });
       if (controller.signal.aborted) {
         setPhase('productView');
@@ -224,7 +224,7 @@ export default function EcommerceStudio() {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, images, message, productViewForm]);
+  }, [abortCurrent, images, message, productViewForm, productViewImages.length]);
 
   const handleGenerateVisual = useCallback(async () => {
     const productViewDataUrl = getSelectedResultImageUrl(
@@ -243,10 +243,12 @@ export default function EcommerceStudio() {
     const controller = new AbortController();
     abortRef.current = controller;
     const count = Number.parseInt(form.count, 10) || 1;
+    const batchStartIndex = visualImages.length;
     setPhase('visualGenerating');
-    setSelectedVisualIndex(null);
-    setVisualImages(pendingImagesFromCount(count));
-    setModelImages([]);
+    setVisualImages((current) => [
+      ...current,
+      ...pendingImagesFromCount(count, batchStartIndex, form.aspectRatio),
+    ]);
     try {
       const res = await fetch('/api/ecommerce/generate', {
         method: 'POST',
@@ -256,7 +258,7 @@ export default function EcommerceStudio() {
       });
       await assertOkOrJsonFail(res);
       await consumeGenerateNdjson(res, (event) => {
-        setVisualImages((current) => applyGenerateEvent(current, event));
+        setVisualImages((current) => applyGenerateEvent(current, event, batchStartIndex));
       });
       if (controller.signal.aborted) {
         setPhase('visual');
@@ -274,7 +276,15 @@ export default function EcommerceStudio() {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, analysisText, form, message, productViewImages, selectedProductViewIndex]);
+  }, [
+    abortCurrent,
+    analysisText,
+    form,
+    message,
+    productViewImages,
+    selectedProductViewIndex,
+    visualImages.length,
+  ]);
 
   const handleGenerateModel = useCallback(async () => {
     const visualDataUrl = getSelectedResultImageUrl(visualImages, selectedVisualIndex);
@@ -285,8 +295,12 @@ export default function EcommerceStudio() {
     abortCurrent();
     const controller = new AbortController();
     abortRef.current = controller;
+    const batchStartIndex = modelImages.length;
     setPhase('modelGenerating');
-    setModelImages(pendingImagesFromCount(expectedModelCount));
+    setModelImages((current) => [
+      ...current,
+      ...pendingImagesFromCount(expectedModelCount, batchStartIndex, modelForm.aspectRatio),
+    ]);
     try {
       const res = await fetch('/api/ecommerce/generate', {
         method: 'POST',
@@ -296,7 +310,7 @@ export default function EcommerceStudio() {
       });
       await assertOkOrJsonFail(res);
       await consumeGenerateNdjson(res, (event) => {
-        setModelImages((current) => applyGenerateEvent(current, event));
+        setModelImages((current) => applyGenerateEvent(current, event, batchStartIndex));
       });
       if (controller.signal.aborted) {
         setPhase('model');
@@ -319,6 +333,7 @@ export default function EcommerceStudio() {
     expectedModelCount,
     message,
     modelForm,
+    modelImages.length,
     portraits,
     selectedVisualIndex,
     visualImages,

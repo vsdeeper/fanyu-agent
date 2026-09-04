@@ -29,7 +29,7 @@ export default function ResultImageGrid({
   selectedBadge,
   onSelect,
 }: ResultImageGridProps) {
-  const { width: cellWidth, height: cellHeight } = aspectRatioToSize(
+  const { width: placeholderWidth, height: placeholderHeight } = aspectRatioToSize(
     aspectRatio,
     RESULT_IMAGE_SIZE,
   );
@@ -46,7 +46,7 @@ export default function ResultImageGrid({
           <Skeleton.Image
             key={`pending-${index}`}
             active
-            style={{ width: cellWidth, height: cellHeight, borderRadius: 8 }}
+            style={{ width: placeholderWidth, height: placeholderHeight, borderRadius: 8 }}
           />
         ))}
       </div>
@@ -56,18 +56,21 @@ export default function ResultImageGrid({
   return (
     <div className={styles.grid}>
       <Image.PreviewGroup items={previewItems} classNames={RESULT_PREVIEW_GROUP_CLASS_NAMES}>
-        {images.map((item) => (
-          <ResultImageItem
-            key={`result-${item.index}`}
-            image={item}
-            width={cellWidth}
-            height={cellHeight}
-            selectable={selectable}
-            selected={selectedIndex === item.index}
-            selectedBadge={selectedBadge}
-            onSelect={onSelect}
-          />
-        ))}
+        {images.map((item) => {
+          const { width, height } = aspectRatioToSize(item.aspectRatio, RESULT_IMAGE_SIZE);
+          return (
+            <ResultImageItem
+              key={`result-${item.index}`}
+              image={item}
+              width={width}
+              height={height}
+              selectable={selectable}
+              selected={selectedIndex === item.index}
+              selectedBadge={selectedBadge}
+              onSelect={onSelect}
+            />
+          );
+        })}
       </Image.PreviewGroup>
     </div>
   );
