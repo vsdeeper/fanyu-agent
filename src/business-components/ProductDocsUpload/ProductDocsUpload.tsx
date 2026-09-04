@@ -1,5 +1,6 @@
 import { CloseOutlined, FileOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { App, Button, Image, Upload } from 'antd';
+import { interceptLocalFiles } from '@/business-components/ProductUpload/utils';
 import FileCard from '@/components/FileCard';
 import {
   DOC_TOO_LARGE_WARNING,
@@ -9,14 +10,13 @@ import {
   PRODUCT_DOC_ACCEPT,
   PRODUCT_DOC_HINT,
   PRODUCT_DOC_SUBTITLE,
-} from '../../../constants';
-import type { ProductDocItem } from '../../../types';
-import { interceptLocalFiles } from '../../ProductUpload/utils';
+} from './constants';
+import type { ProductDocUploadItem } from './types';
 import { isAllowedProductDoc, isImageProductDoc, toDocIcon } from './utils';
 import styles from './ProductDocsUpload.module.css';
 
 type ProductDocsUploadProps = {
-  documents: ProductDocItem[];
+  documents: ProductDocUploadItem[];
   disabled?: boolean;
   onAppend: (files: File[]) => void;
   onRemove: (uid: string) => void;

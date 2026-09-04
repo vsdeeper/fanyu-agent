@@ -1,0 +1,66 @@
+'use client';
+
+import { Layout, Steps, Typography } from 'antd';
+import ModeSwitch from '@/components/ModeSwitch';
+import { STUDIO_STEP_INDEX, STUDIO_STEPS, STUDIO_SUBTITLE, STUDIO_TITLE } from './constants';
+import ControlPanel from './ControlPanel';
+import ResultPanel from './ResultPanel';
+import { useProductRetouchStudio } from './useProductRetouchStudio';
+import styles from './ProductRetouchStudio.module.css';
+
+/** 产品精修与多视角生成工作台。 */
+export default function ProductRetouchStudio() {
+  const studio = useProductRetouchStudio();
+  return (
+    <Layout className={styles.studio}>
+      <Layout.Header className={styles.header}>
+        <div className={styles.brand}>
+          <Typography.Title level={5} className={styles.title} ellipsis>
+            {STUDIO_TITLE}
+          </Typography.Title>
+          <Typography.Text className={styles.subtitle} ellipsis>
+            {STUDIO_SUBTITLE}
+          </Typography.Text>
+        </div>
+        <div className={styles.headerSpacer} />
+        <ModeSwitch />
+      </Layout.Header>
+      <div className={styles.stepsRow}>
+        <Steps
+          className={styles.steps}
+          current={STUDIO_STEP_INDEX[studio.phase]}
+          size="small"
+          items={STUDIO_STEPS}
+        />
+      </div>
+      <Layout.Content className={styles.content}>
+        <ControlPanel
+          phase={studio.phase}
+          images={studio.images}
+          refineForm={studio.refineForm}
+          multiviewForm={studio.multiviewForm}
+          locked={studio.locked}
+          onImagesAppend={studio.handleImagesAppend}
+          onImageRemove={studio.handleImageRemove}
+          onRefineFormChange={studio.setRefineForm}
+          onMultiviewFormChange={studio.setMultiviewForm}
+          onRefine={studio.handleRefine}
+          onMultiview={studio.handleMultiview}
+        />
+        <ResultPanel
+          phase={studio.phase}
+          refineImages={studio.refineImages}
+          multiviewImages={studio.multiviewImages}
+          refineExpectedCount={Number.parseInt(studio.refineForm.count, 10) || 1}
+          multiviewExpectedCount={Number.parseInt(studio.multiviewForm.count, 10) || 1}
+          refineAspectRatio={studio.refineForm.aspectRatio}
+          multiviewAspectRatio={studio.multiviewForm.aspectRatio}
+          selectedRefineIndex={studio.selectedRefineIndex}
+          onSelectRefine={studio.setSelectedRefineIndex}
+          onPrev={studio.handlePrev}
+          onNext={studio.handleNext}
+        />
+      </Layout.Content>
+    </Layout>
+  );
+}

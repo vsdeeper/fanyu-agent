@@ -95,6 +95,7 @@ src/
     layout.tsx
     global.css
   components/              # 全局通用 UI：theme / CustomIcon / ModeSwitch / Providers / FileCard
+  business-components/     # 跨产品页面复用的业务 UI：ProductUpload / ProductDocsUpload
   lib/                     # 无独立产品面的平台内核
     db/
       client.ts            # better-sqlite3 连接、WAL、migrate；import 'server-only'
@@ -124,6 +125,7 @@ drizzle/                   # SQL migrations（drizzle-kit generate）
 4. **Client 与 Server 都要用的纯类型/纯函数** → 该 API 域的 `_shared/`（无 `server-only`）。Client **只允许** import `_shared`，禁止 import `_server`
 5. **无独立产品面** → `src/lib/`（db / shared / theme / skills）
 6. **跨路由、无业务耦合的 UI** → `src/components/`
+7. **跨产品页面复用、带业务语义的 UI** → `src/business-components/`
 
 `_` 前缀沿用 `_components`：不是 URL 段。页面域**不设 `_lib` / `_server`**；API 域**不设 `_utils`**。
 
@@ -132,7 +134,7 @@ drizzle/                   # SQL migrations（drizzle-kit generate）
 **依赖方向：**
 
 ```text
-app/chat Client     →  _utils、_components、lib/skills、lib/shared/client、api/*/ _shared、components
+app/chat Client     →  _utils、_components、lib/skills、lib/shared/client、api/*/ _shared、components、business-components
 app/chat RSC        →  同上 + app/api/chats/_server/store
 app/api/<域>/_server →  本域 _shared、lib/db、lib/shared/server、其他域 _server（仅能力调用）
 lib/db、shared、theme、skills  →  禁止依赖 app/ 与任何产品实现
@@ -175,7 +177,7 @@ lib/db、shared、theme、skills  →  禁止依赖 app/ 与任何产品实现
 **页面路由（非 API）：**
 
 - `page.tsx` / `layout.tsx` 作为 RSC 可直调 `app/api/chats/_server/store`（如 `listChats()`）；路由 id 归一化放 `app/chat/_utils/chat-id.ts`
-- UI 两层：全局通用放 `src/components/`；页面级放 `app/<route>/_components/`（见「组件目录约定」）
+- UI 分层：无业务耦合的全局通用组件放 `src/components/`；跨页面业务组件放 `src/business-components/`；页面私有组件放 `app/<route>/_components/`（见「组件目录约定」）
 - **`'use client'` 只打在被 Server Component 直接 import 的入口**（当前为 `src/components/Providers`、`app/chat/_components/ChatShell`）。子树内组件不要重复标注。
 
 **新增 API 时 checklist：**
@@ -191,9 +193,10 @@ lib/db、shared、theme、skills  →  禁止依赖 app/ 与任何产品实现
 | 层级     | 路径                       | 判定                                 | 现状示例                                                  |
 | -------- | -------------------------- | ------------------------------------ | --------------------------------------------------------- |
 | 全局通用 | `src/components/`          | 无业务耦合，可跨路由复用             | `theme/`、`CustomIcon/`、`ModeSwitch/`、`Providers.tsx`   |
+| 业务通用 | `src/business-components/` | 带业务语义，供产品页面复用           | `ProductUpload/`、`ProductDocsUpload/`                    |
 | 页面级   | `app/<route>/_components/` | 仅该路由段使用；`_` 前缀不成为路由段 | `app/chat/_components/`（ChatShell / ChatSidebar / Chat） |
 
-页面级可引用全局通用（如 Chat 用 `useThemeMode`）；反向禁止。不引入「通用业务」第三层，跨页领域逻辑放对应 `app/api/<域>/_server` 或 `_shared`，不放 UI 目录。
+页面级可引用全局通用与业务通用组件（如 Chat 用 `useThemeMode`）；反向禁止。跨页领域服务端逻辑仍放对应 `app/api/<域>/_server` 或 `_shared`，不放 UI 目录。
 
 有样式 / 测试 / 子文件时，**一个公开组件一个目录**（PascalCase，与主组件同名）；相关文件 colocation，勿单独堆 `styles/`：
 

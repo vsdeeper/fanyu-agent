@@ -1,4 +1,4 @@
-import ProductUpload from '../ProductUpload';
+import ProductUpload from '@/business-components/ProductUpload';
 import { MAX_MODEL_IMAGES, MODEL_UPLOAD_HINT, MODEL_UPLOAD_SUBTITLE } from '../../constants';
 import type { ProductImageItem } from '../../types';
 

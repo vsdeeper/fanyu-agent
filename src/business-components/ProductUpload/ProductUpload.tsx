@@ -5,13 +5,13 @@ import {
   PRODUCT_IMAGE_ACCEPT,
   UPLOAD_HINT,
   UPLOAD_SUBTITLE,
-} from '../../constants';
-import type { ProductImageItem } from '../../types';
+} from './constants';
+import type { ProductUploadItem } from './types';
 import { interceptLocalFiles } from './utils';
 import styles from './ProductUpload.module.css';
 
 type ProductUploadProps = {
-  images: ProductImageItem[];
+  images: ProductUploadItem[];
   disabled?: boolean;
   onAppend: (files: File[]) => void;
   onRemove: (uid: string) => void;

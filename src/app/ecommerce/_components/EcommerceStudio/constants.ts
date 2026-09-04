@@ -11,8 +11,6 @@ import {
 } from '@/app/api/ecommerce/_shared/constants';
 import { toModelOptions } from './model-options';
 
-export const MAX_PRODUCT_IMAGES = 6;
-
 export const STUDIO_TITLE = '电商设计';
 
 export const STUDIO_SUBTITLE = 'AI 商业分析到设计出图，一站式专业引导';
@@ -69,18 +67,6 @@ export const RESULT_TITLE_DESIGN = '视觉设计';
 export const PRODUCT_STANDARD_BADGE = '产品标准';
 export const VISUAL_STANDARD_BADGE = '视觉标准';
 export const MODEL_STANDARD_BADGE = '模特标准';
-
-export const UPLOAD_SUBTITLE = '上传清晰的产品图片';
-
-export const UPLOAD_HINT = '多图上传时建议仅上传必要的视角或 sku 图，\n干净的白底产品图最佳';
-
-export const MAX_PRODUCT_DOCS = 6;
-export const MAX_PRODUCT_DOC_BYTES = 10 * 1024 * 1024;
-export const PRODUCT_DOC_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,.pdf,.txt,.md,.docx';
-export const PRODUCT_DOC_SUBTITLE = '支持图片、PDF / TXT / MD / DOCX';
-export const PRODUCT_DOC_HINT = '可上传产品说明、卖点清单、品牌资料或参考图';
-export const DOC_TOO_LARGE_WARNING = '单个资料不超过 10MB';
-export const DOC_TYPE_WARNING = '仅支持图片、PDF、TXT、MD、DOCX';
 
 export const MAX_MODEL_IMAGES = 3;
 export const MODEL_UPLOAD_SUBTITLE = '可上传同一模特的不同角度照片';
@@ -144,19 +130,3 @@ export const DEFAULT_DESIGN_FORM_STATE: DesignFormState = {
   clarity: '2K',
   count: '1',
 };
-
-export const PRODUCT_IMAGE_ACCEPT = 'image/*';
-
-export const PRODUCT_DOC_EXT_SET = new Set([
-  'pdf',
-  'txt',
-  'md',
-  'docx',
-  'png',
-  'jpg',
-  'jpeg',
-  'webp',
-  'gif',
-]);
-
-export const PRODUCT_DOC_IMAGE_EXT_SET = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif']);

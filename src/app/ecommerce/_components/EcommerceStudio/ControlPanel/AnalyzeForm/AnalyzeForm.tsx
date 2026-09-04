@@ -1,6 +1,6 @@
 import type { ProductDocItem, ProductImageItem } from '../../types';
-import ProductUpload from '../ProductUpload';
-import ProductDocsUpload from './ProductDocsUpload';
+import ProductDocsUpload from '@/business-components/ProductDocsUpload';
+import ProductUpload from '@/business-components/ProductUpload';
 
 type AnalyzeFormProps = {
   images: ProductImageItem[];

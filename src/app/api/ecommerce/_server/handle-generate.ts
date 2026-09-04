@@ -14,6 +14,8 @@ import {
 import {
   buildDesignPrompt,
   buildModelPrompt,
+  buildProductMultiviewPrompt,
+  buildProductRefinePrompt,
   buildProductViewPrompt,
   buildVisualPrompt,
 } from './generate-instructions';
@@ -22,7 +24,7 @@ import { parseGenerateBody } from './parse-request';
 import { createPushStreamResponse, encodeNdjsonLine, NDJSON_STREAM_HEADERS } from './stream-encode';
 
 /**
- * POST /api/ecommerce/generate：按 kind 出产品多视角、主视觉、模特或视觉设计图，NDJSON 推送每张 data URL。
+ * POST /api/ecommerce/generate：按 kind 出产品精修、多视角、主视觉、模特或视觉设计图，NDJSON 推送每张 data URL。
  */
 export async function handleEcommerceGenerate(req: Request): Promise<Response> {
   let json: unknown;
@@ -37,7 +39,7 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
 
-  if (body.kind === 'productView') {
+  if (body.kind === 'productRefine' || body.kind === 'productView') {
     if (body.images.length === 0) {
       return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_IMAGE, 400);
     }
@@ -59,7 +61,13 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
   const count = body.count;
   let prompt: string;
   let referenceImageDataUrls: string[];
-  if (body.kind === 'productView') {
+  if (body.kind === 'productRefine') {
+    prompt = buildProductRefinePrompt(body.refineRequirement);
+    referenceImageDataUrls = body.images.map((image) => image.dataUrl);
+  } else if (body.kind === 'productMultiview') {
+    prompt = buildProductMultiviewPrompt(body.multiviewRequirement);
+    referenceImageDataUrls = [body.refinedImageDataUrl];
+  } else if (body.kind === 'productView') {
     prompt = buildProductViewPrompt();
     referenceImageDataUrls = body.images.map((image) => image.dataUrl);
   } else if (body.kind === 'visual') {

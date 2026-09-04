@@ -3,6 +3,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Conversations } from '@ant-design/x';
 import type { ConversationItemType } from '@ant-design/x/es/conversations/interface';
 import {
+  BgColorsOutlined,
   DeleteOutlined,
   MenuFoldOutlined,
   MessageOutlined,
@@ -10,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Layout, Typography } from 'antd';
 import { useWorkspace } from '@/components/AppLayout/context';
-import { ECOMMERCE_PATH } from './constants';
+import { ECOMMERCE_PATH, PRODUCT_RETOUCH_PATH } from './constants';
 import { getActiveChatIdFromPathname, getChatGroupLabel } from './utils';
 import type { ChatListItem } from '@/app/api/chats/_shared/types';
 import { apiDelete } from '@/lib/shared/client/api-client';
@@ -29,6 +30,7 @@ export default function Sidebar({ chats }: SidebarProps) {
   const { collapsed, setCollapsed, createChat, busy, anchorChatId } = useWorkspace();
 
   const activeChatId = getActiveChatIdFromPathname(pathname);
+  const isProductRetouch = pathname === PRODUCT_RETOUCH_PATH;
   const isEcommerce = pathname === ECOMMERCE_PATH;
 
   const items = useMemo<ConversationItemType[]>(
@@ -137,6 +139,21 @@ export default function Sidebar({ chats }: SidebarProps) {
         {/* 品牌与「开启新对话」固定；电商入口与会话列表同一滚动区 */}
         <div className={styles.scroll}>
           <div className={styles.nav}>
+            <Button
+              block
+              className={`${styles.navBtn} ${isProductRetouch ? styles.navBtnActive : ''}`}
+              color="default"
+              variant="text"
+              size="medium"
+              icon={<BgColorsOutlined />}
+              aria-current={isProductRetouch ? 'page' : undefined}
+              onClick={() => {
+                if (isProductRetouch) return;
+                goRefresh(PRODUCT_RETOUCH_PATH);
+              }}
+            >
+              产品精修
+            </Button>
             <Button
               block
               className={`${styles.navBtn} ${isEcommerce ? styles.navBtnActive : ''}`}

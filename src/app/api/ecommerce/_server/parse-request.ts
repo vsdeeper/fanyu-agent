@@ -49,6 +49,20 @@ const countSchema = z
   .int()
   .refine((value) => (STUDIO_COUNT_VALUES as readonly number[]).includes(value));
 
+const productRefineGenerateSchema = specFieldsSchema.extend({
+  kind: z.literal('productRefine'),
+  count: countSchema,
+  refineRequirement: z.string().trim().min(1),
+  images: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
+});
+
+const productMultiviewGenerateSchema = specFieldsSchema.extend({
+  kind: z.literal('productMultiview'),
+  count: countSchema,
+  multiviewRequirement: z.string().trim().min(1),
+  refinedImageDataUrl: imageDataUrlSchema,
+});
+
 const productViewGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('productView'),
   count: countSchema,
@@ -93,6 +107,8 @@ const modelHelpWriteBodySchema = z.object({
 
 const generateBodySchema = z
   .discriminatedUnion('kind', [
+    productRefineGenerateSchema,
+    productMultiviewGenerateSchema,
     productViewGenerateSchema,
     visualGenerateSchema,
     modelGenerateSchema,
