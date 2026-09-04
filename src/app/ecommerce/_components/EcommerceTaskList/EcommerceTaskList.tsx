@@ -12,7 +12,7 @@ import {
   TASK_LIST_TITLE,
 } from './constants';
 import TaskFormModal from './TaskFormModal';
-import { useEcommerceTaskList } from './useEcommerceTaskList';
+import { useEcommerceTaskList } from './hooks/useEcommerceTaskList';
 import styles from './EcommerceTaskList.module.css';
 
 /** 电商设计任务列表：查询、新增、改名、删除和进入流程设计。 */

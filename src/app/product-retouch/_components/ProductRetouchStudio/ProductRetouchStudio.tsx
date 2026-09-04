@@ -6,7 +6,7 @@ import { STUDIO_STEP_INDEX, STUDIO_STEPS, STUDIO_SUBTITLE, STUDIO_TITLE } from '
 import CompletionPanel from './CompletionPanel';
 import ControlPanel from './ControlPanel';
 import ResultPanel from './ResultPanel';
-import { useProductRetouchStudio } from './useProductRetouchStudio';
+import { useProductRetouchStudio } from './hooks/useProductRetouchStudio';
 import styles from './ProductRetouchStudio.module.css';
 
 /** 产品精修与多视角生成工作台。 */

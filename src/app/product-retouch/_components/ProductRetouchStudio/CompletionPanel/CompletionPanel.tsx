@@ -9,7 +9,7 @@ import {
   MULTIVIEW_GROUP_TITLE,
   REFINE_GROUP_TITLE,
 } from './constants';
-import { useExportResultImages } from './useExportResultImages';
+import { useExportResultImages } from './hooks/useExportResultImages';
 import { getGeneratedImages } from './utils';
 import styles from './CompletionPanel.module.css';
 

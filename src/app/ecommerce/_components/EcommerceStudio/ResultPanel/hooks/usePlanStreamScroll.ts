@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-import { PLAN_SCROLL_NEAR_BOTTOM_PX } from './constants';
-import { reconcilePlanScrollPin, scrollPlanToBottom } from './utils';
+import { PLAN_SCROLL_NEAR_BOTTOM_PX } from '../constants';
+import { reconcilePlanScrollPin, scrollPlanToBottom } from '../utils';
 
 type FollowState = {
   pinned: boolean;

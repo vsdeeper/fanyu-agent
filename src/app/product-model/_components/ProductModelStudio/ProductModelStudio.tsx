@@ -5,7 +5,7 @@ import ModeSwitch from '@/components/ModeSwitch';
 import { STUDIO_SUBTITLE, STUDIO_TITLE } from './constants';
 import ControlPanel from './ControlPanel';
 import ResultPanel from './ResultPanel';
-import { useProductModelStudio } from './useProductModelStudio';
+import { useProductModelStudio } from './hooks/useProductModelStudio';
 import styles from './ProductModelStudio.module.css';
 
 /** 独立产品模特生成与导出工作台。 */

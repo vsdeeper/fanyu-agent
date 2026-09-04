@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
 import { App } from 'antd';
-import type { DesignResultGroups, StudioResultImage } from '../types';
-import { EXPORT_FAILED } from './constants';
-import { exportResultImages } from './utils';
+import type { DesignResultGroups, StudioResultImage } from '../../types';
+import { EXPORT_FAILED } from '../constants';
+import { exportResultImages } from '../utils';
 
 /** 管理成果 ZIP 导出的进行中状态与失败提示。 */
 export function useExportResultImages(

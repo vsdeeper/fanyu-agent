@@ -8,8 +8,8 @@ import {
   MAX_MODEL_IMAGES,
   NO_IMAGE_WARNING,
   REQUIREMENT_MISSING,
-} from './constants';
-import type { ProductImageItem, ProductModelFormState, ResultImage } from './types';
+} from '../constants';
+import type { ProductImageItem, ProductModelFormState, ResultImage } from '../types';
 import {
   appendImages,
   applyGenerateEvent,
@@ -22,7 +22,7 @@ import {
   removeImage,
   revokeImageUrls,
   toProductModelPayload,
-} from './utils';
+} from '../utils';
 
 /** 管理产品模特工作台的上传、规格、生成结果与导出状态。 */
 export function useProductModelStudio() {

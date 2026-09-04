@@ -16,7 +16,7 @@ import {
 } from './constants';
 import ResultImageGrid from './ResultImageGrid';
 import DesignResultGroupsView from './DesignResultGroups';
-import { usePlanStreamScroll } from './usePlanStreamScroll';
+import { usePlanStreamScroll } from './hooks/usePlanStreamScroll';
 import {
   isDesignResultPhase,
   isNextDisabled,

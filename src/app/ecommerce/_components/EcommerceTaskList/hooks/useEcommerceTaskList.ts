@@ -6,9 +6,9 @@ import type {
   EcommerceTaskListItem,
 } from '@/app/api/ecommerce/_shared/task-types';
 import { apiDelete } from '@/lib/shared/client/api-client';
-import { createTaskColumns } from './columns';
-import { DEFAULT_PAGE_SIZE } from './constants';
-import { getTaskEditorPath, normalizeSearchName, requestEcommerceTasks } from './utils';
+import { createTaskColumns } from '../columns';
+import { DEFAULT_PAGE_SIZE } from '../constants';
+import { getTaskEditorPath, normalizeSearchName, requestEcommerceTasks } from '../utils';
 
 type SearchFormValues = { name?: string };
 

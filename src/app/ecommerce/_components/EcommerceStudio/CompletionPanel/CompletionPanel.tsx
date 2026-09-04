@@ -5,7 +5,7 @@ import type { DesignResultGroups, StudioResultImage } from '../types';
 import DesignResultGroupsView from '../ResultPanel/DesignResultGroups';
 import ResultImageGrid from '../ResultPanel/ResultImageGrid';
 import { COMPLETION_TITLE, EXPORT_BUTTON, VISUAL_GROUP_TITLE } from './constants';
-import { useExportResultImages } from './useExportResultImages';
+import { useExportResultImages } from './hooks/useExportResultImages';
 import { getGeneratedDesignGroups, getGeneratedImages } from './utils';
 import styles from './CompletionPanel.module.css';
 

@@ -8,14 +8,14 @@ import {
   REFINE_RESULT_MISSING,
   REFINE_SELECT_MISSING,
   REQUIREMENT_MISSING,
-} from './constants';
+} from '../constants';
 import type {
   MultiviewFormState,
   ProductImageItem,
   ProductRetouchPhase,
   RefineFormState,
   ResultImage,
-} from './types';
+} from '../types';
 import {
   appendProductImages,
   applyGenerateEvent,
@@ -31,7 +31,7 @@ import {
   revokeProductImageUrls,
   toMultiviewPayload,
   toRefinePayload,
-} from './utils';
+} from '../utils';
 
 /** 管理产品精修三步工作流的表单、选择、请求与结果状态。 */
 export function useProductRetouchStudio() {
