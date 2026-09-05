@@ -1,7 +1,9 @@
 'use client';
 
-import { ReloadOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Button, Card, Form, Input, Layout, Table, Typography } from 'antd';
+import { useRouter } from 'next/navigation';
+import { STUDIO_PATH } from '@/components/AppLayout/constants';
 import ModeSwitch from '@/components/ModeSwitch';
 import {
   CREATE_TASK_BUTTON,
@@ -17,6 +19,7 @@ import styles from './EcommerceTaskList.module.css';
 
 /** 电商设计任务列表：查询、新增、改名、删除和进入流程设计。 */
 export default function EcommerceTaskList() {
+  const router = useRouter();
   const {
     searchForm,
     loading,
@@ -39,6 +42,13 @@ export default function EcommerceTaskList() {
   return (
     <Layout className={styles.page}>
       <Layout.Header className={styles.header}>
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          shape="circle"
+          aria-label="返回工作室"
+          onClick={() => router.push(STUDIO_PATH)}
+        />
         <Typography.Title level={5} className={styles.title}>
           {TASK_LIST_TITLE}
         </Typography.Title>
@@ -46,7 +56,7 @@ export default function EcommerceTaskList() {
         <ModeSwitch />
       </Layout.Header>
       <Layout.Content className={styles.content}>
-        <Card className={styles.searchCard}>
+        <Card className={styles.searchCard} variant="borderless">
           <Form form={searchForm} layout="inline" className={styles.searchForm} onFinish={onSearch}>
             <Form.Item name="name" label={SEARCH_NAME_LABEL}>
               <Input
@@ -63,7 +73,7 @@ export default function EcommerceTaskList() {
             </div>
           </Form>
         </Card>
-        <Card className={styles.tableCard}>
+        <Card className={styles.tableCard} variant="borderless">
           <div className={styles.toolbar}>
             <Button type="primary" onClick={() => setCreateOpen(true)}>
               {CREATE_TASK_BUTTON}

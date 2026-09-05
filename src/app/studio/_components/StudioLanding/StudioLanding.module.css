@@ -1,0 +1,25 @@
+.page {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0 !important;
+  font-weight: normal !important;
+}
+
+.headerSpacer {
+  flex: 1;
+}
+
+.content {
+  overflow: auto;
+  padding: 24px;
+}

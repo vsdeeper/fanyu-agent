@@ -15,7 +15,7 @@ export function getChatGroupLabel(updatedAt: string, now = new Date()): string {
 }
 
 /**
- * 从 pathname 解析当前会话 id。仅 `/chat/[id]` 有值；草稿 /chat 与 /ecommerce 返回空串。
+ * 从 pathname 解析当前会话 id。仅 `/chat/[id]` 有值；草稿 /chat 与非聊天路由（如 /studio）返回空串。
  */
 export function getActiveChatIdFromPathname(pathname: string): string {
   if (!pathname.startsWith(`${CHAT_DRAFT_PATH}/`)) return '';

@@ -3,7 +3,7 @@ import { formatTaskDateTime, getTaskEditorPath, normalizeSearchName } from './ut
 
 describe('getTaskEditorPath', () => {
   it('生成流程设计页地址', () => {
-    expect(getTaskEditorPath({ id: 'task/1' })).toBe('/ecommerce/task%2F1');
+    expect(getTaskEditorPath({ id: 'task/1' })).toBe('/studio/ecommerce/task%2F1');
   });
 });
 

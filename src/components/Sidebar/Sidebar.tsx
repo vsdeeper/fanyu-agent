@@ -3,16 +3,14 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Conversations } from '@ant-design/x';
 import type { ConversationItemType } from '@ant-design/x/es/conversations/interface';
 import {
-  BgColorsOutlined,
+  AppstoreOutlined,
   DeleteOutlined,
   MenuFoldOutlined,
   MessageOutlined,
-  ShoppingOutlined,
-  UserOutlined,
 } from '@ant-design/icons';
 import { Button, Layout, Typography } from 'antd';
 import { useWorkspace } from '@/components/AppLayout/context';
-import { ECOMMERCE_PATH, PRODUCT_MODEL_PATH, PRODUCT_RETOUCH_PATH } from './constants';
+import { STUDIO_PATH } from './constants';
 import { getActiveChatIdFromPathname, getChatGroupLabel } from './utils';
 import type { ChatListItem } from '@/app/api/chats/_shared/types';
 import { apiDelete } from '@/lib/shared/client/api-client';
@@ -31,9 +29,7 @@ export default function Sidebar({ chats }: SidebarProps) {
   const { collapsed, setCollapsed, createChat, busy, anchorChatId } = useWorkspace();
 
   const activeChatId = getActiveChatIdFromPathname(pathname);
-  const isProductRetouch = pathname === PRODUCT_RETOUCH_PATH;
-  const isProductModel = pathname === PRODUCT_MODEL_PATH;
-  const isEcommerce = pathname === ECOMMERCE_PATH || pathname.startsWith(`${ECOMMERCE_PATH}/`);
+  const isStudio = pathname === STUDIO_PATH || pathname.startsWith(`${STUDIO_PATH}/`);
 
   const items = useMemo<ConversationItemType[]>(
     () =>
@@ -138,53 +134,23 @@ export default function Sidebar({ chats }: SidebarProps) {
           </Button>
         </div>
 
-        {/* 品牌与「开启新对话」固定；电商入口与会话列表同一滚动区 */}
+        {/* 品牌与「开启新对话」固定；工作室入口与会话列表同一滚动区 */}
         <div className={styles.scroll}>
           <div className={styles.nav}>
             <Button
               block
-              className={`${styles.navBtn} ${isProductRetouch ? styles.navBtnActive : ''}`}
+              className={`${styles.navBtn} ${isStudio ? styles.navBtnActive : ''}`}
               color="default"
               variant="text"
               size="medium"
-              icon={<BgColorsOutlined />}
-              aria-current={isProductRetouch ? 'page' : undefined}
+              icon={<AppstoreOutlined />}
+              aria-current={isStudio ? 'page' : undefined}
               onClick={() => {
-                if (isProductRetouch) return;
-                goRefresh(PRODUCT_RETOUCH_PATH);
+                if (isStudio) return;
+                goRefresh(STUDIO_PATH);
               }}
             >
-              产品精修
-            </Button>
-            <Button
-              block
-              className={`${styles.navBtn} ${isProductModel ? styles.navBtnActive : ''}`}
-              color="default"
-              variant="text"
-              size="medium"
-              icon={<UserOutlined />}
-              aria-current={isProductModel ? 'page' : undefined}
-              onClick={() => {
-                if (isProductModel) return;
-                goRefresh(PRODUCT_MODEL_PATH);
-              }}
-            >
-              产品模特
-            </Button>
-            <Button
-              block
-              className={`${styles.navBtn} ${isEcommerce ? styles.navBtnActive : ''}`}
-              color="default"
-              variant="text"
-              size="medium"
-              icon={<ShoppingOutlined />}
-              aria-current={isEcommerce ? 'page' : undefined}
-              onClick={() => {
-                if (pathname === ECOMMERCE_PATH) return;
-                goRefresh(ECOMMERCE_PATH);
-              }}
-            >
-              电商设计
+              工作室
             </Button>
           </div>
 

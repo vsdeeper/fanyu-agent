@@ -5,6 +5,7 @@ import { ArrowLeftOutlined } from '@ant-design/icons';
 import { App, Button, Layout, Steps, Tag, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import type { EcommerceTaskDetail } from '@/app/api/ecommerce/_shared/task-types';
+import { ECOMMERCE_PATH } from '@/components/AppLayout/constants';
 import ModeSwitch from '@/components/ModeSwitch';
 import CompletionPanel from './CompletionPanel';
 import ControlPanel from './ControlPanel';
@@ -486,7 +487,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
           type="text"
           icon={<ArrowLeftOutlined />}
           aria-label="返回电商设计任务列表"
-          onClick={() => router.push('/ecommerce')}
+          onClick={() => router.push(ECOMMERCE_PATH)}
         />
         <div className={styles.brand}>
           <Typography.Title level={5} className={styles.title} ellipsis>

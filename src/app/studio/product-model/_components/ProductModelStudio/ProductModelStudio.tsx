@@ -1,8 +1,11 @@
 'use client';
 
-import { Layout, Typography } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Button, Layout, Typography } from 'antd';
+import { useRouter } from 'next/navigation';
+import { STUDIO_PATH } from '@/components/AppLayout/constants';
 import ModeSwitch from '@/components/ModeSwitch';
-import { STUDIO_SUBTITLE, STUDIO_TITLE } from './constants';
+import { STUDIO_TITLE } from './constants';
 import ControlPanel from './ControlPanel';
 import ResultPanel from './ResultPanel';
 import { useProductModelStudio } from './hooks/useProductModelStudio';
@@ -10,17 +13,22 @@ import styles from './ProductModelStudio.module.css';
 
 /** 独立产品模特生成与导出工作台。 */
 export default function ProductModelStudio() {
+  const router = useRouter();
   const studio = useProductModelStudio();
   return (
     <Layout className={styles.studio}>
       <Layout.Header className={styles.header}>
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          shape="circle"
+          aria-label="返回工作室"
+          onClick={() => router.push(STUDIO_PATH)}
+        />
         <div className={styles.brand}>
           <Typography.Title level={5} className={styles.title} ellipsis>
             {STUDIO_TITLE}
           </Typography.Title>
-          <Typography.Text className={styles.subtitle} ellipsis>
-            {STUDIO_SUBTITLE}
-          </Typography.Text>
         </div>
         <div className={styles.headerSpacer} />
         <ModeSwitch />

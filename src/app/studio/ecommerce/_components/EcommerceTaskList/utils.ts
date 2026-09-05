@@ -2,6 +2,7 @@ import type {
   EcommerceTaskDetail,
   EcommerceTaskListData,
 } from '@/app/api/ecommerce/_shared/task-types';
+import { ECOMMERCE_PATH } from '@/components/AppLayout/constants';
 import { apiGet } from '@/lib/shared/client/api-client';
 import { DEFAULT_PAGE_SIZE } from './constants';
 
@@ -24,7 +25,7 @@ export async function requestEcommerceTasks(params: {
 
 /** 构造流程设计页地址。 */
 export function getTaskEditorPath(task: Pick<EcommerceTaskDetail, 'id'>): string {
-  return `/ecommerce/${encodeURIComponent(task.id)}`;
+  return `${ECOMMERCE_PATH}/${encodeURIComponent(task.id)}`;
 }
 
 /** 将 ISO 时间转为本地 `YYYY-MM-DD HH:mm:ss`；无法解析则原样返回。 */
