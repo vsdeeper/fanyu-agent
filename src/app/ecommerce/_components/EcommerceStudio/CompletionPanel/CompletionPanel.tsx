@@ -1,7 +1,8 @@
 import { DownloadOutlined, FileTextOutlined, StarOutlined } from '@ant-design/icons';
 import { Button, Empty, Typography } from 'antd';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import FileCard from '@/components/FileCard';
+import AnalysisPreview from './AnalysisPreview';
 import { PREV_BUTTON } from '../constants';
 import type { DesignResultGroups, StudioResultImage } from '../types';
 import DesignResultGroupsView from '../ResultPanel/DesignResultGroups';
@@ -37,6 +38,7 @@ export default function CompletionPanel({
   const designResults = getGeneratedDesignGroups(designResultGroups);
   const hasDesignResults = Object.keys(designResults).length > 0;
   const hasResults = visualResults.length > 0 || hasDesignResults;
+  const [open, setOpen] = useState(false);
   const { exporting, handleExport } = useExportResultImages(
     visualResults,
     designResults,
@@ -66,17 +68,26 @@ export default function CompletionPanel({
         {hasResults || analysisFile ? (
           <div className={styles.groups}>
             {analysisFile ? (
-              <section className={styles.group}>
-                <Typography.Title level={5} className={styles.title}>
-                  {ANALYSIS_GROUP_TITLE}
-                </Typography.Title>
-                <FileCard
+              <>
+                <section className={styles.group}>
+                  <Typography.Title level={5} className={styles.title}>
+                    {ANALYSIS_GROUP_TITLE}
+                  </Typography.Title>
+                  <FileCard
+                    fileName={ANALYSIS_FILE_NAME}
+                    byteSize={analysisFile.byteSize}
+                    href={analysisFile.href}
+                    icon={<FileTextOutlined />}
+                    onPreview={() => setOpen(true)}
+                  />
+                </section>
+                <AnalysisPreview
+                  open={open}
+                  onClose={() => setOpen(false)}
                   fileName={ANALYSIS_FILE_NAME}
-                  byteSize={analysisFile.byteSize}
-                  href={analysisFile.href}
-                  icon={<FileTextOutlined />}
+                  analysisText={analysisText}
                 />
-              </section>
+              </>
             ) : null}
             {visualResults.length > 0 ? (
               <section className={styles.group}>
