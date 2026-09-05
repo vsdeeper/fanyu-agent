@@ -1,6 +1,7 @@
 import { requireEnv } from '@/lib/shared/server/env';
 import {
   buildImagePrompt,
+  createRequestAbortSignal,
   decodeBase64Image,
   downloadImage,
   readImageDimensions,
@@ -28,8 +29,10 @@ const SUPPORTED_ASPECT_RATIOS = IMAGE_ASPECT_RATIOS as readonly string[];
  * 兜底下载外链再转 base64。
  */
 async function toInlineData(source: string): Promise<{ mime_type?: string; data?: string }> {
-  const m = /^data:([^;,]+)?;base64,(.+)$/.exec(source);
-  if (m) return { mime_type: m[1] || 'image/jpeg', data: m[2] };
+  // 修复：勿改回 (.+)$——贪婪量词跨多 MB base64 会撑爆 V8 正则栈（Maximum call stack size exceeded）。
+  // 只匹配前缀，payload 用 slice 截取，避免跨超大 payload 做量词回溯。
+  const m = /^data:([^;,]+)?;base64,/.exec(source);
+  if (m) return { mime_type: m[1] || 'image/jpeg', data: source.slice(m[0].length) };
   const { bytes, mimeType } = await downloadImage(source);
   return { mime_type: mimeType, data: Buffer.from(bytes).toString('base64') };
 }
@@ -77,8 +80,11 @@ const OPENAI_IMAGE_MODELS = new Set(['gpt-image-2-vip']);
 
 /** 参考图源 → { bytes, mimeType }：data URL 主路径解码，兜底下载外链。 */
 async function toSourceBytes(source: string): Promise<{ bytes: Uint8Array; mimeType: string }> {
-  const m = /^data:([^;,]+)?;base64,(.+)$/.exec(source);
-  if (m) return { bytes: decodeBase64Image(m[2]), mimeType: m[1] || 'image/jpeg' };
+  // 修复：勿改回 (.+)$——贪婪量词跨多 MB base64 会撑爆 V8 正则栈（Maximum call stack size exceeded）。
+  // 只匹配前缀，payload 用 slice 截取，避免跨超大 payload 做量词回溯。
+  const m = /^data:([^;,]+)?;base64,/.exec(source);
+  if (m)
+    return { bytes: decodeBase64Image(source.slice(m[0].length)), mimeType: m[1] || 'image/jpeg' };
   return downloadImage(source);
 }
 
@@ -142,6 +148,7 @@ async function generateOpenAIImage(
 
   const target = req.mode === 'edit' ? `${baseURL}/images/edits` : `${baseURL}/images/generations`;
 
+  const requestSignal = createRequestAbortSignal(req.abortSignal);
   const doFetch = async (payload: { body: BodyInit; contentType?: string }) => {
     const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}` };
     // multipart（FormData）由 fetch 自动带 boundary，勿手设 Content-Type；仅 JSON 分支设置。
@@ -150,9 +157,7 @@ async function generateOpenAIImage(
       method: 'POST',
       headers,
       body: payload.body,
-      signal: req.abortSignal
-        ? AbortSignal.any([req.abortSignal, AbortSignal.timeout(300_000)])
-        : AbortSignal.timeout(300_000),
+      signal: requestSignal,
     });
     let payloadJson: OpenAIImageResponse = {};
     try {
@@ -203,7 +208,7 @@ async function generateOpenAIImage(
         return { bytes, mimeType: sniffImageMime(bytes) };
       }
       if (item.url) {
-        return downloadImage(item.url);
+        return downloadImage(item.url, requestSignal);
       }
       throw new Error('老张生图结果格式无效');
     }),
@@ -249,6 +254,7 @@ export const laozhangProvider: ImageProvider = {
     // 生成/改图统一：参考图逐个追加 inline_data 段（Gemini generateContent 支持多图输入），无则仅文本。
     // req.mode 已由 router 按能力校验；edit 才带上参考图，generate 保持纯文本。
     const refs = req.mode === 'edit' ? (req.referenceImageDataUrls ?? []) : [];
+    const requestSignal = createRequestAbortSignal(req.abortSignal);
 
     const buildBody = async (sources: string[]) => {
       const parts: GeminiRequestPart[] = [{ text: buildImagePrompt(req.prompt, req.transparent) }];
@@ -276,10 +282,8 @@ export const laozhangProvider: ImageProvider = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(candidateBody),
-        // 生图耗时长，显式设置 5 分钟超时，避免缺省 fetch 无限等待。
-        signal: req.abortSignal
-          ? AbortSignal.any([req.abortSignal, AbortSignal.timeout(300_000)])
-          : AbortSignal.timeout(300_000),
+        // 生图耗时长，显式设置 5 分钟超时；signal 复用 requestSignal，避免缺省 fetch 无限等待。
+        signal: requestSignal,
       });
       let payload: GeminiGenerateResponse = {};
       try {

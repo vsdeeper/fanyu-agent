@@ -1,5 +1,11 @@
 import { requireEnv } from '@/lib/shared/server/env';
-import { buildImagePrompt, decodeBase64Image, downloadImage, sniffImageMime } from '../image-utils';
+import {
+  buildImagePrompt,
+  createRequestAbortSignal,
+  decodeBase64Image,
+  downloadImage,
+  sniffImageMime,
+} from '../image-utils';
 import type { ImageProvider } from '../types';
 import { getImageSpec, resolveOutboundImageSize } from '../image-spec';
 
@@ -42,10 +48,8 @@ export const arkSeedreamProvider: ImageProvider = {
       body.image = refs;
     }
 
+    const requestSignal = createRequestAbortSignal(req.abortSignal);
     const doFetch = async (candidateBody: Record<string, unknown>) => {
-      const signal = req.abortSignal
-        ? AbortSignal.any([req.abortSignal, AbortSignal.timeout(300_000)])
-        : AbortSignal.timeout(300_000);
       const response = await fetch(`${baseURL}/images/generations`, {
         method: 'POST',
         headers: {
@@ -53,7 +57,7 @@ export const arkSeedreamProvider: ImageProvider = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(candidateBody),
-        signal,
+        signal: requestSignal,
       });
       // 错误体可能非 JSON（如 502 网关 HTML）；parse 失败降级为空，勿让上游文案抛穿降级分支
       let payload: ArkImageResponse = {};
@@ -107,7 +111,7 @@ export const arkSeedreamProvider: ImageProvider = {
           return { bytes, mimeType: sniffImageMime(bytes) };
         }
         if (item.url) {
-          return downloadImage(item.url);
+          return downloadImage(item.url, requestSignal);
         }
         throw new Error('方舟生图结果格式无效');
       }),
