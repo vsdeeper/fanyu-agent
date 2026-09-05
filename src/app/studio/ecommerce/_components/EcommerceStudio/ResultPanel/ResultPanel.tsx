@@ -40,6 +40,7 @@ type ResultPanelProps = {
   designResultGroups: DesignResultGroups;
   expectedVisualCount: number;
   selectedVisualIndex: number | null;
+  nextLoading: boolean;
   onSelectVisual: (index: number) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -59,6 +60,7 @@ export default function ResultPanel({
   designResultGroups,
   expectedVisualCount,
   selectedVisualIndex,
+  nextLoading,
   onSelectVisual,
   onPrev,
   onNext,
@@ -189,7 +191,13 @@ export default function ResultPanel({
             {PREV_BUTTON}
           </Button>
         ) : null}
-        <Button size="large" type="primary" disabled={nextDisabled} onClick={onNext}>
+        <Button
+          size="large"
+          type="primary"
+          loading={nextLoading}
+          disabled={nextDisabled}
+          onClick={onNext}
+        >
           {phase === 'design' ? COMPLETE_BUTTON : NEXT_BUTTON}
         </Button>
       </div>

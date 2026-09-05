@@ -106,11 +106,14 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const [selectedVisualIndex, setSelectedVisualIndex] = useState<number | null>(
     initialVisual?.selectedVisualIndex ?? null,
   );
+  const [nextLoading, setNextLoading] = useState(false);
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
   const imagesRef = useRef(images);
   const documentsRef = useRef(documents);
   const modelImagesRef = useRef(modelImages);
   const abortRef = useRef<AbortController | null>(null);
+  // 标记本会话是否重跑过分析：仅此时提交才使旧下游视觉/设计失效，避免「打开已有任务直接下一步」误删
+  const analysisDirtyRef = useRef(false);
 
   useEffect(() => {
     imagesRef.current = images;
@@ -173,10 +176,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       });
       await assertOkOrJsonFail(res);
       let receivedDone = false;
-      let streamedText = '';
       await consumeAnalyzeSse(res, {
         onText: (delta) => {
-          streamedText += delta;
           analysisBuffer.append(delta);
         },
         onDone: () => {
@@ -192,17 +193,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         return;
       }
       if (receivedDone) {
-        const snapshot = await createAnalysisStepSnapshot(images, documents, streamedText);
-        const saved = await saveStudioStep(task.id, 'analysis', snapshot);
-        setImages(saved.images);
-        setDocuments(saved.documents);
-        setAnalysisText(saved.analysisText);
-        await Promise.all([
-          deleteStudioStep(task.id, 'visual'),
-          deleteStudioStep(task.id, 'design'),
-        ]);
+        // 分析仅产出右侧栏正文，落库收敛到下一步/完成；标记本会话重跑过分析
         revokeProductImageUrls(modelImagesRef.current);
         setModelImages([]);
+        analysisDirtyRef.current = true;
         setPhase('analyzed');
         return;
       }
@@ -217,17 +211,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [
-    abortCurrent,
-    analysisBuffer,
-    documents,
-    images,
-    message,
-    setDocuments,
-    setImages,
-    setModelImages,
-    task.id,
-  ]);
+  }, [abortCurrent, analysisBuffer, documents, images, message, setModelImages]);
 
   const handleGenerateVisual = useCallback(async () => {
     if (images.length === 0) {
@@ -266,14 +250,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         setVisualImages(visualImages);
         return;
       }
-      if (nextVisualImages.slice(batchStartIndex).some((image) => image.status === 'ready')) {
-        const saved = await saveStudioStep(task.id, 'visual', {
-          form,
-          visualImages: nextVisualImages,
-          selectedVisualIndex,
-        });
-        setVisualImages(saved.visualImages);
-      }
+      // 生成仅产出右侧栏结果，落库收敛到下一步/完成
       setPhase('visual');
     } catch (err) {
       if (isAbortError(err) || controller.signal.aborted) {
@@ -286,16 +263,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [
-    abortCurrent,
-    analysisText,
-    form,
-    images,
-    message,
-    selectedVisualIndex,
-    task.id,
-    visualImages,
-  ]);
+  }, [abortCurrent, analysisText, form, images, message, visualImages]);
 
   const handleGenerateDesign = useCallback(async () => {
     if (!analysisText.trim()) {
@@ -358,20 +326,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         setDesignResultGroups(designResultGroups);
         return;
       }
-      if (
-        (nextDesignResultGroups[designType] ?? [])
-          .slice(batchStartIndex)
-          .some((image) => image.status === 'ready')
-      ) {
-        const saved = await saveStudioStep(
-          task.id,
-          'design',
-          await createDesignStepSnapshot(nextDesignForm, nextDesignResultGroups, modelImages),
-        );
-        setDesignForm(saved.form);
-        setDesignResultGroups(saved.designResultGroups);
-        setModelImages(saved.modelImages);
-      }
+      // 生成仅产出右侧栏结果，落库收敛到下一步/完成；poster 覆盖需回写表单
+      setDesignForm(nextDesignForm);
       setPhase('design');
     } catch (err) {
       if (isAbortError(err) || controller.signal.aborted) {
@@ -395,8 +351,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     modelImages,
     selectedVisualIndex,
     setDesignForm,
-    setModelImages,
-    task.id,
     task.taskType,
     visualImages,
   ]);
@@ -443,18 +397,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     [setModelImages],
   );
 
-  const handleSelectVisual = useCallback(
-    async (index: number) => {
-      setSelectedVisualIndex(index);
-      const saved = await saveStudioStep(task.id, 'visual', {
-        form,
-        visualImages,
-        selectedVisualIndex: index,
-      });
-      setVisualImages(saved.visualImages);
-    },
-    [form, task.id, visualImages],
-  );
+  const handleSelectVisual = useCallback((index: number) => {
+    // 点选视觉图仅更新交互态，落库收敛到下一步/完成
+    setSelectedVisualIndex(index);
+  }, []);
 
   const handlePrev = useCallback(() => {
     if (phase === 'analyzing' || phase === 'visualGenerating' || phase === 'designGenerating') {
@@ -463,7 +409,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setPhase((current) => phaseAfterPrev(current));
   }, [abortCurrent, phase]);
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (phase === 'visual' && selectedVisualIndex === null) {
       message.warning(VISUAL_SELECT_MISSING);
       return;
@@ -477,8 +423,71 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       message.warning(isPosterTask(task.taskType) ? POSTER_RESULT_MISSING : DESIGN_RESULT_MISSING);
       return;
     }
+    // 下一步/完成即提交：把当前步骤左栏 + 右栏整体落库；失败不阻断跳步
+    setNextLoading(true);
+    try {
+      if (phase === 'analyzed') {
+        const snapshot = await createAnalysisStepSnapshot(images, documents, analysisText);
+        const saved = await saveStudioStep(task.id, 'analysis', snapshot);
+        setImages(saved.images);
+        setDocuments(saved.documents);
+        setAnalysisText(saved.analysisText);
+        // 仅本会话重跑过分析才使旧下游视觉/设计失效，避免误删已提交结果
+        if (analysisDirtyRef.current) {
+          await Promise.all([
+            deleteStudioStep(task.id, 'visual'),
+            deleteStudioStep(task.id, 'design'),
+          ]);
+          analysisDirtyRef.current = false;
+        }
+      } else if (phase === 'visual') {
+        const saved = await saveStudioStep(task.id, 'visual', {
+          form,
+          visualImages,
+          selectedVisualIndex,
+        });
+        setForm(saved.form);
+        setVisualImages(saved.visualImages);
+      } else if (phase === 'design') {
+        const saved = await saveStudioStep(
+          task.id,
+          'design',
+          await createDesignStepSnapshot(designForm, designResultGroups, modelImages),
+        );
+        setDesignForm(saved.form);
+        setDesignResultGroups(saved.designResultGroups);
+        setModelImages(saved.modelImages);
+      }
+    } catch (err) {
+      console.error('[ecommerce-studio] persist step on next', err);
+    } finally {
+      setNextLoading(false);
+    }
     setPhase((current) => phaseAfterNext(current));
-  }, [designResultGroups, message, phase, selectedVisualIndex, task.taskType]);
+  }, [
+    analysisText,
+    designForm,
+    designResultGroups,
+    documents,
+    form,
+    images,
+    message,
+    modelImages,
+    phase,
+    selectedVisualIndex,
+    setAnalysisText,
+    setDesignForm,
+    setDesignResultGroups,
+    setDocuments,
+    setForm,
+    setImages,
+    setModelImages,
+    setNextLoading,
+    setVisualImages,
+    task.id,
+    task.taskType,
+    visualImages,
+  ]);
 
   return (
     <Layout className={styles.studio}>
@@ -547,6 +556,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 designResultGroups={designResultGroups}
                 expectedVisualCount={expectedVisualCount}
                 selectedVisualIndex={selectedVisualIndex}
+                nextLoading={nextLoading}
                 onSelectVisual={handleSelectVisual}
                 onPrev={handlePrev}
                 onNext={handleNext}
