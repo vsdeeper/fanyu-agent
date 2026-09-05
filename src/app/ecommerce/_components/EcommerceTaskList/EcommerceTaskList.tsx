@@ -1,6 +1,6 @@
 'use client';
 
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import { Button, Card, Form, Input, Layout, Table, Typography } from 'antd';
 import ModeSwitch from '@/components/ModeSwitch';
 import {
@@ -65,7 +65,7 @@ export default function EcommerceTaskList() {
         </Card>
         <Card className={styles.tableCard}>
           <div className={styles.toolbar}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+            <Button type="primary" onClick={() => setCreateOpen(true)}>
               {CREATE_TASK_BUTTON}
             </Button>
             <Button
