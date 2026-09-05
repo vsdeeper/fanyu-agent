@@ -115,12 +115,8 @@
           "name": "ecommerce_task_assets_task_id_ecommerce_tasks_id_fk",
           "tableFrom": "ecommerce_task_assets",
           "tableTo": "ecommerce_tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -181,22 +177,15 @@
           "name": "ecommerce_task_steps_task_id_ecommerce_tasks_id_fk",
           "tableFrom": "ecommerce_task_steps",
           "tableTo": "ecommerce_tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "ecommerce_task_steps_task_id_step_key_pk": {
-          "columns": [
-            "task_id",
-            "step_key"
-          ],
+          "columns": ["task_id", "step_key"],
           "name": "ecommerce_task_steps_task_id_step_key_pk"
         }
       },
@@ -321,12 +310,8 @@
           "name": "image_assets_chat_id_chats_id_fk",
           "tableFrom": "image_assets",
           "tableTo": "chats",
-          "columnsFrom": [
-            "chat_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chat_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -380,12 +365,8 @@
           "name": "messages_chat_id_chats_id_fk",
           "tableFrom": "messages",
           "tableTo": "chats",
-          "columnsFrom": [
-            "chat_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chat_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
