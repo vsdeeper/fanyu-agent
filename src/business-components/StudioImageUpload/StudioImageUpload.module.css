@@ -240,3 +240,19 @@
   cursor: not-allowed;
   opacity: 0.55;
 }
+
+/* 预览弹层用透明棋盘格底：上传的产品图多为白底，纯白预览下看不清边界。 */
+.previewBody :global(.ant-image-preview-img) {
+  background-color: var(--one-color-fill-quaternary);
+  background-image:
+    linear-gradient(45deg, var(--one-color-fill-secondary) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--one-color-fill-secondary) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--one-color-fill-secondary) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--one-color-fill-secondary) 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+}
