@@ -68,7 +68,7 @@ export default function DesignForm({
         </label>
         {poster ? (
           <label className={styles.field}>
-            <span className={styles.label}>尺寸比例</span>
+            <span className={styles.label}>比例</span>
             <Select
               value={form.aspectRatio}
               options={ASPECT_RATIO_OPTIONS}

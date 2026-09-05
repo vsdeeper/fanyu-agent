@@ -8,7 +8,6 @@ import {
   INVALID_JSON,
   MISSING_ANALYSIS,
   MISSING_PRODUCT_IMAGE,
-  MISSING_PRODUCT_VIEW,
   MISSING_VISUAL,
 } from './constants';
 import {
@@ -51,8 +50,8 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
   }
 
   if (body.kind === 'visual') {
-    if (!body.productViewDataUrl.trim()) {
-      return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_VIEW, 400);
+    if (body.productViewImages.length === 0) {
+      return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_IMAGE, 400);
     }
     if (!body.analysisText.trim()) {
       return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_ANALYSIS, 400);
@@ -87,7 +86,7 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
     ];
   } else if (body.kind === 'visual') {
     prompt = buildVisualPrompt(body.analysisText);
-    referenceImageDataUrls = [body.productViewDataUrl];
+    referenceImageDataUrls = body.productViewImages.map((image) => image.dataUrl);
   } else if (body.kind === 'model') {
     prompt = buildModelPrompt(body.modelRequirement, (body.modelImages?.length ?? 0) > 0);
     referenceImageDataUrls = [
@@ -102,7 +101,7 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
       body.includeModel,
     );
     referenceImageDataUrls = [
-      body.productViewDataUrl,
+      ...body.productViewImages.map((image) => image.dataUrl),
       ...(body.visualDataUrl ? [body.visualDataUrl] : []),
       ...(body.modelDataUrl ? [body.modelDataUrl] : []),
       ...(body.modelImages?.map((image) => image.dataUrl) ?? []),

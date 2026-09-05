@@ -21,7 +21,7 @@ export const VISUAL_AD_PROMPT_GUARD =
 
 export const MAX_STUDIO_PRODUCT_IMAGES = 6;
 export const MAX_STUDIO_PRODUCT_DOCS = 6;
-export const MAX_STUDIO_MODEL_IMAGES = 3;
+export const MAX_STUDIO_MODEL_IMAGES = 1;
 export const MAX_STUDIO_DOCUMENT_BYTES = 10 * 1024 * 1024;
 export const DOCX_MEDIA_TYPE =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document';

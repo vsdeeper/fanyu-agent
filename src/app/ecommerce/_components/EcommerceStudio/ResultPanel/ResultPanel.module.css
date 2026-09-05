@@ -80,6 +80,25 @@
   line-height: 1.7;
 }
 
+/* 主视觉结果按比例二级分类：可多组纵向排列 */
+.resultGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.resultGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ratioTitle {
+  color: var(--one-color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .footer {
   flex-shrink: 0;
   display: flex;

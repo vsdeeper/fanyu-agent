@@ -53,7 +53,6 @@ import {
   removeProductImage,
   readAnalysisStepSnapshot,
   readDesignStepSnapshot,
-  readUploadItemAsDataUrl,
   readUrlAsDataUrl,
   readVisualStepSnapshot,
   revokeProductDocUrls,
@@ -231,8 +230,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   ]);
 
   const handleGenerateVisual = useCallback(async () => {
-    const productImage = images[0];
-    if (!productImage) {
+    if (images.length === 0) {
       message.warning(NO_IMAGE_WARNING);
       return;
     }
@@ -255,9 +253,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       const res = await fetch('/api/ecommerce/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          toVisualGeneratePayload(form, analysisText, await readUploadItemAsDataUrl(productImage)),
-        ),
+        body: JSON.stringify(await toVisualGeneratePayload(form, analysisText, images)),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);
@@ -305,8 +301,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       message.warning(ANALYSIS_MISSING);
       return;
     }
-    const productImage = images[0];
-    if (!productImage) {
+    if (images.length === 0) {
       message.warning(NO_IMAGE_WARNING);
       return;
     }
@@ -337,10 +332,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
-          toDesignGeneratePayload(
+          await toDesignGeneratePayload(
             nextDesignForm,
             analysisText,
-            await readUploadItemAsDataUrl(productImage),
+            images,
             visualDataUrl ? await readUrlAsDataUrl(visualDataUrl) : null,
             await toAnalyzeImages(modelImages),
           ),
@@ -507,7 +502,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         <div className={styles.workspace}>
           {phase === 'complete' ? (
             <CompletionPanel
-              taskType={task.taskType}
+              analysisText={analysisText}
               visualImages={visualImages}
               designResultGroups={designResultGroups}
               onPrev={handlePrev}
@@ -543,7 +538,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 visualImages={visualImages}
                 designResultGroups={designResultGroups}
                 expectedVisualCount={expectedVisualCount}
-                visualAspectRatio={form.aspectRatio}
                 selectedVisualIndex={selectedVisualIndex}
                 onSelectVisual={handleSelectVisual}
                 onPrev={handlePrev}

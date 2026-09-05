@@ -78,12 +78,12 @@ export type EcommerceProductModelGenerateRequest = EcommerceGenerateBase & {
   modelImages?: EcommerceImageInput[];
 };
 
-/** 营销主视觉：表单规格 + 商业分析 + 选中产品多视角图 */
+/** 营销主视觉：表单规格 + 商业分析 + 上一步全部产品图 */
 export type EcommerceVisualGenerateRequest = EcommerceGenerateBase & {
   kind: 'visual';
   count: number;
   analysisText: string;
-  productViewDataUrl: string;
+  productViewImages: EcommerceImageInput[];
 };
 
 /** 产品模特：本步表单 + 选中主视觉 + 可选模特形象；不传分析/产品图 */
@@ -95,7 +95,7 @@ export type EcommerceModelGenerateRequest = EcommerceGenerateBase & {
   modelImages?: EcommerceImageInput[];
 };
 
-/** 视觉设计：表单配置 + 分析结果 + 产品标准图 + 开关控制的视觉/模特标准图；营销海报可附带可选模特形象 */
+/** 视觉设计：表单配置 + 分析结果 + 全部产品图 + 开关控制的视觉/模特标准图；营销海报可附带可选模特形象 */
 export type EcommerceDesignGenerateRequest = EcommerceGenerateBase & {
   kind: 'design';
   count: number;
@@ -103,7 +103,7 @@ export type EcommerceDesignGenerateRequest = EcommerceGenerateBase & {
   referenceVisual: boolean;
   includeModel: boolean;
   analysisText: string;
-  productViewDataUrl: string;
+  productViewImages: EcommerceImageInput[];
   visualDataUrl?: string;
   modelDataUrl?: string;
   modelImages?: EcommerceImageInput[];

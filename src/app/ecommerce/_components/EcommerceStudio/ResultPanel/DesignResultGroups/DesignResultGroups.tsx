@@ -2,6 +2,7 @@ import { Typography } from 'antd';
 import { ECOMMERCE_DESIGN_TYPES } from '@/app/api/ecommerce/_shared/constants';
 import type { DesignResultGroups as DesignResultGroupsState } from '../../types';
 import ResultImageGrid from '../ResultImageGrid';
+import { groupResultImagesByRatio } from '../utils';
 import styles from './DesignResultGroups.module.css';
 
 type DesignResultGroupsProps = {
@@ -11,7 +12,7 @@ type DesignResultGroupsProps = {
 };
 
 /**
- * 按设计类型稳定排序展示视觉设计结果，各组内部保留连续生成的全部批次。
+ * 按设计类型稳定排序展示视觉设计结果，各组内再按比例拆成二级分类；保留连续生成的全部批次。
  */
 export default function DesignResultGroups({ groups, showTitles = true }: DesignResultGroupsProps) {
   return (
@@ -26,11 +27,16 @@ export default function DesignResultGroups({ groups, showTitles = true }: Design
                 {designType}
               </Typography.Title>
             ) : null}
-            <ResultImageGrid
-              images={images}
-              expectedCount={images.length}
-              aspectRatio={images[0]?.aspectRatio ?? '1:1'}
-            />
+            {groupResultImagesByRatio(images).map(({ aspectRatio, images: ratioImages }) => (
+              <section key={aspectRatio} className={styles.ratioGroup}>
+                <Typography.Text className={styles.ratioTitle}>{aspectRatio}</Typography.Text>
+                <ResultImageGrid
+                  images={ratioImages}
+                  expectedCount={ratioImages.length}
+                  aspectRatio={aspectRatio}
+                />
+              </section>
+            ))}
           </section>
         );
       })}

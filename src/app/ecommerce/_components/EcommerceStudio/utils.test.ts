@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_DESIGN_FORM_STATE } from './constants';
-import { isNextDisabled } from './ResultPanel/utils';
-import type { StudioResultImage } from './types';
+import { DEFAULT_DESIGN_FORM_STATE, DEFAULT_FORM_STATE } from './constants';
+import { groupResultImagesByRatio, isNextDisabled } from './ResultPanel/utils';
+import type { ProductImageItem, StudioResultImage } from './types';
 import {
   appendPendingDesignImages,
   appendProductDocs,
@@ -16,7 +16,17 @@ import {
   readVisualStepSnapshot,
   resolveInitialStudioPhase,
   toDesignGeneratePayload,
+  toVisualGeneratePayload,
 } from './utils';
+
+/** 生成一个可序列化的产品图（无 file，previewUrl 为 data URL，直接被 readUrlAsDataUrl 原样返回）。 */
+const IMAGE_ITEM = (uid: string, name: string): ProductImageItem => ({
+  uid,
+  previewUrl: 'data:image/png;base64,product',
+  name,
+  mimeType: 'image/png',
+  size: 0,
+});
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -97,44 +107,52 @@ describe('applyGenerateEvent', () => {
 });
 
 describe('视觉设计请求体', () => {
-  it('固定传分析与产品图，并按开关传主视觉', () => {
-    expect(
-      toDesignGeneratePayload(
-        DEFAULT_DESIGN_FORM_STATE,
-        ' 商业分析 ',
-        'data:image/png;base64,product',
-        'data:image/png;base64,visual',
-      ),
-    ).toMatchObject({
+  it('固定传分析与全部产品图，并按开关传主视觉', async () => {
+    const payload = await toDesignGeneratePayload(
+      DEFAULT_DESIGN_FORM_STATE,
+      ' 商业分析 ',
+      [IMAGE_ITEM('p-1', 'product.png')],
+      'data:image/png;base64,visual',
+    );
+
+    expect(payload).toMatchObject({
       kind: 'design',
       designType: '主图',
       referenceVisual: true,
       includeModel: false,
       analysisText: '商业分析',
-      productViewDataUrl: 'data:image/png;base64,product',
       visualDataUrl: 'data:image/png;base64,visual',
+    });
+    expect(payload).toMatchObject({
+      productViewImages: [
+        {
+          filename: 'product.png',
+          mediaType: 'image/png',
+          dataUrl: 'data:image/png;base64,product',
+        },
+      ],
     });
   });
 
-  it('关闭开关时省略主视觉参考图', () => {
-    const payload = toDesignGeneratePayload(
+  it('关闭开关时省略主视觉参考图', async () => {
+    const payload = await toDesignGeneratePayload(
       { ...DEFAULT_DESIGN_FORM_STATE, referenceVisual: false },
       '商业分析',
-      'data:image/png;base64,product',
+      [IMAGE_ITEM('p-1', 'product.png')],
       'data:image/png;base64,visual',
     );
 
     expect(payload).not.toHaveProperty('visualDataUrl');
     expect(payload).not.toHaveProperty('modelImages');
     expect(payload).toHaveProperty('includeModel', false);
-    expect(payload).toHaveProperty('productViewDataUrl');
+    expect(payload).toHaveProperty('productViewImages');
   });
 
-  it('营销海报可附带可选模特形象', () => {
-    const payload = toDesignGeneratePayload(
+  it('营销海报可附带可选模特形象', async () => {
+    const payload = await toDesignGeneratePayload(
       { ...DEFAULT_DESIGN_FORM_STATE, designType: '营销海报', referenceVisual: false },
       '商业分析',
-      'data:image/png;base64,product',
+      [IMAGE_ITEM('p-1', 'product.png')],
       'data:image/png;base64,visual',
       [
         {
@@ -153,6 +171,40 @@ describe('视觉设计请求体', () => {
     });
     expect(payload).not.toHaveProperty('visualDataUrl');
     expect(payload).toHaveProperty('modelImages');
+  });
+});
+
+describe('营销主视觉请求体', () => {
+  it('固定传分析与全部产品图', async () => {
+    const payload = await toVisualGeneratePayload(DEFAULT_FORM_STATE, ' 商业分析 ', [
+      IMAGE_ITEM('p-1', 'a.png'),
+      IMAGE_ITEM('p-2', 'b.png'),
+    ]);
+
+    expect(payload).toMatchObject({
+      kind: 'visual',
+      model: DEFAULT_FORM_STATE.model,
+      analysisText: '商业分析',
+      productViewImages: [
+        { filename: 'a.png', mediaType: 'image/png', dataUrl: 'data:image/png;base64,product' },
+        { filename: 'b.png', mediaType: 'image/png', dataUrl: 'data:image/png;base64,product' },
+      ],
+    });
+  });
+});
+
+describe('按比例二级分组', () => {
+  it('按出现顺序稳定拆组', () => {
+    const images: StudioResultImage[] = [
+      { index: 0, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,a' },
+      { index: 1, aspectRatio: '3:4', status: 'ready', url: 'data:image/png;base64,b' },
+      { index: 2, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,c' },
+    ];
+
+    expect(groupResultImagesByRatio(images)).toEqual([
+      { aspectRatio: '1:1', images: [images[0], images[2]] },
+      { aspectRatio: '3:4', images: [images[1]] },
+    ]);
   });
 });
 

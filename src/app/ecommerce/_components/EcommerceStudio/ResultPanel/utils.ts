@@ -9,7 +9,7 @@ import {
   RESULT_TITLE_ANALYSIS,
   RESULT_TITLE_VISUAL,
 } from '../constants';
-import type { StudioPhase } from '../types';
+import type { StudioPhase, StudioResultImage } from '../types';
 import { isPosterTask } from '../workflow';
 
 /** 右侧标题随步骤切换 */
@@ -109,6 +109,25 @@ export function toEmptyHint(phase: StudioPhase, taskType: EcommerceTaskType): st
 /** 出图预览地址（工作台结果为 data URL） */
 export function getImageSrc(asset: { url?: string }): string {
   return asset.url ?? '';
+}
+
+/** 二级分类：把结果图按其比例拆成稳定顺序的子组，供按比例分组展示。 */
+export function groupResultImagesByRatio<T extends StudioResultImage>(
+  images: readonly T[],
+): Array<{ aspectRatio: string; images: T[] }> {
+  const order: string[] = [];
+  const byRatio = new Map<string, T[]>();
+  for (const image of images) {
+    const key = image.aspectRatio;
+    const bucket = byRatio.get(key);
+    if (bucket) {
+      bucket.push(image);
+    } else {
+      byRatio.set(key, [image]);
+      order.push(key);
+    }
+  }
+  return order.map((ratio) => ({ aspectRatio: ratio, images: byRatio.get(ratio)! }));
 }
 
 /**

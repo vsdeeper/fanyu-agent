@@ -1,5 +1,5 @@
 import { StarOutlined } from '@ant-design/icons';
-import { Button, Input, Spin } from 'antd';
+import { Button, Input, Spin, Typography } from 'antd';
 import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
@@ -20,6 +20,7 @@ import ResultImageGrid from './ResultImageGrid';
 import DesignResultGroupsView from './DesignResultGroups';
 import { usePlanStreamScroll } from './hooks/usePlanStreamScroll';
 import {
+  groupResultImagesByRatio,
   isDesignResultPhase,
   isNextDisabled,
   isPlanPhase,
@@ -38,7 +39,6 @@ type ResultPanelProps = {
   visualImages: readonly StudioResultImage[];
   designResultGroups: DesignResultGroups;
   expectedVisualCount: number;
-  visualAspectRatio: string;
   selectedVisualIndex: number | null;
   onSelectVisual: (index: number) => void;
   onPrev: () => void;
@@ -58,7 +58,6 @@ export default function ResultPanel({
   visualImages,
   designResultGroups,
   expectedVisualCount,
-  visualAspectRatio,
   selectedVisualIndex,
   onSelectVisual,
   onPrev,
@@ -70,6 +69,7 @@ export default function ResultPanel({
   const [draft, setDraft] = useState('');
   const showPlan = isPlanPhase(phase) && Boolean(analysisText);
   const showVisualGrid = isVisualResultPhase(phase) && visualImages.length > 0;
+  const visualRatioGroups = groupResultImagesByRatio(visualImages);
   const showDesignGroups =
     isDesignResultPhase(phase) &&
     Object.values(designResultGroups).some((images) => Boolean(images?.length));
@@ -151,15 +151,22 @@ export default function ResultPanel({
         </div>
       ) : showVisualGrid ? (
         <div className={styles.scroll}>
-          <ResultImageGrid
-            images={visualImages}
-            expectedCount={expectedVisualCount}
-            aspectRatio={visualAspectRatio}
-            selectable={phase === 'visual'}
-            selectedIndex={selectedVisualIndex}
-            selectedBadge={VISUAL_STANDARD_BADGE}
-            onSelect={onSelectVisual}
-          />
+          <div className={styles.resultGroups}>
+            {visualRatioGroups.map(({ aspectRatio, images }) => (
+              <section key={aspectRatio} className={styles.resultGroup}>
+                <Typography.Text className={styles.ratioTitle}>{aspectRatio}</Typography.Text>
+                <ResultImageGrid
+                  images={images}
+                  expectedCount={expectedVisualCount}
+                  aspectRatio={aspectRatio}
+                  selectable={phase === 'visual'}
+                  selectedIndex={selectedVisualIndex}
+                  selectedBadge={VISUAL_STANDARD_BADGE}
+                  onSelect={onSelectVisual}
+                />
+              </section>
+            ))}
+          </div>
         </div>
       ) : showDesignGroups ? (
         <div className={styles.scroll}>

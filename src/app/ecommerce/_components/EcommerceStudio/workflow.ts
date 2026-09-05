@@ -12,14 +12,14 @@ const CURRENT_WORKFLOW: EcommerceWorkflowStep[] = [
   { key: 'analysis', title: '商业分析' },
   { key: 'visual', title: '营销主视觉' },
   { key: 'design', title: '视觉设计' },
-  { key: 'complete', title: '完成' },
+  { key: 'complete', title: '预览生成物料' },
 ];
 
 const POSTER_WORKFLOW: EcommerceWorkflowStep[] = [
   { key: 'analysis', title: '商业分析' },
   { key: 'visual', title: '营销主视觉' },
   { key: 'design', title: '营销海报' },
-  { key: 'complete', title: '完成' },
+  { key: 'complete', title: '预览生成物料' },
 ];
 
 const WORKFLOW_BY_TASK_AND_VERSION: Record<string, EcommerceWorkflowStep[]> = {

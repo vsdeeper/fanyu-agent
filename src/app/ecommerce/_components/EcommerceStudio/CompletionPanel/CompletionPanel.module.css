@@ -51,6 +51,18 @@
   color: var(--one-color-text) !important;
 }
 
+.ratioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ratioTitle {
+  color: var(--one-color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .footer {
   display: flex;
   flex-shrink: 0;

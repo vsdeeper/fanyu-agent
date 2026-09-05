@@ -11,12 +11,12 @@ describe('resolveEcommerceWorkflow', () => {
     ]);
   });
 
-  it('营销海报将视觉设计步标题改为营销海报', () => {
+  it('营销海报将视觉设计步标题改为营销海报，末步为预览生成物料', () => {
     expect(resolveEcommerceWorkflow('营销海报', 1).map((step) => step.title)).toEqual([
       '商业分析',
       '营销主视觉',
       '营销海报',
-      '完成',
+      '预览生成物料',
     ]);
   });
 

@@ -8,6 +8,7 @@ import { exportResultImages } from '../utils';
 export function useExportResultImages(
   visualImages: readonly StudioResultImage[],
   designGroups: DesignResultGroups,
+  analysisText: string,
 ) {
   const { message } = App.useApp();
   const [exporting, setExporting] = useState(false);
@@ -15,14 +16,14 @@ export function useExportResultImages(
   const handleExport = useCallback(async () => {
     setExporting(true);
     try {
-      await exportResultImages(visualImages, designGroups);
+      await exportResultImages(visualImages, designGroups, analysisText);
     } catch (error) {
       console.error('[ecommerce-studio] export', error);
       message.error(EXPORT_FAILED);
     } finally {
       setExporting(false);
     }
-  }, [designGroups, message, visualImages]);
+  }, [analysisText, designGroups, message, visualImages]);
 
   return { exporting, handleExport };
 }

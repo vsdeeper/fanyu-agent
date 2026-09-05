@@ -84,7 +84,7 @@ const visualGenerateSchema = specFieldsSchema.extend({
     .int()
     .refine((value) => (STUDIO_COUNT_VALUES as readonly number[]).includes(value)),
   analysisText: z.string().min(1),
-  productViewDataUrl: imageDataUrlSchema,
+  productViewImages: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
 });
 
 const modelGenerateSchema = specFieldsSchema.extend({
@@ -102,7 +102,7 @@ const designGenerateSchema = specFieldsSchema.extend({
   referenceVisual: z.boolean(),
   includeModel: z.boolean(),
   analysisText: z.string().min(1),
-  productViewDataUrl: imageDataUrlSchema,
+  productViewImages: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
   visualDataUrl: imageDataUrlSchema.optional(),
   modelDataUrl: imageDataUrlSchema.optional(),
   modelImages: z.array(imageInputSchema).max(MAX_STUDIO_MODEL_IMAGES).optional(),

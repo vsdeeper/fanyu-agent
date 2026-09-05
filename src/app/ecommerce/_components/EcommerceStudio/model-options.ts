@@ -67,7 +67,7 @@ export const MODEL_CAPABILITIES: EcomModelCapability[] = [
   },
   {
     id: 'doubao-seedream-5-0-lite-260128',
-    label: 'Seedream',
+    label: 'Seedream 5.0 Lite',
     clarityOptions: ['2K', '4K'],
     clarityDefault: '2K',
   },

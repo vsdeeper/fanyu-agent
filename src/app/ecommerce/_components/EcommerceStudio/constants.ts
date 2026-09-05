@@ -35,7 +35,7 @@ export const DESIGN_BUTTON = '生成视觉设计';
 export const POSTER_BUTTON = '生成营销海报';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
-export const COMPLETE_BUTTON = '完成';
+export const COMPLETE_BUTTON = '预览生成物料';
 export const ANALYZE_FAILED = '产品分析失败，请稍后重试';
 export const GENERATE_FAILED = '生图失败，请稍后重试';
 export const MODEL_HELP_WRITE_FAILED = '模特要求生成失败，请稍后重试';
@@ -51,7 +51,7 @@ export const RESULT_TITLE_DESIGN = '视觉设计';
 export const RESULT_TITLE_POSTER = '营销海报';
 export const VISUAL_STANDARD_BADGE = '视觉标准';
 
-export const MAX_MODEL_IMAGES = 3;
+export const MAX_MODEL_IMAGES = 1;
 export const MODEL_IMAGE_SUBTITLE = '可选，锁定外貌与服装并融入海报构图；姿势可按设计调整';
 export const MODEL_IMAGE_HINT = '上传模特身份参考图（可选）';
 
@@ -59,8 +59,8 @@ export const MODEL_IMAGE_HINT = '上传模特身份参考图（可选）';
 export const MODEL_OPTIONS = toModelOptions();
 
 export const ASPECT_RATIO_OPTIONS = [
-  { value: '3:4', label: '3:4 竖版' },
   { value: '1:1', label: '1:1 方形' },
+  { value: '3:4', label: '3:4 竖版' },
   { value: '4:3', label: '4:3 横版' },
   { value: '9:16', label: '9:16 竖版' },
   { value: '16:9', label: '16:9 横版' },

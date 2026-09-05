@@ -1,26 +1,34 @@
-import { DownloadOutlined, StarOutlined } from '@ant-design/icons';
+import { DownloadOutlined, FileTextOutlined, StarOutlined } from '@ant-design/icons';
 import { Button, Empty, Typography } from 'antd';
-import type { EcommerceTaskType } from '@/app/api/ecommerce/_shared/task-types';
+import { useEffect, useMemo } from 'react';
+import FileCard from '@/components/FileCard';
 import { PREV_BUTTON } from '../constants';
 import type { DesignResultGroups, StudioResultImage } from '../types';
-import { isPosterTask } from '../workflow';
 import DesignResultGroupsView from '../ResultPanel/DesignResultGroups';
 import ResultImageGrid from '../ResultPanel/ResultImageGrid';
-import { COMPLETION_TITLE, EXPORT_BUTTON, VISUAL_GROUP_TITLE } from './constants';
+import { groupResultImagesByRatio } from '../ResultPanel/utils';
+import {
+  ANALYSIS_FILE_NAME,
+  ANALYSIS_GROUP_TITLE,
+  ANALYSIS_MEDIA_TYPE,
+  COMPLETION_TITLE,
+  EXPORT_BUTTON,
+  VISUAL_GROUP_TITLE,
+} from './constants';
 import { useExportResultImages } from './hooks/useExportResultImages';
 import { getGeneratedDesignGroups, getGeneratedImages } from './utils';
 import styles from './CompletionPanel.module.css';
 
 type CompletionPanelProps = {
-  taskType: EcommerceTaskType;
+  analysisText: string;
   visualImages: readonly StudioResultImage[];
   designResultGroups: DesignResultGroups;
   onPrev: () => void;
 };
 
-/** 汇总营销主视觉与各类视觉设计，并提供全部图片打包导出。 */
+/** 汇总商业分析、营销主视觉与各类视觉设计，并提供全部图片打包导出。 */
 export default function CompletionPanel({
-  taskType,
+  analysisText,
   visualImages,
   designResultGroups,
   onPrev,
@@ -29,7 +37,24 @@ export default function CompletionPanel({
   const designResults = getGeneratedDesignGroups(designResultGroups);
   const hasDesignResults = Object.keys(designResults).length > 0;
   const hasResults = visualResults.length > 0 || hasDesignResults;
-  const { exporting, handleExport } = useExportResultImages(visualResults, designResults);
+  const { exporting, handleExport } = useExportResultImages(
+    visualResults,
+    designResults,
+    analysisText,
+  );
+  const analysisFile = useMemo(() => {
+    if (!analysisText.trim()) return undefined;
+    return {
+      href: URL.createObjectURL(new Blob([analysisText], { type: ANALYSIS_MEDIA_TYPE })),
+      byteSize: new TextEncoder().encode(analysisText).length,
+    };
+  }, [analysisText]);
+  useEffect(() => {
+    return () => {
+      if (analysisFile) URL.revokeObjectURL(analysisFile.href);
+    };
+  }, [analysisFile]);
+  const visualGroups = groupResultImagesByRatio(visualResults);
 
   return (
     <section className={styles.panel}>
@@ -38,23 +63,39 @@ export default function CompletionPanel({
         {COMPLETION_TITLE}
       </div>
       <div className={styles.scroll}>
-        {hasResults ? (
+        {hasResults || analysisFile ? (
           <div className={styles.groups}>
+            {analysisFile ? (
+              <section className={styles.group}>
+                <Typography.Title level={5} className={styles.title}>
+                  {ANALYSIS_GROUP_TITLE}
+                </Typography.Title>
+                <FileCard
+                  fileName={ANALYSIS_FILE_NAME}
+                  byteSize={analysisFile.byteSize}
+                  href={analysisFile.href}
+                  icon={<FileTextOutlined />}
+                />
+              </section>
+            ) : null}
             {visualResults.length > 0 ? (
               <section className={styles.group}>
                 <Typography.Title level={5} className={styles.title}>
                   {VISUAL_GROUP_TITLE}
                 </Typography.Title>
-                <ResultImageGrid
-                  images={visualResults}
-                  expectedCount={visualResults.length}
-                  aspectRatio={visualResults[0]?.aspectRatio ?? '1:1'}
-                />
+                {visualGroups.map(({ aspectRatio, images }) => (
+                  <section key={aspectRatio} className={styles.ratioGroup}>
+                    <Typography.Text className={styles.ratioTitle}>{aspectRatio}</Typography.Text>
+                    <ResultImageGrid
+                      images={images}
+                      expectedCount={images.length}
+                      aspectRatio={aspectRatio}
+                    />
+                  </section>
+                ))}
               </section>
             ) : null}
-            {hasDesignResults ? (
-              <DesignResultGroupsView groups={designResults} showTitles={!isPosterTask(taskType)} />
-            ) : null}
+            {hasDesignResults ? <DesignResultGroupsView groups={designResults} showTitles /> : null}
           </div>
         ) : (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生成图片" />

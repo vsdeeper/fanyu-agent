@@ -299,7 +299,13 @@ describe('视觉设计请求契约', () => {
     count: 1,
     designType: '主图',
     analysisText: '商业分析',
-    productViewDataUrl: 'data:image/png;base64,PRODUCT',
+    productViewImages: [
+      {
+        filename: 'product.png',
+        mediaType: 'image/png',
+        dataUrl: 'data:image/png;base64,PRODUCT',
+      },
+    ],
   } as const;
 
   it('接受商业分析、产品标准图和两个已开启的可选参考', () => {
@@ -358,5 +364,33 @@ describe('视觉设计请求契约', () => {
         visualDataUrl: 'data:image/png;base64,VISUAL',
       }),
     ).toBeNull();
+  });
+});
+
+describe('营销主视觉请求契约', () => {
+  const BASE_VISUAL_REQUEST = {
+    kind: 'visual',
+    ...SPEC_FIELDS,
+    count: 1,
+    analysisText: '商业分析',
+    productViewImages: [
+      {
+        filename: 'product.png',
+        mediaType: 'image/png',
+        dataUrl: 'data:image/png;base64,PRODUCT',
+      },
+    ],
+  } as const;
+
+  it('接受商业分析与全部产品图', () => {
+    const parsed = parseGenerateBody(BASE_VISUAL_REQUEST);
+
+    expect(parsed?.kind).toBe('visual');
+    expect(parsed && parsed.kind === 'visual' ? parsed.productViewImages : []).toHaveLength(1);
+  });
+
+  it('缺少产品图或无商业分析时拒绝', () => {
+    expect(parseGenerateBody({ ...BASE_VISUAL_REQUEST, productViewImages: [] })).toBeNull();
+    expect(parseGenerateBody({ ...BASE_VISUAL_REQUEST, analysisText: '' })).toBeNull();
   });
 });

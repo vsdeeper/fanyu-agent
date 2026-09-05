@@ -129,12 +129,12 @@ export function isAbortError(err: unknown): boolean {
   );
 }
 
-/** 营销主视觉请求体：表单规格 + 商业分析 + 原始产品参考图 */
-export function toVisualGeneratePayload(
+/** 营销主视觉请求体：表单规格 + 商业分析 + 上一步全部产品图 */
+export async function toVisualGeneratePayload(
   form: StudioFormState,
   analysisText: string,
-  productImageDataUrl: string,
-): EcommerceGenerateRequest {
+  productImages: ProductImageItem[],
+): Promise<EcommerceGenerateRequest> {
   return {
     kind: 'visual',
     model: form.model,
@@ -143,18 +143,18 @@ export function toVisualGeneratePayload(
     clarity: form.clarity,
     count: Number.parseInt(form.count, 10) || 1,
     analysisText: analysisText.trim(),
-    productViewDataUrl: productImageDataUrl,
+    productViewImages: await toAnalyzeImages(productImages),
   };
 }
 
-/** 视觉设计请求体：表单 + 分析/原始产品图 + 可选主视觉标准 + 可选模特形象 */
-export function toDesignGeneratePayload(
+/** 视觉设计请求体：表单 + 分析/全部产品图 + 可选主视觉标准 + 可选模特形象 */
+export async function toDesignGeneratePayload(
   form: DesignFormState,
   analysisText: string,
-  productImageDataUrl: string,
+  productImages: ProductImageItem[],
   visualDataUrl: string | null,
   modelImages: EcommerceImageInput[] = [],
-): EcommerceGenerateRequest {
+): Promise<EcommerceGenerateRequest> {
   const includeModel = modelImages.length > 0;
   return {
     kind: 'design',
@@ -167,7 +167,7 @@ export function toDesignGeneratePayload(
     referenceVisual: form.referenceVisual,
     includeModel,
     analysisText: analysisText.trim(),
-    productViewDataUrl: productImageDataUrl,
+    productViewImages: await toAnalyzeImages(productImages),
     ...(form.referenceVisual && visualDataUrl ? { visualDataUrl } : {}),
     ...(includeModel ? { modelImages } : {}),
   };
