@@ -1,5 +1,5 @@
-import ProductRetouchStudio from './_components/ProductRetouchStudio';
+import ProductRetouchTaskList from './_components/ProductRetouchTaskList';
 
 export default function ProductRetouchPage() {
-  return <ProductRetouchStudio />;
+  return <ProductRetouchTaskList />;
 }

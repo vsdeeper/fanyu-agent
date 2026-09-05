@@ -94,9 +94,9 @@
 }
 
 .ratioTitle {
-  color: var(--one-color-text-secondary);
-  font-size: 12px;
-  font-weight: 500;
+  color: var(--one-color-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
 }
 
 .footer {

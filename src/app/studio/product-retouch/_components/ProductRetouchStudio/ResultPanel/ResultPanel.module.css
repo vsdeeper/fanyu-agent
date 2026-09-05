@@ -40,6 +40,18 @@
   gap: 16px;
 }
 
+.ratioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ratioTitle {
+  color: var(--one-color-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
 .empty {
   display: flex;
   flex: 1;

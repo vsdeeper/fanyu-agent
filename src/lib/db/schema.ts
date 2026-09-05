@@ -69,3 +69,39 @@ export const ecommerceTaskAssets = sqliteTable('ecommerce_task_assets', {
   mimeType: text('mime_type').notNull(),
   createdAt: text('created_at').notNull(),
 });
+
+export const productRetouchTasks = sqliteTable('product_retouch_tasks', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  workflowVersion: integer('workflow_version').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const productRetouchTaskSteps = sqliteTable(
+  'product_retouch_task_steps',
+  {
+    taskId: text('task_id')
+      .notNull()
+      .references(() => productRetouchTasks.id, { onDelete: 'cascade' }),
+    stepKey: text('step_key').notNull(),
+    snapshotVersion: integer('snapshot_version').notNull(),
+    data: text('data').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.taskId, table.stepKey] })],
+);
+
+export const productRetouchTaskAssets = sqliteTable('product_retouch_task_assets', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id')
+    .notNull()
+    .references(() => productRetouchTasks.id, { onDelete: 'cascade' }),
+  stepKey: text('step_key').notNull(),
+  kind: text('kind').notNull(),
+  fileName: text('file_name').notNull(),
+  originalName: text('original_name').notNull(),
+  mimeType: text('mime_type').notNull(),
+  createdAt: text('created_at').notNull(),
+});

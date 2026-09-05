@@ -3,14 +3,21 @@ import type {
   EcommerceGenerateRequest,
   EcommerceImageInput,
 } from '@/app/api/ecommerce/_shared/types';
+import { PRODUCT_RETOUCH_STEP_SNAPSHOT_VERSION } from '@/app/api/product-retouch/_shared/task-constants';
+import type {
+  ProductRetouchStepKey,
+  ProductRetouchTaskStepRecord,
+} from '@/app/api/product-retouch/_shared/task-types';
 import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
-import { ApiClientError } from '@/lib/shared/client/api-client';
+import { ApiClientError, apiPut } from '@/lib/shared/client/api-client';
 import { getModelCapability } from './model-options';
 import type {
   GenerateSpecFields,
   MultiviewFormState,
   ProductImageItem,
+  ProductRetouchMultiviewStepSnapshot,
   ProductRetouchPhase,
+  ProductRetouchRefineStepSnapshot,
   RefineFormState,
   ResultImage,
 } from './types';
@@ -43,7 +50,7 @@ export function revokeProductImageUrls(items: ProductImageItem[]): void {
 }
 
 /** 将本地文件读取为 API 可接收的 data URL。 */
-export function readFileAsDataUrl(file: File): Promise<string> {
+export function readFileAsDataUrl(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
@@ -52,13 +59,26 @@ export function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-/** 将产品图转换为生图接口图片输入。 */
+/** 将站内资产 URL 或已有 data URL 转为模型接口所需的 data URL。 */
+export async function readUrlAsDataUrl(url: string): Promise<string> {
+  if (url.startsWith('data:')) return url;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('读取历史资产失败');
+  return readFileAsDataUrl(await response.blob());
+}
+
+/** 读取新上传文件或已持久化资产，统一产出 data URL。 */
+export async function readUploadItemAsDataUrl(item: ProductImageItem): Promise<string> {
+  return item.file ? readFileAsDataUrl(item.file) : readUrlAsDataUrl(item.previewUrl);
+}
+
+/** 将产品图转换为生图接口图片输入；恢复的快照无 file 时回退到资产 URL。 */
 export async function toImageInputs(items: ProductImageItem[]): Promise<EcommerceImageInput[]> {
   return Promise.all(
-    items.map(async ({ file }) => ({
-      filename: file.name,
-      mediaType: file.type || 'image/jpeg',
-      dataUrl: await readFileAsDataUrl(file),
+    items.map(async (item) => ({
+      filename: item.file?.name ?? 'product-image',
+      mediaType: item.file?.type || 'image/jpeg',
+      dataUrl: await readUploadItemAsDataUrl(item),
     })),
   );
 }
@@ -223,4 +243,99 @@ export function aspectRatioToSize(
   const height = match ? Number(match[2]) : 0;
   if (width <= 0 || height <= 0) return { width: baseWidth, height: baseWidth };
   return { width: baseWidth, height: Math.round((baseWidth * height) / width) };
+}
+
+/** 二级分类：把结果图按其比例拆成稳定顺序的子组，供按比例分组展示。 */
+export function groupResultImagesByRatio<T extends ResultImage>(
+  images: readonly T[],
+): Array<{ aspectRatio: string; images: T[] }> {
+  const order: string[] = [];
+  const byRatio = new Map<string, T[]>();
+  for (const image of images) {
+    const key = image.aspectRatio;
+    const bucket = byRatio.get(key);
+    if (bucket) {
+      bucket.push(image);
+    } else {
+      byRatio.set(key, [image]);
+      order.push(key);
+    }
+  }
+  return order.map((ratio) => ({ aspectRatio: ratio, images: byRatio.get(ratio)! }));
+}
+
+/** 将上传图剥离 file（不可序列化），并把本地 blob URL 转为 data URL 供服务端落盘。 */
+async function serializeUploadItem(
+  item: ProductImageItem,
+): Promise<Omit<ProductImageItem, 'file'>> {
+  const { file, ...rest } = item;
+  return { ...rest, previewUrl: file ? await readFileAsDataUrl(file) : item.previewUrl };
+}
+
+/** 构造产品精修步骤的完整持久化快照。 */
+export async function createRefineStepSnapshot(
+  form: RefineFormState,
+  images: ProductImageItem[],
+  results: ResultImage[],
+  selectedIndex: number | null,
+  needsMultiview: boolean,
+): Promise<ProductRetouchRefineStepSnapshot> {
+  return {
+    form,
+    images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
+    results,
+    selectedIndex,
+    needsMultiview,
+  };
+}
+
+/** 构造产品多视角步骤的完整持久化快照。 */
+export function createMultiviewStepSnapshot(
+  form: MultiviewFormState,
+  results: ResultImage[],
+): ProductRetouchMultiviewStepSnapshot {
+  return { form, results };
+}
+
+/** 从未知 JSON 中读取产品精修快照。 */
+export function readRefineStepSnapshot(
+  value: unknown,
+): ProductRetouchRefineStepSnapshot | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const snapshot = value as Partial<ProductRetouchRefineStepSnapshot>;
+  if (!snapshot.form || !Array.isArray(snapshot.images) || !Array.isArray(snapshot.results))
+    return undefined;
+  return {
+    form: snapshot.form,
+    images: snapshot.images,
+    results: snapshot.results,
+    selectedIndex: typeof snapshot.selectedIndex === 'number' ? snapshot.selectedIndex : null,
+    needsMultiview: typeof snapshot.needsMultiview === 'boolean' ? snapshot.needsMultiview : true,
+  };
+}
+
+/** 从未知 JSON 中读取产品多视角快照。 */
+export function readMultiviewStepSnapshot(
+  value: unknown,
+): ProductRetouchMultiviewStepSnapshot | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const snapshot = value as Partial<ProductRetouchMultiviewStepSnapshot>;
+  if (!snapshot.form || !Array.isArray(snapshot.results)) return undefined;
+  return { form: snapshot.form, results: snapshot.results };
+}
+
+/** 保存步骤快照，并返回服务端替换资产 URL 后的数据。 */
+export async function saveProductRetouchStep<T>(
+  taskId: string,
+  stepKey: ProductRetouchStepKey,
+  data: T,
+): Promise<T> {
+  const record = await apiPut<ProductRetouchTaskStepRecord>(
+    `/api/product-retouch/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`,
+    {
+      snapshotVersion: PRODUCT_RETOUCH_STEP_SNAPSHOT_VERSION,
+      data,
+    },
+  );
+  return record.data as T;
 }

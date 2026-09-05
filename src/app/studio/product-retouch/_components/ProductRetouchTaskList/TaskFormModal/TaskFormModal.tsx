@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Form, Input, Modal, Select } from 'antd';
+import { Form, Input, Modal } from 'antd';
 import type {
-  EcommerceTaskDetail,
-  EcommerceTaskListItem,
-} from '@/app/api/ecommerce/_shared/task-types';
-import { TASK_TYPE_OPTIONS } from '../constants';
+  ProductRetouchTaskDetail,
+  ProductRetouchTaskListItem,
+} from '@/app/api/product-retouch/_shared/task-types';
 import {
   CREATE_TITLE,
   EDIT_TITLE,
@@ -13,20 +12,17 @@ import {
   NAME_MAX_MESSAGE,
   NAME_PLACEHOLDER,
   NAME_REQUIRED,
-  TYPE_LABEL,
-  TYPE_PLACEHOLDER,
-  TYPE_REQUIRED,
 } from './constants';
 import { submitTaskForm, type TaskFormValues } from './utils';
 
 type TaskFormModalProps = {
   open: boolean;
-  task?: EcommerceTaskListItem;
+  task?: ProductRetouchTaskListItem;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (task: EcommerceTaskDetail) => void;
+  onSuccess: (task: ProductRetouchTaskDetail) => void;
 };
 
-/** 新增任务，或编辑已有任务名称；任务类型创建后只展示、不可改。 */
+/** 新增任务，或编辑已有任务名称。 */
 export default function TaskFormModal({ open, task, onOpenChange, onSuccess }: TaskFormModalProps) {
   const [form] = Form.useForm<TaskFormValues>();
   const [submitting, setSubmitting] = useState(false);
@@ -36,7 +32,7 @@ export default function TaskFormModal({ open, task, onOpenChange, onSuccess }: T
   useEffect(() => {
     if (open) {
       form.resetFields();
-      if (task) form.setFieldsValue({ name: task.name, taskType: task.taskType });
+      if (task) form.setFieldsValue({ name: task.name });
     }
   }, [open, task, form]);
 
@@ -75,13 +71,6 @@ export default function TaskFormModal({ open, task, onOpenChange, onSuccess }: T
           ]}
         >
           <Input placeholder={NAME_PLACEHOLDER} />
-        </Form.Item>
-        <Form.Item
-          name="taskType"
-          label={TYPE_LABEL}
-          rules={editing ? undefined : [{ required: true, message: TYPE_REQUIRED }]}
-        >
-          <Select placeholder={TYPE_PLACEHOLDER} options={TASK_TYPE_OPTIONS} disabled={editing} />
         </Form.Item>
       </Form>
     </Modal>

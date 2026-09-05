@@ -1,5 +1,5 @@
 import { StarOutlined } from '@ant-design/icons';
-import { Button, Skeleton } from 'antd';
+import { Button, Skeleton, Typography } from 'antd';
 import {
   COMPLETE_BUTTON,
   EMPTY_MULTIVIEW_HINT,
@@ -9,13 +9,14 @@ import {
   REFINE_STANDARD_BADGE,
 } from '../constants';
 import type { ProductRetouchPhase, ResultImage } from '../types';
-import { aspectRatioToSize, hasReadyImage } from '../utils';
+import { aspectRatioToSize, groupResultImagesByRatio, hasReadyImage } from '../utils';
 import ResultImageItem from './ResultImageItem';
 import styles from './ResultPanel.module.css';
 
 type ResultPanelProps = {
   phase: ProductRetouchPhase;
   needsMultiview: boolean;
+  persisting: boolean;
   refineImages: readonly ResultImage[];
   multiviewImages: readonly ResultImage[];
   refineExpectedCount: number;
@@ -33,6 +34,7 @@ type ResultPanelProps = {
 export default function ResultPanel({
   phase,
   needsMultiview,
+  persisting,
   refineImages,
   multiviewImages,
   refineExpectedCount,
@@ -51,6 +53,7 @@ export default function ResultPanel({
   const expectedCount = showRefine ? refineExpectedCount : multiviewExpectedCount;
   const aspectRatio = showRefine ? refineAspectRatio : multiviewAspectRatio;
   const placeholderSize = aspectRatioToSize(aspectRatio, 280);
+  const ratioGroups = groupResultImagesByRatio(images);
   return (
     <section className={styles.panel}>
       <div className={styles.head}>
@@ -59,23 +62,28 @@ export default function ResultPanel({
       </div>
       {images.length > 0 ? (
         <div className={styles.scroll}>
-          <div className={styles.grid}>
-            {images.map((image) => {
-              const size = aspectRatioToSize(image.aspectRatio, 280);
-              return (
-                <ResultImageItem
-                  key={image.index}
-                  image={image}
-                  width={size.width}
-                  height={size.height}
-                  selectable={showRefine && phase === 'refine'}
-                  selected={showRefine && selectedRefineIndex === image.index}
-                  selectedBadge={REFINE_STANDARD_BADGE}
-                  onSelect={onSelectRefine}
-                />
-              );
-            })}
-          </div>
+          {ratioGroups.map(({ aspectRatio: ratio, images: ratioImages }) => (
+            <section key={ratio} className={styles.ratioGroup}>
+              <Typography.Text className={styles.ratioTitle}>{ratio}</Typography.Text>
+              <div className={styles.grid}>
+                {ratioImages.map((image) => {
+                  const size = aspectRatioToSize(image.aspectRatio, 280);
+                  return (
+                    <ResultImageItem
+                      key={`${ratio}-${image.index}`}
+                      image={image}
+                      width={size.width}
+                      height={size.height}
+                      selectable={showRefine && phase === 'refine' && needsMultiview}
+                      selected={showRefine && needsMultiview && selectedRefineIndex === image.index}
+                      selectedBadge={REFINE_STANDARD_BADGE}
+                      onSelect={onSelectRefine}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
       ) : generating ? (
         <div className={styles.scroll}>
@@ -105,7 +113,13 @@ export default function ResultPanel({
             <Button size="large" disabled={generating} onClick={onPrev}>
               {PREV_BUTTON}
             </Button>
-            <Button size="large" type="primary" disabled={generating} onClick={onComplete}>
+            <Button
+              size="large"
+              type="primary"
+              loading={persisting}
+              disabled={generating || persisting || !hasReadyImage(multiviewImages)}
+              onClick={onComplete}
+            >
               {COMPLETE_BUTTON}
             </Button>
           </>
@@ -114,8 +128,10 @@ export default function ResultPanel({
           <Button
             size="large"
             type="primary"
+            loading={persisting}
             disabled={
               generating ||
+              persisting ||
               !hasReadyImage(refineImages) ||
               (needsMultiview && selectedRefineIndex === null)
             }

@@ -72,7 +72,9 @@ export function listEcommerceTasks({
     name: task.name,
     taskType: task.taskType as EcommerceTaskType,
     workflowVersion: task.workflowVersion,
-    completedStepKeys: completedByTask.get(task.id) ?? [],
+    completedStepKeys: [...(completedByTask.get(task.id) ?? [])].sort(
+      (a, b) => ECOMMERCE_STEP_KEYS.indexOf(a) - ECOMMERCE_STEP_KEYS.indexOf(b),
+    ),
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
   }));

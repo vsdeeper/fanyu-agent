@@ -1,5 +1,6 @@
 import { zip } from 'fflate';
 import type { ResultImage } from '../types';
+import { groupResultImagesByRatio } from '../utils';
 import {
   EXPORT_ARCHIVE_NAME,
   IMAGE_EXTENSION_BY_MEDIA_TYPE,
@@ -33,29 +34,50 @@ export function decodeImageDataUrl(dataUrl: string): {
   return { mediaType, bytes };
 }
 
-/** 将一类图片按稳定序号写入待打包文件表。 */
-function appendGroupFiles(
+/** 读取新生成的 data URL 或已持久化的站内资产 URL。 */
+export async function readImageBytes(source: string): Promise<{
+  mediaType: string;
+  bytes: Uint8Array;
+}> {
+  if (source.startsWith('data:')) return decodeImageDataUrl(source);
+  const response = await fetch(source);
+  if (!response.ok) throw new Error('读取生成物料失败');
+  return {
+    mediaType: response.headers.get('content-type')?.split(';')[0] ?? 'image/png',
+    bytes: new Uint8Array(await response.arrayBuffer()),
+  };
+}
+
+/** 将一类图片按比例拆成二级子组写入待打包文件表；文件名「比例-序号」，每比例内序号从 01 起。 */
+async function appendGroupFiles(
   files: Record<string, Uint8Array>,
   groupName: string,
-  prefix: string,
   images: readonly ResultImage[],
-): void {
-  getGeneratedImages(images).forEach((image, index) => {
-    const { mediaType, bytes } = decodeImageDataUrl(image.url);
-    const extension = IMAGE_EXTENSION_BY_MEDIA_TYPE[mediaType] ?? 'png';
-    files[`${groupName}/${prefix}-${String(index + 1).padStart(2, '0')}.${extension}`] = bytes;
-  });
+): Promise<void> {
+  await Promise.all(
+    groupResultImagesByRatio(getGeneratedImages(images)).flatMap(
+      ({ aspectRatio, images: ratioImages }) =>
+        ratioImages.map(async (image, index) => {
+          const { mediaType, bytes } = await readImageBytes(image.url);
+          const extension = IMAGE_EXTENSION_BY_MEDIA_TYPE[mediaType] ?? 'png';
+          const seq = String(index + 1).padStart(2, '0');
+          files[`${groupName}/${aspectRatio}-${seq}.${extension}`] = bytes;
+        }),
+    ),
+  );
 }
 
 /** 将两类已生成图片打包为 ZIP 字节。 */
-export function createResultArchive(
+export async function createResultArchive(
   refineImages: readonly ResultImage[],
   multiviewImages: readonly ResultImage[],
 ): Promise<Uint8Array> {
   const files: Record<string, Uint8Array> = {};
 
-  appendGroupFiles(files, REFINE_GROUP_TITLE, 'refine', refineImages);
-  appendGroupFiles(files, MULTIVIEW_GROUP_TITLE, 'multiview', multiviewImages);
+  await Promise.all([
+    appendGroupFiles(files, REFINE_GROUP_TITLE, refineImages),
+    appendGroupFiles(files, MULTIVIEW_GROUP_TITLE, multiviewImages),
+  ]);
 
   return new Promise((resolve, reject) => {
     zip(files, { level: 0 }, (error, archive) => {

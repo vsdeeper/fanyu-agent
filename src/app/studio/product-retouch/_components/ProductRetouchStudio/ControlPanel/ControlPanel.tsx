@@ -14,6 +14,7 @@ import styles from './ControlPanel.module.css';
 type ControlPanelProps = {
   phase: ProductRetouchPhase;
   needsMultiview: boolean;
+  hasRefineResult: boolean;
   images: ProductImageItem[];
   refineForm: RefineFormState;
   multiviewForm: MultiviewFormState;
@@ -31,6 +32,7 @@ type ControlPanelProps = {
 export default function ControlPanel({
   phase,
   needsMultiview,
+  hasRefineResult,
   images,
   refineForm,
   multiviewForm,
@@ -73,18 +75,20 @@ export default function ControlPanel({
               disabled={locked}
               onChange={(next) => onRefineFormChange({ ...refineForm, ...next })}
             />
-            <label className={styles.field}>
-              <span className={styles.label}>产品多视角</span>
-              <Radio.Group
-                block
-                optionType="button"
-                buttonStyle="solid"
-                value={needsMultiview}
-                options={MULTIVIEW_NEED_OPTIONS}
-                disabled={locked}
-                onChange={(event) => onNeedsMultiviewChange(event.target.value as boolean)}
-              />
-            </label>
+            {hasRefineResult ? (
+              <label className={styles.field}>
+                <span className={styles.label}>产品多视角</span>
+                <Radio.Group
+                  block
+                  optionType="button"
+                  buttonStyle="solid"
+                  value={needsMultiview}
+                  options={MULTIVIEW_NEED_OPTIONS}
+                  disabled={locked}
+                  onChange={(event) => onNeedsMultiviewChange(event.target.value as boolean)}
+                />
+              </label>
+            ) : null}
           </>
         ) : (
           <>

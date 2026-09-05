@@ -29,13 +29,10 @@ describe('产品精修成果导出', () => {
     expect([...result.bytes]).toEqual([1, 2, 3]);
   });
 
-  it('按精修图和多视角图目录生成 ZIP', async () => {
+  it('按精修图和多视角图目录生成 ZIP，文件名以比例-序号命名', async () => {
     const archive = unzipSync(await createResultArchive([READY_PNG], [READY_PNG]));
 
-    expect(Object.keys(archive)).toEqual([
-      '产品精修图/refine-01.png',
-      '产品多视角图/multiview-01.png',
-    ]);
-    expect([...archive['产品精修图/refine-01.png']]).toEqual([1, 2, 3]);
+    expect(Object.keys(archive)).toEqual(['产品精修图/1:1-01.png', '产品多视角图/1:1-01.png']);
+    expect([...archive['产品精修图/1:1-01.png']]).toEqual([1, 2, 3]);
   });
 });

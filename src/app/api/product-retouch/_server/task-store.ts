@@ -1,0 +1,206 @@
+import 'server-only';
+
+import { generateId } from 'ai';
+import { and, desc, eq } from 'drizzle-orm';
+import { getDb } from '@/lib/db/client';
+import { productRetouchTaskSteps, productRetouchTasks } from '@/lib/db/schema';
+import {
+  PRODUCT_RETOUCH_STEP_KEYS,
+  PRODUCT_RETOUCH_WORKFLOW_VERSION,
+} from '../_shared/task-constants';
+import type {
+  ProductRetouchStepKey,
+  ProductRetouchTaskDetail,
+  ProductRetouchTaskListData,
+  ProductRetouchTaskListItem,
+} from '../_shared/task-types';
+import { removeTaskAssetDirectory } from './task-assets';
+
+function isStepKey(value: string): value is ProductRetouchStepKey {
+  return PRODUCT_RETOUCH_STEP_KEYS.includes(value as ProductRetouchStepKey);
+}
+
+/** 创建产品精修任务并返回任务 id。 */
+export function createProductRetouchTask(name: string): string {
+  const id = generateId();
+  const now = new Date().toISOString();
+  getDb()
+    .insert(productRetouchTasks)
+    .values({
+      id,
+      name,
+      workflowVersion: PRODUCT_RETOUCH_WORKFLOW_VERSION,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .run();
+  return id;
+}
+
+/** 按名称过滤并分页读取产品精修任务。 */
+export function listProductRetouchTasks({
+  name,
+  page,
+  pageSize,
+}: {
+  name?: string;
+  page: number;
+  pageSize: number;
+}): ProductRetouchTaskListData {
+  const db = getDb();
+  const allTasks = db
+    .select()
+    .from(productRetouchTasks)
+    .orderBy(desc(productRetouchTasks.updatedAt))
+    .all();
+  const normalizedName = name?.trim().toLocaleLowerCase();
+  const filtered = normalizedName
+    ? allTasks.filter((task) => task.name.toLocaleLowerCase().includes(normalizedName))
+    : allTasks;
+  const completedByTask = new Map<string, ProductRetouchStepKey[]>();
+  db.select({
+    taskId: productRetouchTaskSteps.taskId,
+    stepKey: productRetouchTaskSteps.stepKey,
+  })
+    .from(productRetouchTaskSteps)
+    .all()
+    .forEach((step) => {
+      if (!isStepKey(step.stepKey)) return;
+      const keys = completedByTask.get(step.taskId) ?? [];
+      keys.push(step.stepKey);
+      completedByTask.set(step.taskId, keys);
+    });
+
+  const start = (page - 1) * pageSize;
+  const items: ProductRetouchTaskListItem[] = filtered
+    .slice(start, start + pageSize)
+    .map((task) => ({
+      id: task.id,
+      name: task.name,
+      workflowVersion: task.workflowVersion,
+      completedStepKeys: [...(completedByTask.get(task.id) ?? [])].sort(
+        (a, b) => PRODUCT_RETOUCH_STEP_KEYS.indexOf(a) - PRODUCT_RETOUCH_STEP_KEYS.indexOf(b),
+      ),
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+    }));
+  return { items, total: filtered.length, page, pageSize };
+}
+
+/** 读取任务基础信息及所有可识别的步骤快照。 */
+export function loadProductRetouchTask(id: string): ProductRetouchTaskDetail | undefined {
+  const db = getDb();
+  const task = db.select().from(productRetouchTasks).where(eq(productRetouchTasks.id, id)).get();
+  if (!task) return undefined;
+  const steps = db
+    .select()
+    .from(productRetouchTaskSteps)
+    .where(eq(productRetouchTaskSteps.taskId, id))
+    .all();
+  const detailSteps: ProductRetouchTaskDetail['steps'] = {};
+  steps.forEach((step) => {
+    if (!isStepKey(step.stepKey)) return;
+    detailSteps[step.stepKey] = {
+      stepKey: step.stepKey,
+      snapshotVersion: step.snapshotVersion,
+      data: JSON.parse(step.data) as unknown,
+      updatedAt: step.updatedAt,
+    };
+  });
+  return {
+    id: task.id,
+    name: task.name,
+    workflowVersion: task.workflowVersion,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    steps: detailSteps,
+  };
+}
+
+/** 判断产品精修任务是否存在。 */
+export function productRetouchTaskExists(id: string): boolean {
+  return Boolean(
+    getDb()
+      .select({ id: productRetouchTasks.id })
+      .from(productRetouchTasks)
+      .where(eq(productRetouchTasks.id, id))
+      .get(),
+  );
+}
+
+/** 仅更新任务名称。 */
+export function updateProductRetouchTaskName(id: string, name: string): boolean {
+  const result = getDb()
+    .update(productRetouchTasks)
+    .set({ name, updatedAt: new Date().toISOString() })
+    .where(eq(productRetouchTasks.id, id))
+    .run();
+  return result.changes > 0;
+}
+
+/** 覆盖单一步骤快照，并刷新任务更新时间。 */
+export function saveProductRetouchTaskStep({
+  taskId,
+  stepKey,
+  snapshotVersion,
+  data,
+}: {
+  taskId: string;
+  stepKey: ProductRetouchStepKey;
+  snapshotVersion: number;
+  data: unknown;
+}): void {
+  const db = getDb();
+  const now = new Date().toISOString();
+  db.transaction((tx) => {
+    tx.insert(productRetouchTaskSteps)
+      .values({
+        taskId,
+        stepKey,
+        snapshotVersion,
+        data: JSON.stringify(data),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [productRetouchTaskSteps.taskId, productRetouchTaskSteps.stepKey],
+        set: {
+          snapshotVersion,
+          data: JSON.stringify(data),
+          updatedAt: now,
+        },
+      })
+      .run();
+    tx.update(productRetouchTasks)
+      .set({ updatedAt: now })
+      .where(eq(productRetouchTasks.id, taskId))
+      .run();
+  });
+}
+
+/** 删除单一步骤快照，用于上游重新生成后使下游历史结果失效。 */
+export function deleteProductRetouchTaskStep(taskId: string, stepKey: ProductRetouchStepKey): void {
+  const db = getDb();
+  const now = new Date().toISOString();
+  db.transaction((tx) => {
+    tx.delete(productRetouchTaskSteps)
+      .where(
+        and(
+          eq(productRetouchTaskSteps.taskId, taskId),
+          eq(productRetouchTaskSteps.stepKey, stepKey),
+        ),
+      )
+      .run();
+    tx.update(productRetouchTasks)
+      .set({ updatedAt: now })
+      .where(eq(productRetouchTasks.id, taskId))
+      .run();
+  });
+}
+
+/** 删除任务数据库记录及其磁盘资产。 */
+export function deleteProductRetouchTask(id: string): boolean {
+  const result = getDb().delete(productRetouchTasks).where(eq(productRetouchTasks.id, id)).run();
+  if (result.changes > 0) removeTaskAssetDirectory(id);
+  return result.changes > 0;
+}

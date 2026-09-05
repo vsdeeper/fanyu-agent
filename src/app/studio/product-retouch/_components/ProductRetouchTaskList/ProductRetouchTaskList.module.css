@@ -1,0 +1,62 @@
+.page {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.title {
+  margin: 0 !important;
+  font-weight: normal !important;
+}
+
+.headerSpacer {
+  flex: 1;
+}
+
+.content {
+  overflow: auto;
+  padding: 24px;
+}
+
+.searchCard {
+  margin-bottom: 16px !important;
+}
+
+.searchForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.searchForm :global(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.searchInput {
+  width: 216px;
+}
+
+.searchActions {
+  display: flex;
+  gap: 8px;
+}
+
+.tableCard {
+  min-height: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}

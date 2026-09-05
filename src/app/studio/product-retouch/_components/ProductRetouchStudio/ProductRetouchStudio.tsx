@@ -3,19 +3,25 @@
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Button, Layout, Steps, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
-import { STUDIO_PATH } from '@/components/AppLayout/constants';
+import type { ProductRetouchTaskDetail } from '@/app/api/product-retouch/_shared/task-types';
+import { PRODUCT_RETOUCH_PATH } from '@/components/AppLayout/constants';
 import ModeSwitch from '@/components/ModeSwitch';
-import { STUDIO_STEP_INDEX, STUDIO_STEPS, STUDIO_TITLE } from './constants';
+import { STUDIO_STEP_INDEX, STUDIO_STEPS } from './constants';
 import CompletionPanel from './CompletionPanel';
 import ControlPanel from './ControlPanel';
 import ResultPanel from './ResultPanel';
 import { useProductRetouchStudio } from './hooks/useProductRetouchStudio';
+import { hasReadyImage } from './utils';
 import styles from './ProductRetouchStudio.module.css';
 
+type ProductRetouchStudioProps = {
+  task: ProductRetouchTaskDetail;
+};
+
 /** 产品精修与多视角生成工作台。 */
-export default function ProductRetouchStudio() {
+export default function ProductRetouchStudio({ task }: ProductRetouchStudioProps) {
   const router = useRouter();
-  const studio = useProductRetouchStudio();
+  const studio = useProductRetouchStudio(task);
   return (
     <Layout className={styles.studio}>
       <Layout.Header className={styles.header}>
@@ -23,12 +29,12 @@ export default function ProductRetouchStudio() {
           type="text"
           icon={<ArrowLeftOutlined />}
           shape="circle"
-          aria-label="返回工作室"
-          onClick={() => router.push(STUDIO_PATH)}
+          aria-label="返回产品精修任务列表"
+          onClick={() => router.push(PRODUCT_RETOUCH_PATH)}
         />
         <div className={styles.brand}>
           <Typography.Title level={5} className={styles.title} ellipsis>
-            {STUDIO_TITLE}
+            {task.name}
           </Typography.Title>
         </div>
         <div className={styles.headerSpacer} />
@@ -54,6 +60,7 @@ export default function ProductRetouchStudio() {
             <ControlPanel
               phase={studio.phase}
               needsMultiview={studio.needsMultiview}
+              hasRefineResult={hasReadyImage(studio.refineImages)}
               images={studio.images}
               refineForm={studio.refineForm}
               multiviewForm={studio.multiviewForm}
@@ -69,6 +76,7 @@ export default function ProductRetouchStudio() {
             <ResultPanel
               phase={studio.phase}
               needsMultiview={studio.needsMultiview}
+              persisting={studio.persisting}
               refineImages={studio.refineImages}
               multiviewImages={studio.multiviewImages}
               refineExpectedCount={Number.parseInt(studio.refineForm.count, 10) || 1}
@@ -76,7 +84,7 @@ export default function ProductRetouchStudio() {
               refineAspectRatio={studio.refineForm.aspectRatio}
               multiviewAspectRatio={studio.multiviewForm.aspectRatio}
               selectedRefineIndex={studio.selectedRefineIndex}
-              onSelectRefine={studio.setSelectedRefineIndex}
+              onSelectRefine={studio.handleSelectRefine}
               onPrev={studio.handlePrev}
               onNext={studio.handleNext}
               onComplete={studio.handleComplete}

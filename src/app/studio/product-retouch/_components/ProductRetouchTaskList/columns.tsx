@@ -1,29 +1,23 @@
 import { Popconfirm, Space, Tag, Typography, type TableColumnsType } from 'antd';
-import type { EcommerceTaskListItem } from '@/app/api/ecommerce/_shared/task-types';
-import { STEP_LABELS, DELETE_CONFIRM_TITLE, DELETE_CONFIRM_DESCRIPTION } from './constants';
+import type { ProductRetouchTaskListItem } from '@/app/api/product-retouch/_shared/task-types';
+import { DELETE_CONFIRM_DESCRIPTION, DELETE_CONFIRM_TITLE, STEP_LABELS } from './constants';
 import { formatTaskDateTime } from './utils';
 
 /** 创建任务列表列定义，并将行操作回调注入操作列。 */
 export function createTaskColumns({
-  onDesign,
   onEdit,
+  onMaterial,
   onDelete,
 }: {
-  onDesign: (task: EcommerceTaskListItem) => void;
-  onEdit: (task: EcommerceTaskListItem) => void;
-  onDelete: (task: EcommerceTaskListItem) => Promise<void>;
-}): TableColumnsType<EcommerceTaskListItem> {
+  onEdit: (task: ProductRetouchTaskListItem) => void;
+  onMaterial: (task: ProductRetouchTaskListItem) => void;
+  onDelete: (task: ProductRetouchTaskListItem) => Promise<void>;
+}): TableColumnsType<ProductRetouchTaskListItem> {
   return [
     {
       title: '任务名称',
       dataIndex: 'name',
       ellipsis: true,
-    },
-    {
-      title: '任务类型',
-      dataIndex: 'taskType',
-      width: 110,
-      render: (_, task) => <Tag>{task.taskType}</Tag>,
     },
     {
       title: '已产出步骤',
@@ -60,7 +54,7 @@ export function createTaskColumns({
       render: (_, task) => (
         <Space size="middle">
           <Typography.Link onClick={() => onEdit(task)}>编辑</Typography.Link>
-          <Typography.Link onClick={() => onDesign(task)}>物料编辑</Typography.Link>
+          <Typography.Link onClick={() => onMaterial(task)}>物料编辑</Typography.Link>
           <Popconfirm
             title={DELETE_CONFIRM_TITLE}
             description={DELETE_CONFIRM_DESCRIPTION}
