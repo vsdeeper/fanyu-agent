@@ -83,14 +83,13 @@ export default function StudioImageUpload({
       ) : (
         <div className={styles.thumbs}>
           <Image.PreviewGroup classNames={STUDIO_IMAGE_PREVIEW_GROUP_CLASS_NAMES}>
-            {images.map((item, index) => (
+            {images.map((item) => (
               <div key={item.uid} className={styles.thumb}>
                 <Image
                   src={item.previewUrl}
                   alt={getStudioImageUploadItemName(item)}
                   preview={{ mask: '预览' }}
                 />
-                <span className={`${styles.mark} ${styles.index}`}>{index + 1}</span>
                 <button
                   type="button"
                   className={`${styles.mark} ${styles.remove}`}

@@ -157,18 +157,6 @@
   line-height: 1;
 }
 
-.index {
-  left: 6px;
-  bottom: 6px;
-  display: block;
-  width: 16px;
-  height: 16px;
-  font-size: 9px;
-  line-height: 16px;
-  text-align: center;
-  pointer-events: none;
-}
-
 .remove {
   top: 0;
   right: 0;
