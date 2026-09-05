@@ -1,17 +1,17 @@
 import { CloseOutlined, PictureOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { Button, Image, Upload } from 'antd';
 import {
-  MAX_PRODUCT_IMAGES,
-  PRODUCT_IMAGE_ACCEPT,
-  UPLOAD_HINT,
-  UPLOAD_SUBTITLE,
+  MAX_STUDIO_IMAGES,
+  STUDIO_IMAGE_ACCEPT,
+  STUDIO_IMAGE_HINT,
+  STUDIO_IMAGE_SUBTITLE,
 } from './constants';
-import type { ProductUploadItem } from './types';
-import { getProductUploadItemName, interceptLocalFiles } from './utils';
-import styles from './ProductUpload.module.css';
+import type { StudioImageUploadItem } from './types';
+import { getStudioImageUploadItemName, interceptLocalFiles } from './utils';
+import styles from './StudioImageUpload.module.css';
 
-type ProductUploadProps = {
-  images: ProductUploadItem[];
+type StudioImageUploadProps = {
+  images: StudioImageUploadItem[];
   disabled?: boolean;
   onAppend: (files: File[]) => void;
   onRemove: (uid: string) => void;
@@ -24,18 +24,19 @@ type ProductUploadProps = {
 
 /**
  * 本地图片上传与预览：空态为大虚线投放区，有图后为网格缩略图 + 加号槽，不落盘。
+ * 组件本身不绑定产品/模特语义，label / subtitle / hint / max 均由调用方通过 props 指定。
  */
-export default function ProductUpload({
+export default function StudioImageUpload({
   images,
   disabled = false,
   onAppend,
   onRemove,
-  max = MAX_PRODUCT_IMAGES,
+  max = MAX_STUDIO_IMAGES,
   label = '产品图',
-  subtitle = UPLOAD_SUBTITLE,
-  hint = UPLOAD_HINT,
-  ariaLabel = '上传产品图',
-}: ProductUploadProps) {
+  subtitle = STUDIO_IMAGE_SUBTITLE,
+  hint = STUDIO_IMAGE_HINT,
+  ariaLabel = '上传图片',
+}: StudioImageUploadProps) {
   const remaining = max - images.length;
   const empty = images.length === 0;
 
@@ -59,7 +60,7 @@ export default function ProductUpload({
       {empty ? (
         <Upload
           className={styles.emptyUpload}
-          accept={PRODUCT_IMAGE_ACCEPT}
+          accept={STUDIO_IMAGE_ACCEPT}
           multiple
           disabled={disabled}
           showUploadList={false}
@@ -81,12 +82,16 @@ export default function ProductUpload({
         <div className={styles.thumbs}>
           {images.map((item, index) => (
             <div key={item.uid} className={styles.thumb}>
-              <Image src={item.previewUrl} alt={getProductUploadItemName(item)} preview={false} />
+              <Image
+                src={item.previewUrl}
+                alt={getStudioImageUploadItemName(item)}
+                preview={false}
+              />
               <span className={`${styles.mark} ${styles.index}`}>{index + 1}</span>
               <button
                 type="button"
                 className={`${styles.mark} ${styles.remove}`}
-                aria-label={`移除 ${getProductUploadItemName(item)}`}
+                aria-label={`移除 ${getStudioImageUploadItemName(item)}`}
                 disabled={disabled}
                 onClick={() => onRemove(item.uid)}
               >
@@ -97,7 +102,7 @@ export default function ProductUpload({
           {remaining > 0 ? (
             <Upload
               className={styles.addUpload}
-              accept={PRODUCT_IMAGE_ACCEPT}
+              accept={STUDIO_IMAGE_ACCEPT}
               multiple
               disabled={disabled}
               showUploadList={false}

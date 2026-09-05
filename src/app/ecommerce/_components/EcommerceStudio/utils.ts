@@ -14,7 +14,7 @@ import type {
   EcommerceTaskStepRecord,
 } from '@/app/api/ecommerce/_shared/task-types';
 import { MAX_PRODUCT_DOCS } from '@/business-components/ProductDocsUpload';
-import { MAX_PRODUCT_IMAGES } from '@/business-components/ProductUpload';
+import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import { ApiClientError, apiDelete, apiPut } from '@/lib/shared/client/api-client';
 import type {
   AnalysisStepSnapshot,
@@ -36,7 +36,7 @@ import type { EcommerceDesignType } from '@/app/api/ecommerce/_shared/types';
 export function appendProductImages(
   current: ProductImageItem[],
   files: File[],
-  max = MAX_PRODUCT_IMAGES,
+  max = MAX_STUDIO_IMAGES,
 ): ProductImageItem[] {
   const room = max - current.length;
   if (room <= 0) return current;

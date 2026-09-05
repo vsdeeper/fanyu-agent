@@ -1,6 +1,6 @@
 import { CloseOutlined, FileOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { App, Button, Image, Upload } from 'antd';
-import { interceptLocalFiles } from '@/business-components/ProductUpload/utils';
+import { interceptLocalFiles } from '@/business-components/StudioImageUpload/utils';
 import FileCard from '@/components/FileCard';
 import {
   DOC_TOO_LARGE_WARNING,

@@ -1,4 +1,4 @@
-export type ProductUploadItem = {
+export type StudioImageUploadItem = {
   uid: string;
   file?: File;
   previewUrl: string;

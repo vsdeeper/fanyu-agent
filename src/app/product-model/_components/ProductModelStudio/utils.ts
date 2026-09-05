@@ -4,7 +4,7 @@ import type {
   EcommerceGenerateRequest,
   EcommerceImageInput,
 } from '@/app/api/ecommerce/_shared/types';
-import { MAX_PRODUCT_IMAGES } from '@/business-components/ProductUpload';
+import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import { ApiClientError } from '@/lib/shared/client/api-client';
 import { EXPORT_ARCHIVE_NAME, IMAGE_EXTENSION_BY_MEDIA_TYPE } from './constants';
 import { getModelCapability } from './model-options';
@@ -232,4 +232,4 @@ export async function exportResultImages(images: readonly ResultImage[]): Promis
   URL.revokeObjectURL(url);
 }
 
-export { MAX_PRODUCT_IMAGES };
+export { MAX_STUDIO_IMAGES };

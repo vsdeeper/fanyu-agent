@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { App } from 'antd';
-import { MAX_PRODUCT_IMAGES } from '@/business-components/ProductUpload';
+import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import {
   DEFAULT_FORM,
   EXPORT_FAILED,
@@ -56,7 +56,7 @@ export function useProductModelStudio() {
 
   /** 追加产品事实参考图。 */
   const handleProductImagesAppend = useCallback((files: File[]) => {
-    setProductImages((current) => appendImages(current, files, MAX_PRODUCT_IMAGES));
+    setProductImages((current) => appendImages(current, files, MAX_STUDIO_IMAGES));
   }, []);
 
   /** 移除指定产品事实参考图。 */

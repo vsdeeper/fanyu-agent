@@ -1,6 +1,6 @@
 import type { ProductDocItem, ProductImageItem } from '../../types';
 import ProductDocsUpload from '@/business-components/ProductDocsUpload';
-import ProductUpload from '@/business-components/ProductUpload';
+import StudioImageUpload from '@/business-components/StudioImageUpload';
 
 type AnalyzeFormProps = {
   images: ProductImageItem[];
@@ -26,7 +26,7 @@ export default function AnalyzeForm({
 }: AnalyzeFormProps) {
   return (
     <>
-      <ProductUpload
+      <StudioImageUpload
         images={images}
         disabled={disabled}
         onAppend={onImagesAppend}

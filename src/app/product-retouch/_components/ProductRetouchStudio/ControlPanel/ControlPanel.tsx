@@ -1,6 +1,6 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button, Input, Radio } from 'antd';
-import ProductUpload from '@/business-components/ProductUpload';
+import StudioImageUpload from '@/business-components/StudioImageUpload';
 import { MULTIVIEW_BUTTON, MULTIVIEW_NEED_OPTIONS, REFINE_BUTTON } from '../constants';
 import type {
   MultiviewFormState,
@@ -51,7 +51,7 @@ export default function ControlPanel({
       <div className={styles.scroll}>
         {showRefine ? (
           <>
-            <ProductUpload
+            <StudioImageUpload
               images={images}
               disabled={locked}
               onAppend={onImagesAppend}

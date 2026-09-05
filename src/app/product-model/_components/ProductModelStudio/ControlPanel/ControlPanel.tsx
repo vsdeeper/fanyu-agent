@@ -1,6 +1,6 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button, Input } from 'antd';
-import ProductUpload from '@/business-components/ProductUpload';
+import StudioImageUpload from '@/business-components/StudioImageUpload';
 import {
   GENERATE_BUTTON,
   MAX_MODEL_IMAGES,
@@ -40,14 +40,14 @@ export default function ControlPanel({
   return (
     <aside className={styles.panel}>
       <div className={styles.scroll}>
-        <ProductUpload
+        <StudioImageUpload
           images={productImages}
           disabled={generating}
           subtitle={PRODUCT_IMAGE_SUBTITLE}
           onAppend={onProductImagesAppend}
           onRemove={onProductImageRemove}
         />
-        <ProductUpload
+        <StudioImageUpload
           images={modelImages}
           max={MAX_MODEL_IMAGES}
           label="模特形象"

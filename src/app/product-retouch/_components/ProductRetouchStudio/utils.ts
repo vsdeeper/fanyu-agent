@@ -3,7 +3,7 @@ import type {
   EcommerceGenerateRequest,
   EcommerceImageInput,
 } from '@/app/api/ecommerce/_shared/types';
-import { MAX_PRODUCT_IMAGES } from '@/business-components/ProductUpload';
+import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import { ApiClientError } from '@/lib/shared/client/api-client';
 import { getModelCapability } from './model-options';
 import type {
@@ -20,7 +20,7 @@ export function appendProductImages(
   current: ProductImageItem[],
   files: File[],
 ): ProductImageItem[] {
-  const room = MAX_PRODUCT_IMAGES - current.length;
+  const room = MAX_STUDIO_IMAGES - current.length;
   if (room <= 0) return current;
   const next = files.slice(0, room).map((file) => ({
     uid: crypto.randomUUID(),

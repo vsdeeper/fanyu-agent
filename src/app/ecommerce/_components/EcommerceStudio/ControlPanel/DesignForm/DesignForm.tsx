@@ -1,6 +1,6 @@
 import { Select } from 'antd';
 import type { EcommerceTaskType } from '@/app/api/ecommerce/_shared/task-types';
-import ProductUpload from '@/business-components/ProductUpload';
+import StudioImageUpload from '@/business-components/StudioImageUpload';
 import {
   ASPECT_RATIO_OPTIONS,
   BOOLEAN_OPTIONS,
@@ -43,7 +43,7 @@ export default function DesignForm({
   return (
     <>
       {poster ? (
-        <ProductUpload
+        <StudioImageUpload
           images={modelImages}
           max={MAX_MODEL_IMAGES}
           label="产品模特"

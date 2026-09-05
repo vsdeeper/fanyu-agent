@@ -96,7 +96,7 @@ src/
     layout.tsx
     global.css
   components/              # 全局通用 UI：theme / CustomIcon / ModeSwitch / Providers / FileCard
-  business-components/     # 跨产品页面复用的业务 UI：ProductUpload / ProductDocsUpload
+  business-components/     # 跨产品页面复用的业务 UI：StudioImageUpload / ProductDocsUpload
   hooks/                   # 全局通用 Hook（无业务耦合，可跨路由复用）
   lib/                     # 无独立产品面的平台内核
     db/
@@ -197,7 +197,7 @@ src/hooks           →  禁止依赖 app/ 与任何产品实现
 | 层级     | 路径                       | 判定                                 | 现状示例                                                  |
 | -------- | -------------------------- | ------------------------------------ | --------------------------------------------------------- |
 | 全局通用 | `src/components/`          | 无业务耦合，可跨路由复用             | `theme/`、`CustomIcon/`、`ModeSwitch/`、`Providers.tsx`   |
-| 业务通用 | `src/business-components/` | 带业务语义，供产品页面复用           | `ProductUpload/`、`ProductDocsUpload/`                    |
+| 业务通用 | `src/business-components/` | 带业务语义，供产品页面复用           | `StudioImageUpload/`、`ProductDocsUpload/`                |
 | 页面级   | `app/<route>/_components/` | 仅该路由段使用；`_` 前缀不成为路由段 | `app/chat/_components/`（ChatShell / ChatSidebar / Chat） |
 
 页面级可引用全局通用与业务通用组件（如 Chat 用 `useThemeMode`）；反向禁止。跨页领域服务端逻辑仍放对应 `app/api/<域>/_server` 或 `_shared`，不放 UI 目录。
