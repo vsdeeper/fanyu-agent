@@ -1,5 +1,5 @@
 /* ===================================================================
- * XMarkdown 主题 CSS 变量覆写层
+ * XMarkdown 主题 CSS 变量覆写层（全局共用）
  * -------------------------------------------------------------------
  * 背景：XMarkdown 的 themes/light.css 与 dark.css 在 .x-markdown-light /
  * .x-markdown-dark 作用域下定义一套硬编码默认色，与 antd 主题脱节。
@@ -7,10 +7,15 @@
  * + darkAlgorithm 在 :root 自动输出明暗两套值），Markdown 正文/标题/链接/
  * 表格/引用/代码块即随应用主题自动切换，无需改任何组件逻辑。
  *
- * 引入顺序契约（易错点）：本文件必须在 AiBubbleContent.tsx 中紧跟
- * light.css / dark.css 之后导入（同文件 import 顺序稳定），保证同优先级
- * 选择器（.x-markdown-light）下本层后加载覆盖生效。勿挪到 src/app/global.css
- * ——根布局先加载，会被深层组件的 XMarkdown 主题 CSS 以同优先级反压而失效。
+ * 全局共用：chat 的 AiBubbleContent / AuxiliaryPanel.FilePreview 与 ecommerce
+ * 的 ResultPanel 三处渲染 XMarkdown 的组件都 import 本文件，各自在 light.css /
+ * dark.css 之后引入，避免三份重复 CSS 散落。
+ *
+ * 引入顺序契约（易错点）：每个消费组件必须在自己文件里紧跟
+ * light.css / dark.css 之后 import 本文件（同文件 import 顺序稳定），保证同
+ * 优先级选择器（.x-markdown-light）下本层后加载覆盖生效。勿把本文件移入
+ * src/app/global.css ——根布局先加载，会被深层组件的 XMarkdown 主题 CSS 以同
+ * 优先级反压而失效。
  *
  * 覆写手法：只重定义 XMarkdown 的 CSS 变量（同元素、后加载/同优先级声明），
  * 不改其内部规则。注意 code 背景/颜色在主题 CSS 里以 !important 消费变量

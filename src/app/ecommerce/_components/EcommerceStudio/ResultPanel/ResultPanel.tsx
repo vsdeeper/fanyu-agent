@@ -3,7 +3,7 @@ import { Button, Input, Spin, Typography } from 'antd';
 import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
-import './XMarkdownTheme.css';
+import '@/lib/theme/XMarkdownTheme.css';
 import { useState } from 'react';
 import { useThemeMode } from '@/components/theme';
 import { COMPLETE_BUTTON, NEXT_BUTTON, PREV_BUTTON, VISUAL_STANDARD_BADGE } from '../constants';

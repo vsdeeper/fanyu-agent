@@ -3,7 +3,7 @@ import { Spin } from 'antd';
 import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
-import '../../Chat/AiBubbleContent/XMarkdownTheme.css';
+import '@/lib/theme/XMarkdownTheme.css';
 import { useThemeMode } from '@/components/theme';
 import type { AuxiliaryPanelFileSource } from '../types';
 import { FILE_PREVIEW_LOAD_ERROR } from './constants';
