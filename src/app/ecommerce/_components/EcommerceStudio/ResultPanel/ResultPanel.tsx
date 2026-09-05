@@ -64,7 +64,7 @@ export default function ResultPanel({
   onNext,
   onAnalysisTextChange,
 }: ResultPanelProps) {
-  const { mode } = useThemeMode();
+  const { mode, hydrated } = useThemeMode();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const showPlan = isPlanPhase(phase) && Boolean(analysisText);
@@ -133,16 +133,18 @@ export default function ResultPanel({
       ) : showPlan ? (
         <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
           <div ref={contentRef}>
-            <XMarkdown
-              className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
-              content={analysisText}
-              components={MARKDOWN_COMPONENTS}
-              paragraphTag="div"
-              openLinksInNewTab
-              escapeRawHtml
-              streaming={analysisStreaming ? MARKDOWN_STREAMING_ON : MARKDOWN_STREAMING_OFF}
-              disableDefaultStyles={MARKDOWN_DISABLE_STYLES}
-            />
+            {hydrated ? (
+              <XMarkdown
+                className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
+                content={analysisText}
+                components={MARKDOWN_COMPONENTS}
+                paragraphTag="div"
+                openLinksInNewTab
+                escapeRawHtml
+                streaming={analysisStreaming ? MARKDOWN_STREAMING_ON : MARKDOWN_STREAMING_OFF}
+                disableDefaultStyles={MARKDOWN_DISABLE_STYLES}
+              />
+            ) : null}
           </div>
         </div>
       ) : phase === 'analyzing' ? (

@@ -561,7 +561,7 @@ export async function createDesignStepSnapshot(
   };
 }
 
-/** 上一步：生图中取消回本步空闲，完成页返回视觉设计 */
+/** 上一步：各步回退到前一步（生成中会中止并就地回退，相位由发起方管理），完成页返回视觉设计 */
 export function phaseAfterPrev(phase: StudioPhase): StudioPhase {
   if (phase === 'analyzing') return 'input';
   if (phase === 'visual' || phase === 'visualGenerating') return 'analyzed';

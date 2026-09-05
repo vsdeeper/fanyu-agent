@@ -187,7 +187,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       });
       analysisBuffer.flushNow();
       if (controller.signal.aborted) {
-        setPhase('input');
+        // 用户中止（通常来自上一步）：相位由发起方 handlePrev 管理，勿在此覆盖
         return;
       }
       if (receivedDone) {
@@ -208,7 +208,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       setPhase('input');
     } catch (err) {
       if (isAbortError(err) || controller.signal.aborted) {
-        setPhase('input');
         return;
       }
       console.error('[ecommerce-studio] analyze', err);
@@ -262,7 +261,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         setVisualImages(nextVisualImages);
       });
       if (controller.signal.aborted) {
-        setPhase('visual');
+        // 用户中止（通常来自上一步）：恢复本批前的视觉结果，相位由发起方 handlePrev 管理
+        setVisualImages(visualImages);
         return;
       }
       if (nextVisualImages.slice(batchStartIndex).some((image) => image.status === 'ready')) {
@@ -276,7 +276,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       setPhase('visual');
     } catch (err) {
       if (isAbortError(err) || controller.signal.aborted) {
-        setPhase('visual');
+        setVisualImages(visualImages);
         return;
       }
       console.error('[ecommerce-studio] generate visual', err);
@@ -352,6 +352,11 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         );
         setDesignResultGroups(nextDesignResultGroups);
       });
+      if (controller.signal.aborted) {
+        // 用户中止（通常来自上一步）：恢复本批前的设计结果，相位由发起方 handlePrev 管理
+        setDesignResultGroups(designResultGroups);
+        return;
+      }
       if (
         (nextDesignResultGroups[designType] ?? [])
           .slice(batchStartIndex)
@@ -368,10 +373,12 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       }
       setPhase('design');
     } catch (err) {
-      if (!isAbortError(err) && !controller.signal.aborted) {
-        console.error('[ecommerce-studio] generate design', err);
-        message.error(err instanceof Error && err.message ? err.message : GENERATE_FAILED);
+      if (isAbortError(err) || controller.signal.aborted) {
+        setDesignResultGroups(designResultGroups);
+        return;
       }
+      console.error('[ecommerce-studio] generate design', err);
+      message.error(err instanceof Error && err.message ? err.message : GENERATE_FAILED);
       setPhase('design');
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
