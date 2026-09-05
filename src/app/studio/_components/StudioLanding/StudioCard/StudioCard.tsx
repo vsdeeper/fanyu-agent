@@ -24,9 +24,11 @@ export default function StudioCard({ entry }: { entry: StudioEntry }) {
         <span className={styles.icon}>
           <Icon />
         </span>
-        <div className={styles.title}>{entry.title}</div>
-        <div className={styles.description} title={entry.description}>
-          {entry.description}
+        <div className={styles.contentWrapper}>
+          <div className={styles.title}>{entry.title}</div>
+          <div className={styles.description} title={entry.description}>
+            {entry.description}
+          </div>
         </div>
       </div>
     </Card>

@@ -1,17 +1,21 @@
 /* hover 效果由 antd Card 的 `hoverable` 提供，这里只控制尺寸与内容排版 */
 .card {
-  width: 280px;
+  width: 300px;
 }
 
 .body {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  gap: 16px;
 }
 
 .icon {
   font-size: 28px;
   color: var(--one-color-primary);
+}
+
+.contentWrapper {
+  width: calc(100% - 36px);
 }
 
 .title {

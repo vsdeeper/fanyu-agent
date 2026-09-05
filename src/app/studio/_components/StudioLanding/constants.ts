@@ -12,14 +12,14 @@ export const STUDIO_ENTRIES: StudioEntry[] = [
   {
     key: 'product-retouch',
     title: '产品精修',
-    description: '商品图精修/多角度，一键出图',
+    description: '产品精修/多角度，一键出图',
     path: PRODUCT_RETOUCH_PATH,
     icon: BgColorsOutlined,
   },
   {
     key: 'product-model',
     title: '产品模特',
-    description: '参考模特形象，一键生成多角度模特图',
+    description: '参考产品和模特形象，生成符合产品气质的多角度模特',
     path: PRODUCT_MODEL_PATH,
     icon: UserOutlined,
   },

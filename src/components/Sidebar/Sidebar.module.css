@@ -112,3 +112,7 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+.conversations :global(.ant-conversations-label + div) {
+  display: inline-flex;
+}
