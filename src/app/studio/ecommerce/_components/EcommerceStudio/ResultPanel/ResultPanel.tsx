@@ -198,7 +198,7 @@ export default function ResultPanel({
           disabled={nextDisabled}
           onClick={onNext}
         >
-          {phase === 'design' ? COMPLETE_BUTTON : NEXT_BUTTON}
+          {isDesignResultPhase(phase) ? COMPLETE_BUTTON : NEXT_BUTTON}
         </Button>
       </div>
     </section>
