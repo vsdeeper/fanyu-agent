@@ -51,7 +51,7 @@ export const RESULT_TITLE_POSTER = '营销海报';
 export const VISUAL_STANDARD_BADGE = '视觉标准';
 
 export const MAX_MODEL_IMAGES = 1;
-export const MODEL_IMAGE_SUBTITLE = '可选，锁定外貌与服装并融入海报构图；姿势可按设计调整';
+export const MODEL_IMAGE_SUBTITLE = '可选，锁定外貌与服装，姿势可按设计调整';
 export const MODEL_IMAGE_HINT = '上传模特身份参考图（可选）';
 
 /** 模型下拉（id + label），派生自 model-options，与服务端模型清单一致 */
