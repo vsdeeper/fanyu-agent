@@ -1,7 +1,9 @@
 import { CloseOutlined, FileOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { App, Button, Image, Upload } from 'antd';
+import { useState } from 'react';
 import { interceptLocalFiles } from '@/business-components/StudioImageUpload/utils';
 import FileCard from '@/components/FileCard';
+import ProductDocPreview from './ProductDocPreview';
 import {
   DOC_TOO_LARGE_WARNING,
   DOC_TYPE_WARNING,
@@ -34,6 +36,8 @@ export default function ProductDocsUpload({
   const { message } = App.useApp();
   const remaining = MAX_PRODUCT_DOCS - documents.length;
   const empty = documents.length === 0;
+  const [previewItem, setPreviewItem] = useState<ProductDocUploadItem | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const handleFiles = (files: File[]) => {
     const accepted: File[] = [];
@@ -97,7 +101,7 @@ export default function ProductDocsUpload({
               <div key={item.uid} className={styles.item}>
                 {isImageProductDoc(display) ? (
                   <div className={styles.imageRow}>
-                    <Image src={item.previewUrl} alt={display.name} preview={false} />
+                    <Image src={item.previewUrl} alt={display.name} preview={{ mask: '预览' }} />
                     <span className={styles.imageName}>{display.name}</span>
                   </div>
                 ) : (
@@ -107,6 +111,10 @@ export default function ProductDocsUpload({
                     byteSize={display.size}
                     icon={toDocIcon(display.name)}
                     showDownload={false}
+                    onPreview={() => {
+                      setPreviewItem(item);
+                      setPreviewOpen(true);
+                    }}
                   />
                 )}
                 <button
@@ -144,6 +152,13 @@ export default function ProductDocsUpload({
           ) : null}
         </div>
       )}
+
+      <ProductDocPreview
+        key={previewItem?.uid ?? 'none'}
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        item={previewItem}
+      />
     </section>
   );
 }

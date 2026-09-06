@@ -1,0 +1,30 @@
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.markdown {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.code {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--one-color-text);
+}
+
+.pdf {
+  width: 100%;
+  min-height: 70vh;
+  border: none;
+}
+
+.image {
+  width: 100%;
+}

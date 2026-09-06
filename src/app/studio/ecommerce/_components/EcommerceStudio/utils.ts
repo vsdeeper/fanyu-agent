@@ -13,7 +13,7 @@ import type {
   EcommerceStepKey,
   EcommerceTaskStepRecord,
 } from '@/app/api/ecommerce/_shared/task-types';
-import { MAX_PRODUCT_DOCS } from '@/business-components/ProductDocsUpload';
+import { MAX_PRODUCT_DOCS } from '@/business-components/ProductDocsUpload/constants';
 import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import { ApiClientError, apiDelete, apiPut } from '@/lib/shared/client/api-client';
 import type {
