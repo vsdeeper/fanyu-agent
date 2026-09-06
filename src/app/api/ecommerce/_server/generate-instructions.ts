@@ -3,6 +3,7 @@ import 'server-only';
 import type { EcommerceDesignType } from '@/app/api/ecommerce/_shared/types';
 import {
   DESIGN_TYPE_PROMPT_BY_TYPE,
+  MARKETING_COPY_TYPOGRAPHY_PROMPT,
   PRODUCT_FIDELITY_PROMPT_GUARD,
   PRODUCT_PLACEMENT_PROMPT_GUARD,
   PRODUCT_SCALE_PROMPT_GUARD,
@@ -62,6 +63,7 @@ export function buildVisualPrompt(analysisText: string): string {
     '画面突出产品主体，具有商业广告品质；一张图一个主焦点。',
     '【商业分析】',
     analysisText.trim(),
+    MARKETING_COPY_TYPOGRAPHY_PROMPT,
     PRODUCT_SCALE_PROMPT_GUARD,
     PRODUCT_PLACEMENT_PROMPT_GUARD,
     PRODUCT_FIDELITY_PROMPT_GUARD,
@@ -102,7 +104,7 @@ export function buildDesignPrompt(
       : []),
     ...referenceRules,
     '根据商业分析确定目标人群、卖点优先级、品牌调性、使用场景与信息层级；最终画面须是可直接评审的完整设计成品。',
-    '文字内容只使用商业分析中已有或可安全概括的信息，避免编造参数、功效、认证、价格和促销承诺；文字应简洁、清晰、可读。',
+    MARKETING_COPY_TYPOGRAPHY_PROMPT,
     '【商业分析】',
     analysisText.trim(),
     PRODUCT_SCALE_PROMPT_GUARD,
