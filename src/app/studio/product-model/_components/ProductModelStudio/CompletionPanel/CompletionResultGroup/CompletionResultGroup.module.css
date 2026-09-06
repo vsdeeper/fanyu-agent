@@ -16,8 +16,9 @@
 }
 
 .ratioTitle {
-  color: var(--one-color-text-secondary);
-  font-size: 13px;
+  color: var(--one-color-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
 }
 
 .grid {
