@@ -96,7 +96,22 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
     setModelImages((current) => removeImage(current, uid));
   }, []);
 
-  /** 提交产品模特生成并消费逐张返回的 NDJSON；仅更新内存结果，落盘在「完成」时进行。 */
+  // 落盘与完成共用同一份动作：把当前步左栏 + 右栏整体快照入库（data: URL 由服务端转资产 URL）
+  const persistModelStep = useCallback(
+    async (results: ResultImage[]) => {
+      const saved = await saveProductModelStep(
+        task.id,
+        'model',
+        await createModelStepSnapshot(form, productImages, modelImages, results),
+      );
+      setProductImages(saved.productImages);
+      setModelImages(saved.modelImages);
+      setResults(saved.results);
+    },
+    [task.id, form, productImages, modelImages, setProductImages, setModelImages, setResults],
+  );
+
+  /** 提交产品模特生成并消费逐张返回的 NDJSON；生成完成即落库（与「完成」同一动作）。 */
   const handleGenerate = useCallback(async () => {
     if (productImages.length === 0) {
       message.warning(NO_IMAGE_WARNING);
@@ -130,18 +145,22 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
       });
       if (controller.signal.aborted) return;
       setPhase('model');
+      try {
+        await persistModelStep(nextResults);
+      } catch (err) {
+        console.error('[product-model] persist model', err);
+      }
     } catch (error) {
       if (!isAbortError(error) && !controller.signal.aborted) {
         console.error('[product-model] generate', error);
         message.error(error instanceof Error && error.message ? error.message : GENERATE_FAILED);
-      }
-    } finally {
-      if (abortRef.current === controller) {
-        abortRef.current = null;
+        // 仅失败时回到生成前相位；成功路径已在 try 内 setPhase，避免 finally 在异步落盘期间覆盖用户已推进的相位
         setPhase('model');
       }
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, form, message, modelImages, productImages, results]);
+  }, [abortCurrent, form, message, modelImages, persistModelStep, productImages, results]);
 
   /** 完成：校验有结果后把左右栏内容落盘，再进入「预览生成物料」。 */
   const handleComplete = useCallback(async () => {
@@ -151,14 +170,7 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
     }
     setPersisting(true);
     try {
-      const saved = await saveProductModelStep(
-        task.id,
-        'model',
-        await createModelStepSnapshot(form, productImages, modelImages, results),
-      );
-      setProductImages(saved.productImages);
-      setModelImages(saved.modelImages);
-      setResults(saved.results);
+      await persistModelStep(results);
       setPhase('complete');
     } catch (error) {
       console.error('[product-model] save model', error);
@@ -166,7 +178,7 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
     } finally {
       setPersisting(false);
     }
-  }, [form, message, modelImages, productImages, results, task.id]);
+  }, [message, persistModelStep, results]);
 
   /** 返回上一阶段，并中止可能的生成请求。 */
   const handlePrev = useCallback(() => {

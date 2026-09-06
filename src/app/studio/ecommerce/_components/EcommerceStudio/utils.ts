@@ -267,6 +267,8 @@ type AnalyzeStreamHandlers = {
 export type RafTextBuffer = {
   reset: () => void;
   append: (delta: string) => void;
+  /** 立即返回当前累积文本（生成完成落盘时读取最终正文，闭包里的 analysisText 是旧值）。 */
+  getText: () => string;
   flushNow: () => void;
   dispose: () => void;
 };
@@ -298,6 +300,9 @@ export function createRafTextBuffer(onFlush: (text: string) => void): RafTextBuf
       if (!frame) {
         frame = requestAnimationFrame(flush);
       }
+    },
+    getText() {
+      return text;
     },
     flushNow() {
       if (frame) {

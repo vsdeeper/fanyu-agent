@@ -94,7 +94,39 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     setImages((current) => removeProductImage(current, uid));
   }, []);
 
-  /** 提交产品精修并消费逐张返回的 NDJSON；仅更新内存结果，落盘在「下一步/完成」时进行。 */
+  // 落盘与下一步/完成共用同一份动作：把当前步左栏 + 右栏整体快照入库（data: URL 由服务端转资产 URL）
+  const persistRefineStep = useCallback(
+    async (results: ResultImage[]) => {
+      const saved = await saveProductRetouchStep(
+        task.id,
+        'refine',
+        await createRefineStepSnapshot(
+          refineForm,
+          images,
+          results,
+          selectedRefineIndex,
+          needsMultiview,
+        ),
+      );
+      setImages(saved.images);
+      setRefineImages(saved.results);
+    },
+    [task.id, refineForm, images, selectedRefineIndex, needsMultiview, setImages, setRefineImages],
+  );
+
+  const persistMultiviewStep = useCallback(
+    async (results: ResultImage[]) => {
+      const saved = await saveProductRetouchStep(
+        task.id,
+        'multiview',
+        createMultiviewStepSnapshot(multiviewForm, results),
+      );
+      setMultiviewImages(saved.results);
+    },
+    [task.id, multiviewForm, setMultiviewImages],
+  );
+
+  /** 提交产品精修并消费逐张返回的 NDJSON；生成完成即落库（与下一步/完成同一动作）。 */
   const handleRefine = useCallback(async () => {
     if (images.length === 0) {
       message.warning(NO_IMAGE_WARNING);
@@ -129,20 +161,24 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
       });
       if (controller.signal.aborted) return;
       setPhase('refine');
+      try {
+        await persistRefineStep(nextRefineImages);
+      } catch (err) {
+        console.error('[product-retouch] persist refine', err);
+      }
     } catch (error) {
       if (!isAbortError(error) && !controller.signal.aborted) {
         console.error('[product-retouch] refine', error);
         message.error(error instanceof Error && error.message ? error.message : GENERATE_FAILED);
-      }
-    } finally {
-      if (abortRef.current === controller) {
-        abortRef.current = null;
+        // 仅失败时回到该生成前相位；成功路径已在 try 内 setPhase，避免 finally 在异步落盘期间覆盖用户已推进的相位
         setPhase('refine');
       }
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, images, message, refineForm, refineImages]);
+  }, [abortCurrent, images, message, persistRefineStep, refineForm, refineImages]);
 
-  /** 以选中的精修标准图生成产品多视角；仅更新内存结果，落盘在「完成」时进行。 */
+  /** 以选中的精修标准图生成产品多视角；生成完成即落库（与下一步/完成同一动作）。 */
   const handleMultiview = useCallback(async () => {
     const selectedRefinedUrl = getSelectedImageUrl(refineImages, selectedRefineIndex);
     if (!selectedRefinedUrl) {
@@ -180,18 +216,30 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
       });
       if (controller.signal.aborted) return;
       setPhase('multiview');
+      try {
+        await persistMultiviewStep(nextMultiviewImages);
+      } catch (err) {
+        console.error('[product-retouch] persist multiview', err);
+      }
     } catch (error) {
       if (!isAbortError(error) && !controller.signal.aborted) {
         console.error('[product-retouch] multiview', error);
         message.error(error instanceof Error && error.message ? error.message : GENERATE_FAILED);
-      }
-    } finally {
-      if (abortRef.current === controller) {
-        abortRef.current = null;
+        // 仅失败时回到该生成前相位；成功路径已在 try 内 setPhase，避免 finally 在异步落盘期间覆盖用户已推进的相位
         setPhase('multiview');
       }
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, message, multiviewForm, multiviewImages, refineImages, selectedRefineIndex]);
+  }, [
+    abortCurrent,
+    message,
+    multiviewForm,
+    multiviewImages,
+    persistMultiviewStep,
+    refineImages,
+    selectedRefineIndex,
+  ]);
 
   /** 点选精修标准图：仅更新选中，不落盘（落盘在「下一步/完成」时进行）。 */
   const handleSelectRefine = useCallback((index: number) => {
@@ -210,19 +258,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     }
     setPersisting(true);
     try {
-      const saved = await saveProductRetouchStep(
-        task.id,
-        'refine',
-        await createRefineStepSnapshot(
-          refineForm,
-          images,
-          refineImages,
-          selectedRefineIndex,
-          needsMultiview,
-        ),
-      );
-      setImages(saved.images);
-      setRefineImages(saved.results);
+      await persistRefineStep(refineImages);
       setPhase((current) => phaseAfterNext(current, needsMultiview));
     } catch (error) {
       console.error('[product-retouch] save refine', error);
@@ -230,7 +266,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     } finally {
       setPersisting(false);
     }
-  }, [images, message, needsMultiview, refineForm, refineImages, selectedRefineIndex, task.id]);
+  }, [message, needsMultiview, persistRefineStep, refineImages, selectedRefineIndex]);
 
   /** 完成：落盘多视角快照并以加载态呈现，再进入完成页。 */
   const handleComplete = useCallback(async () => {
@@ -240,12 +276,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     }
     setPersisting(true);
     try {
-      const saved = await saveProductRetouchStep(
-        task.id,
-        'multiview',
-        createMultiviewStepSnapshot(multiviewForm, multiviewImages),
-      );
-      setMultiviewImages(saved.results);
+      await persistMultiviewStep(multiviewImages);
       setPhase('complete');
     } catch (error) {
       console.error('[product-retouch] save multiview', error);
@@ -253,7 +284,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     } finally {
       setPersisting(false);
     }
-  }, [message, multiviewForm, multiviewImages, task.id]);
+  }, [message, multiviewImages, persistMultiviewStep]);
 
   /** 返回实际访问的上一步，并在必要时中止多视角生成。 */
   const handlePrev = useCallback(() => {

@@ -150,6 +150,49 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     analysisBuffer.dispose();
   }, [analysisBuffer]);
 
+  // 落盘与下一步/完成共用同一份动作：把当前步左栏 + 右栏整体快照入库（data: URL 由服务端转资产 URL）
+  // 注：下游失效（删除旧 visual/design）收敛到 handleNext 显式提交时再做，生成完成即落库不误删已提交结果
+  const persistAnalysisStep = useCallback(
+    async (imgs: ProductImageItem[], docs: ProductDocItem[], text: string) => {
+      const saved = await saveStudioStep(
+        task.id,
+        'analysis',
+        await createAnalysisStepSnapshot(imgs, docs, text),
+      );
+      setImages(saved.images);
+      setDocuments(saved.documents);
+      setAnalysisText(saved.analysisText);
+    },
+    [task.id, setImages, setDocuments, setAnalysisText],
+  );
+
+  const persistVisualStep = useCallback(
+    async (f: StudioFormState, imgs: StudioResultImage[], idx: number | null) => {
+      const saved = await saveStudioStep(task.id, 'visual', {
+        form: f,
+        visualImages: imgs,
+        selectedVisualIndex: idx,
+      });
+      setForm(saved.form);
+      setVisualImages(saved.visualImages);
+    },
+    [task.id, setForm, setVisualImages],
+  );
+
+  const persistDesignStep = useCallback(
+    async (df: DesignFormState, groups: DesignResultGroups, modelImgs: ProductImageItem[]) => {
+      const saved = await saveStudioStep(
+        task.id,
+        'design',
+        await createDesignStepSnapshot(df, groups, modelImgs),
+      );
+      setDesignForm(saved.form);
+      setDesignResultGroups(saved.designResultGroups);
+      setModelImages(saved.modelImages);
+    },
+    [task.id, setDesignForm, setDesignResultGroups, setModelImages],
+  );
+
   const handleAnalyze = useCallback(async () => {
     if (images.length === 0) {
       message.warning(NO_IMAGE_WARNING);
@@ -193,11 +236,16 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         return;
       }
       if (receivedDone) {
-        // 分析仅产出右侧栏正文，落库收敛到下一步/完成；标记本会话重跑过分析
+        // 分析产出右侧栏正文；生成完成即落库（与下一步/完成同一动作），并标记本会话重跑过分析
         revokeProductImageUrls(modelImagesRef.current);
         setModelImages([]);
         analysisDirtyRef.current = true;
         setPhase('analyzed');
+        try {
+          await persistAnalysisStep(images, documents, analysisBuffer.getText());
+        } catch (err) {
+          console.error('[ecommerce-studio] persist analysis', err);
+        }
         return;
       }
       setPhase('input');
@@ -211,7 +259,15 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, analysisBuffer, documents, images, message, setModelImages]);
+  }, [
+    abortCurrent,
+    analysisBuffer,
+    documents,
+    images,
+    message,
+    persistAnalysisStep,
+    setModelImages,
+  ]);
 
   const handleGenerateVisual = useCallback(async () => {
     if (images.length === 0) {
@@ -250,8 +306,13 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         setVisualImages(visualImages);
         return;
       }
-      // 生成仅产出右侧栏结果，落库收敛到下一步/完成
+      // 生成产出右侧栏结果；生成完成即落库（与下一步/完成同一动作）
       setPhase('visual');
+      try {
+        await persistVisualStep(form, nextVisualImages, selectedVisualIndex);
+      } catch (err) {
+        console.error('[ecommerce-studio] persist visual', err);
+      }
     } catch (err) {
       if (isAbortError(err) || controller.signal.aborted) {
         setVisualImages(visualImages);
@@ -263,7 +324,16 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, analysisText, form, images, message, visualImages]);
+  }, [
+    abortCurrent,
+    analysisText,
+    form,
+    images,
+    message,
+    persistVisualStep,
+    selectedVisualIndex,
+    visualImages,
+  ]);
 
   const handleGenerateDesign = useCallback(async () => {
     if (!analysisText.trim()) {
@@ -326,9 +396,14 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         setDesignResultGroups(designResultGroups);
         return;
       }
-      // 生成仅产出右侧栏结果，落库收敛到下一步/完成；poster 覆盖需回写表单
+      // 生成产出右侧栏结果；生成完成即落库（与下一步/完成同一动作）；poster 覆盖需回写表单
       setDesignForm(nextDesignForm);
       setPhase('design');
+      try {
+        await persistDesignStep(nextDesignForm, nextDesignResultGroups, modelImages);
+      } catch (err) {
+        console.error('[ecommerce-studio] persist design', err);
+      }
     } catch (err) {
       if (isAbortError(err) || controller.signal.aborted) {
         setDesignResultGroups(designResultGroups);
@@ -349,6 +424,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     images,
     message,
     modelImages,
+    persistDesignStep,
     selectedVisualIndex,
     setDesignForm,
     task.taskType,
@@ -427,11 +503,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setNextLoading(true);
     try {
       if (phase === 'analyzed') {
-        const snapshot = await createAnalysisStepSnapshot(images, documents, analysisText);
-        const saved = await saveStudioStep(task.id, 'analysis', snapshot);
-        setImages(saved.images);
-        setDocuments(saved.documents);
-        setAnalysisText(saved.analysisText);
+        await persistAnalysisStep(images, documents, analysisText);
         // 仅本会话重跑过分析才使旧下游视觉/设计失效，避免误删已提交结果
         if (analysisDirtyRef.current) {
           await Promise.all([
@@ -441,22 +513,9 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
           analysisDirtyRef.current = false;
         }
       } else if (phase === 'visual') {
-        const saved = await saveStudioStep(task.id, 'visual', {
-          form,
-          visualImages,
-          selectedVisualIndex,
-        });
-        setForm(saved.form);
-        setVisualImages(saved.visualImages);
+        await persistVisualStep(form, visualImages, selectedVisualIndex);
       } else if (phase === 'design') {
-        const saved = await saveStudioStep(
-          task.id,
-          'design',
-          await createDesignStepSnapshot(designForm, designResultGroups, modelImages),
-        );
-        setDesignForm(saved.form);
-        setDesignResultGroups(saved.designResultGroups);
-        setModelImages(saved.modelImages);
+        await persistDesignStep(designForm, designResultGroups, modelImages);
       }
     } catch (err) {
       console.error('[ecommerce-studio] persist step on next', err);
@@ -473,17 +532,12 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     images,
     message,
     modelImages,
+    persistAnalysisStep,
+    persistDesignStep,
+    persistVisualStep,
     phase,
     selectedVisualIndex,
-    setAnalysisText,
-    setDesignForm,
-    setDesignResultGroups,
-    setDocuments,
-    setForm,
-    setImages,
-    setModelImages,
     setNextLoading,
-    setVisualImages,
     task.id,
     task.taskType,
     visualImages,
