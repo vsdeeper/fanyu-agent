@@ -8,11 +8,9 @@ import {
   INVALID_JSON,
   MISSING_ANALYSIS,
   MISSING_PRODUCT_IMAGE,
-  MISSING_VISUAL,
 } from './constants';
 import {
   buildDesignPrompt,
-  buildModelPrompt,
   buildProductModelPrompt,
   buildProductMultiviewPrompt,
   buildProductRefinePrompt,
@@ -58,10 +56,6 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
     }
   }
 
-  if (body.kind === 'model' && !body.visualDataUrl.trim()) {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_VISUAL, 400);
-  }
-
   const count = body.count;
   let prompt: string;
   let referenceImageDataUrls: string[];
@@ -87,12 +81,6 @@ export async function handleEcommerceGenerate(req: Request): Promise<Response> {
   } else if (body.kind === 'visual') {
     prompt = buildVisualPrompt(body.analysisText);
     referenceImageDataUrls = body.productViewImages.map((image) => image.dataUrl);
-  } else if (body.kind === 'model') {
-    prompt = buildModelPrompt(body.modelRequirement, (body.modelImages?.length ?? 0) > 0);
-    referenceImageDataUrls = [
-      body.visualDataUrl,
-      ...(body.modelImages?.map((image) => image.dataUrl) ?? []),
-    ];
   } else {
     prompt = buildDesignPrompt(
       body.designType,

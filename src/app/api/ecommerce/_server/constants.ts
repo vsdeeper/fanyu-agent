@@ -8,8 +8,6 @@ export const GENERATE_FAILED = '生图失败，请稍后重试';
 export const SERVICE_UNAVAILABLE = '服务暂时不可用，请稍后重试';
 export const MISSING_ANALYSIS = '请先完成产品分析';
 export const MISSING_PRODUCT_VIEW = '请先点选产品多视角图';
-export const MISSING_VISUAL = '请先点选营销主视觉';
-export const MODEL_HELP_WRITE_FAILED = '模特要求生成失败，请稍后重试';
 
 /** 产品改图保真底线，产品多视角与营销主视觉共同使用。 */
 export const PRODUCT_FIDELITY_PROMPT_GUARD =

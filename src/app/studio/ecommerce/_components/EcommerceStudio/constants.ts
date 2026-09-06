@@ -38,7 +38,6 @@ export const NEXT_BUTTON = '下一步';
 export const COMPLETE_BUTTON = '完成';
 export const ANALYZE_FAILED = '产品分析失败，请稍后重试';
 export const GENERATE_FAILED = '生图失败，请稍后重试';
-export const MODEL_HELP_WRITE_FAILED = '模特要求生成失败，请稍后重试';
 
 export const EMPTY_RESULT_HINT = '上传产品资料和产品图，点击「分析产品」开始';
 export const EMPTY_VISUAL_HINT = '设置参数后点击「生成主视觉」';

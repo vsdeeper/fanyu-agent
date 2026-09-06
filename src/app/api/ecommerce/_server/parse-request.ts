@@ -5,7 +5,6 @@ import { z } from 'zod';
 import type {
   EcommerceAnalyzeRequest,
   EcommerceGenerateRequest,
-  EcommerceModelHelpWriteRequest,
 } from '@/app/api/ecommerce/_shared/types';
 import { ECOMMERCE_DESIGN_TYPES } from '@/app/api/ecommerce/_shared/constants';
 import {
@@ -87,14 +86,6 @@ const visualGenerateSchema = specFieldsSchema.extend({
   productViewImages: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
 });
 
-const modelGenerateSchema = specFieldsSchema.extend({
-  kind: z.literal('model'),
-  count: countSchema,
-  modelRequirement: z.string(),
-  visualDataUrl: imageDataUrlSchema,
-  modelImages: z.array(imageInputSchema).max(MAX_STUDIO_MODEL_IMAGES).optional(),
-});
-
 const designGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('design'),
   count: countSchema,
@@ -108,12 +99,6 @@ const designGenerateSchema = specFieldsSchema.extend({
   modelImages: z.array(imageInputSchema).max(MAX_STUDIO_MODEL_IMAGES).optional(),
 });
 
-const modelHelpWriteBodySchema = z.object({
-  analysisText: z.string().min(1),
-  visualDataUrl: imageDataUrlSchema,
-  modelImageDataUrl: imageDataUrlSchema.optional(),
-});
-
 const generateBodySchema = z
   .discriminatedUnion('kind', [
     productRefineGenerateSchema,
@@ -121,7 +106,6 @@ const generateBodySchema = z
     productViewGenerateSchema,
     productModelGenerateSchema,
     visualGenerateSchema,
-    modelGenerateSchema,
     designGenerateSchema,
   ])
   .superRefine((value, context) => {
@@ -151,11 +135,5 @@ export function parseAnalyzeBody(json: unknown): EcommerceAnalyzeRequest | null 
 /** 校验生图请求体；失败返回 null */
 export function parseGenerateBody(json: unknown): EcommerceGenerateRequest | null {
   const parsed = generateBodySchema.safeParse(json);
-  return parsed.success ? parsed.data : null;
-}
-
-/** 校验模特要求帮写请求体；失败返回 null */
-export function parseModelHelpWriteBody(json: unknown): EcommerceModelHelpWriteRequest | null {
-  const parsed = modelHelpWriteBodySchema.safeParse(json);
   return parsed.success ? parsed.data : null;
 }

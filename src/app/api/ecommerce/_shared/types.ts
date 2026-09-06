@@ -31,13 +31,7 @@ export type EcommerceAnalyzeErrorEvent = {
 export type EcommerceDesignType = (typeof ECOMMERCE_DESIGN_TYPES)[number];
 
 export type EcommerceGenerateKind =
-  | 'productRefine'
-  | 'productMultiview'
-  | 'productView'
-  | 'productModel'
-  | 'visual'
-  | 'model'
-  | 'design';
+  'productRefine' | 'productMultiview' | 'productView' | 'productModel' | 'visual' | 'design';
 
 type EcommerceGenerateBase = {
   model: string;
@@ -86,15 +80,6 @@ export type EcommerceVisualGenerateRequest = EcommerceGenerateBase & {
   productViewImages: EcommerceImageInput[];
 };
 
-/** 产品模特：本步表单 + 选中主视觉 + 可选模特形象；不传分析/产品图 */
-export type EcommerceModelGenerateRequest = EcommerceGenerateBase & {
-  kind: 'model';
-  count: number;
-  modelRequirement: string;
-  visualDataUrl: string;
-  modelImages?: EcommerceImageInput[];
-};
-
 /** 视觉设计：表单配置 + 分析结果 + 全部产品图 + 开关控制的视觉/模特标准图；营销海报可附带可选模特形象 */
 export type EcommerceDesignGenerateRequest = EcommerceGenerateBase & {
   kind: 'design';
@@ -115,23 +100,10 @@ export type EcommerceGenerateRequest =
   | EcommerceProductViewGenerateRequest
   | EcommerceProductModelGenerateRequest
   | EcommerceVisualGenerateRequest
-  | EcommerceModelGenerateRequest
   | EcommerceDesignGenerateRequest;
 
 export type EcommerceGenerateImageEvent = {
   index: number;
   url?: string;
   error?: string;
-};
-
-/** POST /api/ecommerce/model-help-write 成功载荷 */
-export type EcommerceModelHelpWriteData = {
-  modelRequirement: string;
-};
-
-/** POST /api/ecommerce/model-help-write 请求体 */
-export type EcommerceModelHelpWriteRequest = {
-  analysisText: string;
-  visualDataUrl: string;
-  modelImageDataUrl?: string;
 };
