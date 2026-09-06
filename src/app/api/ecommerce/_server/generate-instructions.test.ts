@@ -90,6 +90,8 @@ describe('电商生图指令', () => {
     expect(prompt).toContain('Logo、品牌文字、标签和图案必须原样、清晰、完整保留');
     expect(prompt).toContain('控制部件的数量、形状、颜色、尺寸和安装位置必须逐一对应原图');
     expect(prompt).toContain('电影感定向光');
+    expect(prompt).toContain('产品必须稳定放置在场景中的支撑面');
+    expect(prompt).toContain('不得悬空、悬浮、漂浮');
   });
 
   it.each(ECOMMERCE_DESIGN_TYPES)('视觉设计为“%s”时包含类型要求与商业分析', (designType) => {
@@ -102,6 +104,7 @@ describe('电商生图指令', () => {
     expect(prompt).toContain('第3个及之后的参考图=同一位模特的身份与着装参考');
     expect(prompt).toContain('必须把该人物融合进成品画面并参与构图');
     expect(prompt).toContain('姿势、站位、动作与取景可按当前物料的广告设计需要调整');
+    expect(prompt).toContain('产品必须稳定放置在场景中的支撑面');
   });
 
   it('视觉设计参考图编号随开关保持一致', () => {
