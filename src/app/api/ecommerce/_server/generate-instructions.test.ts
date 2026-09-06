@@ -68,6 +68,8 @@ describe('电商生图指令', () => {
     expect(prompt).toContain('不得缺失、粘连躯干或长出额外肢体');
     expect(prompt).toContain('左栏半身特写姿态硬约束');
     expect(prompt).toContain('双肩保持水平且左右对称');
+    expect(prompt).toContain('人物商业级修饰硬约束');
+    expect(prompt).toContain('不得复刻参考图这张照片上的模糊、瑕疵');
     expect(prompt).toContain('身体中轴线与画面垂直');
     expect(prompt).toContain('禁止2×2宫格、上下两排');
     expect(prompt).toContain('【视角要求】\n正面、侧面、背面三种全身视角');

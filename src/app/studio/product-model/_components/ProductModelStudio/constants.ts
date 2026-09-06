@@ -27,7 +27,8 @@ export const ASPECT_RATIO_OPTIONS = [
 
 export const MAX_MODEL_IMAGES = 3;
 export const PRODUCT_IMAGE_SUBTITLE = '识别品类，并参考视觉、气质与风格';
-export const MODEL_IMAGE_SUBTITLE = '可选，用于锁定同一人物的身份与外貌';
+export const MODEL_IMAGE_SUBTITLE =
+  '可选，用于锁定同一人物的身份与外貌；请尽量上传清晰、无瑕的照片';
 export const GENERATE_BUTTON = '生成产品模特';
 export const EMPTY_RESULT_HINT = '上传产品图并设置视角要求后，点击「生成产品模特」';
 export const NO_IMAGE_WARNING = '请先上传产品图';
