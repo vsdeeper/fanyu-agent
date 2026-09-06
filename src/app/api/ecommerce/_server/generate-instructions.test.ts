@@ -92,6 +92,8 @@ describe('电商生图指令', () => {
     expect(prompt).toContain('电影感定向光');
     expect(prompt).toContain('产品必须稳定放置在场景中的支撑面');
     expect(prompt).toContain('不得悬空、悬浮、漂浮');
+    expect(prompt).toContain('产品与人物、场景的比例关系必须真实协调');
+    expect(prompt).toContain('显著小于成人人体尺度');
   });
 
   it.each(ECOMMERCE_DESIGN_TYPES)('视觉设计为“%s”时包含类型要求与商业分析', (designType) => {
@@ -105,6 +107,7 @@ describe('电商生图指令', () => {
     expect(prompt).toContain('必须把该人物融合进成品画面并参与构图');
     expect(prompt).toContain('姿势、站位、动作与取景可按当前物料的广告设计需要调整');
     expect(prompt).toContain('产品必须稳定放置在场景中的支撑面');
+    expect(prompt).toContain('产品与人物、场景的比例关系必须真实协调');
   });
 
   it('视觉设计参考图编号随开关保持一致', () => {
