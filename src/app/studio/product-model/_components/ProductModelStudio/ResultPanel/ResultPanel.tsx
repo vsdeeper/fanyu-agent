@@ -1,8 +1,8 @@
-import { DownloadOutlined, StarOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
-import { EMPTY_RESULT_HINT, EXPORT_BUTTON } from '../constants';
+import { StarOutlined } from '@ant-design/icons';
+import { Button, Skeleton, Typography } from 'antd';
+import { COMPLETE_BUTTON, EMPTY_RESULT_HINT } from '../constants';
 import type { ResultImage } from '../types';
-import { aspectRatioToSize } from '../utils';
+import { aspectRatioToSize, groupResultImagesByRatio, hasReadyImage } from '../utils';
 import ResultImageItem from './ResultImageItem';
 import styles from './ResultPanel.module.css';
 
@@ -11,22 +11,21 @@ type ResultPanelProps = {
   expectedCount: number;
   aspectRatio: string;
   generating: boolean;
-  exporting: boolean;
-  readyCount: number;
-  onExport: () => void;
+  persisting: boolean;
+  onComplete: () => void;
 };
 
-/** 产品模特工作台右栏：展示生成结果并在右下角提供全部导出。 */
+/** 产品模特工作台右栏：按比例二级分类展示生成结果，右下角提供「完成」落盘。 */
 export default function ResultPanel({
   images,
   expectedCount,
   aspectRatio,
   generating,
-  exporting,
-  readyCount,
-  onExport,
+  persisting,
+  onComplete,
 }: ResultPanelProps) {
   const placeholderSize = aspectRatioToSize(aspectRatio, 280);
+  const ratioGroups = groupResultImagesByRatio(images);
   return (
     <section className={styles.panel}>
       <div className={styles.head}>
@@ -35,28 +34,37 @@ export default function ResultPanel({
       </div>
       {images.length > 0 ? (
         <div className={styles.scroll}>
-          <div className={styles.grid}>
-            {images.map((image) => {
-              const size = aspectRatioToSize(image.aspectRatio, 280);
-              return (
-                <ResultImageItem
-                  key={image.index}
-                  image={image}
-                  width={size.width}
-                  height={size.height}
-                />
-              );
-            })}
-          </div>
+          {ratioGroups.map(({ aspectRatio: ratio, images: ratioImages }) => (
+            <section key={ratio} className={styles.ratioGroup}>
+              <Typography.Text className={styles.ratioTitle}>{ratio}</Typography.Text>
+              <div className={styles.grid}>
+                {ratioImages.map((image) => {
+                  const size = aspectRatioToSize(image.aspectRatio, 280);
+                  return (
+                    <ResultImageItem
+                      key={`${ratio}-${image.index}`}
+                      image={image}
+                      width={size.width}
+                      height={size.height}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
       ) : generating ? (
         <div className={styles.scroll}>
           <div className={styles.grid}>
             {Array.from({ length: Math.max(1, expectedCount) }, (_, index) => (
-              <div
+              <Skeleton.Image
                 key={index}
-                className={styles.placeholder}
-                style={{ width: placeholderSize.width, height: placeholderSize.height }}
+                active
+                style={{
+                  width: placeholderSize.width,
+                  height: placeholderSize.height,
+                  borderRadius: 8,
+                }}
               />
             ))}
           </div>
@@ -71,12 +79,11 @@ export default function ResultPanel({
         <Button
           size="large"
           type="primary"
-          icon={<DownloadOutlined />}
-          loading={exporting}
-          disabled={generating || readyCount === 0}
-          onClick={onExport}
+          loading={persisting}
+          disabled={generating || persisting || !hasReadyImage(images)}
+          onClick={onComplete}
         >
-          {EXPORT_BUTTON}
+          {COMPLETE_BUTTON}
         </Button>
       </div>
     </section>

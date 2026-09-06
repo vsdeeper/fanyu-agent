@@ -43,9 +43,18 @@
   flex: 1;
 }
 
+.stepsRow {
+  flex-shrink: 0;
+  padding: 16px 42px 24px;
+}
+
+.steps :global(.ant-steps-item-title) {
+  font-size: 13px !important;
+}
+
 .content {
   display: flex;
   gap: 16px;
   overflow: hidden;
-  padding: 16px 24px 24px;
+  padding: 0 24px 24px;
 }

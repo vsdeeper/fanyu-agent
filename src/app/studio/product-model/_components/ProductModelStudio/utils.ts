@@ -4,11 +4,26 @@ import type {
   EcommerceGenerateRequest,
   EcommerceImageInput,
 } from '@/app/api/ecommerce/_shared/types';
+import { PRODUCT_MODEL_STEP_SNAPSHOT_VERSION } from '@/app/api/product-model/_shared/task-constants';
+import type {
+  ProductModelStepKey,
+  ProductModelTaskStepRecord,
+} from '@/app/api/product-model/_shared/task-types';
 import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
-import { ApiClientError } from '@/lib/shared/client/api-client';
-import { EXPORT_ARCHIVE_NAME, IMAGE_EXTENSION_BY_MEDIA_TYPE } from './constants';
+import { ApiClientError, apiPut } from '@/lib/shared/client/api-client';
+import {
+  EXPORT_ARCHIVE_NAME,
+  IMAGE_EXTENSION_BY_MEDIA_TYPE,
+  MATERIAL_GROUP_TITLE,
+} from './constants';
 import { getModelCapability } from './model-options';
-import type { ProductImageItem, ProductModelFormState, ResultImage } from './types';
+import type {
+  ProductImageItem,
+  ProductModelFormState,
+  ProductModelPhase,
+  ProductModelStepSnapshot,
+  ResultImage,
+} from './types';
 
 /** 追加本地图片并建立预览 URL，最多保留指定数量。 */
 export function appendImages(
@@ -39,7 +54,7 @@ export function revokeImageUrls(items: ProductImageItem[]): void {
 }
 
 /** 将本地文件读取为 API 可接收的 data URL。 */
-export function readFileAsDataUrl(file: File): Promise<string> {
+export function readFileAsDataUrl(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
@@ -48,18 +63,31 @@ export function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-/** 将本地图片转换为生图接口图片输入。 */
+/** 将站内资产 URL 或已有 data URL 转为模型接口所需的 data URL。 */
+export async function readUrlAsDataUrl(url: string): Promise<string> {
+  if (url.startsWith('data:')) return url;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('读取历史资产失败');
+  return readFileAsDataUrl(await response.blob());
+}
+
+/** 读取新上传文件或已持久化资产，统一产出 data URL。 */
+export async function readUploadItemAsDataUrl(item: ProductImageItem): Promise<string> {
+  return item.file ? readFileAsDataUrl(item.file) : readUrlAsDataUrl(item.previewUrl);
+}
+
+/** 将本地图片转换为生图接口图片输入；恢复的快照无 file 时回退到资产 URL。 */
 export async function toImageInputs(items: ProductImageItem[]): Promise<EcommerceImageInput[]> {
   return Promise.all(
-    items.map(async ({ file }) => ({
-      filename: file.name,
-      mediaType: file.type || 'image/jpeg',
-      dataUrl: await readFileAsDataUrl(file),
+    items.map(async (item) => ({
+      filename: item.file?.name ?? 'product-image',
+      mediaType: item.file?.type || 'image/jpeg',
+      dataUrl: await readUploadItemAsDataUrl(item),
     })),
   );
 }
 
-/** 组装独立产品模特工作台的生成请求体。 */
+/** 组装产品模特生成请求体。 */
 export async function toProductModelPayload(
   form: ProductModelFormState,
   productImages: ProductImageItem[],
@@ -173,6 +201,25 @@ export function aspectRatioToSize(
   return { width: baseWidth, height: Math.round((baseWidth * height) / width) };
 }
 
+/** 二级分类：把结果图按其比例拆成稳定顺序的子组，供按比例分组展示。 */
+export function groupResultImagesByRatio<T extends ResultImage>(
+  images: readonly T[],
+): Array<{ aspectRatio: string; images: T[] }> {
+  const order: string[] = [];
+  const byRatio = new Map<string, T[]>();
+  for (const image of images) {
+    const key = image.aspectRatio;
+    const bucket = byRatio.get(key);
+    if (bucket) {
+      bucket.push(image);
+    } else {
+      byRatio.set(key, [image]);
+      order.push(key);
+    }
+  }
+  return order.map((ratio) => ({ aspectRatio: ratio, images: byRatio.get(ratio)! }));
+}
+
 /** 仅保留有可用 URL 的已生成图片。 */
 export function getGeneratedImages(
   images: readonly ResultImage[],
@@ -180,6 +227,21 @@ export function getGeneratedImages(
   return images.filter(
     (item): item is ResultImage & { url: string } => item.status === 'ready' && Boolean(item.url),
   );
+}
+
+/** 判断结果集中是否至少有一张已生成图片。 */
+export function hasReadyImage(images: readonly ResultImage[]): boolean {
+  return images.some((item) => item.status === 'ready' && Boolean(item.url));
+}
+
+/** 返回当前阶段的下一步阶段。 */
+export function phaseAfterNext(phase: ProductModelPhase): ProductModelPhase {
+  return phase === 'model' ? 'complete' : 'model';
+}
+
+/** 返回当前阶段的上一阶段。 */
+export function phaseAfterPrev(phase: ProductModelPhase): ProductModelPhase {
+  return phase === 'complete' ? 'model' : 'model';
 }
 
 /** 解析 data URL，并返回媒体类型与原始字节。 */
@@ -191,25 +253,52 @@ export function decodeImageDataUrl(dataUrl: string): {
   if (!match) throw new Error('无效的图片数据');
   const mediaType = match[1].toLowerCase();
   const payload = match[3];
-  if (!match[2]) {
-    return { mediaType, bytes: new TextEncoder().encode(decodeURIComponent(payload)) };
+  if (match[2]) {
+    const binary = atob(payload);
+    return {
+      mediaType,
+      bytes: Uint8Array.from(binary, (character) => character.charCodeAt(0)),
+    };
   }
-  const binary = atob(payload);
+  return { mediaType, bytes: new TextEncoder().encode(decodeURIComponent(payload)) };
+}
+
+/** 读取新生成的 data URL 或已持久化的站内资产 URL。 */
+export async function readImageBytes(source: string): Promise<{
+  mediaType: string;
+  bytes: Uint8Array;
+}> {
+  if (source.startsWith('data:')) return decodeImageDataUrl(source);
+  const response = await fetch(source);
+  if (!response.ok) throw new Error('读取生成物料失败');
   return {
-    mediaType,
-    bytes: Uint8Array.from(binary, (character) => character.charCodeAt(0)),
+    mediaType: response.headers.get('content-type')?.split(';')[0] ?? 'image/png',
+    bytes: new Uint8Array(await response.arrayBuffer()),
   };
 }
 
-/** 将已生成的产品模特图打包为 ZIP 字节。 */
-export function createResultArchive(images: readonly ResultImage[]): Promise<Uint8Array> {
-  const files: Record<string, Uint8Array> = {};
-  getGeneratedImages(images).forEach((image, index) => {
-    const { mediaType, bytes } = decodeImageDataUrl(image.url);
-    const extension = IMAGE_EXTENSION_BY_MEDIA_TYPE[mediaType] ?? 'png';
-    files[`产品模特图/product-model-${String(index + 1).padStart(2, '0')}.${extension}`] = bytes;
-  });
+/** 将一组图片按比例拆成二级子组写入待打包文件表；文件名「比例-序号」，每比例内序号从 01 起。 */
+async function appendMaterialGroupFiles(
+  files: Record<string, Uint8Array>,
+  images: readonly ResultImage[],
+): Promise<void> {
+  await Promise.all(
+    groupResultImagesByRatio(getGeneratedImages(images)).flatMap(
+      ({ aspectRatio, images: ratioImages }) =>
+        ratioImages.map(async (image, index) => {
+          const { mediaType, bytes } = await readImageBytes(image.url);
+          const extension = IMAGE_EXTENSION_BY_MEDIA_TYPE[mediaType] ?? 'png';
+          const seq = String(index + 1).padStart(2, '0');
+          files[`${MATERIAL_GROUP_TITLE}/${aspectRatio}-${seq}.${extension}`] = bytes;
+        }),
+    ),
+  );
+}
 
+/** 将已生成的产品模特图按比例打包为 ZIP 字节。 */
+export async function createResultArchive(images: readonly ResultImage[]): Promise<Uint8Array> {
+  const files: Record<string, Uint8Array> = {};
+  await appendMaterialGroupFiles(files, images);
   return new Promise((resolve, reject) => {
     zip(files, { level: 0 }, (error, archive) => {
       if (error) {
@@ -230,6 +319,67 @@ export async function exportResultImages(images: readonly ResultImage[]): Promis
   anchor.download = EXPORT_ARCHIVE_NAME;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+/** 将上传图剥离 file（不可序列化），并把本地 blob URL 转为 data URL 供服务端落盘。 */
+async function serializeUploadItem(
+  item: ProductImageItem,
+): Promise<Omit<ProductImageItem, 'file'>> {
+  const { file, ...rest } = item;
+  return { ...rest, previewUrl: file ? await readFileAsDataUrl(file) : item.previewUrl };
+}
+
+/** 构造产品模特步骤的完整持久化快照。 */
+export async function createModelStepSnapshot(
+  form: ProductModelFormState,
+  productImages: ProductImageItem[],
+  modelImages: ProductImageItem[],
+  results: ResultImage[],
+): Promise<ProductModelStepSnapshot> {
+  return {
+    form,
+    productImages: (await Promise.all(
+      productImages.map(serializeUploadItem),
+    )) as ProductImageItem[],
+    modelImages: (await Promise.all(modelImages.map(serializeUploadItem))) as ProductImageItem[],
+    results,
+  };
+}
+
+/** 从未知 JSON 中读取产品模特快照。 */
+export function readModelStepSnapshot(value: unknown): ProductModelStepSnapshot | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const snapshot = value as Partial<ProductModelStepSnapshot>;
+  if (
+    !snapshot.form ||
+    !Array.isArray(snapshot.productImages) ||
+    !Array.isArray(snapshot.modelImages) ||
+    !Array.isArray(snapshot.results)
+  ) {
+    return undefined;
+  }
+  return {
+    form: snapshot.form,
+    productImages: snapshot.productImages,
+    modelImages: snapshot.modelImages,
+    results: snapshot.results,
+  };
+}
+
+/** 保存步骤快照，并返回服务端替换资产 URL 后的数据。 */
+export async function saveProductModelStep<T>(
+  taskId: string,
+  stepKey: ProductModelStepKey,
+  data: T,
+): Promise<T> {
+  const record = await apiPut<ProductModelTaskStepRecord>(
+    `/api/product-model/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`,
+    {
+      snapshotVersion: PRODUCT_MODEL_STEP_SNAPSHOT_VERSION,
+      data,
+    },
+  );
+  return record.data as T;
 }
 
 export { MAX_STUDIO_IMAGES };

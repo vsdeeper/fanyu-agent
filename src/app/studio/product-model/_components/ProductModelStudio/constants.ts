@@ -1,8 +1,14 @@
 import { toModelOptions } from './model-options';
-import type { ProductModelFormState } from './types';
+import type { ProductModelFormState, ProductModelPhase } from './types';
 
 export const STUDIO_TITLE = '产品模特';
 export const STUDIO_SUBTITLE = '以产品与模特形象为参考，生成统一风格的多视角模特图';
+export const STUDIO_STEPS = [{ title: '产品模特' }, { title: '预览生成物料' }];
+export const STUDIO_STEP_INDEX: Record<ProductModelPhase, number> = {
+  model: 0,
+  modelGenerating: 0,
+  complete: 1,
+};
 
 export const DEFAULT_VIEW_REQUIREMENT =
   '严格使用单行四栏横向构图：左侧约占画面 40%，为胸以上正面半身特写；右侧约占 60%，平均分成三个等宽竖栏，从左到右依次为正视、侧视、背视全身自然站姿。四栏从画面顶部贯通到底部，保持同一模特、同一套造型；各视角须按正常人体比例独立生成后等比排版，不得为适配窄栏压扁、拉伸或扭曲人体，侧视人物的手臂、躯干和双腿须自然完整；禁止将右侧三视角排成 2×2 宫格或上下两排。';
@@ -31,12 +37,17 @@ export const MODEL_IMAGE_SUBTITLE =
   '可选，用于锁定同一人物的身份与外貌；请尽量上传清晰、无瑕的照片';
 export const GENERATE_BUTTON = '生成产品模特';
 export const EMPTY_RESULT_HINT = '上传产品图并设置视角要求后，点击「生成产品模特」';
+export const COMPLETE_BUTTON = '完成';
+export const PREV_BUTTON = '上一步';
 export const NO_IMAGE_WARNING = '请先上传产品图';
 export const REQUIREMENT_MISSING = '请填写视角要求';
+export const MODEL_RESULT_MISSING = '请先生成产品模特';
 export const GENERATE_FAILED = '生图失败，请稍后重试';
-export const EXPORT_BUTTON = '导出全部';
-export const EXPORT_ARCHIVE_NAME = '产品模特成果.zip';
+
+export const EXPORT_MATERIALS_BUTTON = '导出生成物料';
+export const EXPORT_ARCHIVE_NAME = '产品模特物料.zip';
 export const EXPORT_FAILED = '导出失败，请稍后重试';
+export const MATERIAL_GROUP_TITLE = '产品模特图';
 
 export const IMAGE_EXTENSION_BY_MEDIA_TYPE: Readonly<Record<string, string>> = {
   'image/avif': 'avif',

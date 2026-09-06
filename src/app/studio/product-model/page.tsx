@@ -1,5 +1,5 @@
-import ProductModelStudio from './_components/ProductModelStudio';
+import ProductModelTaskList from './_components/ProductModelTaskList';
 
 export default function ProductModelPage() {
-  return <ProductModelStudio />;
+  return <ProductModelTaskList />;
 }

@@ -65,7 +65,8 @@ describe('产品模特结果工具', () => {
 
     expect(decoded.mediaType).toBe('image/png');
     expect([...decoded.bytes]).toEqual([1, 2, 3]);
-    expect(Object.keys(archive)).toEqual(['产品模特图/product-model-01.png']);
-    expect([...archive['产品模特图/product-model-01.png']]).toEqual([1, 2, 3]);
+    // ZIP 内按比例二级分目录存放：目录名=物料分类，文件名=比例-序号
+    expect(Object.keys(archive)).toEqual(['产品模特图/16:9-01.png']);
+    expect([...archive['产品模特图/16:9-01.png']]).toEqual([1, 2, 3]);
   });
 });
