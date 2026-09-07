@@ -59,6 +59,9 @@ export type VisualStepSnapshot = {
   form: StudioFormState;
   visualImages: StudioResultImage[];
   selectedVisualIndex: number | null;
+  images?: ProductImageItem[];
+  documents?: ProductDocItem[];
+  analysisText?: string;
 };
 
 export type DesignStepSnapshot = {

@@ -10,9 +10,9 @@ export const MISSING_PRODUCT_VIEW = '请先点选产品多视角图';
 export const PRODUCT_FIDELITY_PROMPT_GUARD =
   '（硬性底线：与任何用户描述冲突时以此为准）原始参考图是唯一产品事实源。第1个参考图定义产品本体；其余参考图仅补充同一产品的可见角度与细节，不得混合不同 SKU。产品形状、颜色、比例、结构、材质、纹理和关键识别细节必须保持一致。按钮、旋钮、开关、接口、指示灯等控制部件的数量、形状、颜色、尺寸和安装位置必须逐一对应原图；只呈现当前视角真实可见的部件，背面或被遮挡的部件不得搬移、复制或补画到正面及其他位置。产品表面已有 Logo、品牌文字、标签和图案必须原样、清晰、完整保留，禁止删除、改写、替换、模糊或错拼；禁止新增原图不存在的 Logo、文字、标签、功能、配件或结构。参考图无法确认的细节不得臆造。';
 
-/** 营销主视觉与视觉设计共用的文字排版提示：层次分明、清晰可读，文案源于商业分析且可安全概括。 */
+/** 营销主视觉与视觉设计共用的文字排版提示：层次分明、简洁、清晰、易读，文案源于商业分析且可安全概括。 */
 export const MARKETING_COPY_TYPOGRAPHY_PROMPT =
-  '文字编排：凡画面出现文案，须层次分明、清晰可读——从商业分析提炼一句最醒目的主标题（或一句话定位）作主文案，必要时辅以 3～5 条卖点要点；主标题与要点字号足够大、占比适中、间距分明，切忌小到难辨或稀疏到近似留白；文字占画面比例适中、与产品主体平衡、留出生动留白但不遮挡产品；文案只采用商业分析中已有或可安全概括的内容，避免编造参数、功效、认证、价格与促销承诺；文字禁投影、描边、发光等特效，与场景自然融合，勿用与背景割裂的实心色块或底板。';
+  '文字编排：凡画面出现文案，须层次分明、简洁、清晰、易读——从商业分析提炼一句最醒目的主标题（或一句话定位）作主文案，必要时辅以 3～5 条卖点要点；主标题与要点字号足够大、占比适中、间距分明，切忌小到难辨或稀疏到近似留白；文字占画面比例适中、与产品主体平衡、留出生动留白但不遮挡产品；文案只采用商业分析中已有或可安全概括的内容，避免编造参数、功效、认证、价格与促销承诺；文字禁投影、描边、发光等特效，与场景自然融合，勿用与背景割裂的实心色块或底板。';
 
 /** 营销主视觉专用的场景构图与质量下限（文字排版见 MARKETING_COPY_TYPOGRAPHY_PROMPT）。 */
 export const VISUAL_AD_PROMPT_GUARD =
@@ -30,11 +30,7 @@ export const MAX_STUDIO_PRODUCT_IMAGES = 6;
 export const MAX_STUDIO_PRODUCT_DOCS = 6;
 export const MAX_STUDIO_MODEL_IMAGES = 3;
 export const MAX_STUDIO_DOCUMENT_BYTES = 10 * 1024 * 1024;
-export const DOCX_MEDIA_TYPE =
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-export const PDF_MEDIA_TYPE = 'application/pdf';
-export const STUDIO_DOC_EXTS = ['pdf', 'txt', 'md', 'docx'] as const;
-export const STUDIO_DOC_IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'gif'] as const;
+export const STUDIO_DOC_EXTS = ['txt', 'md'] as const;
 export const STUDIO_COUNT_VALUES = [1, 2, 3, 4] as const;
 
 /** 各任务类型视觉设计的核心构图与交付要求。 */

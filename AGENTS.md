@@ -81,8 +81,8 @@ src/
       _utils/              # 页面级共享工具（如 chat-id.ts）；勿放 Node 代码
       _components/         # 对话页私有 UI：ChatShell / ChatSidebar / Chat / AuxiliaryPanel
     studio/                # 工作室产品面（前端）
-      _utils/ / _hooks/ / _components/  # 三产品共用：流式生图、任务列表壳、规格表单等
-      ecommerce/ / product-model/ / product-retouch/
+      _utils/ / _hooks/ / _components/  # 工作室共用：流式生图、任务列表壳、规格表单等
+      ecommerce/ / business-analysis/ / product-model/ / product-retouch/
     api/
       chat/                # POST /api/chat
         route.ts           # HTTP 薄壳
@@ -92,10 +92,10 @@ src/
         route.ts / [id]/route.ts
         _shared/types.ts   # ChatRecord / ChatListItem
         _server/           # store / handle-chats / handle-chat-by-id
-      studio/              # 工作室 API：共用 generate + 三产品 tasks
+      studio/              # 工作室 API：共用 generate + 各产品 tasks
         generate/route.ts  # POST /api/studio/generate
         _shared/ / _server/  # 任务工厂、生图；禁止与子域混合 barrel
-        ecommerce/ / product-model/ / product-retouch/  # 产品差异（tasks、电商 analyze）
+        ecommerce/ / business-analysis/ / product-model/ / product-retouch/  # 产品差异（tasks、商业分析 analyze）
       geo/regeo/route.ts + _server/ + _shared/types.ts
       images/[assetId]/route.ts + _server/   # assets / router / vision / providers / registry
       docs/[chatId]/[assetId]/route.ts + _server/ + _shared/
@@ -152,18 +152,18 @@ lib/db、shared、theme、skills  →  禁止依赖 app/ 与任何产品实现
 src/hooks           →  禁止依赖 app/ 与任何产品实现
 ```
 
-工作室共用放 `api/studio/_server` + `_shared`；产品差异放 `api/studio/{ecommerce,product-model,product-retouch}/_server` 与 `_shared`。禁止把共用层与子域实现混进同一个 barrel `index.ts`。
+工作室共用放 `api/studio/_server` + `_shared`；产品差异放 `api/studio/{ecommerce,business-analysis,product-model,product-retouch}/_server` 与 `_shared`。禁止把共用层与子域实现混进同一个 barrel `index.ts`。
 
 允许的跨域服务端调用（应用层编排）：`api/chat/_server/stream-chat` → images / docs / geo；`api/images/_server/vision` 可共用 `api/chat/_server/providers/ark/client`；`api/studio/_server` 生图可调用 `api/images/_server`。
 
-| API Route                               | 实现目录                  | 说明                                                                                                                 |
-| --------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `app/api/chat/`                         | `app/api/chat/_server/`   | 流式对话、会话提交、tools                                                                                            |
-| `app/api/chats/`、`app/api/chats/[id]/` | `app/api/chats/_server/`  | 会话列表 / 新建 / 读取 / 删除                                                                                        |
-| `app/api/studio/`                       | `app/api/studio/_server/` | 工作室共用生图与任务引擎；子路由 `generate`、`{ecommerce,product-model,product-retouch}/tasks`（电商另有 `analyze`） |
-| `app/api/geo/`                          | `app/api/geo/_server/`    | 逆地理、UserLocation                                                                                                 |
-| `app/api/images/`                       | `app/api/images/_server/` | 生图资源、Provider                                                                                                   |
-| `app/api/docs/`                         | `app/api/docs/_server/`   | DESIGN.md 等会话文档下载                                                                                             |
+| API Route                               | 实现目录                  | 说明                                                                                                                                       |
+| --------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `app/api/chat/`                         | `app/api/chat/_server/`   | 流式对话、会话提交、tools                                                                                                                  |
+| `app/api/chats/`、`app/api/chats/[id]/` | `app/api/chats/_server/`  | 会话列表 / 新建 / 读取 / 删除                                                                                                              |
+| `app/api/studio/`                       | `app/api/studio/_server/` | 工作室共用生图与任务引擎；子路由 `generate`、`{ecommerce,business-analysis,product-model,product-retouch}/tasks`（商业分析另有 `analyze`） |
+| `app/api/geo/`                          | `app/api/geo/_server/`    | 逆地理、UserLocation                                                                                                                       |
+| `app/api/images/`                       | `app/api/images/_server/` | 生图资源、Provider                                                                                                                         |
+| `app/api/docs/`                         | `app/api/docs/_server/`   | DESIGN.md 等会话文档下载                                                                                                                   |
 
 **Route Handler（`route.ts`）职责上限：**
 
@@ -262,7 +262,7 @@ Button/
 ## 会话持久化约定
 
 - 存储目录由环境变量 **`CHAT_STORE_DIR`** 指定（默认项目内 `./data/chats`，git 忽略）；库文件为目录内 **`chats.db`**（Drizzle + better-sqlite3，`journal_mode=WAL`，运行中可能另有 `chats.db-wal` / `chats.db-shm`）
-- 工作室任务资产落盘于 `dirname(CHAT_STORE_DIR)/studio/{product}/{taskId}/`（默认 `./data/studio/{product}/`，`product` 为 `ecommerce` / `product-model` / `product-retouch`）；与会话目录平级，`chats.db`、`images/`、`docs/` 仍在 `CHAT_STORE_DIR` 下
+- 工作室任务资产落盘于 `dirname(CHAT_STORE_DIR)/studio/{product}/{taskId}/`（默认 `./data/studio/{product}/`，`product` 为 `ecommerce` / `business-analysis` / `product-model` / `product-retouch`）；与会话目录平级，`chats.db`、`images/`、`docs/` 仍在 `CHAT_STORE_DIR` 下
 - 云盘备份路径 **`CHAT_SYNC_REMOTE_DIR`**（须在 `.env.local` 配置，无代码内默认绝对路径）仅作手动同步对端，应指向 `.../chats` 以便对端出现同级 `.../studio`；非运行时目录。`pnpm sync:data:push` 本地→云盘，`pnpm sync:data:pull` 云盘→本地（镜像 chats 与同级 studio，pull 会覆盖本地）
 - 表：`chats` + `messages`（`messages.data` 存完整 **`UIMessage` JSON**，含 reasoning / source-url）；刷新可还原 Think 与引用
 - 同步前建议先关闭应用，便于 WAL checkpoint 回主库

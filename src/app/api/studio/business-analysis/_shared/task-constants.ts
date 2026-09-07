@@ -1,0 +1,5 @@
+export const BUSINESS_ANALYSIS_STEP_KEYS = ['analysis'] as const;
+
+export const BUSINESS_ANALYSIS_WORKFLOW_VERSION = 1;
+
+export const BUSINESS_ANALYSIS_STEP_SNAPSHOT_VERSION = 1;

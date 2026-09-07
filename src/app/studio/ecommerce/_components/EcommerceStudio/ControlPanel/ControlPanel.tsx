@@ -1,6 +1,9 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
+import AnalyzeForm from '@/app/studio/_components/AnalyzeForm';
+import ProductDocsUpload from '@/business-components/ProductDocsUpload';
+import StudioImageUpload from '@/business-components/StudioImageUpload';
 import { ANALYZE_BUTTON, DESIGN_BUTTON, POSTER_BUTTON, VISUAL_BUTTON } from '../constants';
 import type {
   DesignFormState,
@@ -11,7 +14,6 @@ import type {
   StudioSpecFields,
 } from '../types';
 import { isPosterTask } from '../workflow';
-import AnalyzeForm from './AnalyzeForm';
 import DesignForm from './DesignForm';
 import GenerateForm from './GenerateForm';
 import { isAnalyzePhase, isDesignPhase, isVisualPhase } from './utils';
@@ -26,6 +28,7 @@ type ControlPanelProps = {
   designForm: DesignFormState;
   phase: StudioPhase;
   formLocked: boolean;
+  canGenerateVisual: boolean;
   onImagesAppend: (files: File[]) => void;
   onImageRemove: (uid: string) => void;
   onDocsAppend: (files: File[]) => void;
@@ -51,6 +54,7 @@ export default function ControlPanel({
   designForm,
   phase,
   formLocked,
+  canGenerateVisual,
   onImagesAppend,
   onImageRemove,
   onDocsAppend,
@@ -70,6 +74,7 @@ export default function ControlPanel({
   const showVisualForm = isVisualPhase(phase);
   const showDesignForm = isDesignPhase(phase);
   const analyzeDisabled = images.length === 0;
+  const poster = isPosterTask(taskType);
 
   const handleVisualSpecChange = (next: StudioSpecFields) => {
     onFormChange({ ...form, ...next });
@@ -88,13 +93,36 @@ export default function ControlPanel({
             onDocRemove={onDocRemove}
           />
         ) : showVisualForm ? (
-          <GenerateForm
-            form={form}
-            disabled={formLocked}
-            onFormChange={handleVisualSpecChange}
-            count={form.count}
-            onCountChange={(value) => onFormChange({ ...form, count: value })}
-          />
+          <>
+            {poster ? (
+              <>
+                <StudioImageUpload
+                  label="产品精修图"
+                  images={images}
+                  disabled={formLocked}
+                  onAppend={onImagesAppend}
+                  onRemove={onImageRemove}
+                />
+                <ProductDocsUpload
+                  documents={documents}
+                  disabled={formLocked}
+                  max={1}
+                  label="商业分析"
+                  hint="上传商业分析 TXT / MD"
+                  ariaLabel="上传商业分析"
+                  onAppend={onDocsAppend}
+                  onRemove={onDocRemove}
+                />
+              </>
+            ) : null}
+            <GenerateForm
+              form={form}
+              disabled={formLocked}
+              onFormChange={handleVisualSpecChange}
+              count={form.count}
+              onCountChange={(value) => onFormChange({ ...form, count: value })}
+            />
+          </>
         ) : showDesignForm ? (
           <DesignForm
             form={designForm}
@@ -132,6 +160,7 @@ export default function ControlPanel({
             size="large"
             icon={<HighlightOutlined />}
             loading={visualGenerating}
+            disabled={!canGenerateVisual}
             onClick={onGenerateVisual}
           >
             {VISUAL_BUTTON}
@@ -149,7 +178,7 @@ export default function ControlPanel({
             loading={designGenerating}
             onClick={onGenerateDesign}
           >
-            {isPosterTask(taskType) ? POSTER_BUTTON : DESIGN_BUTTON}
+            {poster ? POSTER_BUTTON : DESIGN_BUTTON}
           </Button>
         </div>
       ) : null}

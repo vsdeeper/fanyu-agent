@@ -1,11 +1,8 @@
-import { ANALYZE_SSE_EVENT } from '@/app/api/studio/ecommerce/_shared/constants';
 import type {
-  EcommerceAnalyzeErrorEvent,
-  EcommerceAnalyzeRequest,
-  EcommerceAnalyzeTextEvent,
-  EcommerceDocumentInput,
-  EcommerceImageInput,
-} from '@/app/api/studio/ecommerce/_shared/types';
+  BusinessAnalysisAnalyzeRequest,
+  BusinessAnalysisDocumentInput,
+  BusinessAnalysisImageInput,
+} from '@/app/api/studio/business-analysis/_shared/types';
 import type {
   StudioGenerateImageEvent,
   StudioGenerateRequest,
@@ -18,7 +15,7 @@ import type {
 } from '@/app/api/studio/ecommerce/_shared/task-types';
 import { MAX_PRODUCT_DOCS } from '@/business-components/ProductDocsUpload/constants';
 import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
-import { ApiClientError, apiDelete, apiPut } from '@/lib/shared/client/api-client';
+import { apiDelete, apiPut } from '@/lib/shared/client/api-client';
 import {
   applyGenerateEvent,
   pendingImages as pendingImagesFromCount,
@@ -39,6 +36,7 @@ import type {
   ProductImageItem,
   StudioFormState,
   StudioPhase,
+  StudioResultImage,
   VisualStepSnapshot,
 } from './types';
 
@@ -49,6 +47,8 @@ export {
   isAbortError,
   pendingImages as pendingImagesFromCount,
 } from '@/app/studio/_utils/generate-stream';
+export { consumeAnalyzeSse, createRafTextBuffer } from '@/app/studio/_utils/analyze-stream';
+export type { RafTextBuffer } from '@/app/studio/_utils/analyze-stream';
 export { getSelectedImageUrl as getSelectedResultImageUrl } from '@/app/studio/_utils/result-images';
 export {
   readFileAsDataUrl,
@@ -87,8 +87,12 @@ export function revokeProductImageUrls(items: ProductImageItem[]): void {
 /**
  * 将选择的资料追加为本地项；超出上限的部分丢弃。
  */
-export function appendProductDocs(current: ProductDocItem[], files: File[]): ProductDocItem[] {
-  return appendUploadItems(current, files, MAX_PRODUCT_DOCS, (file, previewUrl) => ({
+export function appendProductDocs(
+  current: ProductDocItem[],
+  files: File[],
+  max = MAX_PRODUCT_DOCS,
+): ProductDocItem[] {
+  return appendUploadItems(current, files, max, (file, previewUrl) => ({
     uid: crypto.randomUUID(),
     file,
     previewUrl,
@@ -108,7 +112,7 @@ export function revokeProductDocUrls(items: ProductDocItem[]): void {
   revokeUploadItemUrls(items);
 }
 
-/** 营销主视觉请求体：表单规格 + 商业分析 + 上一步全部产品图 */
+/** 营销主视觉请求体：表单规格 + 商业分析正文 + 产品图 */
 export async function toVisualGeneratePayload(
   form: StudioFormState,
   analysisText: string,
@@ -132,7 +136,7 @@ export async function toDesignGeneratePayload(
   analysisText: string,
   productImages: ProductImageItem[],
   visualDataUrl: string,
-  modelImages: EcommerceImageInput[] = [],
+  modelImages: BusinessAnalysisImageInput[] = [],
 ): Promise<StudioGenerateRequest> {
   const includeModel = modelImages.length > 0;
   return {
@@ -151,25 +155,19 @@ export async function toDesignGeneratePayload(
   };
 }
 
-/** 取已点选且就绪的结果图 data URL；无效返回 null */
+/** 本地 txt/md 的 MIME。 */
 export function toDocMediaType(file: File): string {
   if (file.type) return file.type;
   const name = file.name.toLowerCase();
-  if (name.endsWith('.pdf')) return 'application/pdf';
   if (name.endsWith('.txt')) return 'text/plain';
   if (name.endsWith('.md')) return 'text/markdown';
-  if (name.endsWith('.docx')) {
-    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-  }
-  if (name.endsWith('.png')) return 'image/png';
-  if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
-  if (name.endsWith('.webp')) return 'image/webp';
-  if (name.endsWith('.gif')) return 'image/gif';
   return 'application/octet-stream';
 }
 
 /** 本地产品图转分析接口 images 字段 */
-export async function toAnalyzeImages(images: ProductImageItem[]): Promise<EcommerceImageInput[]> {
+export async function toAnalyzeImages(
+  images: ProductImageItem[],
+): Promise<BusinessAnalysisImageInput[]> {
   return Promise.all(
     images.map(async (item) => ({
       filename: item.name,
@@ -182,7 +180,7 @@ export async function toAnalyzeImages(images: ProductImageItem[]): Promise<Ecomm
 /** 本地资料转分析接口 documents 字段 */
 export async function toAnalyzeDocuments(
   documents: ProductDocItem[],
-): Promise<EcommerceDocumentInput[]> {
+): Promise<BusinessAnalysisDocumentInput[]> {
   return Promise.all(
     documents.map(async (item) => ({
       filename: item.name,
@@ -196,125 +194,11 @@ export async function toAnalyzeDocuments(
 export async function toAnalyzePayload(
   images: ProductImageItem[],
   documents: ProductDocItem[],
-): Promise<EcommerceAnalyzeRequest> {
+): Promise<BusinessAnalysisAnalyzeRequest> {
   return {
     images: await toAnalyzeImages(images),
     ...(documents.length > 0 ? { documents: await toAnalyzeDocuments(documents) } : {}),
   };
-}
-
-type AnalyzeStreamHandlers = {
-  onText: (delta: string) => void;
-  onDone: () => void;
-  onError: (message: string) => void;
-};
-
-export type RafTextBuffer = {
-  reset: () => void;
-  append: (delta: string) => void;
-  /** 立即返回当前累积文本（生成完成落盘时读取最终正文，闭包里的 analysisText 是旧值）。 */
-  getText: () => string;
-  flushNow: () => void;
-  dispose: () => void;
-};
-
-/**
- * 把流式 delta 攒到下一动画帧再 flush，避免每个 token setState 叠过 React 嵌套更新上限。
- */
-export function createRafTextBuffer(onFlush: (text: string) => void): RafTextBuffer {
-  let text = '';
-  let frame = 0;
-
-  const flush = () => {
-    frame = 0;
-    onFlush(text);
-  };
-
-  return {
-    reset() {
-      text = '';
-      if (frame) {
-        cancelAnimationFrame(frame);
-        frame = 0;
-      }
-      onFlush('');
-    },
-    append(delta: string) {
-      if (!delta) return;
-      text += delta;
-      if (!frame) {
-        frame = requestAnimationFrame(flush);
-      }
-    },
-    getText() {
-      return text;
-    },
-    flushNow() {
-      if (frame) {
-        cancelAnimationFrame(frame);
-        frame = 0;
-      }
-      onFlush(text);
-    },
-    dispose() {
-      if (frame) {
-        cancelAnimationFrame(frame);
-        frame = 0;
-      }
-    },
-  };
-}
-
-/**
- * 解析 analyze 自定义 SSE（event + data JSON）。
- * 文本 delta 由调用方 rAF 合并后再 setState，此处同步解析即可。
- */
-export async function consumeAnalyzeSse(
-  res: Response,
-  handlers: AnalyzeStreamHandlers,
-): Promise<void> {
-  if (!res.body) {
-    throw new ApiClientError('响应格式错误');
-  }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let eventName = '';
-
-  const flushBlock = (block: string) => {
-    let dataText = '';
-    for (const rawLine of block.split('\n')) {
-      const line = rawLine.replace(/\r$/, '');
-      if (line.startsWith('event:')) {
-        eventName = line.slice(6).trim();
-      } else if (line.startsWith('data:')) {
-        dataText += line.slice(5).trim();
-      }
-    }
-    if (!eventName || !dataText) return;
-    const data: unknown = JSON.parse(dataText);
-    if (eventName === ANALYZE_SSE_EVENT.text) {
-      handlers.onText((data as EcommerceAnalyzeTextEvent).delta ?? '');
-    } else if (eventName === ANALYZE_SSE_EVENT.done) {
-      handlers.onDone();
-    } else if (eventName === ANALYZE_SSE_EVENT.error) {
-      handlers.onError((data as EcommerceAnalyzeErrorEvent).message || '产品分析失败，请稍后重试');
-    }
-    eventName = '';
-  };
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const blocks = buffer.split('\n\n');
-    buffer = blocks.pop() ?? '';
-    for (const block of blocks) {
-      if (!block.trim()) continue;
-      flushBlock(block);
-    }
-  }
-  if (buffer.trim()) flushBlock(buffer);
 }
 
 /** 向指定任务类型追加一个 pending 批次，不影响其他类型和既有结果 */
@@ -384,8 +268,12 @@ export async function deleteStudioStep(taskId: string, stepKey: EcommerceStepKey
   await apiDelete(`/api/studio/ecommerce/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`);
 }
 
-/** 再次进入流程时始终停在第一步：有分析正文则视为已完成分析。 */
-export function resolveInitialStudioPhase(analysis: AnalysisStepSnapshot | undefined): StudioPhase {
+/** 再次进入流程时停在第一步：海报停在主视觉，其余有分析正文则视为已完成分析。 */
+export function resolveInitialStudioPhase(
+  analysis: AnalysisStepSnapshot | undefined,
+  isPoster = false,
+): StudioPhase {
+  if (isPoster) return 'visual';
   return analysis?.analysisText.trim() ? 'analyzed' : 'input';
 }
 
@@ -411,6 +299,28 @@ export function readVisualStepSnapshot(value: unknown): VisualStepSnapshot | und
     visualImages: snapshot.visualImages,
     selectedVisualIndex:
       typeof snapshot.selectedVisualIndex === 'number' ? snapshot.selectedVisualIndex : null,
+    images: Array.isArray(snapshot.images) ? snapshot.images : undefined,
+    documents: Array.isArray(snapshot.documents) ? snapshot.documents : undefined,
+    analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : undefined,
+  };
+}
+
+/** 构造营销主视觉步骤快照，海报含精修图与分析文件。 */
+export async function createVisualStepSnapshot(
+  form: StudioFormState,
+  visualImages: StudioResultImage[],
+  selectedVisualIndex: number | null,
+  images: ProductImageItem[],
+  documents: ProductDocItem[],
+  analysisText: string,
+): Promise<VisualStepSnapshot> {
+  return {
+    form,
+    visualImages,
+    selectedVisualIndex,
+    images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
+    documents: (await Promise.all(documents.map(serializeUploadItem))) as ProductDocItem[],
+    analysisText,
   };
 }
 
@@ -446,10 +356,10 @@ export async function createDesignStepSnapshot(
   };
 }
 
-/** 上一步：各步回退到前一步（生成中会中止并就地回退，相位由发起方管理），完成页返回视觉设计 */
-export function phaseAfterPrev(phase: StudioPhase): StudioPhase {
+/** 上一步：各步回退到前一步；海报主视觉为第一步，不再回到分析。 */
+export function phaseAfterPrev(phase: StudioPhase, isPoster = false): StudioPhase {
   if (phase === 'analyzing') return 'input';
-  if (phase === 'visual' || phase === 'visualGenerating') return 'analyzed';
+  if (phase === 'visual' || phase === 'visualGenerating') return isPoster ? 'visual' : 'analyzed';
   if (phase === 'design' || phase === 'designGenerating') return 'visual';
   if (phase === 'complete') return 'design';
   return phase;

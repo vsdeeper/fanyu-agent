@@ -9,11 +9,11 @@ import {
 } from '@/app/api/chat/_server/providers/config';
 import { getChatProviderRuntimeFor } from '@/app/api/chat/_server/providers/resolve';
 import { analyzeImage, formatVisionAnalysisText } from '@/app/api/images/_server/vision';
-import { ANALYZE_SSE_EVENT } from '@/app/api/studio/ecommerce/_shared/constants';
+import { ANALYZE_SSE_EVENT } from '@/app/api/studio/business-analysis/_shared/constants';
 import type {
-  EcommerceAnalyzeRequest,
-  EcommerceAnalyzeTextEvent,
-} from '@/app/api/studio/ecommerce/_shared/types';
+  BusinessAnalysisAnalyzeRequest,
+  BusinessAnalysisAnalyzeTextEvent,
+} from '@/app/api/studio/business-analysis/_shared/types';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 import { ANALYZE_INSTRUCTIONS } from './analyze-instructions';
 import { ANALYZE_FAILED } from './constants';
@@ -21,7 +21,6 @@ import {
   INVALID_FORM,
   INVALID_JSON,
   MISSING_PRODUCT_IMAGE,
-  PDF_MEDIA_TYPE,
 } from '@/app/api/studio/_server/constants';
 import { extractStudioDocuments, formatDocumentsPrompt } from './extract-documents';
 import { parseAnalyzeBody } from './parse-analyze-request';
@@ -49,7 +48,7 @@ function buildAnalyzePrompt(input: { documentsText: string; visionText: string }
  * 识图 + streamText，把 text / done 写入已建立的 SSE。不落盘会话或图片资产。
  */
 async function pipeAnalyzeEvents(
-  body: EcommerceAnalyzeRequest,
+  body: BusinessAnalysisAnalyzeRequest,
   signal: AbortSignal,
   send: SseSend,
 ): Promise<void> {
@@ -69,7 +68,7 @@ async function pipeAnalyzeEvents(
     if (vision.ok) {
       visionChunks.push(formatVisionAnalysisText(vision.analysis));
     } else {
-      console.error('[ecommerce/analyze] analyzeImage', vision.error);
+      console.error('[business-analysis/analyze] analyzeImage', vision.error);
     }
   }
 
@@ -79,22 +78,6 @@ async function pipeAnalyzeEvents(
   }
 
   const extracted = await extractStudioDocuments(body.documents);
-  for (const image of extracted.images) {
-    if (signal.aborted) return;
-    const vision = await analyzeImage(
-      image.dataUrl,
-      '这是产品资料图。请描述其中的品牌、包装、文案、色板、卖点、版式与可复用的视觉线索',
-      signal,
-    );
-    if (vision.ok) {
-      extracted.texts.push(
-        `资料图「${image.filename}」：\n${formatVisionAnalysisText(vision.analysis)}`,
-      );
-    } else {
-      console.error('[ecommerce/analyze] document image', vision.error);
-    }
-  }
-
   const prompt = buildAnalyzePrompt({
     documentsText: formatDocumentsPrompt(extracted),
     visionText: visionChunks.join('\n\n'),
@@ -110,40 +93,18 @@ async function pipeAnalyzeEvents(
     reasoningEffort: getTitleReasoningEffort(provider),
   };
 
-  const result =
-    extracted.pdfs.length > 0
-      ? streamText({
-          model: runtime.getMainModel(getModelId(provider, 'pro')),
-          instructions: ANALYZE_INSTRUCTIONS,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text' as const, text: prompt },
-                ...extracted.pdfs.map((pdf) => ({
-                  type: 'file' as const,
-                  data: pdf.bytes,
-                  mediaType: PDF_MEDIA_TYPE,
-                  filename: pdf.filename,
-                })),
-              ],
-            },
-          ],
-          abortSignal: signal,
-          providerOptions: { openai: openaiOptions },
-        })
-      : streamText({
-          model: runtime.getMainModel(getModelId(provider, 'pro')),
-          instructions: ANALYZE_INSTRUCTIONS,
-          prompt,
-          abortSignal: signal,
-          providerOptions: { openai: openaiOptions },
-        });
+  const result = streamText({
+    model: runtime.getMainModel(getModelId(provider, 'pro')),
+    instructions: ANALYZE_INSTRUCTIONS,
+    prompt,
+    abortSignal: signal,
+    providerOptions: { openai: openaiOptions },
+  });
 
   for await (const delta of result.textStream) {
     if (signal.aborted) return;
     if (!delta) continue;
-    const payload: EcommerceAnalyzeTextEvent = { delta };
+    const payload: BusinessAnalysisAnalyzeTextEvent = { delta };
     await send(ANALYZE_SSE_EVENT.text, payload);
   }
 
@@ -159,9 +120,9 @@ async function pipeAnalyzeEvents(
 }
 
 /**
- * POST /api/studio/ecommerce/analyze：校验后立刻推 SSE，识图与规划在流内进行。
+ * POST /api/studio/business-analysis/analyze：校验后立刻推 SSE，识图与规划在流内进行。
  */
-export async function handleEcommerceAnalyze(req: Request): Promise<Response> {
+export async function handleBusinessAnalysisAnalyze(req: Request): Promise<Response> {
   let json: unknown;
   try {
     json = await req.json();
@@ -182,7 +143,7 @@ export async function handleEcommerceAnalyze(req: Request): Promise<Response> {
         await pipeAnalyzeEvents(body, req.signal, send);
       } catch (err) {
         if (req.signal.aborted) return;
-        console.error('[ecommerce/analyze]', err);
+        console.error('[business-analysis/analyze]', err);
         try {
           await send(ANALYZE_SSE_EVENT.error, { message: ANALYZE_FAILED });
         } catch {

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { getWorkflowStepIndex, resolveEcommerceWorkflow } from './workflow';
 
 describe('resolveEcommerceWorkflow', () => {
-  it.each(['主图', '详情图', '营销海报'] as const)('%s 暂时使用同一套稳定步骤键', (taskType) => {
-    expect(resolveEcommerceWorkflow(taskType, 1).map((step) => step.key)).toEqual([
+  it.each(['主图', '详情图'] as const)('%s 保留商业分析到完成四步', (taskType) => {
+    expect(resolveEcommerceWorkflow(taskType).map((step) => step.key)).toEqual([
       'analysis',
       'visual',
       'design',
@@ -11,9 +11,13 @@ describe('resolveEcommerceWorkflow', () => {
     ]);
   });
 
-  it('营销海报将视觉设计步标题改为营销海报，末步为预览生成物料', () => {
-    expect(resolveEcommerceWorkflow('营销海报', 1).map((step) => step.title)).toEqual([
-      '商业分析',
+  it('营销海报无商业分析步，设计步标题为营销海报', () => {
+    expect(resolveEcommerceWorkflow('营销海报').map((step) => step.key)).toEqual([
+      'visual',
+      'design',
+      'complete',
+    ]);
+    expect(resolveEcommerceWorkflow('营销海报').map((step) => step.title)).toEqual([
       '营销主视觉',
       '营销海报',
       '预览生成物料',

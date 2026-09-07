@@ -6,6 +6,8 @@ export const STUDIO_PATH = '/studio';
 
 export const PRODUCT_RETOUCH_PATH = '/studio/product-retouch';
 
+export const BUSINESS_ANALYSIS_PATH = '/studio/business-analysis';
+
 export const PRODUCT_MODEL_PATH = '/studio/product-model';
 
 export const ECOMMERCE_PATH = '/studio/ecommerce';

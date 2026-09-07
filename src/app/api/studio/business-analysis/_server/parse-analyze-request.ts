@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { z } from 'zod';
-import type { EcommerceAnalyzeRequest } from '../_shared/types';
+import type { BusinessAnalysisAnalyzeRequest } from '../_shared/types';
 import {
   MAX_STUDIO_PRODUCT_DOCS,
   MAX_STUDIO_PRODUCT_IMAGES,
@@ -28,7 +28,7 @@ const analyzeBodySchema = z.object({
 });
 
 /** 校验分析请求体；失败返回 null */
-export function parseAnalyzeBody(json: unknown): EcommerceAnalyzeRequest | null {
+export function parseAnalyzeBody(json: unknown): BusinessAnalysisAnalyzeRequest | null {
   const parsed = analyzeBodySchema.safeParse(json);
   return parsed.success ? parsed.data : null;
 }

@@ -1,4 +1,4 @@
-import { Drawer, Empty, Image, Spin } from 'antd';
+import { Drawer, Empty, Spin } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
@@ -24,9 +24,7 @@ type ProductDocPreviewProps = {
   item: ProductDocUploadItem | null;
 };
 
-/**
- * 产品资料预览抽屉：MD / TXT 读正文渲染，PDF 内嵌 iframe，图片放大，DOCX 等暂不支持时给下载提示。
- */
+/** 产品资料预览抽屉：MD 渲染 Markdown，TXT 以纯文本展示。 */
 export default function ProductDocPreview({ open, onClose, item }: ProductDocPreviewProps) {
   const { mode, hydrated } = useThemeMode();
   const [text, setText] = useState('');
@@ -76,12 +74,6 @@ export default function ProductDocPreview({ open, onClose, item }: ProductDocPre
       if (status === 'loading') return <Spin className={styles.status} />;
       if (status === 'error') return <div className={styles.status}>{PREVIEW_LOAD_ERROR}</div>;
       return <pre className={styles.code}>{text}</pre>;
-    }
-    if (kind === 'pdf') {
-      return <iframe className={styles.pdf} src={item.previewUrl} title={display.name} />;
-    }
-    if (kind === 'image') {
-      return <Image className={styles.image} src={item.previewUrl} alt={display.name} />;
     }
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={PREVIEW_UNSUPPORTED} />;
   };

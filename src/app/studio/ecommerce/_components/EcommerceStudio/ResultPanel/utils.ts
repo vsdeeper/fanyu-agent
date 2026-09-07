@@ -36,8 +36,9 @@ export function isDesignResultPhase(phase: StudioPhase): boolean {
   return phase === 'design' || phase === 'designGenerating';
 }
 
-/** 第一步（商业分析）不展示上一步 */
-export function isPrevVisible(phase: StudioPhase): boolean {
+/** 第一步不展示上一步：主图/详情图为商业分析，海报为主视觉。 */
+export function isPrevVisible(phase: StudioPhase, isPoster = false): boolean {
+  if (isPoster) return phase !== 'visual' && phase !== 'visualGenerating';
   return phase !== 'input' && phase !== 'analyzing' && phase !== 'analyzed';
 }
 

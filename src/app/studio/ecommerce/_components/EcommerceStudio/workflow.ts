@@ -19,29 +19,19 @@ const CURRENT_WORKFLOW: EcommerceWorkflowStep[] = [
 ];
 
 const POSTER_WORKFLOW: EcommerceWorkflowStep[] = [
-  { key: 'analysis', title: '商业分析' },
   { key: 'visual', title: '营销主视觉' },
   { key: 'design', title: '营销海报' },
   { key: 'complete', title: '预览生成物料' },
 ];
-
-const WORKFLOW_BY_TASK_AND_VERSION: Record<string, EcommerceWorkflowStep[]> = {
-  '主图:1': CURRENT_WORKFLOW,
-  '详情图:1': CURRENT_WORKFLOW,
-  '营销海报:1': POSTER_WORKFLOW,
-};
 
 /** 营销海报任务：视觉设计步改为海报出图，左栏为可选模特形象。 */
 export function isPosterTask(taskType: EcommerceTaskType): boolean {
   return taskType === '营销海报';
 }
 
-/** 按任务类型和创建时的版本解析流程；营销海报共用步骤键，设计步标题改为营销海报。 */
-export function resolveEcommerceWorkflow(
-  taskType: EcommerceTaskType,
-  workflowVersion: number,
-): EcommerceWorkflowStep[] {
-  return WORKFLOW_BY_TASK_AND_VERSION[`${taskType}:${workflowVersion}`] ?? CURRENT_WORKFLOW;
+/** 按任务类型解析流程；营销海报无商业分析步。 */
+export function resolveEcommerceWorkflow(taskType: EcommerceTaskType): EcommerceWorkflowStep[] {
+  return isPosterTask(taskType) ? POSTER_WORKFLOW : CURRENT_WORKFLOW;
 }
 
 /** 将运行态 phase 映射到稳定步骤键，再由配置顺序计算 Steps 下标。 */

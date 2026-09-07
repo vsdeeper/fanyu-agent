@@ -3,6 +3,8 @@ import 'server-only';
 import { generateId } from 'ai';
 import { and, desc, eq } from 'drizzle-orm';
 import {
+  businessAnalysisTaskSteps,
+  businessAnalysisTasks,
   ecommerceTaskSteps,
   ecommerceTasks,
   productModelTaskSteps,
@@ -19,10 +21,16 @@ import type {
 } from '../_shared/task-types';
 
 export type StudioTasksTable =
-  typeof ecommerceTasks | typeof productModelTasks | typeof productRetouchTasks;
+  | typeof ecommerceTasks
+  | typeof productModelTasks
+  | typeof productRetouchTasks
+  | typeof businessAnalysisTasks;
 
 export type StudioStepsTable =
-  typeof ecommerceTaskSteps | typeof productModelTaskSteps | typeof productRetouchTaskSteps;
+  | typeof ecommerceTaskSteps
+  | typeof productModelTaskSteps
+  | typeof productRetouchTaskSteps
+  | typeof businessAnalysisTaskSteps;
 
 type TaskRow = {
   id: string;

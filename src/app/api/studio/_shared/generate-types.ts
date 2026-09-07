@@ -46,7 +46,7 @@ export type StudioProductModelGenerateRequest = StudioGenerateBase & {
   modelImages?: StudioImageInput[];
 };
 
-/** 营销主视觉：表单规格 + 商业分析 + 上一步全部产品图 */
+/** 营销主视觉：表单规格 + 商业分析正文 + 产品图 */
 export type StudioVisualGenerateRequest = StudioGenerateBase & {
   kind: 'visual';
   count: number;

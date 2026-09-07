@@ -1,5 +1,5 @@
 import { CloseOutlined, FileOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
-import { App, Button, Image, Upload } from 'antd';
+import { App, Button, Upload } from 'antd';
 import { useState } from 'react';
 import { interceptLocalFiles } from '@/business-components/StudioImageUpload/utils';
 import FileCard from '@/components/FileCard';
@@ -11,31 +11,44 @@ import {
   MAX_PRODUCT_DOC_BYTES,
   PRODUCT_DOC_ACCEPT,
   PRODUCT_DOC_HINT,
+  PRODUCT_DOC_LABEL,
   PRODUCT_DOC_SUBTITLE,
 } from './constants';
 import type { ProductDocUploadItem } from './types';
-import { getProductDocDisplay, isAllowedProductDoc, isImageProductDoc, toDocIcon } from './utils';
+import { getProductDocDisplay, isAllowedProductDoc, toDocIcon } from './utils';
 import styles from './ProductDocsUpload.module.css';
 
 type ProductDocsUploadProps = {
   documents: ProductDocUploadItem[];
   disabled?: boolean;
+  max?: number;
+  label?: string;
+  subtitle?: string;
+  hint?: string;
+  ariaLabel?: string;
   onAppend: (files: File[]) => void;
   onRemove: (uid: string) => void;
 };
 
 /**
- * 产品资料本地上传（图片 / PDF / TXT / MD / DOCX，最多 6 个）：空态为虚线投放区，有文件后为卡片或缩略图列表。
+ * 产品资料 / 商业分析本地上传（TXT / MD）：空态为虚线投放区，有文件后为卡片列表。
  */
 export default function ProductDocsUpload({
   documents = [],
   disabled = false,
+  max = MAX_PRODUCT_DOCS,
+  label = PRODUCT_DOC_LABEL,
+  subtitle = PRODUCT_DOC_SUBTITLE,
+  hint = PRODUCT_DOC_HINT,
+  ariaLabel,
   onAppend,
   onRemove,
 }: ProductDocsUploadProps) {
   const { message } = App.useApp();
-  const remaining = MAX_PRODUCT_DOCS - documents.length;
+  const remaining = max - documents.length;
   const empty = documents.length === 0;
+  const multiple = max > 1;
+  const uploadAriaLabel = ariaLabel ?? `上传${label}`;
   const [previewItem, setPreviewItem] = useState<ProductDocUploadItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -63,12 +76,12 @@ export default function ProductDocsUpload({
             <FileOutlined />
           </span>
           <div className={styles.titles}>
-            <span className={styles.label}>产品资料</span>
-            <span className={styles.sub}>{PRODUCT_DOC_SUBTITLE}</span>
+            <span className={styles.label}>{label}</span>
+            <span className={styles.sub}>{subtitle}</span>
           </div>
         </div>
         <span className={styles.counter}>
-          {documents.length}/{MAX_PRODUCT_DOCS}
+          {documents.length}/{max}
         </span>
       </div>
 
@@ -76,7 +89,7 @@ export default function ProductDocsUpload({
         <Upload
           className={styles.emptyUpload}
           accept={PRODUCT_DOC_ACCEPT}
-          multiple
+          multiple={multiple}
           disabled={disabled}
           showUploadList={false}
           beforeUpload={(file, fileList) => interceptLocalFiles(file, fileList, handleFiles)}
@@ -85,12 +98,12 @@ export default function ProductDocsUpload({
             type="button"
             className={styles.emptyDrop}
             disabled={disabled}
-            aria-label="上传产品资料"
+            aria-label={uploadAriaLabel}
           >
             <span className={styles.emptyIcon} aria-hidden>
               <UploadOutlined />
             </span>
-            <span className={styles.emptyHint}>{PRODUCT_DOC_HINT}</span>
+            <span className={styles.emptyHint}>{hint}</span>
           </button>
         </Upload>
       ) : (
@@ -99,24 +112,17 @@ export default function ProductDocsUpload({
             const display = getProductDocDisplay(item);
             return (
               <div key={item.uid} className={styles.item}>
-                {isImageProductDoc(display) ? (
-                  <div className={styles.imageRow}>
-                    <Image src={item.previewUrl} alt={display.name} preview={{ mask: '预览' }} />
-                    <span className={styles.imageName}>{display.name}</span>
-                  </div>
-                ) : (
-                  <FileCard
-                    className={styles.card}
-                    fileName={display.name}
-                    byteSize={display.size}
-                    icon={toDocIcon(display.name)}
-                    showDownload={false}
-                    onPreview={() => {
-                      setPreviewItem(item);
-                      setPreviewOpen(true);
-                    }}
-                  />
-                )}
+                <FileCard
+                  className={styles.card}
+                  fileName={display.name}
+                  byteSize={display.size}
+                  icon={toDocIcon(display.name)}
+                  showDownload={false}
+                  onPreview={() => {
+                    setPreviewItem(item);
+                    setPreviewOpen(true);
+                  }}
+                />
                 <button
                   type="button"
                   className={styles.remove}
@@ -132,7 +138,7 @@ export default function ProductDocsUpload({
           {remaining > 0 ? (
             <Upload
               accept={PRODUCT_DOC_ACCEPT}
-              multiple
+              multiple={multiple}
               disabled={disabled}
               showUploadList={false}
               beforeUpload={(file, fileList) => interceptLocalFiles(file, fileList, handleFiles)}
@@ -144,7 +150,7 @@ export default function ProductDocsUpload({
                 icon={<PlusOutlined />}
                 disabled={disabled}
                 block
-                aria-label="上传产品资料"
+                aria-label={uploadAriaLabel}
               >
                 添加资料
               </Button>

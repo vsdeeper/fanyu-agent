@@ -45,6 +45,7 @@ import {
   consumeGenerateNdjson,
   createAnalysisStepSnapshot,
   createDesignStepSnapshot,
+  createVisualStepSnapshot,
   deleteStudioStep,
   createRafTextBuffer,
   isAbortError,
@@ -81,11 +82,16 @@ type EcommerceStudioProps = {
 export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const { message } = App.useApp();
   const router = useRouter();
+  const poster = isPosterTask(task.taskType);
   const initialAnalysis = readAnalysisStepSnapshot(task.steps.analysis?.data);
   const initialVisual = readVisualStepSnapshot(task.steps.visual?.data);
   const initialDesign = readDesignStepSnapshot(task.steps.design?.data);
-  const [images, setImages] = useState<ProductImageItem[]>(initialAnalysis?.images ?? []);
-  const [documents, setDocuments] = useState<ProductDocItem[]>(initialAnalysis?.documents ?? []);
+  const [images, setImages] = useState<ProductImageItem[]>(
+    poster ? (initialVisual?.images ?? []) : (initialAnalysis?.images ?? []),
+  );
+  const [documents, setDocuments] = useState<ProductDocItem[]>(
+    poster ? (initialVisual?.documents ?? []) : (initialAnalysis?.documents ?? []),
+  );
   const [form, setForm] = useState<StudioFormState>(initialVisual?.form ?? DEFAULT_FORM_STATE);
   const [designForm, setDesignForm] = useState<DesignFormState>(() => {
     const base = initialDesign?.form ?? {
@@ -97,8 +103,12 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const [modelImages, setModelImages] = useState<ProductImageItem[]>(
     initialDesign?.modelImages ?? [],
   );
-  const [phase, setPhase] = useState<StudioPhase>(resolveInitialStudioPhase(initialAnalysis));
-  const [analysisText, setAnalysisText] = useState(initialAnalysis?.analysisText ?? '');
+  const [phase, setPhase] = useState<StudioPhase>(
+    resolveInitialStudioPhase(initialAnalysis, poster),
+  );
+  const [analysisText, setAnalysisText] = useState(
+    poster ? (initialVisual?.analysisText ?? '') : (initialAnalysis?.analysisText ?? ''),
+  );
   const [visualImages, setVisualImages] = useState<StudioResultImage[]>(
     initialVisual?.visualImages ?? [],
   );
@@ -153,7 +163,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const analysisStreaming = phase === 'analyzing';
   const expectedVisualCount = Number.parseInt(form.count, 10) || 1;
   const expectedDesignCount = Number.parseInt(designForm.count, 10) || 1;
-  const workflow = resolveEcommerceWorkflow(task.taskType, task.workflowVersion);
+  const workflow = resolveEcommerceWorkflow(task.taskType);
 
   const abortCurrent = useCallback(() => {
     abortRef.current?.abort();
@@ -178,18 +188,24 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
 
   const persistVisualStep = useCallback(
     async (f: StudioFormState, imgs: StudioResultImage[], idx: number | null) => {
-      const next: VisualStepSnapshot = {
-        form: f,
-        visualImages: imgs,
-        selectedVisualIndex: idx,
-      };
+      const next = await createVisualStepSnapshot(
+        f,
+        imgs,
+        idx,
+        imagesRef.current,
+        documentsRef.current,
+        analysisText,
+      );
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.visual)) return;
       const saved = await saveStudioStep(task.id, 'visual', next);
       lastSnapshotsRef.current.visual = saved;
       setForm(saved.form);
       setVisualImages(saved.visualImages);
+      if (saved.images) setImages(saved.images);
+      if (saved.documents) setDocuments(saved.documents);
+      if (typeof saved.analysisText === 'string') setAnalysisText(saved.analysisText);
     },
-    [task.id, setForm, setVisualImages],
+    [analysisText, task.id, setForm, setVisualImages],
   );
 
   const persistDesignStep = useCallback(
@@ -220,7 +236,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setSelectedVisualIndex(null);
     try {
       const payload = await toAnalyzePayload(images, documents);
-      const res = await fetch('/api/studio/ecommerce/analyze', {
+      const res = await fetch('/api/studio/business-analysis/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -457,16 +473,20 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
 
   const handleDocsAppend = useCallback(
     (files: File[]) => {
-      setDocuments((current) => appendProductDocs(current, files));
+      setDocuments((current) => appendProductDocs(current, files, poster ? 1 : undefined));
+      if (poster && files[0]) {
+        void files[0].text().then((text) => setAnalysisText(text));
+      }
     },
-    [setDocuments],
+    [poster],
   );
 
   const handleDocRemove = useCallback(
     (uid: string) => {
       setDocuments((current) => removeProductDoc(current, uid));
+      if (poster) setAnalysisText('');
     },
-    [setDocuments],
+    [poster],
   );
 
   const handleModelImagesAppend = useCallback(
@@ -492,8 +512,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     if (phase === 'analyzing' || phase === 'visualGenerating' || phase === 'designGenerating') {
       abortCurrent();
     }
-    setPhase((current) => phaseAfterPrev(current));
-  }, [abortCurrent, phase]);
+    setPhase((current) => phaseAfterPrev(current, poster));
+  }, [abortCurrent, phase, poster]);
 
   const handleNext = useCallback(async () => {
     if (phase === 'visual' && selectedVisualIndex === null) {
@@ -601,6 +621,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 designForm={designForm}
                 phase={phase}
                 formLocked={formLocked}
+                canGenerateVisual={images.length > 0 && Boolean(analysisText.trim())}
                 onImagesAppend={handleImagesAppend}
                 onImageRemove={handleImageRemove}
                 onDocsAppend={handleDocsAppend}
@@ -623,6 +644,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 expectedVisualCount={expectedVisualCount}
                 selectedVisualIndex={selectedVisualIndex}
                 nextLoading={nextLoading}
+                isPoster={poster}
                 onSelectVisual={handleSelectVisual}
                 onPrev={handlePrev}
                 onNext={handleNext}

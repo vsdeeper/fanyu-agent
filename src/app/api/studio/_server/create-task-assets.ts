@@ -5,6 +5,7 @@ import path from 'path';
 import { generateId } from 'ai';
 import { and, eq } from 'drizzle-orm';
 import {
+  businessAnalysisTaskAssets,
   ecommerceTaskAssets,
   productModelTaskAssets,
   productRetouchTaskAssets,
@@ -13,7 +14,10 @@ import { getChatDir, getDb } from '@/lib/db/client';
 import { rewriteLegacyStudioAssetUrls } from './rewrite-legacy-asset-urls';
 
 export type StudioAssetsTable =
-  typeof ecommerceTaskAssets | typeof productModelTaskAssets | typeof productRetouchTaskAssets;
+  | typeof ecommerceTaskAssets
+  | typeof productModelTaskAssets
+  | typeof productRetouchTaskAssets
+  | typeof businessAnalysisTaskAssets;
 
 export type StudioTaskAssetRecord = {
   id: string;

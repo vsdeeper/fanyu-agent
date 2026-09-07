@@ -1,4 +1,4 @@
-import { handleEcommerceAnalyze } from '@/app/api/studio/ecommerce/_server/handle-analyze';
+import { handleBusinessAnalysisAnalyze } from '@/app/api/studio/business-analysis/_server/handle-analyze';
 import { SERVICE_UNAVAILABLE } from '@/app/api/studio/_server/constants';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    return await handleEcommerceAnalyze(req);
+    return await handleBusinessAnalysisAnalyze(req);
   } catch {
     return jsonFail(ApiErrorCode.INTERNAL_ERROR, SERVICE_UNAVAILABLE, 500);
   }

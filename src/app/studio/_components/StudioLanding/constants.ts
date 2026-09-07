@@ -1,5 +1,11 @@
-import { BgColorsOutlined, ShoppingOutlined, UserOutlined } from '@ant-design/icons';
 import {
+  BgColorsOutlined,
+  FileSearchOutlined,
+  ShoppingOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
+import {
+  BUSINESS_ANALYSIS_PATH,
   ECOMMERCE_PATH,
   PRODUCT_MODEL_PATH,
   PRODUCT_RETOUCH_PATH,
@@ -15,6 +21,13 @@ export const STUDIO_ENTRIES: StudioEntry[] = [
     description: '产品精修/多角度，一键出图',
     path: PRODUCT_RETOUCH_PATH,
     icon: BgColorsOutlined,
+  },
+  {
+    key: 'business-analysis',
+    title: '商业分析',
+    description: '产品定位、卖点与视觉方向分析',
+    path: BUSINESS_ANALYSIS_PATH,
+    icon: FileSearchOutlined,
   },
   {
     key: 'product-model',

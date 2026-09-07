@@ -9,7 +9,7 @@ export const MARKDOWN_STREAMING_OFF = { hasNextChunk: false };
 export const MARKDOWN_COMPONENTS = {};
 
 /** DOCX 等暂不支持在线预览时，提示用户下载查看 */
-export const PREVIEW_UNSUPPORTED = '该格式暂不支持在线预览，请下载后查看';
+export const PREVIEW_UNSUPPORTED = '该格式暂不支持在线预览';
 
 /** 正文加载失败时面板内提示 */
 export const PREVIEW_LOAD_ERROR = '无法加载文件预览';

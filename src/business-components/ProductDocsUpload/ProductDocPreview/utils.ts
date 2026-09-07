@@ -1,27 +1,22 @@
 import type { ProductDocUploadItem } from '../types';
 import { getProductDocDisplay, toDocExt } from '../utils';
 
-export type ProductDocPreviewKind = 'markdown' | 'text' | 'pdf' | 'docx' | 'image' | 'unsupported';
+export type ProductDocPreviewKind = 'markdown' | 'text' | 'unsupported';
 
 const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown', 'mdx']);
 const TEXT_EXTENSIONS = new Set(['txt']);
-const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif']);
 
-/** 判断资料文件正文应如何预览：MD / TXT 读正文，PDF 内嵌，图片放大，其余提示下载。 */
+/** 判断资料文件正文应如何预览：MD / TXT 读正文，其余提示不支持。 */
 export function getDocPreviewKind(item: ProductDocUploadItem): ProductDocPreviewKind {
   const display = getProductDocDisplay(item);
   const ext = toDocExt(display.name);
-  if (display.type.startsWith('image/') || IMAGE_EXTENSIONS.has(ext)) return 'image';
-  if (MARKDOWN_EXTENSIONS.has(ext)) return 'markdown';
-  if (TEXT_EXTENSIONS.has(ext)) return 'text';
-  if (ext === 'pdf') return 'pdf';
-  if (ext === 'docx') return 'docx';
+  if (MARKDOWN_EXTENSIONS.has(ext) || display.type === 'text/markdown') return 'markdown';
+  if (TEXT_EXTENSIONS.has(ext) || display.type === 'text/plain') return 'text';
   return 'unsupported';
 }
 
 /**
  * 读取资料正文（MD / TXT 用）：本地 File 走 FileReader，历史资产按 previewUrl fetch。
- * 都会走 readAsText，避免把大文件正文放进主线程 base64 解码。
  */
 export async function loadDocText(
   item: ProductDocUploadItem,

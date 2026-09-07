@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DESIGN_FORM_STATE, DEFAULT_FORM_STATE } from './constants';
-import { groupResultImagesByRatio, isNextDisabled } from './ResultPanel/utils';
+import { groupResultImagesByRatio, isNextDisabled, isPrevVisible } from './ResultPanel/utils';
 import type { ProductImageItem, StudioResultImage } from './types';
 import {
   appendPendingDesignImages,
@@ -252,6 +252,8 @@ describe('步骤快照水合', () => {
     expect(analysis?.analysisText).toBe('商业分析正文');
     expect(analysis?.images[0]?.file).toBeUndefined();
     expect(visual?.selectedVisualIndex).toBe(0);
+    expect(visual?.images).toBeUndefined();
+    expect(visual?.analysisText).toBeUndefined();
     expect(design?.designResultGroups['主图']).toHaveLength(1);
     expect(design?.modelImages).toEqual([]);
     expect(readAnalysisStepSnapshot({ images: [] })).toBeUndefined();
@@ -268,6 +270,31 @@ describe('步骤快照水合', () => {
     expect(design?.form).not.toHaveProperty('referenceVisual');
   });
 
+  it('海报主视觉快照读取精修图、分析文件与正文', () => {
+    const visual = readVisualStepSnapshot({
+      form: DEFAULT_FORM_STATE,
+      visualImages: [
+        {
+          index: 0,
+          aspectRatio: '1:1',
+          status: 'ready',
+          url: '/api/studio/ecommerce/tasks/t1/assets/v1',
+        },
+      ],
+      selectedVisualIndex: 0,
+      images: [
+        { uid: 'img-1', previewUrl: '/api/studio/ecommerce/tasks/t1/assets/p1', name: 'p.png' },
+      ],
+      documents: [
+        { uid: 'doc-1', previewUrl: '/api/studio/ecommerce/tasks/t1/assets/a1', name: '分析.md' },
+      ],
+      analysisText: '上传的商业分析正文',
+    });
+    expect(visual?.images).toHaveLength(1);
+    expect(visual?.documents?.[0]?.name).toBe('分析.md');
+    expect(visual?.analysisText).toBe('上传的商业分析正文');
+  });
+
   it('再次进入流程时默认停在第一步', () => {
     expect(resolveInitialStudioPhase(undefined)).toBe('input');
     expect(
@@ -277,6 +304,7 @@ describe('步骤快照水合', () => {
         analysisText: '已完成分析',
       }),
     ).toBe('analyzed');
+    expect(resolveInitialStudioPhase(undefined, true)).toBe('visual');
   });
 });
 
@@ -287,6 +315,16 @@ describe('四步导航', () => {
     expect(phaseAfterNext('design')).toBe('complete');
     expect(phaseAfterPrev('complete')).toBe('design');
     expect(phaseAfterPrev('designGenerating')).toBe('visual');
+    expect(phaseAfterPrev('visual')).toBe('analyzed');
+    expect(phaseAfterPrev('visual', true)).toBe('visual');
+  });
+
+  it('上一步按钮：主图/详情图在分析步隐藏，海报在主视觉步隐藏', () => {
+    expect(isPrevVisible('analyzed')).toBe(false);
+    expect(isPrevVisible('visual')).toBe(true);
+    expect(isPrevVisible('visual', true)).toBe(false);
+    expect(isPrevVisible('visualGenerating', true)).toBe(false);
+    expect(isPrevVisible('design', true)).toBe(true);
   });
 
   it('视觉设计至少有一张成果时才能进入完成', () => {

@@ -41,6 +41,7 @@ type ResultPanelProps = {
   expectedVisualCount: number;
   selectedVisualIndex: number | null;
   nextLoading: boolean;
+  isPoster?: boolean;
   onSelectVisual: (index: number) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -61,6 +62,7 @@ export default function ResultPanel({
   expectedVisualCount,
   selectedVisualIndex,
   nextLoading,
+  isPoster = false,
   onSelectVisual,
   onPrev,
   onNext,
@@ -186,7 +188,7 @@ export default function ResultPanel({
         </div>
       )}
       <div className={styles.footer}>
-        {isPrevVisible(phase) ? (
+        {isPrevVisible(phase, isPoster) ? (
           <Button size="large" disabled={isEditing} onClick={onPrev}>
             {PREV_BUTTON}
           </Button>
