@@ -2,9 +2,11 @@ import 'server-only';
 
 import { ZodError } from 'zod';
 import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
+import { TASK_NAME_CONFLICT_MESSAGE } from '../_shared/task-constants';
 import { parseCreateTaskRequest, parseTaskListQuery } from './task-parse-request';
 import {
   createProductRetouchTask,
+  hasProductRetouchTaskName,
   listProductRetouchTasks,
   loadProductRetouchTask,
 } from './task-store';
@@ -26,6 +28,9 @@ export function handleListProductRetouchTasks(req: Request): Response {
 export async function handleCreateProductRetouchTask(req: Request): Promise<Response> {
   try {
     const body = parseCreateTaskRequest(await req.json());
+    if (hasProductRetouchTaskName(body.name)) {
+      return jsonFail(ApiErrorCode.TASK_NAME_CONFLICT, TASK_NAME_CONFLICT_MESSAGE, 409);
+    }
     const id = createProductRetouchTask(body.name);
     return jsonOk(loadProductRetouchTask(id));
   } catch (error) {

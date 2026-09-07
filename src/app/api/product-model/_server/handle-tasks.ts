@@ -2,8 +2,14 @@ import 'server-only';
 
 import { ZodError } from 'zod';
 import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
+import { TASK_NAME_CONFLICT_MESSAGE } from '../_shared/task-constants';
 import { parseCreateTaskRequest, parseTaskListQuery } from './task-parse-request';
-import { createProductModelTask, listProductModelTasks, loadProductModelTask } from './task-store';
+import {
+  createProductModelTask,
+  hasProductModelTaskName,
+  listProductModelTasks,
+  loadProductModelTask,
+} from './task-store';
 
 /** 返回支持任务名称查询和分页的产品模特任务列表。 */
 export function handleListProductModelTasks(req: Request): Response {
@@ -22,6 +28,9 @@ export function handleListProductModelTasks(req: Request): Response {
 export async function handleCreateProductModelTask(req: Request): Promise<Response> {
   try {
     const body = parseCreateTaskRequest(await req.json());
+    if (hasProductModelTaskName(body.name)) {
+      return jsonFail(ApiErrorCode.TASK_NAME_CONFLICT, TASK_NAME_CONFLICT_MESSAGE, 409);
+    }
     const id = createProductModelTask(body.name);
     return jsonOk(loadProductModelTask(id));
   } catch (error) {

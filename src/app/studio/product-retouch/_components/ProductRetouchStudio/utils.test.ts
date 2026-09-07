@@ -5,6 +5,7 @@ import {
   applyGenerateEvent,
   getSelectedImageUrl,
   hasReadyImage,
+  isSameStepSnapshot,
   pendingImages,
   phaseAfterNext,
   phaseAfterPrev,
@@ -83,5 +84,41 @@ describe('产品精修步骤与请求', () => {
       multiviewRequirement: '生成六个统一视角',
       refinedImageDataUrl: 'data:image/png;base64,REFINED',
     });
+  });
+});
+
+describe('isSameStepSnapshot', () => {
+  it('无基线视为已变化', () => {
+    expect(isSameStepSnapshot({ form: DEFAULT_MULTIVIEW_FORM, results: [] }, undefined)).toBe(
+      false,
+    );
+  });
+
+  it('选中下标变化则不相等', () => {
+    const baseline = {
+      form: DEFAULT_MULTIVIEW_FORM,
+      images: [],
+      results: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }],
+      selectedIndex: 0,
+      needsMultiview: true,
+    };
+    expect(isSameStepSnapshot({ ...baseline, selectedIndex: 1 }, baseline)).toBe(false);
+    expect(isSameStepSnapshot(baseline, baseline)).toBe(true);
+  });
+
+  it('结果 URL 变化则不相等', () => {
+    const baseline = {
+      form: DEFAULT_MULTIVIEW_FORM,
+      results: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/old' }],
+    };
+    expect(
+      isSameStepSnapshot(
+        {
+          ...baseline,
+          results: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/new' }],
+        },
+        baseline,
+      ),
+    ).toBe(false);
   });
 });

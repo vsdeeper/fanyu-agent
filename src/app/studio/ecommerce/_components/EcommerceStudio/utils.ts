@@ -488,6 +488,12 @@ export async function createAnalysisStepSnapshot(
   };
 }
 
+/** 比较两份可序列化步骤快照是否相同；无基线视为已变化。 */
+export function isSameStepSnapshot(next: unknown, baseline: unknown): boolean {
+  if (baseline === undefined) return false;
+  return JSON.stringify(next) === JSON.stringify(baseline);
+}
+
 /** 保存步骤快照，并返回服务端替换资产 URL 后的数据。 */
 export async function saveStudioStep<T>(
   taskId: string,
@@ -506,9 +512,7 @@ export async function saveStudioStep<T>(
 
 /** 删除已失效的下游步骤快照。 */
 export async function deleteStudioStep(taskId: string, stepKey: EcommerceStepKey): Promise<void> {
-  await apiDelete(`/api/ecommerce/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`, {
-    silent: true,
-  });
+  await apiDelete(`/api/ecommerce/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`);
 }
 
 /** 再次进入流程时始终停在第一步：有分析正文则视为已完成分析。 */

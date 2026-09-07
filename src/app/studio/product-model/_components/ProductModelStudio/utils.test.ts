@@ -7,6 +7,7 @@ import {
   createResultArchive,
   decodeImageDataUrl,
   getGeneratedImages,
+  isSameStepSnapshot,
   pendingImages,
 } from './utils';
 
@@ -68,5 +69,50 @@ describe('产品模特结果工具', () => {
     // ZIP 内按比例二级分目录存放：目录名=物料分类，文件名=比例-序号
     expect(Object.keys(archive)).toEqual(['产品模特图/16:9-01.png']);
     expect([...archive['产品模特图/16:9-01.png']]).toEqual([1, 2, 3]);
+  });
+});
+
+describe('isSameStepSnapshot', () => {
+  it('无基线视为已变化', () => {
+    expect(isSameStepSnapshot({ results: [] }, undefined)).toBe(false);
+  });
+
+  it('完全相同则相等', () => {
+    const snapshot = {
+      form: {
+        viewRequirement: '正面',
+        model: 'm',
+        aspectRatio: '16:9',
+        quality: 'high',
+        clarity: '2K',
+        count: '1',
+      },
+      productImages: [],
+      modelImages: [],
+      results: [READY_PNG],
+    };
+    expect(isSameStepSnapshot(snapshot, snapshot)).toBe(true);
+  });
+
+  it('结果 URL 变化则不相等', () => {
+    const baseline = {
+      form: {
+        viewRequirement: '正面',
+        model: 'm',
+        aspectRatio: '16:9',
+        quality: 'high',
+        clarity: '2K',
+        count: '1',
+      },
+      productImages: [],
+      modelImages: [],
+      results: [READY_PNG],
+    };
+    expect(
+      isSameStepSnapshot(
+        { ...baseline, results: [{ ...READY_PNG, url: 'data:image/png;base64,ZZ' }] },
+        baseline,
+      ),
+    ).toBe(false);
   });
 });

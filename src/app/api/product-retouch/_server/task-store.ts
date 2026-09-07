@@ -117,6 +117,16 @@ export function loadProductRetouchTask(id: string): ProductRetouchTaskDetail | u
   };
 }
 
+/** 同产品线内是否已有同名任务；excludeId 用于改名时排除自身。 */
+export function hasProductRetouchTaskName(name: string, excludeId?: string): boolean {
+  const rows = getDb()
+    .select({ id: productRetouchTasks.id })
+    .from(productRetouchTasks)
+    .where(eq(productRetouchTasks.name, name))
+    .all();
+  return rows.some((row) => row.id !== excludeId);
+}
+
 /** 判断产品精修任务是否存在。 */
 export function productRetouchTaskExists(id: string): boolean {
   return Boolean(

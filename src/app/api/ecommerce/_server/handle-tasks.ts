@@ -2,8 +2,14 @@ import 'server-only';
 
 import { ZodError } from 'zod';
 import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
+import { TASK_NAME_CONFLICT_MESSAGE } from '../_shared/task-constants';
 import { parseCreateTaskRequest, parseTaskListQuery } from './task-parse-request';
-import { createEcommerceTask, listEcommerceTasks, loadEcommerceTask } from './task-store';
+import {
+  createEcommerceTask,
+  hasEcommerceTaskName,
+  listEcommerceTasks,
+  loadEcommerceTask,
+} from './task-store';
 
 /** 返回支持任务名称查询和分页的电商设计任务列表。 */
 export function handleListEcommerceTasks(req: Request): Response {
@@ -22,6 +28,9 @@ export function handleListEcommerceTasks(req: Request): Response {
 export async function handleCreateEcommerceTask(req: Request): Promise<Response> {
   try {
     const body = parseCreateTaskRequest(await req.json());
+    if (hasEcommerceTaskName(body.name)) {
+      return jsonFail(ApiErrorCode.TASK_NAME_CONFLICT, TASK_NAME_CONFLICT_MESSAGE, 409);
+    }
     const id = createEcommerceTask(body.name, body.taskType);
     return jsonOk(loadEcommerceTask(id));
   } catch (error) {

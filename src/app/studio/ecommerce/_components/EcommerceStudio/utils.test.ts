@@ -8,6 +8,7 @@ import {
   appendProductImages,
   applyDesignGenerateEvent,
   applyGenerateEvent,
+  isSameStepSnapshot,
   pendingImagesFromCount,
   phaseAfterNext,
   phaseAfterPrev,
@@ -286,5 +287,44 @@ describe('四步导航', () => {
   it('视觉设计至少有一张成果时才能进入完成', () => {
     expect(isNextDisabled('design', '分析', 0, false)).toBe(true);
     expect(isNextDisabled('design', '分析', 0, true)).toBe(false);
+  });
+});
+
+describe('isSameStepSnapshot', () => {
+  it('无基线视为已变化', () => {
+    expect(isSameStepSnapshot({ analysisText: 'a' }, undefined)).toBe(false);
+  });
+
+  it('分析正文变化则不相等', () => {
+    const baseline = { images: [], documents: [], analysisText: '旧稿' };
+    expect(isSameStepSnapshot({ ...baseline, analysisText: '新稿' }, baseline)).toBe(false);
+    expect(isSameStepSnapshot(baseline, baseline)).toBe(true);
+  });
+
+  it('选中下标变化则不相等', () => {
+    const baseline = {
+      form: DEFAULT_FORM_STATE,
+      visualImages: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }],
+      selectedVisualIndex: 0,
+    };
+    expect(isSameStepSnapshot({ ...baseline, selectedVisualIndex: 1 }, baseline)).toBe(false);
+    expect(isSameStepSnapshot(baseline, baseline)).toBe(true);
+  });
+
+  it('结果 URL 变化则不相等', () => {
+    const baseline = {
+      form: DEFAULT_DESIGN_FORM_STATE,
+      designResultGroups: {
+        主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/old' }],
+      },
+      modelImages: [],
+    };
+    const next = {
+      ...baseline,
+      designResultGroups: {
+        主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/new' }],
+      },
+    };
+    expect(isSameStepSnapshot(next, baseline)).toBe(false);
   });
 });

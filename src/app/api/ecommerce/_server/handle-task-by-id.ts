@@ -2,8 +2,14 @@ import 'server-only';
 
 import { ZodError } from 'zod';
 import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
+import { TASK_NAME_CONFLICT_MESSAGE } from '../_shared/task-constants';
 import { parseUpdateTaskRequest } from './task-parse-request';
-import { deleteEcommerceTask, loadEcommerceTask, updateEcommerceTaskName } from './task-store';
+import {
+  deleteEcommerceTask,
+  hasEcommerceTaskName,
+  loadEcommerceTask,
+  updateEcommerceTaskName,
+} from './task-store';
 
 /** 返回指定电商设计任务的完整详情。 */
 export function handleGetEcommerceTask(id: string): Response {
@@ -15,6 +21,13 @@ export function handleGetEcommerceTask(id: string): Response {
 export async function handleUpdateEcommerceTask(id: string, req: Request): Promise<Response> {
   try {
     const body = parseUpdateTaskRequest(await req.json());
+    const current = loadEcommerceTask(id);
+    if (!current) {
+      return jsonFail(ApiErrorCode.TASK_NOT_FOUND, '电商设计任务不存在', 404);
+    }
+    if (current.name !== body.name && hasEcommerceTaskName(body.name, id)) {
+      return jsonFail(ApiErrorCode.TASK_NAME_CONFLICT, TASK_NAME_CONFLICT_MESSAGE, 409);
+    }
     if (!updateEcommerceTaskName(id, body.name)) {
       return jsonFail(ApiErrorCode.TASK_NOT_FOUND, '电商设计任务不存在', 404);
     }

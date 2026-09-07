@@ -108,6 +108,16 @@ export function loadEcommerceTask(id: string): EcommerceTaskDetail | undefined {
   };
 }
 
+/** 同产品线内是否已有同名任务；excludeId 用于改名时排除自身。 */
+export function hasEcommerceTaskName(name: string, excludeId?: string): boolean {
+  const rows = getDb()
+    .select({ id: ecommerceTasks.id })
+    .from(ecommerceTasks)
+    .where(eq(ecommerceTasks.name, name))
+    .all();
+  return rows.some((row) => row.id !== excludeId);
+}
+
 /** 判断电商设计任务是否存在。 */
 export function ecommerceTaskExists(id: string): boolean {
   return Boolean(

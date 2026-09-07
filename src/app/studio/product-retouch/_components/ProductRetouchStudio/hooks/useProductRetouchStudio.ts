@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { App } from 'antd';
 import type { ProductRetouchTaskDetail } from '@/app/api/product-retouch/_shared/task-types';
+import { ApiClientError } from '@/lib/shared/client/api-client';
 import {
   DEFAULT_MULTIVIEW_FORM,
   DEFAULT_REFINE_FORM,
@@ -14,7 +15,9 @@ import {
 import type {
   MultiviewFormState,
   ProductImageItem,
+  ProductRetouchMultiviewStepSnapshot,
   ProductRetouchPhase,
+  ProductRetouchRefineStepSnapshot,
   RefineFormState,
   ResultImage,
 } from '../types';
@@ -28,6 +31,7 @@ import {
   getSelectedImageUrl,
   hasReadyImage,
   isAbortError,
+  isSameStepSnapshot,
   pendingImages,
   phaseAfterNext,
   phaseAfterPrev,
@@ -65,6 +69,13 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
   );
   const imagesRef = useRef(images);
   const abortRef = useRef<AbortController | null>(null);
+  const lastSnapshotsRef = useRef<{
+    refine: ProductRetouchRefineStepSnapshot | undefined;
+    multiview: ProductRetouchMultiviewStepSnapshot | undefined;
+  }>({
+    refine: initialRefine,
+    multiview: initialMultiview,
+  });
 
   useEffect(() => {
     imagesRef.current = images;
@@ -97,17 +108,16 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
   // 落盘与下一步/完成共用同一份动作：把当前步左栏 + 右栏整体快照入库（data: URL 由服务端转资产 URL）
   const persistRefineStep = useCallback(
     async (results: ResultImage[]) => {
-      const saved = await saveProductRetouchStep(
-        task.id,
-        'refine',
-        await createRefineStepSnapshot(
-          refineForm,
-          images,
-          results,
-          selectedRefineIndex,
-          needsMultiview,
-        ),
+      const next = await createRefineStepSnapshot(
+        refineForm,
+        images,
+        results,
+        selectedRefineIndex,
+        needsMultiview,
       );
+      if (isSameStepSnapshot(next, lastSnapshotsRef.current.refine)) return;
+      const saved = await saveProductRetouchStep(task.id, 'refine', next);
+      lastSnapshotsRef.current.refine = saved;
       setImages(saved.images);
       setRefineImages(saved.results);
     },
@@ -116,11 +126,10 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
 
   const persistMultiviewStep = useCallback(
     async (results: ResultImage[]) => {
-      const saved = await saveProductRetouchStep(
-        task.id,
-        'multiview',
-        createMultiviewStepSnapshot(multiviewForm, results),
-      );
+      const next = createMultiviewStepSnapshot(multiviewForm, results);
+      if (isSameStepSnapshot(next, lastSnapshotsRef.current.multiview)) return;
+      const saved = await saveProductRetouchStep(task.id, 'multiview', next);
+      lastSnapshotsRef.current.multiview = saved;
       setMultiviewImages(saved.results);
     },
     [task.id, multiviewForm, setMultiviewImages],
@@ -262,7 +271,9 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
       setPhase((current) => phaseAfterNext(current, needsMultiview));
     } catch (error) {
       console.error('[product-retouch] save refine', error);
-      message.error(error instanceof Error && error.message ? error.message : GENERATE_FAILED);
+      if (!(error instanceof ApiClientError)) {
+        message.error(error instanceof Error && error.message ? error.message : GENERATE_FAILED);
+      }
     } finally {
       setPersisting(false);
     }
@@ -280,7 +291,9 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
       setPhase('complete');
     } catch (error) {
       console.error('[product-retouch] save multiview', error);
-      message.error(error instanceof Error && error.message ? error.message : GENERATE_FAILED);
+      if (!(error instanceof ApiClientError)) {
+        message.error(error instanceof Error && error.message ? error.message : GENERATE_FAILED);
+      }
     } finally {
       setPersisting(false);
     }

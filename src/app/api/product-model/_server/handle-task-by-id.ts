@@ -2,9 +2,11 @@ import 'server-only';
 
 import { ZodError } from 'zod';
 import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
+import { TASK_NAME_CONFLICT_MESSAGE } from '../_shared/task-constants';
 import { parseUpdateTaskRequest } from './task-parse-request';
 import {
   deleteProductModelTask,
+  hasProductModelTaskName,
   loadProductModelTask,
   updateProductModelTaskName,
 } from './task-store';
@@ -19,6 +21,13 @@ export function handleGetProductModelTask(id: string): Response {
 export async function handleUpdateProductModelTask(id: string, req: Request): Promise<Response> {
   try {
     const body = parseUpdateTaskRequest(await req.json());
+    const current = loadProductModelTask(id);
+    if (!current) {
+      return jsonFail(ApiErrorCode.TASK_NOT_FOUND, '产品模特任务不存在', 404);
+    }
+    if (current.name !== body.name && hasProductModelTaskName(body.name, id)) {
+      return jsonFail(ApiErrorCode.TASK_NAME_CONFLICT, TASK_NAME_CONFLICT_MESSAGE, 409);
+    }
     if (!updateProductModelTaskName(id, body.name)) {
       return jsonFail(ApiErrorCode.TASK_NOT_FOUND, '产品模特任务不存在', 404);
     }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { App } from 'antd';
 import type { ProductModelTaskDetail } from '@/app/api/product-model/_shared/task-types';
+import { ApiClientError } from '@/lib/shared/client/api-client';
 import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import {
   DEFAULT_FORM,
@@ -15,6 +16,7 @@ import type {
   ProductImageItem,
   ProductModelFormState,
   ProductModelPhase,
+  ProductModelStepSnapshot,
   ResultImage,
 } from '../types';
 import {
@@ -26,6 +28,7 @@ import {
   exportResultImages,
   hasReadyImage,
   isAbortError,
+  isSameStepSnapshot,
   pendingImages,
   phaseAfterPrev,
   readModelStepSnapshot,
@@ -51,6 +54,7 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
   const productImagesRef = useRef(productImages);
   const modelImagesRef = useRef(modelImages);
   const abortRef = useRef<AbortController | null>(null);
+  const lastSnapshotRef = useRef<ProductModelStepSnapshot | undefined>(initial);
   const generating = phase === 'modelGenerating';
 
   useEffect(() => {
@@ -99,11 +103,10 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
   // 落盘与完成共用同一份动作：把当前步左栏 + 右栏整体快照入库（data: URL 由服务端转资产 URL）
   const persistModelStep = useCallback(
     async (results: ResultImage[]) => {
-      const saved = await saveProductModelStep(
-        task.id,
-        'model',
-        await createModelStepSnapshot(form, productImages, modelImages, results),
-      );
+      const next = await createModelStepSnapshot(form, productImages, modelImages, results);
+      if (isSameStepSnapshot(next, lastSnapshotRef.current)) return;
+      const saved = await saveProductModelStep(task.id, 'model', next);
+      lastSnapshotRef.current = saved;
       setProductImages(saved.productImages);
       setModelImages(saved.modelImages);
       setResults(saved.results);
@@ -174,7 +177,9 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
       setPhase('complete');
     } catch (error) {
       console.error('[product-model] save model', error);
-      message.error(error instanceof Error && error.message ? error.message : GENERATE_FAILED);
+      if (!(error instanceof ApiClientError)) {
+        message.error(error instanceof Error && error.message ? error.message : GENERATE_FAILED);
+      }
     } finally {
       setPersisting(false);
     }

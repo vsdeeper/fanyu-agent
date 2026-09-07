@@ -112,6 +112,16 @@ export function loadProductModelTask(id: string): ProductModelTaskDetail | undef
   };
 }
 
+/** 同产品线内是否已有同名任务；excludeId 用于改名时排除自身。 */
+export function hasProductModelTaskName(name: string, excludeId?: string): boolean {
+  const rows = getDb()
+    .select({ id: productModelTasks.id })
+    .from(productModelTasks)
+    .where(eq(productModelTasks.name, name))
+    .all();
+  return rows.some((row) => row.id !== excludeId);
+}
+
 /** 判断产品模特任务是否存在。 */
 export function productModelTaskExists(id: string): boolean {
   return Boolean(
