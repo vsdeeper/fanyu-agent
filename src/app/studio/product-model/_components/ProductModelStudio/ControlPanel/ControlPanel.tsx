@@ -41,6 +41,7 @@ export default function ControlPanel({
     <aside className={styles.panel}>
       <div className={styles.scroll}>
         <StudioImageUpload
+          label="产品精修图"
           images={productImages}
           disabled={generating}
           subtitle={PRODUCT_IMAGE_SUBTITLE}

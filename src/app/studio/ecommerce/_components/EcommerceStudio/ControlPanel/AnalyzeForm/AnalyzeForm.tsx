@@ -27,6 +27,7 @@ export default function AnalyzeForm({
   return (
     <>
       <StudioImageUpload
+        label="产品精修图"
         images={images}
         disabled={disabled}
         onAppend={onImagesAppend}
