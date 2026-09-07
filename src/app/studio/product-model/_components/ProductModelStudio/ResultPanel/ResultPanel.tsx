@@ -3,7 +3,7 @@ import { Button, Skeleton, Typography } from 'antd';
 import { COMPLETE_BUTTON, EMPTY_RESULT_HINT } from '../constants';
 import type { ResultImage } from '../types';
 import { aspectRatioToSize, groupResultImagesByRatio, hasReadyImage } from '../utils';
-import ResultImageItem from './ResultImageItem';
+import ResultImageItem from '@/app/studio/_components/ResultImageItem';
 import styles from './ResultPanel.module.css';
 
 type ResultPanelProps = {

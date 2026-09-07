@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { loadProductRetouchTask } from '@/app/api/product-retouch/_server/task-store';
+import { loadProductRetouchTask } from '@/app/api/studio/product-retouch/_server/task-runtime';
 import ProductRetouchStudio from '../_components/ProductRetouchStudio';
 
 export const runtime = 'nodejs';

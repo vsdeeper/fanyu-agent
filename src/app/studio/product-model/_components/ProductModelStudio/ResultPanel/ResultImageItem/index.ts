@@ -1,1 +1,1 @@
-export { default } from './ResultImageItem';
+export { default } from '@/app/studio/_components/ResultImageItem';

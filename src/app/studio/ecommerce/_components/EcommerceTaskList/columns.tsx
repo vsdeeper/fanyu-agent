@@ -1,5 +1,5 @@
 import { Popconfirm, Space, Tag, Typography, type TableColumnsType } from 'antd';
-import type { EcommerceTaskListItem } from '@/app/api/ecommerce/_shared/task-types';
+import type { EcommerceTaskListItem } from '@/app/api/studio/ecommerce/_shared/task-types';
 import { STEP_LABELS, DELETE_CONFIRM_TITLE, DELETE_CONFIRM_DESCRIPTION } from './constants';
 import { formatTaskDateTime } from './utils';
 

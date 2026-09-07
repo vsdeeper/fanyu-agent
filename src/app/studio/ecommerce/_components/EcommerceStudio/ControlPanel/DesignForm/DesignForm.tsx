@@ -1,10 +1,8 @@
 import { Select } from 'antd';
-import type { EcommerceTaskType } from '@/app/api/ecommerce/_shared/task-types';
+import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import StudioImageUpload from '@/business-components/StudioImageUpload';
 import {
   ASPECT_RATIO_OPTIONS,
-  BOOLEAN_OPTIONS,
-  DESIGN_TYPE_OPTIONS,
   MAX_MODEL_IMAGES,
   MODEL_IMAGE_HINT,
   MODEL_IMAGE_SUBTITLE,
@@ -27,7 +25,7 @@ type DesignFormProps = {
 };
 
 /**
- * 视觉设计 / 营销海报表单：海报步提供可选模特形象，并隐藏物料类型与主视觉开关。
+ * 视觉设计 / 营销海报表单：海报步提供可选模特形象。
  */
 export default function DesignForm({
   form,
@@ -66,52 +64,16 @@ export default function DesignForm({
             onChange={(value) => onFormChange(patchModel(form, value))}
           />
         </label>
-        {poster ? (
-          <label className={styles.field}>
-            <span className={styles.label}>比例</span>
-            <Select
-              value={form.aspectRatio}
-              options={ASPECT_RATIO_OPTIONS}
-              disabled={disabled}
-              onChange={(value) => onFormChange(patchFormState(form, 'aspectRatio', value))}
-            />
-          </label>
-        ) : (
-          <label className={styles.field}>
-            <span className={styles.label}>设计类型</span>
-            <Select
-              value={form.designType}
-              options={DESIGN_TYPE_OPTIONS}
-              disabled={disabled}
-              onChange={(value) => onFormChange(patchFormState(form, 'designType', value))}
-            />
-          </label>
-        )}
+        <label className={styles.field}>
+          <span className={styles.label}>{poster ? '比例' : '尺寸比例'}</span>
+          <Select
+            value={form.aspectRatio}
+            options={ASPECT_RATIO_OPTIONS}
+            disabled={disabled}
+            onChange={(value) => onFormChange(patchFormState(form, 'aspectRatio', value))}
+          />
+        </label>
       </div>
-
-      {poster ? null : (
-        <>
-          <label className={styles.field}>
-            <span className={styles.label}>尺寸比例</span>
-            <Select
-              value={form.aspectRatio}
-              options={ASPECT_RATIO_OPTIONS}
-              disabled={disabled}
-              onChange={(value) => onFormChange(patchFormState(form, 'aspectRatio', value))}
-            />
-          </label>
-
-          <label className={styles.field}>
-            <span className={styles.label}>参考主视觉</span>
-            <Select
-              value={form.referenceVisual}
-              options={BOOLEAN_OPTIONS}
-              disabled={disabled}
-              onChange={(value) => onFormChange(patchFormState(form, 'referenceVisual', value))}
-            />
-          </label>
-        </>
-      )}
 
       <label className={styles.field}>
         <span className={styles.label}>清晰度</span>

@@ -7,11 +7,3 @@ export const EXPORT_FAILED = '导出失败，请稍后重试';
 export const ANALYSIS_GROUP_TITLE = '商业分析';
 export const ANALYSIS_FILE_NAME = '商业分析.md';
 export const ANALYSIS_MEDIA_TYPE = 'text/markdown;charset=utf-8';
-
-export const IMAGE_EXTENSION_BY_MEDIA_TYPE: Readonly<Record<string, string>> = {
-  'image/avif': 'avif',
-  'image/gif': 'gif',
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-};

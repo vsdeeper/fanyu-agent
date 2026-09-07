@@ -1,4 +1,4 @@
-import type { EcommerceTaskType } from '@/app/api/ecommerce/_shared/task-types';
+import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import {
   EMPTY_DESIGN_HINT,
   EMPTY_POSTER_HINT,
@@ -9,7 +9,7 @@ import {
   RESULT_TITLE_ANALYSIS,
   RESULT_TITLE_VISUAL,
 } from '../constants';
-import type { StudioPhase, StudioResultImage } from '../types';
+import type { StudioPhase } from '../types';
 import { isPosterTask } from '../workflow';
 
 /** 右侧标题随步骤切换 */
@@ -111,36 +111,4 @@ export function getImageSrc(asset: { url?: string }): string {
   return asset.url ?? '';
 }
 
-/** 二级分类：把结果图按其比例拆成稳定顺序的子组，供按比例分组展示。 */
-export function groupResultImagesByRatio<T extends StudioResultImage>(
-  images: readonly T[],
-): Array<{ aspectRatio: string; images: T[] }> {
-  const order: string[] = [];
-  const byRatio = new Map<string, T[]>();
-  for (const image of images) {
-    const key = image.aspectRatio;
-    const bucket = byRatio.get(key);
-    if (bucket) {
-      bucket.push(image);
-    } else {
-      byRatio.set(key, [image]);
-      order.push(key);
-    }
-  }
-  return order.map((ratio) => ({ aspectRatio: ratio, images: byRatio.get(ratio)! }));
-}
-
-/**
- * 依据宽高比串（如 3:4、16:9）把基准宽换算为预览单元格尺寸。
- * 与表单「尺寸比例」对标，使预览/骨架比例一致；非法比例回退正方形。
- */
-export function aspectRatioToSize(
-  ratio: string,
-  baseWidth: number,
-): { width: number; height: number } {
-  const m = /^(\d+):(\d+)$/.exec(ratio.trim());
-  const w = m ? Number(m[1]) : 0;
-  const h = m ? Number(m[2]) : 0;
-  if (w <= 0 || h <= 0) return { width: baseWidth, height: baseWidth };
-  return { width: baseWidth, height: Math.round((baseWidth * h) / w) };
-}
+export { aspectRatioToSize, groupResultImagesByRatio } from '@/app/studio/_utils/result-images';

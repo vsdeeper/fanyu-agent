@@ -2,7 +2,7 @@ import type {
   CreateProductRetouchTaskRequest,
   ProductRetouchTaskDetail,
   ProductRetouchTaskListItem,
-} from '@/app/api/product-retouch/_shared/task-types';
+} from '@/app/api/studio/product-retouch/_shared/task-types';
 import { apiPatch, apiPost } from '@/lib/shared/client/api-client';
 
 export type TaskFormValues = {
@@ -15,11 +15,11 @@ export async function submitTaskForm(
   task?: ProductRetouchTaskListItem,
 ): Promise<ProductRetouchTaskDetail> {
   if (task) {
-    return apiPatch<ProductRetouchTaskDetail>(`/api/product-retouch/tasks/${task.id}`, {
+    return apiPatch<ProductRetouchTaskDetail>(`/api/studio/product-retouch/tasks/${task.id}`, {
       name: values.name,
     });
   }
-  return apiPost<ProductRetouchTaskDetail>('/api/product-retouch/tasks', {
+  return apiPost<ProductRetouchTaskDetail>('/api/studio/product-retouch/tasks', {
     name: values.name,
   } satisfies CreateProductRetouchTaskRequest);
 }

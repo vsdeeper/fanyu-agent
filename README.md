@@ -98,8 +98,8 @@ pnpm run dev
 | `pnpm run format`      | Prettier 格式化              |
 | `pnpm run db:generate` | 根据 schema 生成迁移 SQL     |
 | `pnpm run db:migrate`  | 用 CLI 将迁移应用到数据库    |
-| `pnpm sync:chats:push` | 将会话数据镜像同步到云盘备份 |
-| `pnpm sync:chats:pull` | 从云盘备份拉取并覆盖本地数据 |
+| `pnpm sync:data:push`  | 将会话与工作室数据镜像同步到云盘备份 |
+| `pnpm sync:data:pull`  | 从云盘备份拉取并覆盖本地 chats 与 studio |
 
 ## 数据库迁移
 
@@ -124,17 +124,17 @@ pnpm run dev
 
 `db:generate` 与 `db:migrate` 均读取 `CHAT_STORE_DIR`（默认 `./data/chats`），请与 `.env.local` 保持一致，避免迁错库文件。
 
-## 会话数据备份
+## 本地数据备份
 
-会话 SQLite、图片与 DESIGN.md 默认落在项目内 `data/chats`（已 git 忽略）。云盘路径 `CHAT_SYNC_REMOTE_DIR` 仅作手动备份对端，不是运行时目录：
+会话 SQLite、图片与 DESIGN.md 默认落在项目内 `data/chats`；工作室任务资产在同级 `data/studio/{product}/`（均已 git 忽略）。云盘路径 `CHAT_SYNC_REMOTE_DIR` 仅作手动备份对端，应填 `.../chats`，脚本会同时镜像同级 `studio`：
 
 ```bash
-# 本地 → 云盘
-pnpm sync:chats:push
+# 本地 → 云盘（chats 与同级 studio）
+pnpm sync:data:push
 
-# 云盘 → 本地（会覆盖本地 data/chats，需确认）
-pnpm sync:chats:pull
-pnpm sync:chats:pull -- --yes   # 跳过确认
+# 云盘 → 本地（会覆盖本地 data/chats 与 data/studio，需确认）
+pnpm sync:data:pull
+pnpm sync:data:pull -- --yes   # 跳过确认
 ```
 
 同步前建议先关闭应用，避免 WAL 未 checkpoint 导致不一致。明文落盘 + 云盘同步不适合高敏感内容。

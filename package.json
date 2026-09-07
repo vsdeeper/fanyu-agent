@@ -12,8 +12,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "sync:chats:push": "node scripts/sync-chats.mjs push",
-    "sync:chats:pull": "node scripts/sync-chats.mjs pull",
+    "sync:data:push": "node scripts/sync-data.mjs push",
+    "sync:data:pull": "node scripts/sync-data.mjs pull",
     "prepare": "husky"
   },
   "pnpm": {

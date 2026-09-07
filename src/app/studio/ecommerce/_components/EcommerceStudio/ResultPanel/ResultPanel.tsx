@@ -7,7 +7,7 @@ import '@/lib/theme/XMarkdownTheme.css';
 import { useState } from 'react';
 import { useThemeMode } from '@/components/theme';
 import { COMPLETE_BUTTON, NEXT_BUTTON, PREV_BUTTON, VISUAL_STANDARD_BADGE } from '../constants';
-import type { EcommerceTaskType } from '@/app/api/ecommerce/_shared/task-types';
+import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import type { DesignResultGroups, StudioPhase, StudioResultImage } from '../types';
 import { isPosterTask } from '../workflow';
 import {

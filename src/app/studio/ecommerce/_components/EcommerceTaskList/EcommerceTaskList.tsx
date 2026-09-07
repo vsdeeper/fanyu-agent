@@ -1,119 +1,89 @@
 'use client';
 
-import { ArrowLeftOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Input, Layout, Table, Typography } from 'antd';
-import { useRouter } from 'next/navigation';
-import { STUDIO_PATH } from '@/components/AppLayout/constants';
-import ModeSwitch from '@/components/ModeSwitch';
-import {
-  CREATE_TASK_BUTTON,
-  QUERY_BUTTON,
-  RESET_BUTTON,
-  SEARCH_NAME_LABEL,
-  SEARCH_NAME_PLACEHOLDER,
-  TASK_LIST_TITLE,
-} from './constants';
-import TaskFormModal from './TaskFormModal';
-import { useEcommerceTaskList } from './hooks/useEcommerceTaskList';
-import styles from './EcommerceTaskList.module.css';
+import { useCallback } from 'react';
+import { Form, Select } from 'antd';
+import type {
+  EcommerceTaskDetail,
+  EcommerceTaskListItem,
+} from '@/app/api/studio/ecommerce/_shared/task-types';
+import StudioPageShell from '@/app/studio/_components/StudioPageShell';
+import StudioTaskList from '@/app/studio/_components/StudioTaskList';
+import TaskNameFormModal from '@/app/studio/_components/TaskNameFormModal';
+import { useStudioTaskList } from '@/app/studio/_hooks/useStudioTaskList';
+import { TASK_LIST_TITLE, TASK_TYPE_OPTIONS } from './constants';
+import { createTaskColumns } from './columns';
+import { getTaskEditorPath } from './utils';
+import { submitTaskForm, type TaskFormValues } from './TaskFormModal/utils';
+import { TYPE_LABEL, TYPE_PLACEHOLDER, TYPE_REQUIRED } from './TaskFormModal/constants';
 
 /** 电商设计任务列表：查询、新增、改名、删除和进入流程设计。 */
 export default function EcommerceTaskList() {
-  const router = useRouter();
-  const {
-    searchForm,
-    loading,
-    items,
-    total,
-    query,
-    columns,
-    createOpen,
-    setCreateOpen,
-    editingTask,
-    setEditingTask,
-    onSearch,
-    onReset,
-    onTableChange,
-    reload,
-    handleCreateSuccess,
-    handleEditSuccess,
-  } = useEcommerceTaskList();
+  const createColumns = useCallback(
+    ({
+      onEdit,
+      onOpenEditor,
+      onDelete,
+    }: {
+      onEdit: (task: EcommerceTaskListItem) => void;
+      onOpenEditor: (task: EcommerceTaskListItem) => void;
+      onDelete: (task: EcommerceTaskListItem) => Promise<void>;
+    }) => createTaskColumns({ onEdit, onDesign: onOpenEditor, onDelete }),
+    [],
+  );
+  const list = useStudioTaskList<EcommerceTaskListItem, EcommerceTaskDetail>({
+    apiBase: '/api/studio/ecommerce',
+    getEditorPath: getTaskEditorPath,
+    createColumns,
+  });
+
+  const extraFields = (editing: boolean) => (
+    <Form.Item
+      name="taskType"
+      label={TYPE_LABEL}
+      rules={editing ? undefined : [{ required: true, message: TYPE_REQUIRED }]}
+    >
+      <Select placeholder={TYPE_PLACEHOLDER} options={TASK_TYPE_OPTIONS} disabled={editing} />
+    </Form.Item>
+  );
 
   return (
-    <Layout className={styles.page}>
-      <Layout.Header className={styles.header}>
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          shape="circle"
-          aria-label="返回工作室"
-          onClick={() => router.push(STUDIO_PATH)}
+    <StudioPageShell title={TASK_LIST_TITLE}>
+      <StudioTaskList
+        searchForm={list.searchForm}
+        loading={list.loading}
+        items={list.items}
+        total={list.total}
+        query={list.query}
+        columns={list.columns}
+        onSearch={list.onSearch}
+        onReset={list.onReset}
+        onTableChange={list.onTableChange}
+        onCreate={() => list.setCreateOpen(true)}
+        onReload={() => void list.reload()}
+      >
+        <TaskNameFormModal<TaskFormValues, EcommerceTaskListItem, EcommerceTaskDetail>
+          open={list.createOpen}
+          onOpenChange={list.setCreateOpen}
+          onSuccess={list.handleCreateSuccess}
+          submit={submitTaskForm}
+          extraFields={extraFields(false)}
         />
-        <Typography.Title level={5} className={styles.title}>
-          {TASK_LIST_TITLE}
-        </Typography.Title>
-        <div className={styles.headerSpacer} />
-        <ModeSwitch />
-      </Layout.Header>
-      <Layout.Content className={styles.content}>
-        <Card className={styles.searchCard} variant="borderless">
-          <Form form={searchForm} layout="inline" className={styles.searchForm} onFinish={onSearch}>
-            <Form.Item name="name" label={SEARCH_NAME_LABEL}>
-              <Input
-                allowClear
-                placeholder={SEARCH_NAME_PLACEHOLDER}
-                className={styles.searchInput}
-              />
-            </Form.Item>
-            <div className={styles.searchActions}>
-              <Button onClick={onReset}>{RESET_BUTTON}</Button>
-              <Button type="primary" htmlType="submit">
-                {QUERY_BUTTON}
-              </Button>
-            </div>
-          </Form>
-        </Card>
-        <Card className={styles.tableCard} variant="borderless">
-          <div className={styles.toolbar}>
-            <Button type="primary" onClick={() => setCreateOpen(true)}>
-              {CREATE_TASK_BUTTON}
-            </Button>
-            <Button
-              type="text"
-              icon={<ReloadOutlined />}
-              aria-label="刷新"
-              onClick={() => void reload()}
-            />
-          </div>
-          <Table
-            rowKey="id"
-            size="middle"
-            loading={loading}
-            columns={columns}
-            dataSource={items}
-            onChange={onTableChange}
-            pagination={{
-              current: query.current,
-              pageSize: query.pageSize,
-              total,
-              showSizeChanger: true,
-            }}
-          />
-        </Card>
-      </Layout.Content>
-      <TaskFormModal
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onSuccess={handleCreateSuccess}
-      />
-      <TaskFormModal
-        open={Boolean(editingTask)}
-        task={editingTask}
-        onOpenChange={(open) => {
-          if (!open) setEditingTask(undefined);
-        }}
-        onSuccess={handleEditSuccess}
-      />
-    </Layout>
+        <TaskNameFormModal<TaskFormValues, EcommerceTaskListItem, EcommerceTaskDetail>
+          open={Boolean(list.editingTask)}
+          task={list.editingTask}
+          onOpenChange={(open) => {
+            if (!open) list.setEditingTask(undefined);
+          }}
+          onSuccess={list.handleEditSuccess}
+          submit={submitTaskForm}
+          extraFields={extraFields(true)}
+          initialValues={
+            list.editingTask
+              ? { name: list.editingTask.name, taskType: list.editingTask.taskType }
+              : undefined
+          }
+        />
+      </StudioTaskList>
+    </StudioPageShell>
   );
 }

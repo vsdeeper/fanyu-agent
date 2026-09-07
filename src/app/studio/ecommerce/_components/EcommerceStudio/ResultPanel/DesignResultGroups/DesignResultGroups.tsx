@@ -1,5 +1,5 @@
 import { Typography } from 'antd';
-import { ECOMMERCE_DESIGN_TYPES } from '@/app/api/ecommerce/_shared/constants';
+import { ECOMMERCE_TASK_TYPES } from '@/app/api/studio/ecommerce/_shared/task-constants';
 import type { DesignResultGroups as DesignResultGroupsState } from '../../types';
 import ResultImageGrid from '../ResultImageGrid';
 import { groupResultImagesByRatio } from '../utils';
@@ -12,19 +12,19 @@ type DesignResultGroupsProps = {
 };
 
 /**
- * 按设计类型稳定排序展示视觉设计结果，各组内再按比例拆成二级分类；保留连续生成的全部批次。
+ * 按任务类型稳定排序展示视觉设计结果，各组内再按比例拆成二级分类；保留连续生成的全部批次。
  */
 export default function DesignResultGroups({ groups, showTitles = true }: DesignResultGroupsProps) {
   return (
     <div className={styles.groups}>
-      {ECOMMERCE_DESIGN_TYPES.map((designType) => {
-        const images = groups[designType];
+      {ECOMMERCE_TASK_TYPES.map((taskType) => {
+        const images = groups[taskType];
         if (!images?.length) return null;
         return (
-          <section key={designType} className={styles.group}>
+          <section key={taskType} className={styles.group}>
             {showTitles ? (
               <Typography.Title level={5} className={styles.title}>
-                {designType}
+                {taskType}
               </Typography.Title>
             ) : null}
             {groupResultImagesByRatio(images).map(({ aspectRatio, images: ratioImages }) => (

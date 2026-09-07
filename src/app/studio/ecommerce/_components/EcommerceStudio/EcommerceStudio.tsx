@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { App, Button, Layout, Steps, Tag, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
-import type { EcommerceTaskDetail } from '@/app/api/ecommerce/_shared/task-types';
+import type { EcommerceTaskDetail } from '@/app/api/studio/ecommerce/_shared/task-types';
 import { ECOMMERCE_PATH } from '@/components/AppLayout/constants';
 import ModeSwitch from '@/components/ModeSwitch';
 import CompletionPanel from './CompletionPanel';
@@ -90,11 +90,9 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const [designForm, setDesignForm] = useState<DesignFormState>(() => {
     const base = initialDesign?.form ?? {
       ...DEFAULT_DESIGN_FORM_STATE,
-      designType: task.taskType,
+      taskType: task.taskType,
     };
-    return isPosterTask(task.taskType)
-      ? { ...base, designType: '营销海报', referenceVisual: false }
-      : base;
+    return isPosterTask(task.taskType) ? { ...base, taskType: '营销海报' } : base;
   });
   const [modelImages, setModelImages] = useState<ProductImageItem[]>(
     initialDesign?.modelImages ?? [],
@@ -222,7 +220,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setSelectedVisualIndex(null);
     try {
       const payload = await toAnalyzePayload(images, documents);
-      const res = await fetch('/api/ecommerce/analyze', {
+      const res = await fetch('/api/studio/ecommerce/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -304,7 +302,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setPhase('visualGenerating');
     setVisualImages(nextVisualImages);
     try {
-      const res = await fetch('/api/ecommerce/generate', {
+      const res = await fetch('/api/studio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(await toVisualGeneratePayload(form, analysisText, images)),
@@ -359,29 +357,27 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       return;
     }
     const poster = isPosterTask(task.taskType);
-    const nextDesignForm = poster
-      ? { ...designForm, designType: '营销海报' as const, referenceVisual: false }
-      : designForm;
+    const nextDesignForm = poster ? { ...designForm, taskType: '营销海报' as const } : designForm;
     const visualDataUrl = getSelectedResultImageUrl(visualImages, selectedVisualIndex);
-    if (nextDesignForm.referenceVisual && !visualDataUrl) {
+    if (!visualDataUrl) {
       message.warning(VISUAL_SELECT_MISSING);
       return;
     }
     abortCurrent();
     const controller = new AbortController();
     abortRef.current = controller;
-    const designType = nextDesignForm.designType;
-    const batchStartIndex = designResultGroups[designType]?.length ?? 0;
+    const taskType = nextDesignForm.taskType;
+    const batchStartIndex = designResultGroups[taskType]?.length ?? 0;
     let nextDesignResultGroups = appendPendingDesignImages(
       designResultGroups,
-      designType,
+      taskType,
       expectedDesignCount,
       nextDesignForm.aspectRatio,
     );
     setPhase('designGenerating');
     setDesignResultGroups(nextDesignResultGroups);
     try {
-      const res = await fetch('/api/ecommerce/generate', {
+      const res = await fetch('/api/studio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
@@ -389,7 +385,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
             nextDesignForm,
             analysisText,
             images,
-            visualDataUrl ? await readUrlAsDataUrl(visualDataUrl) : null,
+            await readUrlAsDataUrl(visualDataUrl),
             await toAnalyzeImages(modelImages),
           ),
         ),
@@ -399,7 +395,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       await consumeGenerateNdjson(res, (event) => {
         nextDesignResultGroups = applyDesignGenerateEvent(
           nextDesignResultGroups,
-          designType,
+          taskType,
           event,
           batchStartIndex,
         );

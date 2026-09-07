@@ -1,5 +1,5 @@
 import { Popconfirm, Space, Tag, Typography, type TableColumnsType } from 'antd';
-import type { ProductRetouchTaskListItem } from '@/app/api/product-retouch/_shared/task-types';
+import type { ProductRetouchTaskListItem } from '@/app/api/studio/product-retouch/_shared/task-types';
 import { DELETE_CONFIRM_DESCRIPTION, DELETE_CONFIRM_TITLE, STEP_LABELS } from './constants';
 import { formatTaskDateTime } from './utils';
 

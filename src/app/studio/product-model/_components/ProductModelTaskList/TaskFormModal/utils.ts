@@ -2,7 +2,7 @@ import type {
   CreateProductModelTaskRequest,
   ProductModelTaskDetail,
   ProductModelTaskListItem,
-} from '@/app/api/product-model/_shared/task-types';
+} from '@/app/api/studio/product-model/_shared/task-types';
 import { apiPatch, apiPost } from '@/lib/shared/client/api-client';
 
 export type TaskFormValues = {
@@ -15,11 +15,11 @@ export async function submitTaskForm(
   task?: ProductModelTaskListItem,
 ): Promise<ProductModelTaskDetail> {
   if (task) {
-    return apiPatch<ProductModelTaskDetail>(`/api/product-model/tasks/${task.id}`, {
+    return apiPatch<ProductModelTaskDetail>(`/api/studio/product-model/tasks/${task.id}`, {
       name: values.name,
     });
   }
-  return apiPost<ProductModelTaskDetail>('/api/product-model/tasks', {
+  return apiPost<ProductModelTaskDetail>('/api/studio/product-model/tasks', {
     name: values.name,
   } satisfies CreateProductModelTaskRequest);
 }

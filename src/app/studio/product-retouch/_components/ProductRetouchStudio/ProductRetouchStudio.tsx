@@ -3,7 +3,7 @@
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Button, Layout, Steps, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
-import type { ProductRetouchTaskDetail } from '@/app/api/product-retouch/_shared/task-types';
+import type { ProductRetouchTaskDetail } from '@/app/api/studio/product-retouch/_shared/task-types';
 import { PRODUCT_RETOUCH_PATH } from '@/components/AppLayout/constants';
 import ModeSwitch from '@/components/ModeSwitch';
 import { STUDIO_STEP_INDEX, STUDIO_STEPS } from './constants';

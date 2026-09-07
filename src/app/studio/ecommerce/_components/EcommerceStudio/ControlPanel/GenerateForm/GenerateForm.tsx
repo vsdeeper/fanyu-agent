@@ -1,9 +1,6 @@
-import { Select } from 'antd';
+import GenerateSpecForm from '@/app/studio/_components/GenerateSpecForm';
 import { ASPECT_RATIO_OPTIONS, MODEL_OPTIONS } from '../../constants';
-import { toClarityOptions, toCountOptions } from '../../model-options';
-import type { StudioSpecFields } from '../../types';
-import { patchFormState, patchModel } from '../utils';
-import styles from './GenerateForm.module.css';
+import type { StudioFormState, StudioSpecFields } from '../../types';
 
 type GenerateFormProps = {
   form: StudioSpecFields;
@@ -23,50 +20,22 @@ export default function GenerateForm({
   count,
   onCountChange,
 }: GenerateFormProps) {
+  const specForm: StudioFormState = {
+    ...form,
+    count: count ?? '1',
+  };
   return (
-    <>
-      <div className={styles.pair}>
-        <label className={styles.field}>
-          <span className={styles.label}>模型</span>
-          <Select
-            value={form.model}
-            options={MODEL_OPTIONS}
-            disabled={disabled}
-            onChange={(value) => onFormChange(patchModel(form, value))}
-          />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.label}>比例</span>
-          <Select
-            value={form.aspectRatio}
-            options={ASPECT_RATIO_OPTIONS}
-            disabled={disabled}
-            onChange={(value) => onFormChange(patchFormState(form, 'aspectRatio', value))}
-          />
-        </label>
-      </div>
-
-      <label className={styles.field}>
-        <span className={styles.label}>清晰度</span>
-        <Select
-          value={form.clarity}
-          options={toClarityOptions(form.model)}
-          disabled={disabled}
-          onChange={(value) => onFormChange(patchFormState(form, 'clarity', value))}
-        />
-      </label>
-
-      {count !== undefined && onCountChange ? (
-        <label className={styles.field}>
-          <span className={styles.label}>生成数量</span>
-          <Select
-            value={count}
-            options={toCountOptions()}
-            disabled={disabled}
-            onChange={onCountChange}
-          />
-        </label>
-      ) : null}
-    </>
+    <GenerateSpecForm
+      form={specForm}
+      disabled={disabled}
+      onChange={(next) => {
+        const { count: nextCount, ...rest } = next;
+        onFormChange(rest);
+        if (count !== undefined && onCountChange) onCountChange(nextCount);
+      }}
+      modelOptions={MODEL_OPTIONS}
+      aspectRatioOptions={ASPECT_RATIO_OPTIONS}
+      showCount={count !== undefined}
+    />
   );
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { App } from 'antd';
-import type { ProductRetouchTaskDetail } from '@/app/api/product-retouch/_shared/task-types';
+import type { ProductRetouchTaskDetail } from '@/app/api/studio/product-retouch/_shared/task-types';
 import { ApiClientError } from '@/lib/shared/client/api-client';
 import {
   DEFAULT_MULTIVIEW_FORM,
@@ -157,7 +157,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     setPhase('refineGenerating');
     setRefineImages(nextRefineImages);
     try {
-      const response = await fetch('/api/ecommerce/generate', {
+      const response = await fetch('/api/studio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(await toRefinePayload(refineForm, images)),
@@ -212,7 +212,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     try {
       // 恢复后的标准图为站内资产 URL，需先转成 data URL 再入参
       const refinedImageDataUrl = await readUrlAsDataUrl(selectedRefinedUrl);
-      const response = await fetch('/api/ecommerce/generate', {
+      const response = await fetch('/api/studio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(toMultiviewPayload(multiviewForm, refinedImageDataUrl)),

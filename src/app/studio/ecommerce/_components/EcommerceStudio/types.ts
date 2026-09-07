@@ -1,4 +1,7 @@
-import type { EcommerceDesignType } from '@/app/api/ecommerce/_shared/types';
+import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
+import type { StudioResultImage } from '@/app/studio/_utils/result-images';
+
+export type { StudioResultImage };
 
 export type StudioPhase =
   | 'input'
@@ -41,19 +44,10 @@ export type StudioFormState = StudioSpecFields & {
 };
 
 export type DesignFormState = StudioFormState & {
-  designType: EcommerceDesignType;
-  referenceVisual: boolean;
+  taskType: EcommerceTaskType;
 };
 
-export type StudioResultImage = {
-  index: number;
-  aspectRatio: string;
-  status: 'pending' | 'ready' | 'failed';
-  url?: string;
-  error?: string;
-};
-
-export type DesignResultGroups = Partial<Record<EcommerceDesignType, StudioResultImage[]>>;
+export type DesignResultGroups = Partial<Record<EcommerceTaskType, StudioResultImage[]>>;
 
 export type AnalysisStepSnapshot = {
   images: ProductImageItem[];

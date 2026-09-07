@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { App } from 'antd';
-import type { ProductModelTaskDetail } from '@/app/api/product-model/_shared/task-types';
+import type { ProductModelTaskDetail } from '@/app/api/studio/product-model/_shared/task-types';
 import { ApiClientError } from '@/lib/shared/client/api-client';
 import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import {
   DEFAULT_FORM,
-  EXPORT_FAILED,
   GENERATE_FAILED,
   MAX_MODEL_IMAGES,
   MODEL_RESULT_MISSING,
@@ -25,7 +24,6 @@ import {
   assertOkOrJsonFail,
   consumeGenerateNdjson,
   createModelStepSnapshot,
-  exportResultImages,
   hasReadyImage,
   isAbortError,
   isSameStepSnapshot,
@@ -44,7 +42,6 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
   const initial = readModelStepSnapshot(task.steps.model?.data);
   const [phase, setPhase] = useState<ProductModelPhase>('model');
   const [persisting, setPersisting] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [productImages, setProductImages] = useState<ProductImageItem[]>(
     initial?.productImages ?? [],
   );
@@ -135,7 +132,7 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
     setResults(nextResults);
 
     try {
-      const response = await fetch('/api/ecommerce/generate', {
+      const response = await fetch('/api/studio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(await toProductModelPayload(form, productImages, modelImages)),
@@ -191,24 +188,10 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
     setPhase((current) => phaseAfterPrev(current));
   }, [abortCurrent]);
 
-  /** 导出「预览生成物料」步骤的全部生成结果。 */
-  const handleExport = useCallback(async () => {
-    setExporting(true);
-    try {
-      await exportResultImages(results);
-    } catch (error) {
-      console.error('[product-model] export', error);
-      message.error(EXPORT_FAILED);
-    } finally {
-      setExporting(false);
-    }
-  }, [message, results]);
-
   return {
     phase,
     persisting,
     generating,
-    exporting,
     productImages,
     modelImages,
     form,
@@ -221,6 +204,5 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
     handleGenerate,
     handleComplete,
     handlePrev,
-    handleExport,
   };
 }

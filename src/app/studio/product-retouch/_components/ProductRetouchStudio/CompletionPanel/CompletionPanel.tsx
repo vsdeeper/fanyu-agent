@@ -2,7 +2,7 @@ import { DownloadOutlined, StarOutlined } from '@ant-design/icons';
 import { Button, Empty } from 'antd';
 import { PREV_BUTTON } from '../constants';
 import type { ResultImage } from '../types';
-import CompletionResultGroup from './CompletionResultGroup';
+import CompletionResultGroup from '@/app/studio/_components/CompletionResultGroup';
 import {
   COMPLETION_TITLE,
   EXPORT_BUTTON,

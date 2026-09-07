@@ -5,9 +5,8 @@ import { generateId, type UIMessage } from 'ai';
 import { asc, desc, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
 import { chats, messages } from '@/lib/db/schema';
-import { DEFAULT_CHAT_TITLE } from './constants';
+import { DEFAULT_CHAT_TITLE, ECOM_CHAT_ID_PREFIX } from './constants';
 import { deriveHeuristicTitle, getFirstUserText } from '@/app/api/chat/_server/title';
-import { ECOM_CHAT_ID_PREFIX } from '@/app/api/ecommerce/_shared/constants';
 import type { ChatListItem, ChatRecord } from '../_shared/types';
 
 export async function createChat(): Promise<string> {

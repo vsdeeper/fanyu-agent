@@ -10,7 +10,7 @@ import {
 } from '../constants';
 import type { ProductRetouchPhase, ResultImage } from '../types';
 import { aspectRatioToSize, groupResultImagesByRatio, hasReadyImage } from '../utils';
-import ResultImageItem from './ResultImageItem';
+import ResultImageItem from '@/app/studio/_components/ResultImageItem';
 import styles from './ResultPanel.module.css';
 
 type ResultPanelProps = {

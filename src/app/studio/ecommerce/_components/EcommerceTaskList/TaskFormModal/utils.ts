@@ -3,7 +3,7 @@ import type {
   EcommerceTaskDetail,
   EcommerceTaskListItem,
   EcommerceTaskType,
-} from '@/app/api/ecommerce/_shared/task-types';
+} from '@/app/api/studio/ecommerce/_shared/task-types';
 import { apiPatch, apiPost } from '@/lib/shared/client/api-client';
 
 export type TaskFormValues = {
@@ -17,11 +17,11 @@ export async function submitTaskForm(
   task?: EcommerceTaskListItem,
 ): Promise<EcommerceTaskDetail> {
   if (task) {
-    return apiPatch<EcommerceTaskDetail>(`/api/ecommerce/tasks/${task.id}`, {
+    return apiPatch<EcommerceTaskDetail>(`/api/studio/ecommerce/tasks/${task.id}`, {
       name: values.name,
     });
   }
-  return apiPost<EcommerceTaskDetail>('/api/ecommerce/tasks', {
+  return apiPost<EcommerceTaskDetail>('/api/studio/ecommerce/tasks', {
     name: values.name,
     taskType: values.taskType as EcommerceTaskType,
   } satisfies CreateEcommerceTaskRequest);

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { loadEcommerceTask } from '@/app/api/ecommerce/_server/task-store';
+import { loadEcommerceTask } from '@/app/api/studio/ecommerce/_server/task-runtime';
 import EcommerceStudio from '../_components/EcommerceStudio';
 
 export const runtime = 'nodejs';

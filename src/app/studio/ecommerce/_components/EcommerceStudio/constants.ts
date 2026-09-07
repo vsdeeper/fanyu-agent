@@ -1,5 +1,4 @@
 import type { DesignFormState, StudioFormState, StudioPhase } from './types';
-import { ECOMMERCE_DESIGN_TYPES } from '@/app/api/ecommerce/_shared/constants';
 import { toModelOptions } from './model-options';
 
 export const STUDIO_TITLE = '电商设计';
@@ -65,16 +64,6 @@ export const ASPECT_RATIO_OPTIONS = [
   { value: '16:9', label: '16:9 横版' },
 ];
 
-export const DESIGN_TYPE_OPTIONS = ECOMMERCE_DESIGN_TYPES.map((value) => ({
-  value,
-  label: value,
-}));
-
-export const BOOLEAN_OPTIONS = [
-  { value: true, label: '是' },
-  { value: false, label: '否' },
-];
-
 export const DEFAULT_FORM_STATE: StudioFormState = {
   model: 'gpt-image-2-vip',
   aspectRatio: '1:1',
@@ -85,9 +74,8 @@ export const DEFAULT_FORM_STATE: StudioFormState = {
 
 export const DEFAULT_DESIGN_FORM_STATE: DesignFormState = {
   model: 'gpt-image-2-vip',
-  designType: '主图',
+  taskType: '主图',
   aspectRatio: '1:1',
-  referenceVisual: true,
   quality: 'high',
   clarity: '2K',
   count: '1',

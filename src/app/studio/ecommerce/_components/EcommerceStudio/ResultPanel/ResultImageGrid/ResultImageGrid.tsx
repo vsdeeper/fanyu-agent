@@ -1,7 +1,13 @@
 import { Image, Skeleton } from 'antd';
 import type { StudioResultImage } from '../../types';
-import ResultImageItem from './ResultImageItem';
-import { RESULT_IMAGE_SIZE, RESULT_PREVIEW_GROUP_CLASS_NAMES } from './constants';
+import ResultImageItem from '@/app/studio/_components/ResultImageItem';
+import {
+  RESULT_IMAGE_SIZE,
+  RESULT_PREVIEW_GROUP_CLASS_NAMES,
+  FALLBACK_ICON_SRC,
+  RESULT_IMAGE_CLASS_NAMES,
+  RESULT_IMAGE_FAILED_CLASS_NAMES,
+} from './constants';
 import { aspectRatioToSize, getImageSrc } from '../utils';
 import styles from './ResultImageGrid.module.css';
 
@@ -68,6 +74,10 @@ export default function ResultImageGrid({
               selected={selectedIndex === item.index}
               selectedBadge={selectedBadge}
               onSelect={onSelect}
+              getSrc={getImageSrc}
+              failedFallbackSrc={FALLBACK_ICON_SRC}
+              imageClassNames={RESULT_IMAGE_CLASS_NAMES}
+              failedClassNames={RESULT_IMAGE_FAILED_CLASS_NAMES}
             />
           );
         })}

@@ -1,6 +1,6 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
-import type { EcommerceTaskType } from '@/app/api/ecommerce/_shared/task-types';
+import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import { ANALYZE_BUTTON, DESIGN_BUTTON, POSTER_BUTTON, VISUAL_BUTTON } from '../constants';
 import type {
   DesignFormState,

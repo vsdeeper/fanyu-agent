@@ -48,11 +48,3 @@ export const EXPORT_MATERIALS_BUTTON = '导出生成物料';
 export const EXPORT_ARCHIVE_NAME = '产品模特物料.zip';
 export const EXPORT_FAILED = '导出失败，请稍后重试';
 export const MATERIAL_GROUP_TITLE = '产品模特图';
-
-export const IMAGE_EXTENSION_BY_MEDIA_TYPE: Readonly<Record<string, string>> = {
-  'image/avif': 'avif',
-  'image/gif': 'gif',
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-};

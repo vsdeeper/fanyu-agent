@@ -1,1 +1,1 @@
-export { default } from './CompletionResultGroup';
+export { default } from '@/app/studio/_components/CompletionResultGroup';

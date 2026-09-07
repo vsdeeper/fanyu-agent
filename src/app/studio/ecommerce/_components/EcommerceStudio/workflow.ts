@@ -1,4 +1,7 @@
-import type { EcommerceStepKey, EcommerceTaskType } from '@/app/api/ecommerce/_shared/task-types';
+import type {
+  EcommerceStepKey,
+  EcommerceTaskType,
+} from '@/app/api/studio/ecommerce/_shared/task-types';
 import type { StudioPhase } from './types';
 
 export type EcommerceWorkflowStepKey = EcommerceStepKey | 'complete';
@@ -28,7 +31,7 @@ const WORKFLOW_BY_TASK_AND_VERSION: Record<string, EcommerceWorkflowStep[]> = {
   '营销海报:1': POSTER_WORKFLOW,
 };
 
-/** 营销海报任务：视觉设计步改为海报出图，左栏为模特形象而非物料类型。 */
+/** 营销海报任务：视觉设计步改为海报出图，左栏为可选模特形象。 */
 export function isPosterTask(taskType: EcommerceTaskType): boolean {
   return taskType === '营销海报';
 }

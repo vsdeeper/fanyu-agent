@@ -3,7 +3,7 @@
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Button, Layout, Steps, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
-import type { ProductModelTaskDetail } from '@/app/api/product-model/_shared/task-types';
+import type { ProductModelTaskDetail } from '@/app/api/studio/product-model/_shared/task-types';
 import { PRODUCT_MODEL_PATH } from '@/components/AppLayout/constants';
 import ModeSwitch from '@/components/ModeSwitch';
 import { STUDIO_STEP_INDEX, STUDIO_STEPS } from './constants';
@@ -49,12 +49,7 @@ export default function ProductModelStudio({ task }: ProductModelStudioProps) {
       </div>
       <Layout.Content className={styles.content}>
         {studio.phase === 'complete' ? (
-          <CompletionPanel
-            results={studio.results}
-            exporting={studio.exporting}
-            onPrev={studio.handlePrev}
-            onExport={studio.handleExport}
-          />
+          <CompletionPanel results={studio.results} onPrev={studio.handlePrev} />
         ) : (
           <>
             <ControlPanel

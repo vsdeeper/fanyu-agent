@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { loadProductModelTask } from '@/app/api/product-model/_server/task-store';
+import { loadProductModelTask } from '@/app/api/studio/product-model/_server/task-runtime';
 import ProductModelStudio from '../_components/ProductModelStudio';
 
 export const runtime = 'nodejs';

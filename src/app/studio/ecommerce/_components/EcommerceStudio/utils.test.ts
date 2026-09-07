@@ -108,7 +108,7 @@ describe('applyGenerateEvent', () => {
 });
 
 describe('视觉设计请求体', () => {
-  it('固定传分析与全部产品图，并按开关传主视觉', async () => {
+  it('固定传分析、全部产品图与已选主视觉', async () => {
     const payload = await toDesignGeneratePayload(
       DEFAULT_DESIGN_FORM_STATE,
       ' 商业分析 ',
@@ -118,8 +118,7 @@ describe('视觉设计请求体', () => {
 
     expect(payload).toMatchObject({
       kind: 'design',
-      designType: '主图',
-      referenceVisual: true,
+      taskType: '主图',
       includeModel: false,
       analysisText: '商业分析',
       visualDataUrl: 'data:image/png;base64,visual',
@@ -133,25 +132,12 @@ describe('视觉设计请求体', () => {
         },
       ],
     });
-  });
-
-  it('关闭开关时省略主视觉参考图', async () => {
-    const payload = await toDesignGeneratePayload(
-      { ...DEFAULT_DESIGN_FORM_STATE, referenceVisual: false },
-      '商业分析',
-      [IMAGE_ITEM('p-1', 'product.png')],
-      'data:image/png;base64,visual',
-    );
-
-    expect(payload).not.toHaveProperty('visualDataUrl');
     expect(payload).not.toHaveProperty('modelImages');
-    expect(payload).toHaveProperty('includeModel', false);
-    expect(payload).toHaveProperty('productViewImages');
   });
 
-  it('营销海报可附带可选模特形象', async () => {
+  it('营销海报同样带入主视觉，并可附带可选模特形象', async () => {
     const payload = await toDesignGeneratePayload(
-      { ...DEFAULT_DESIGN_FORM_STATE, designType: '营销海报', referenceVisual: false },
+      { ...DEFAULT_DESIGN_FORM_STATE, taskType: '营销海报' },
       '商业分析',
       [IMAGE_ITEM('p-1', 'product.png')],
       'data:image/png;base64,visual',
@@ -166,11 +152,10 @@ describe('视觉设计请求体', () => {
 
     expect(payload).toMatchObject({
       kind: 'design',
-      designType: '营销海报',
-      referenceVisual: false,
+      taskType: '营销海报',
       includeModel: true,
+      visualDataUrl: 'data:image/png;base64,visual',
     });
-    expect(payload).not.toHaveProperty('visualDataUrl');
     expect(payload).toHaveProperty('modelImages');
   });
 });
@@ -231,8 +216,12 @@ describe('视觉设计结果分组', () => {
 describe('步骤快照水合', () => {
   it('恢复分析、主视觉与视觉设计历史数据', () => {
     const analysis = readAnalysisStepSnapshot({
-      images: [{ uid: 'img-1', previewUrl: '/api/ecommerce/tasks/t1/assets/a1', name: 'p.png' }],
-      documents: [{ uid: 'doc-1', previewUrl: '/api/ecommerce/tasks/t1/assets/a2', name: 's.md' }],
+      images: [
+        { uid: 'img-1', previewUrl: '/api/studio/ecommerce/tasks/t1/assets/a1', name: 'p.png' },
+      ],
+      documents: [
+        { uid: 'doc-1', previewUrl: '/api/studio/ecommerce/tasks/t1/assets/a2', name: 's.md' },
+      ],
       analysisText: '商业分析正文',
     });
     const visual = readVisualStepSnapshot({
@@ -244,7 +233,12 @@ describe('步骤快照水合', () => {
         count: '2',
       },
       visualImages: [
-        { index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/ecommerce/tasks/t1/assets/v1' },
+        {
+          index: 0,
+          aspectRatio: '1:1',
+          status: 'ready',
+          url: '/api/studio/ecommerce/tasks/t1/assets/v1',
+        },
       ],
       selectedVisualIndex: 0,
     });
@@ -261,6 +255,17 @@ describe('步骤快照水合', () => {
     expect(design?.designResultGroups['主图']).toHaveLength(1);
     expect(design?.modelImages).toEqual([]);
     expect(readAnalysisStepSnapshot({ images: [] })).toBeUndefined();
+  });
+
+  it('历史 designType 与 referenceVisual 读入时丢弃旧字段', () => {
+    const { taskType: _ignored, ...formWithoutTaskType } = DEFAULT_DESIGN_FORM_STATE;
+    const design = readDesignStepSnapshot({
+      form: { ...formWithoutTaskType, designType: '详情图', referenceVisual: false },
+      designResultGroups: {},
+    });
+    expect(design?.form.taskType).toBe('详情图');
+    expect(design?.form).not.toHaveProperty('designType');
+    expect(design?.form).not.toHaveProperty('referenceVisual');
   });
 
   it('再次进入流程时默认停在第一步', () => {

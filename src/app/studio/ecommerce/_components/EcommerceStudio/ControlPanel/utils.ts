@@ -1,5 +1,5 @@
-import { getModelCapability } from '../model-options';
-import type { StudioPhase, StudioSpecFields } from '../types';
+import { patchModel } from '../model-options';
+import type { StudioPhase } from '../types';
 
 /** 商业分析步骤（输入、分析中、分析完成同属一步） */
 export function isAnalyzePhase(phase: StudioPhase): boolean {
@@ -25,17 +25,4 @@ export function patchFormState<T extends object, K extends keyof T>(
   return { ...state, [key]: value };
 }
 
-/**
- * 切模型时按模型规格重置清晰度与质量默认：
- * 清晰度默认 spec.size.default（2K，不支持回退 1K）；不支持的模型不再强制质量默认。
- */
-export function patchModel<T extends StudioSpecFields>(state: T, model: string): T {
-  const next = { ...state, model };
-  const capability = getModelCapability(model);
-  if (!capability) return next;
-  next.clarity = capability.clarityDefault;
-  if (capability.qualityOptions?.length) {
-    next.quality = capability.qualityDefault ?? 'high';
-  }
-  return next;
-}
+export { patchModel };
