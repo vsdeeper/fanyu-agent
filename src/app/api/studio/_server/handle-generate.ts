@@ -48,7 +48,7 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
     }
   }
 
-  if (body.kind === 'visual' || body.kind === 'mainImage') {
+  if (body.kind === 'visual') {
     if (body.productViewImages.length === 0) {
       return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_IMAGE, 400);
     }
@@ -57,8 +57,14 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
     }
   }
 
+  if (body.kind === 'mainImage') {
+    if (body.productViewImages.length === 0) {
+      return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_IMAGE, 400);
+    }
+  }
+
   const count = body.count;
-  let prompt: string;
+  let prompt = '';
   let referenceImageDataUrls: string[];
   if (body.kind === 'productRefine') {
     prompt = buildProductRefinePrompt(body.refineRequirement);
@@ -83,7 +89,6 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
     prompt = buildVisualPrompt(body.analysisText);
     referenceImageDataUrls = body.productViewImages.map((image) => image.dataUrl);
   } else if (body.kind === 'mainImage') {
-    prompt = buildMainImagePrompt(body.requirement, body.analysisText);
     referenceImageDataUrls = body.productViewImages.map((image) => image.dataUrl);
   } else {
     prompt = buildDesignPrompt(body.taskType, body.analysisText, body.includeModel);
@@ -97,6 +102,33 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
   return createPushStreamResponse(NDJSON_STREAM_HEADERS, async (write) => {
     const send = (event: StudioGenerateImageEvent) => write(encodeNdjsonLine(event));
     try {
+      if (body.kind === 'mainImage') {
+        let index = 0;
+        for (const item of body.requirements) {
+          const themePrompt = buildMainImagePrompt(item.requirement, body.visualLock);
+          for (let i = 0; i < count; i++) {
+            if (req.signal.aborted) return;
+            const result = await generateStudioImage({
+              prompt: themePrompt,
+              model: body.model,
+              aspectRatio: body.aspectRatio,
+              clarity: body.clarity,
+              quality: body.quality,
+              referenceImageDataUrls,
+              abortSignal: req.signal,
+            });
+            if (req.signal.aborted) return;
+            if (result.ok) {
+              await send({ index, url: result.url });
+            } else {
+              await send({ index, error: result.error });
+            }
+            index += 1;
+          }
+        }
+        return;
+      }
+
       for (let index = 0; index < count; index++) {
         if (req.signal.aborted) return;
         const result = await generateStudioImage({

@@ -6,6 +6,7 @@ import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
 import { useState } from 'react';
 import { useThemeMode } from '@/components/theme';
+import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import { COMPLETE_BUTTON, NEXT_BUTTON, PREV_BUTTON, VISUAL_STANDARD_BADGE } from '../constants';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import type { DesignResultGroups, StudioPhase, StudioResultImage } from '../types';
@@ -18,6 +19,7 @@ import {
 } from './constants';
 import ResultImageGrid from './ResultImageGrid';
 import DesignResultGroupsView from './DesignResultGroups';
+import MainImagePlanCards from './MainImagePlanCards';
 import { usePlanStreamScroll } from './hooks/usePlanStreamScroll';
 import {
   groupResultImagesByRatio,
@@ -42,14 +44,20 @@ type ResultPanelProps = {
   selectedVisualIndex: number | null;
   nextLoading: boolean;
   isPoster?: boolean;
+  visualLock?: string;
+  planCards?: MainImagePlanCard[];
+  selectedThemeIds?: string[];
   onSelectVisual: (index: number) => void;
   onPrev: () => void;
   onNext: () => void;
   onAnalysisTextChange: (next: string) => void;
+  onToggleTheme?: (themeId: string) => void;
+  onVisualLockSave?: (next: string) => void;
+  onPlanCardSave?: (themeId: string, requirement: string) => void;
 };
 
 /**
- * 右侧结果区：空态、分析 Markdown（可编辑）、主视觉与设计结果；
+ * 右侧结果区：空态、分析 Markdown 或主图主题卡、主视觉与设计结果；
  * 右下角下一步，上一步仅第二步起显示。
  */
 export default function ResultPanel({
@@ -63,31 +71,48 @@ export default function ResultPanel({
   selectedVisualIndex,
   nextLoading,
   isPoster = false,
+  visualLock = '',
+  planCards = [],
+  selectedThemeIds = [],
   onSelectVisual,
   onPrev,
   onNext,
   onAnalysisTextChange,
+  onToggleTheme,
+  onVisualLockSave,
+  onPlanCardSave,
 }: ResultPanelProps) {
   const { mode, hydrated } = useThemeMode();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const showPlan = isPlanPhase(phase) && Boolean(analysisText);
+  const [planEditing, setPlanEditing] = useState(false);
+  const mainImage = isMainImageTask(taskType);
+  const showPlan = isPlanPhase(phase) && Boolean(analysisText) && !mainImage;
+  const showMainImagePlan =
+    mainImage && isPlanPhase(phase) && (Boolean(visualLock) || planCards.length > 0);
   const showVisualGrid = isVisualResultPhase(phase) && visualImages.length > 0;
   const visualRatioGroups = groupResultImagesByRatio(visualImages);
   const showDesignGroups =
     isDesignResultPhase(phase) &&
     Object.values(designResultGroups).some((images) => Boolean(images?.length));
   const isEditing = editing && phase === 'analyzed';
-  const canEdit = phase === 'analyzed' && Boolean(analysisText) && !editing;
+  const canEdit = phase === 'analyzed' && Boolean(analysisText) && !editing && !mainImage;
   const hasDesignResults = Object.values(designResultGroups).some((images) =>
     images?.some((image) => image.status === 'ready' && Boolean(image.url)),
   );
   const nextDisabled =
-    isEditing || isNextDisabled(phase, analysisText, selectedVisualIndex, hasDesignResults);
+    isEditing ||
+    isNextDisabled(phase, analysisText, selectedVisualIndex, hasDesignResults, {
+      isMainImage: mainImage,
+      selectedThemeCount: selectedThemeIds.length,
+      isEditing: planEditing,
+    });
   const { scrollRef, contentRef, onScroll } = usePlanStreamScroll(
-    showPlan,
+    showPlan || showMainImagePlan,
     analysisStreaming,
-    analysisText,
+    showMainImagePlan
+      ? `${visualLock}\n${planCards.map((card) => card.requirement).join('\n')}`
+      : analysisText,
   );
 
   const startEdit = () => {
@@ -134,6 +159,21 @@ export default function ResultPanel({
             style={{ height: '100%' }}
           />
         </div>
+      ) : showMainImagePlan ? (
+        <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
+          <div ref={contentRef}>
+            <MainImagePlanCards
+              visualLock={visualLock}
+              cards={planCards}
+              selectedThemeIds={selectedThemeIds}
+              streaming={analysisStreaming}
+              onToggleTheme={onToggleTheme ?? (() => undefined)}
+              onVisualLockSave={onVisualLockSave ?? (() => undefined)}
+              onCardSave={onPlanCardSave ?? (() => undefined)}
+              onEditingChange={setPlanEditing}
+            />
+          </div>
+        </div>
       ) : showPlan ? (
         <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
           <div ref={contentRef}>
@@ -178,7 +218,8 @@ export default function ResultPanel({
         <div className={styles.scroll}>
           <DesignResultGroupsView
             groups={designResultGroups}
-            showTitles={!isPosterTask(taskType) && !isMainImageTask(taskType)}
+            showTitles={!isPosterTask(taskType) && !mainImage}
+            groupByTheme={mainImage}
           />
         </div>
       ) : (
@@ -188,8 +229,8 @@ export default function ResultPanel({
         </div>
       )}
       <div className={styles.footer}>
-        {isPrevVisible(phase, isPoster, isMainImageTask(taskType)) ? (
-          <Button size="large" disabled={isEditing} onClick={onPrev}>
+        {isPrevVisible(phase, isPoster, mainImage) ? (
+          <Button size="large" disabled={isEditing || planEditing} onClick={onPrev}>
             {PREV_BUTTON}
           </Button>
         ) : null}

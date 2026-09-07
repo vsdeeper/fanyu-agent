@@ -25,6 +25,7 @@ type CompletionPanelProps = {
   visualImages: readonly StudioResultImage[];
   designResultGroups: DesignResultGroups;
   showDesignTitles?: boolean;
+  groupByTheme?: boolean;
   onPrev: () => void;
 };
 
@@ -34,6 +35,7 @@ export default function CompletionPanel({
   visualImages,
   designResultGroups,
   showDesignTitles = true,
+  groupByTheme = false,
   onPrev,
 }: CompletionPanelProps) {
   const visualResults = getGeneratedImages(visualImages);
@@ -109,7 +111,11 @@ export default function CompletionPanel({
               </section>
             ) : null}
             {hasDesignResults ? (
-              <DesignResultGroupsView groups={designResults} showTitles={showDesignTitles} />
+              <DesignResultGroupsView
+                groups={designResults}
+                showTitles={showDesignTitles}
+                groupByTheme={groupByTheme}
+              />
             ) : null}
           </div>
         ) : (

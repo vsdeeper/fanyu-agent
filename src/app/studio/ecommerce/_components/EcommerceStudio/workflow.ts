@@ -25,6 +25,7 @@ const POSTER_WORKFLOW: EcommerceWorkflowStep[] = [
 ];
 
 const MAIN_IMAGE_WORKFLOW: EcommerceWorkflowStep[] = [
+  { key: 'analysis', title: '主图分析' },
   { key: 'design', title: '主图设计' },
   { key: 'complete', title: '预览生成物料' },
 ];
@@ -34,12 +35,12 @@ export function isPosterTask(taskType: EcommerceTaskType): boolean {
   return taskType === '营销海报';
 }
 
-/** 主图任务：跳过商业分析与主视觉，直接主图设计。 */
+/** 主图任务：主图分析到主图设计，跳过主视觉。 */
 export function isMainImageTask(taskType: EcommerceTaskType): boolean {
   return taskType === '主图';
 }
 
-/** 按任务类型解析流程；主图两步，营销海报无商业分析步。 */
+/** 按任务类型解析流程；主图三步，营销海报无商业分析步。 */
 export function resolveEcommerceWorkflow(taskType: EcommerceTaskType): EcommerceWorkflowStep[] {
   if (isMainImageTask(taskType)) return MAIN_IMAGE_WORKFLOW;
   return isPosterTask(taskType) ? POSTER_WORKFLOW : CURRENT_WORKFLOW;

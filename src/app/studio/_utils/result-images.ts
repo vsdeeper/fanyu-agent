@@ -4,6 +4,10 @@ export type StudioResultImage = {
   status: 'pending' | 'ready' | 'failed';
   url?: string;
   error?: string;
+  /** 主图按主题分组时的主题 id */
+  themeId?: string;
+  /** 主图按主题分组时的主题标题 */
+  themeTitle?: string;
 };
 
 /** 将宽高比换算为固定宽度下的展示尺寸。 */
@@ -35,6 +39,41 @@ export function groupResultImagesByRatio<T extends StudioResultImage>(
     }
   }
   return order.map((ratio) => ({ aspectRatio: ratio, images: byRatio.get(ratio)! }));
+}
+
+/**
+ * 主图一级分类：按主题标题分组，顺序跟随 themeOrder（仅渲染有图的主题）。
+ */
+export function groupResultImagesByTheme<T extends StudioResultImage>(
+  images: readonly T[],
+  themeOrder: readonly { id: string; title: string }[],
+): Array<{ themeId: string; themeTitle: string; images: T[] }> {
+  const byTheme = new Map<string, T[]>();
+  for (const image of images) {
+    const key = image.themeId || image.themeTitle || '';
+    if (!key) continue;
+    const bucket = byTheme.get(key);
+    if (bucket) bucket.push(image);
+    else byTheme.set(key, [image]);
+  }
+
+  const groups: Array<{ themeId: string; themeTitle: string; images: T[] }> = [];
+  for (const theme of themeOrder) {
+    const matched = byTheme.get(theme.id) ?? byTheme.get(theme.title);
+    if (!matched?.length) continue;
+    groups.push({ themeId: theme.id, themeTitle: theme.title, images: matched });
+    byTheme.delete(theme.id);
+    byTheme.delete(theme.title);
+  }
+  for (const [key, leftover] of byTheme) {
+    if (!leftover.length) continue;
+    groups.push({
+      themeId: key,
+      themeTitle: leftover[0]?.themeTitle || leftover[0]?.themeId || key,
+      images: leftover,
+    });
+  }
+  return groups;
 }
 
 /** 判断结果集中是否至少有一张已生成图片。 */

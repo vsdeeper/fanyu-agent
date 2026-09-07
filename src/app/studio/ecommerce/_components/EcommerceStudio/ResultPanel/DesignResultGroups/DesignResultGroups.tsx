@@ -1,25 +1,33 @@
 import { Typography } from 'antd';
 import { ECOMMERCE_TASK_TYPES } from '@/app/api/studio/ecommerce/_shared/task-constants';
+import { MAIN_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import type { DesignResultGroups as DesignResultGroupsState } from '../../types';
 import ResultImageGrid from '../ResultImageGrid';
-import { groupResultImagesByRatio } from '../utils';
+import { groupResultImagesByRatio, groupResultImagesByTheme } from '../utils';
 import styles from './DesignResultGroups.module.css';
 
 type DesignResultGroupsProps = {
   groups: DesignResultGroupsState;
   /** 是否展示物料类型标题；营销海报关闭以免与结果区标题重复 */
   showTitles?: boolean;
+  /** 主图按主题一级、比例二级分组 */
+  groupByTheme?: boolean;
 };
 
 /**
  * 按任务类型稳定排序展示视觉设计结果，各组内再按比例拆成二级分类；保留连续生成的全部批次。
  */
-export default function DesignResultGroups({ groups, showTitles = true }: DesignResultGroupsProps) {
+export default function DesignResultGroups({
+  groups,
+  showTitles = true,
+  groupByTheme = false,
+}: DesignResultGroupsProps) {
   return (
     <div className={styles.groups}>
       {ECOMMERCE_TASK_TYPES.map((taskType) => {
         const images = groups[taskType];
         if (!images?.length) return null;
+        const themeGroups = groupByTheme ? groupResultImagesByTheme(images, MAIN_IMAGE_THEMES) : [];
         return (
           <section key={taskType} className={styles.group}>
             {showTitles ? (
@@ -27,16 +35,38 @@ export default function DesignResultGroups({ groups, showTitles = true }: Design
                 {taskType}
               </Typography.Title>
             ) : null}
-            {groupResultImagesByRatio(images).map(({ aspectRatio, images: ratioImages }) => (
-              <section key={aspectRatio} className={styles.ratioGroup}>
-                <Typography.Text className={styles.ratioTitle}>{aspectRatio}</Typography.Text>
-                <ResultImageGrid
-                  images={ratioImages}
-                  expectedCount={ratioImages.length}
-                  aspectRatio={aspectRatio}
-                />
-              </section>
-            ))}
+            {groupByTheme
+              ? themeGroups.map((themeGroup) => (
+                  <section key={themeGroup.themeId} className={styles.group}>
+                    <Typography.Title level={5} className={styles.title}>
+                      {themeGroup.themeTitle}
+                    </Typography.Title>
+                    {groupResultImagesByRatio(themeGroup.images).map(
+                      ({ aspectRatio, images: ratioImages }) => (
+                        <section key={aspectRatio} className={styles.ratioGroup}>
+                          <Typography.Text className={styles.ratioTitle}>
+                            {aspectRatio}
+                          </Typography.Text>
+                          <ResultImageGrid
+                            images={ratioImages}
+                            expectedCount={ratioImages.length}
+                            aspectRatio={aspectRatio}
+                          />
+                        </section>
+                      ),
+                    )}
+                  </section>
+                ))
+              : groupResultImagesByRatio(images).map(({ aspectRatio, images: ratioImages }) => (
+                  <section key={aspectRatio} className={styles.ratioGroup}>
+                    <Typography.Text className={styles.ratioTitle}>{aspectRatio}</Typography.Text>
+                    <ResultImageGrid
+                      images={ratioImages}
+                      expectedCount={ratioImages.length}
+                      aspectRatio={aspectRatio}
+                    />
+                  </section>
+                ))}
           </section>
         );
       })}

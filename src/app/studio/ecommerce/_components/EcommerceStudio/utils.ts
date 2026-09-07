@@ -7,6 +7,7 @@ import type {
   StudioGenerateImageEvent,
   StudioGenerateRequest,
 } from '@/app/api/studio/_shared/generate-types';
+import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import { ECOMMERCE_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/ecommerce/_shared/task-constants';
 import type {
   EcommerceStepKey,
@@ -155,10 +156,11 @@ export async function toDesignGeneratePayload(
   };
 }
 
-/** 主图请求体：规格 + 生成要求 + 商业分析正文 + 产品精修图 */
+/** 主图请求体：规格 + 套图视觉规范 + 选中主题文案 + 产品精修图 */
 export async function toMainImageGeneratePayload(
   form: DesignFormState,
-  analysisText: string,
+  visualLock: string,
+  requirements: MainImagePlanCard[],
   productImages: ProductImageItem[],
 ): Promise<StudioGenerateRequest> {
   return {
@@ -168,8 +170,12 @@ export async function toMainImageGeneratePayload(
     quality: form.quality,
     clarity: form.clarity,
     count: Number.parseInt(form.count, 10) || 1,
-    requirement: (form.requirement ?? '').trim(),
-    analysisText: analysisText.trim(),
+    visualLock: visualLock.trim(),
+    requirements: requirements.map((card) => ({
+      themeId: card.themeId,
+      title: card.title,
+      requirement: card.requirement.trim(),
+    })),
     productViewImages: await toAnalyzeImages(productImages),
   };
 }
@@ -209,7 +215,7 @@ export async function toAnalyzeDocuments(
   );
 }
 
-/** 组装分析请求体：仅产品图与资料，对齐商业分析左栏 */
+/** 组装详情图分析请求体：产品图与资料 */
 export async function toAnalyzePayload(
   images: ProductImageItem[],
   documents: ProductDocItem[],
@@ -217,6 +223,43 @@ export async function toAnalyzePayload(
   return {
     images: await toAnalyzeImages(images),
     ...(documents.length > 0 ? { documents: await toAnalyzeDocuments(documents) } : {}),
+  };
+}
+
+/** 组装主图分析请求体：仅商业分析文档 */
+export async function toMainImageAnalyzePayload(
+  documents: ProductDocItem[],
+): Promise<{ documents: BusinessAnalysisDocumentInput[] }> {
+  return {
+    documents: await toAnalyzeDocuments(documents),
+  };
+}
+
+/** 向主图结果追加「主题 × 数量」的 pending 槽位，带上 themeId / themeTitle。 */
+export function appendPendingMainImageImages(
+  current: DesignResultGroups,
+  requirements: readonly { themeId: string; title: string }[],
+  count: number,
+  aspectRatio: string,
+): DesignResultGroups {
+  const images = current['主图'] ?? [];
+  let index = images.length;
+  const pending = requirements.flatMap((item) =>
+    Array.from({ length: Math.max(1, count) }, () => {
+      const next = {
+        index,
+        aspectRatio,
+        status: 'pending' as const,
+        themeId: item.themeId,
+        themeTitle: item.title,
+      };
+      index += 1;
+      return next;
+    }),
+  );
+  return {
+    ...current,
+    主图: [...images, ...pending],
   };
 }
 
@@ -252,11 +295,19 @@ export async function createAnalysisStepSnapshot(
   images: ProductImageItem[],
   documents: ProductDocItem[],
   analysisText: string,
+  extras?: {
+    visualLock?: string;
+    planCards?: MainImagePlanCard[];
+    selectedThemeIds?: string[];
+  },
 ): Promise<AnalysisStepSnapshot> {
   return {
     images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
     documents: (await Promise.all(documents.map(serializeUploadItem))) as ProductDocItem[],
     analysisText,
+    ...(extras?.visualLock !== undefined ? { visualLock: extras.visualLock } : {}),
+    ...(extras?.planCards ? { planCards: extras.planCards } : {}),
+    ...(extras?.selectedThemeIds ? { selectedThemeIds: extras.selectedThemeIds } : {}),
   };
 }
 
@@ -287,13 +338,22 @@ export async function deleteStudioStep(taskId: string, stepKey: EcommerceStepKey
   await apiDelete(`/api/studio/ecommerce/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`);
 }
 
-/** 再次进入流程时停在第一步：主图停在设计，海报停在主视觉，其余有分析正文则视为已完成分析。 */
+/** 再次进入流程时停在第一步：主图有分析则停分析完成，仅有旧设计快照则停设计；海报停主视觉。 */
 export function resolveInitialStudioPhase(
   analysis: AnalysisStepSnapshot | undefined,
   isPoster = false,
   isMainImage = false,
+  hasDesignSnapshot = false,
 ): StudioPhase {
-  if (isMainImage) return 'design';
+  if (isMainImage) {
+    const hasPlan =
+      Boolean(analysis?.visualLock?.trim()) ||
+      (analysis?.planCards?.length ?? 0) > 0 ||
+      Boolean(analysis?.analysisText?.trim());
+    if (hasPlan) return 'analyzed';
+    if (hasDesignSnapshot) return 'design';
+    return 'input';
+  }
   if (isPoster) return 'visual';
   return analysis?.analysisText.trim() ? 'analyzed' : 'input';
 }
@@ -307,6 +367,11 @@ export function readAnalysisStepSnapshot(value: unknown): AnalysisStepSnapshot |
     images: snapshot.images,
     documents: snapshot.documents,
     analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : '',
+    visualLock: typeof snapshot.visualLock === 'string' ? snapshot.visualLock : undefined,
+    planCards: Array.isArray(snapshot.planCards) ? snapshot.planCards : undefined,
+    selectedThemeIds: Array.isArray(snapshot.selectedThemeIds)
+      ? snapshot.selectedThemeIds.filter((id): id is string => typeof id === 'string')
+      : undefined,
   };
 }
 
@@ -354,13 +419,11 @@ export function readDesignStepSnapshot(value: unknown): DesignStepSnapshot | und
   if (!snapshot.form || !snapshot.designResultGroups) return undefined;
   const { designType, ...formRest } = snapshot.form;
   delete (formRest as { referenceVisual?: boolean }).referenceVisual;
+  delete (formRest as { requirement?: string }).requirement;
   return {
     form: {
       ...formRest,
       taskType: snapshot.form.taskType ?? designType ?? '主图',
-      ...(typeof snapshot.form.requirement === 'string'
-        ? { requirement: snapshot.form.requirement }
-        : {}),
     },
     designResultGroups: snapshot.designResultGroups,
     modelImages: Array.isArray(snapshot.modelImages) ? snapshot.modelImages : [],
@@ -370,15 +433,15 @@ export function readDesignStepSnapshot(value: unknown): DesignStepSnapshot | und
   };
 }
 
-/** 构造视觉设计步骤的完整持久化快照；主图另含精修图与分析文件。 */
+/** 构造视觉设计步骤的完整持久化快照；主图另含精修图。 */
 export async function createDesignStepSnapshot(
   form: DesignFormState,
   designResultGroups: DesignResultGroups,
   modelImages: ProductImageItem[],
   extras?: {
     images: ProductImageItem[];
-    documents: ProductDocItem[];
-    analysisText: string;
+    documents?: ProductDocItem[];
+    analysisText?: string;
   },
 ): Promise<DesignStepSnapshot> {
   return {
@@ -388,23 +451,28 @@ export async function createDesignStepSnapshot(
     ...(extras
       ? {
           images: (await Promise.all(extras.images.map(serializeUploadItem))) as ProductImageItem[],
-          documents: (await Promise.all(
-            extras.documents.map(serializeUploadItem),
-          )) as ProductDocItem[],
-          analysisText: extras.analysisText,
+          ...(extras.documents
+            ? {
+                documents: (await Promise.all(
+                  extras.documents.map(serializeUploadItem),
+                )) as ProductDocItem[],
+              }
+            : {}),
+          ...(typeof extras.analysisText === 'string' ? { analysisText: extras.analysisText } : {}),
         }
       : {}),
   };
 }
 
-/** 上一步：各步回退到前一步；主图设计与海报主视觉为第一步。 */
+/** 上一步：各步回退到前一步；主图设计回分析，海报主视觉为第一步。 */
 export function phaseAfterPrev(
   phase: StudioPhase,
   isPoster = false,
   isMainImage = false,
 ): StudioPhase {
   if (isMainImage) {
-    if (phase === 'designGenerating') return 'design';
+    if (phase === 'analyzing') return 'input';
+    if (phase === 'design' || phase === 'designGenerating') return 'analyzed';
     if (phase === 'complete') return 'design';
     return phase;
   }
@@ -415,9 +483,9 @@ export function phaseAfterPrev(
   return phase;
 }
 
-/** 下一步：分析完成后依次进入营销主视觉、视觉设计与完成页 */
-export function phaseAfterNext(phase: StudioPhase): StudioPhase {
-  if (phase === 'analyzed') return 'visual';
+/** 下一步：分析完成后进入主视觉或主图设计，再进入完成页 */
+export function phaseAfterNext(phase: StudioPhase, isMainImage = false): StudioPhase {
+  if (phase === 'analyzed') return isMainImage ? 'design' : 'visual';
   if (phase === 'visual') return 'design';
   if (phase === 'design') return 'complete';
   return phase;

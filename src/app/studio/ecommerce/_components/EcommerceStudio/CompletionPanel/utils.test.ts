@@ -58,4 +58,42 @@ describe('电商成果整理', () => {
     expect(names).toContain('商业分析.md');
     expect(names.some((name) => name.startsWith('主图/'))).toBe(false);
   });
+
+  it('主图按主题名称、比例与组内编号命名', async () => {
+    const archive = await createResultArchive(
+      [],
+      {
+        主图: [
+          {
+            ...READY_IMAGE,
+            index: 0,
+            aspectRatio: '1:1',
+            themeId: 'product',
+            themeTitle: '产品展示',
+          },
+          {
+            ...READY_IMAGE,
+            index: 1,
+            aspectRatio: '1:1',
+            themeId: 'product',
+            themeTitle: '产品展示',
+          },
+          {
+            ...READY_IMAGE,
+            index: 2,
+            aspectRatio: '3:4',
+            themeId: 'scene',
+            themeTitle: '使用场景',
+          },
+        ],
+      },
+      '',
+    );
+    const names = Object.keys(unzipSync(new Uint8Array(archive)));
+
+    expect(names).toEqual(
+      expect.arrayContaining(['产品展示-1:1-01.png', '产品展示-1:1-02.png', '使用场景-3:4-01.png']),
+    );
+    expect(names.some((name) => name === '1:1-01.png' || name.startsWith('主图/'))).toBe(false);
+  });
 });

@@ -9,7 +9,9 @@ import {
   RESULT_TITLE_MAIN_IMAGE,
   RESULT_TITLE_POSTER,
   RESULT_TITLE_ANALYSIS,
+  RESULT_TITLE_MAIN_IMAGE_ANALYSIS,
   RESULT_TITLE_VISUAL,
+  EMPTY_MAIN_IMAGE_PLAN_HINT,
 } from '../constants';
 import type { StudioPhase } from '../types';
 import { isMainImageTask, isPosterTask } from '../workflow';
@@ -21,6 +23,7 @@ export function toResultHeadTitle(phase: StudioPhase, taskType: EcommerceTaskTyp
     return isPosterTask(taskType) ? RESULT_TITLE_POSTER : RESULT_TITLE_DESIGN;
   }
   if (isVisualResultPhase(phase)) return RESULT_TITLE_VISUAL;
+  if (isMainImageTask(taskType)) return RESULT_TITLE_MAIN_IMAGE_ANALYSIS;
   return RESULT_TITLE_ANALYSIS;
 }
 
@@ -39,9 +42,11 @@ export function isDesignResultPhase(phase: StudioPhase): boolean {
   return phase === 'design' || phase === 'designGenerating';
 }
 
-/** 第一步不展示上一步：主图为设计，海报为主视觉，详情图为商业分析。 */
+/** 第一步不展示上一步：主图为分析，海报为主视觉，详情图为商业分析。 */
 export function isPrevVisible(phase: StudioPhase, isPoster = false, isMainImage = false): boolean {
-  if (isMainImage) return phase !== 'design' && phase !== 'designGenerating';
+  if (isMainImage) {
+    return phase !== 'input' && phase !== 'analyzing' && phase !== 'analyzed';
+  }
   if (isPoster) return phase !== 'visual' && phase !== 'visualGenerating';
   return phase !== 'input' && phase !== 'analyzing' && phase !== 'analyzed';
 }
@@ -88,15 +93,20 @@ export function reconcilePlanScrollPin(
 }
 
 /**
- * 下一步是否禁用：分析须有正文，主视觉须点选，视觉设计须至少有一张成果。
+ * 下一步是否禁用：分析须有正文，主图分析须点选主题，主视觉须点选，视觉设计须至少有一张成果。
  */
 export function isNextDisabled(
   phase: StudioPhase,
   analysisText: string,
   selectedVisualIndex: number | null,
   hasDesignResults: boolean,
+  options?: { isMainImage?: boolean; selectedThemeCount?: number; isEditing?: boolean },
 ): boolean {
-  if (phase === 'analyzed') return !analysisText.trim();
+  if (options?.isEditing) return true;
+  if (phase === 'analyzed') {
+    if (options?.isMainImage) return (options.selectedThemeCount ?? 0) < 1;
+    return !analysisText.trim();
+  }
   if (phase === 'visual') return selectedVisualIndex === null;
   if (phase === 'design') return !hasDesignResults;
   return true;
@@ -109,6 +119,7 @@ export function toEmptyHint(phase: StudioPhase, taskType: EcommerceTaskType): st
     return isPosterTask(taskType) ? EMPTY_POSTER_HINT : EMPTY_DESIGN_HINT;
   }
   if (isVisualResultPhase(phase)) return EMPTY_VISUAL_HINT;
+  if (isMainImageTask(taskType)) return EMPTY_MAIN_IMAGE_PLAN_HINT;
   return EMPTY_RESULT_HINT;
 }
 
@@ -117,4 +128,8 @@ export function getImageSrc(asset: { url?: string }): string {
   return asset.url ?? '';
 }
 
-export { aspectRatioToSize, groupResultImagesByRatio } from '@/app/studio/_utils/result-images';
+export {
+  aspectRatioToSize,
+  groupResultImagesByRatio,
+  groupResultImagesByTheme,
+} from '@/app/studio/_utils/result-images';

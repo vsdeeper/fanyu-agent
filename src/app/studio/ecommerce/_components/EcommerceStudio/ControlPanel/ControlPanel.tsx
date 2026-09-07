@@ -1,5 +1,6 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
+import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import AnalyzeForm from '@/app/studio/_components/AnalyzeForm';
 import ProductDocsUpload from '@/business-components/ProductDocsUpload';
@@ -7,6 +8,7 @@ import StudioImageUpload from '@/business-components/StudioImageUpload';
 import {
   ANALYZE_BUTTON,
   DESIGN_BUTTON,
+  MAIN_IMAGE_ANALYZE_BUTTON,
   MAIN_IMAGE_BUTTON,
   POSTER_BUTTON,
   VISUAL_BUTTON,
@@ -37,6 +39,7 @@ type ControlPanelProps = {
   formLocked: boolean;
   canGenerateVisual: boolean;
   canGenerateDesign: boolean;
+  selectedCards?: MainImagePlanCard[];
   onImagesAppend: (files: File[]) => void;
   onImageRemove: (uid: string) => void;
   onDocsAppend: (files: File[]) => void;
@@ -64,6 +67,7 @@ export default function ControlPanel({
   formLocked,
   canGenerateVisual,
   canGenerateDesign,
+  selectedCards = [],
   onImagesAppend,
   onImageRemove,
   onDocsAppend,
@@ -82,9 +86,9 @@ export default function ControlPanel({
   const showAnalyzeForm = isAnalyzePhase(phase);
   const showVisualForm = isVisualPhase(phase);
   const showDesignForm = isDesignPhase(phase);
-  const analyzeDisabled = images.length === 0;
   const poster = isPosterTask(taskType);
   const mainImage = isMainImageTask(taskType);
+  const analyzeDisabled = mainImage ? documents.length === 0 : images.length === 0;
 
   const handleVisualSpecChange = (next: StudioSpecFields) => {
     onFormChange({ ...form, ...next });
@@ -92,7 +96,18 @@ export default function ControlPanel({
   return (
     <aside className={styles.panel}>
       <div className={styles.scroll}>
-        {showAnalyzeForm ? (
+        {showAnalyzeForm && mainImage ? (
+          <ProductDocsUpload
+            documents={documents}
+            disabled={formLocked}
+            max={1}
+            label="商业分析"
+            hint="上传商业分析 TXT / MD"
+            ariaLabel="上传商业分析"
+            onAppend={onDocsAppend}
+            onRemove={onDocRemove}
+          />
+        ) : showAnalyzeForm ? (
           <AnalyzeForm
             images={images}
             documents={documents}
@@ -137,13 +152,11 @@ export default function ControlPanel({
           <MainImageForm
             form={designForm}
             images={images}
-            documents={documents}
+            selectedCards={selectedCards}
             disabled={formLocked}
             onFormChange={onDesignFormChange}
             onImagesAppend={onImagesAppend}
             onImageRemove={onImageRemove}
-            onDocsAppend={onDocsAppend}
-            onDocRemove={onDocRemove}
           />
         ) : showDesignForm ? (
           <DesignForm
@@ -169,7 +182,7 @@ export default function ControlPanel({
             disabled={analyzeDisabled}
             onClick={onAnalyze}
           >
-            {ANALYZE_BUTTON}
+            {mainImage ? MAIN_IMAGE_ANALYZE_BUTTON : ANALYZE_BUTTON}
           </Button>
         </div>
       ) : null}

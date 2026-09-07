@@ -1,9 +1,5 @@
 import { zip } from 'fflate';
-import {
-  getGeneratedImages,
-  groupResultImagesByRatio,
-  type StudioResultImage,
-} from './result-images';
+import { getGeneratedImages, type StudioResultImage } from './result-images';
 
 export const IMAGE_EXTENSION_BY_MEDIA_TYPE: Readonly<Record<string, string>> = {
   'image/avif': 'avif',
@@ -46,7 +42,47 @@ export async function readImageBytes(source: string): Promise<{
   };
 }
 
-/** 将一组图片按比例拆成二级子组写入待打包文件表；文件名「比例-序号」，每比例内序号从 01 起。groupName 为空时落在 ZIP 根目录。 */
+type GeneratedResultImage = StudioResultImage & { url: string };
+
+/** 导出文件名主体：有主题时「主题-比例-编号」，否则「比例-编号」。编号从 1 起、两位补零。 */
+export function toExportImageBaseName(
+  aspectRatio: string,
+  seq: number,
+  themeTitle?: string,
+): string {
+  const padded = String(seq).padStart(2, '0');
+  const theme = themeTitle?.trim();
+  return theme ? `${theme}-${aspectRatio}-${padded}` : `${aspectRatio}-${padded}`;
+}
+
+/** 按主题与比例拆成导出子组，组内顺序与输入一致；无主题时等价于只按比例分组。 */
+function groupGeneratedImagesForExport(
+  images: readonly GeneratedResultImage[],
+): Array<{ themeTitle: string; aspectRatio: string; images: GeneratedResultImage[] }> {
+  const order: string[] = [];
+  const byKey = new Map<string, GeneratedResultImage[]>();
+  for (const image of images) {
+    const themeTitle = image.themeTitle?.trim() ?? '';
+    const key = `${themeTitle}\0${image.aspectRatio}`;
+    const bucket = byKey.get(key);
+    if (bucket) {
+      bucket.push(image);
+    } else {
+      byKey.set(key, [image]);
+      order.push(key);
+    }
+  }
+  return order.map((key) => {
+    const bucket = byKey.get(key)!;
+    return {
+      themeTitle: bucket[0]?.themeTitle?.trim() ?? '',
+      aspectRatio: bucket[0]!.aspectRatio,
+      images: bucket,
+    };
+  });
+}
+
+/** 将一组图片按主题与比例写入待打包文件表；每组内编号从 01 起。groupName 为空时落在 ZIP 根目录。 */
 export async function appendGroupFiles(
   files: Record<string, Uint8Array>,
   groupName: string,
@@ -54,13 +90,14 @@ export async function appendGroupFiles(
 ): Promise<void> {
   const prefix = groupName ? `${groupName}/` : '';
   await Promise.all(
-    groupResultImagesByRatio(getGeneratedImages(images)).flatMap(
-      ({ aspectRatio, images: ratioImages }) =>
-        ratioImages.map(async (image, index) => {
+    groupGeneratedImagesForExport(getGeneratedImages(images)).flatMap(
+      ({ themeTitle, aspectRatio, images: groupImages }) =>
+        groupImages.map(async (image, index) => {
           const { mediaType, bytes } = await readImageBytes(image.url);
           const extension = IMAGE_EXTENSION_BY_MEDIA_TYPE[mediaType] ?? 'png';
-          const seq = String(index + 1).padStart(2, '0');
-          files[`${prefix}${aspectRatio}-${seq}.${extension}`] = bytes;
+          files[
+            `${prefix}${toExportImageBaseName(aspectRatio, index + 1, themeTitle)}.${extension}`
+          ] = bytes;
         }),
     ),
   );

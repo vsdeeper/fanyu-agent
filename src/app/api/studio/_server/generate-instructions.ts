@@ -2,6 +2,7 @@ import 'server-only';
 
 import {
   TASK_TYPE_PROMPT_BY_TYPE,
+  MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
   MARKETING_COPY_TYPOGRAPHY_PROMPT,
   PRODUCT_FIDELITY_PROMPT_GUARD,
   PRODUCT_PLACEMENT_PROMPT_GUARD,
@@ -52,17 +53,21 @@ export function buildProductViewPrompt(): string {
 }
 
 /**
- * 电商主图出站 prompt：用户生成要求为主体，商业分析为卖点与文案依据，精修图为产品事实。
+ * 电商主图出站 prompt：套图视觉规范定画面，本张文案定信息；精修图为产品事实。
  */
-export function buildMainImagePrompt(requirement: string, analysisText: string): string {
+export function buildMainImagePrompt(requirement: string, visualLock: string): string {
   return [
     '生成恰好一张电商主图，不要输出说明、草图或多方案拼图。',
     '第1个参考图=用户上传的产品精修图，定义产品本体；其余参考图仅补充同一产品的可见角度与细节，不得混合不同 SKU。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。',
-    '【生成要求】',
+    '产品底座必须贴实支撑面：四边接触、接触阴影贴边连续，禁止腾空、半边离地或阴影与底座分离；主图不允许悬浮创意。',
+    '画面视觉（配色、光影、材质、场景世界、品牌氛围、构图、文案字体与文案配色）以【套图视觉规范】为准；本张出现的文案只来自【本张文案】。',
+    '禁止把空洞白底棚拍或同一套通用生活方式模板当作所有主题的默认背景；本张场景按套图视觉规范与本张主焦点取一个具体切片，套图之间构图与场景须有区分。',
+    '【套图视觉规范】',
+    visualLock.trim(),
+    '【本张文案】',
     requirement.trim(),
-    '【商业分析】',
-    analysisText.trim(),
-    MARKETING_COPY_TYPOGRAPHY_PROMPT,
+    MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
+    VISUAL_AD_PROMPT_GUARD,
     PRODUCT_SCALE_PROMPT_GUARD,
     PRODUCT_PLACEMENT_PROMPT_GUARD,
     PRODUCT_FIDELITY_PROMPT_GUARD,
@@ -121,6 +126,7 @@ export function buildDesignPrompt(
     MARKETING_COPY_TYPOGRAPHY_PROMPT,
     '【商业分析】',
     analysisText.trim(),
+    VISUAL_AD_PROMPT_GUARD,
     PRODUCT_SCALE_PROMPT_GUARD,
     PRODUCT_PLACEMENT_PROMPT_GUARD,
     PRODUCT_FIDELITY_PROMPT_GUARD,

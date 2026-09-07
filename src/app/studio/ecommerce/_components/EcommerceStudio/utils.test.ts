@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DESIGN_FORM_STATE, DEFAULT_FORM_STATE } from './constants';
 import {
   groupResultImagesByRatio,
+  groupResultImagesByTheme,
   isNextDisabled,
   isPrevVisible,
   toEmptyHint,
@@ -10,6 +11,7 @@ import {
 import type { ProductImageItem, StudioResultImage } from './types';
 import {
   appendPendingDesignImages,
+  appendPendingMainImageImages,
   appendProductDocs,
   appendProductImages,
   applyDesignGenerateEvent,
@@ -142,21 +144,23 @@ describe('视觉设计请求体', () => {
     expect(payload).not.toHaveProperty('modelImages');
   });
 
-  it('主图请求体不含主视觉与模特，并带入生成要求', async () => {
+  it('主图请求体含套图视觉规范与主题列表，不含主视觉、模特与商业分析全文', async () => {
     const payload = await toMainImageGeneratePayload(
-      { ...DEFAULT_DESIGN_FORM_STATE, requirement: '本轮只出使用场景' },
-      ' 商业分析 ',
+      DEFAULT_DESIGN_FORM_STATE,
+      ' 冷白主导 ',
+      [{ themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' }],
       [IMAGE_ITEM('p-1', 'product.png')],
     );
 
     expect(payload).toMatchObject({
       kind: 'mainImage',
-      requirement: '本轮只出使用场景',
-      analysisText: '商业分析',
+      visualLock: '冷白主导',
+      requirements: [{ themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' }],
     });
     expect(payload).not.toHaveProperty('visualDataUrl');
     expect(payload).not.toHaveProperty('modelImages');
     expect(payload).not.toHaveProperty('taskType');
+    expect(payload).not.toHaveProperty('analysisText');
   });
 
   it('营销海报同样带入主视觉，并可附带可选模特形象', async () => {
@@ -235,6 +239,76 @@ describe('视觉设计结果分组', () => {
     expect(groups['主图']?.[1]).toMatchObject({ index: 1, aspectRatio: '16:9' });
     expect(groups['营销海报']).toEqual([{ index: 0, aspectRatio: '3:4', status: 'pending' }]);
   });
+
+  it('主图 pending 按主题×数量展开并带 themeId', () => {
+    const groups = appendPendingMainImageImages(
+      {},
+      [
+        { themeId: 'product', title: '产品展示' },
+        { themeId: 'scene', title: '使用场景' },
+      ],
+      2,
+      '1:1',
+    );
+    expect(groups['主图']).toEqual([
+      {
+        index: 0,
+        aspectRatio: '1:1',
+        status: 'pending',
+        themeId: 'product',
+        themeTitle: '产品展示',
+      },
+      {
+        index: 1,
+        aspectRatio: '1:1',
+        status: 'pending',
+        themeId: 'product',
+        themeTitle: '产品展示',
+      },
+      { index: 2, aspectRatio: '1:1', status: 'pending', themeId: 'scene', themeTitle: '使用场景' },
+      { index: 3, aspectRatio: '1:1', status: 'pending', themeId: 'scene', themeTitle: '使用场景' },
+    ]);
+  });
+});
+
+describe('按主题一级分组', () => {
+  it('按固定主题顺序分组，组内再按比例', () => {
+    const images: StudioResultImage[] = [
+      {
+        index: 0,
+        aspectRatio: '1:1',
+        status: 'ready',
+        themeId: 'scene',
+        themeTitle: '使用场景',
+        url: 'a',
+      },
+      {
+        index: 1,
+        aspectRatio: '1:1',
+        status: 'ready',
+        themeId: 'product',
+        themeTitle: '产品展示',
+        url: 'b',
+      },
+      {
+        index: 2,
+        aspectRatio: '16:9',
+        status: 'ready',
+        themeId: 'product',
+        themeTitle: '产品展示',
+        url: 'c',
+      },
+    ];
+    const grouped = groupResultImagesByTheme(images, [
+      { id: 'product', title: '产品展示' },
+      { id: 'scene', title: '使用场景' },
+    ]);
+    expect(grouped.map((group) => group.themeId)).toEqual(['product', 'scene']);
+    expect(groupResultImagesByRatio(grouped[0]!.images).map((item) => item.aspectRatio)).toEqual([
+      '1:1',
+      '16:9',
+    ]);
+  });
 });
 
 describe('步骤快照水合', () => {
@@ -284,7 +358,8 @@ describe('步骤快照水合', () => {
   });
 
   it('历史 designType 与 referenceVisual 读入时丢弃旧字段', () => {
-    const { taskType: _ignored, ...formWithoutTaskType } = DEFAULT_DESIGN_FORM_STATE;
+    const { taskType, ...formWithoutTaskType } = DEFAULT_DESIGN_FORM_STATE;
+    expect(taskType).toBe('主图');
     const design = readDesignStepSnapshot({
       form: { ...formWithoutTaskType, designType: '详情图', referenceVisual: false },
       designResultGroups: {},
@@ -319,24 +394,18 @@ describe('步骤快照水合', () => {
     expect(visual?.analysisText).toBe('上传的商业分析正文');
   });
 
-  it('主图设计快照读取精修图、分析文件、正文与生成要求', () => {
+  it('主图设计快照读取精修图', () => {
     const design = readDesignStepSnapshot({
-      form: { ...DEFAULT_DESIGN_FORM_STATE, requirement: '本轮只出核心卖点' },
+      form: DEFAULT_DESIGN_FORM_STATE,
       designResultGroups: {
         主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }],
       },
       images: [
         { uid: 'img-1', previewUrl: '/api/studio/ecommerce/tasks/t1/assets/p1', name: 'p.png' },
       ],
-      documents: [
-        { uid: 'doc-1', previewUrl: '/api/studio/ecommerce/tasks/t1/assets/a1', name: '分析.md' },
-      ],
-      analysisText: '上传的商业分析正文',
     });
-    expect(design?.form.requirement).toBe('本轮只出核心卖点');
     expect(design?.images).toHaveLength(1);
-    expect(design?.documents?.[0]?.name).toBe('分析.md');
-    expect(design?.analysisText).toBe('上传的商业分析正文');
+    expect(design?.form).not.toHaveProperty('requirement');
   });
 
   it('再次进入流程时默认停在第一步', () => {
@@ -349,7 +418,21 @@ describe('步骤快照水合', () => {
       }),
     ).toBe('analyzed');
     expect(resolveInitialStudioPhase(undefined, true)).toBe('visual');
-    expect(resolveInitialStudioPhase(undefined, false, true)).toBe('design');
+    expect(resolveInitialStudioPhase(undefined, false, true)).toBe('input');
+    expect(resolveInitialStudioPhase(undefined, false, true, true)).toBe('design');
+    expect(
+      resolveInitialStudioPhase(
+        {
+          images: [],
+          documents: [],
+          analysisText: '## 套图视觉规范\n冷白',
+          visualLock: '冷白',
+          planCards: [{ themeId: 'product', title: '产品展示', requirement: '特写' }],
+        },
+        false,
+        true,
+      ),
+    ).toBe('analyzed');
   });
 });
 
@@ -362,19 +445,21 @@ describe('四步导航', () => {
     expect(phaseAfterPrev('designGenerating')).toBe('visual');
     expect(phaseAfterPrev('visual')).toBe('analyzed');
     expect(phaseAfterPrev('visual', true)).toBe('visual');
+    expect(phaseAfterNext('analyzed', true)).toBe('design');
     expect(phaseAfterPrev('complete', false, true)).toBe('design');
-    expect(phaseAfterPrev('designGenerating', false, true)).toBe('design');
-    expect(phaseAfterPrev('design', false, true)).toBe('design');
+    expect(phaseAfterPrev('designGenerating', false, true)).toBe('analyzed');
+    expect(phaseAfterPrev('design', false, true)).toBe('analyzed');
   });
 
-  it('上一步按钮：详情图在分析步隐藏，海报在主视觉步隐藏，主图在设计步隐藏', () => {
+  it('上一步按钮：详情图在分析步隐藏，海报在主视觉步隐藏，主图在分析步隐藏', () => {
     expect(isPrevVisible('analyzed')).toBe(false);
     expect(isPrevVisible('visual')).toBe(true);
     expect(isPrevVisible('visual', true)).toBe(false);
     expect(isPrevVisible('visualGenerating', true)).toBe(false);
     expect(isPrevVisible('design', true)).toBe(true);
-    expect(isPrevVisible('design', false, true)).toBe(false);
-    expect(isPrevVisible('designGenerating', false, true)).toBe(false);
+    expect(isPrevVisible('analyzed', false, true)).toBe(false);
+    expect(isPrevVisible('design', false, true)).toBe(true);
+    expect(isPrevVisible('designGenerating', false, true)).toBe(true);
     expect(isPrevVisible('complete', false, true)).toBe(true);
   });
 
@@ -383,9 +468,20 @@ describe('四步导航', () => {
     expect(isNextDisabled('design', '分析', 0, true)).toBe(false);
   });
 
+  it('主图分析未点选主题时不能进入设计', () => {
+    expect(
+      isNextDisabled('analyzed', '分析', null, false, { isMainImage: true, selectedThemeCount: 0 }),
+    ).toBe(true);
+    expect(
+      isNextDisabled('analyzed', '分析', null, false, { isMainImage: true, selectedThemeCount: 2 }),
+    ).toBe(false);
+  });
+
   it('主图设计步标题与空态不走视觉设计文案', () => {
     expect(toResultHeadTitle('design', '主图')).toBe('主图设计');
     expect(toEmptyHint('design', '主图')).toBe('设置参数后点击「生成主图」');
+    expect(toResultHeadTitle('analyzed', '主图')).toBe('主图分析');
+    expect(toEmptyHint('input', '主图')).toBe('上传商业分析，点击「开始主图分析」');
     expect(toResultHeadTitle('design', '详情图')).toBe('视觉设计');
   });
 });

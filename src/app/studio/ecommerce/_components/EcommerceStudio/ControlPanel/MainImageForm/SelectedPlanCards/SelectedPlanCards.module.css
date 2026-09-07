@@ -1,0 +1,17 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  cursor: default;
+}
+
+.body {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--one-color-text);
+}

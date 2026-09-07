@@ -1,41 +1,32 @@
-import { Input } from 'antd';
-import ProductDocsUpload from '@/business-components/ProductDocsUpload';
 import StudioImageUpload from '@/business-components/StudioImageUpload';
+import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import GenerateForm from '../GenerateForm';
 import { patchFormState } from '../utils';
-import type {
-  DesignFormState,
-  ProductDocItem,
-  ProductImageItem,
-  StudioSpecFields,
-} from '../../types';
+import type { DesignFormState, ProductImageItem, StudioSpecFields } from '../../types';
+import SelectedPlanCards from './SelectedPlanCards';
 import styles from './MainImageForm.module.css';
 
 type MainImageFormProps = {
   form: DesignFormState;
   images: ProductImageItem[];
-  documents: ProductDocItem[];
+  selectedCards: MainImagePlanCard[];
   disabled: boolean;
   onFormChange: (next: DesignFormState) => void;
   onImagesAppend: (files: File[]) => void;
   onImageRemove: (uid: string) => void;
-  onDocsAppend: (files: File[]) => void;
-  onDocRemove: (uid: string) => void;
 };
 
 /**
- * 主图设计表单：精修图、商业分析、生成要求与出图规格。
+ * 主图设计表单：精修图、已选主题卡片与出图规格。
  */
 export default function MainImageForm({
   form,
   images,
-  documents,
+  selectedCards,
   disabled,
   onFormChange,
   onImagesAppend,
   onImageRemove,
-  onDocsAppend,
-  onDocRemove,
 }: MainImageFormProps) {
   const handleSpecChange = (next: StudioSpecFields) => {
     onFormChange({ ...form, ...next });
@@ -50,27 +41,12 @@ export default function MainImageForm({
         onAppend={onImagesAppend}
         onRemove={onImageRemove}
       />
-      <ProductDocsUpload
-        documents={documents}
-        disabled={disabled}
-        max={1}
-        label="商业分析"
-        hint="上传商业分析 TXT / MD"
-        ariaLabel="上传商业分析"
-        onAppend={onDocsAppend}
-        onRemove={onDocRemove}
-      />
-      <label className={styles.field}>
-        <span className={styles.label}>生成要求</span>
-        <Input.TextArea
-          value={form.requirement ?? ''}
-          disabled={disabled}
-          autoSize={{ minRows: 5, maxRows: 10 }}
-          onChange={(event) =>
-            onFormChange(patchFormState(form, 'requirement', event.target.value))
-          }
-        />
-      </label>
+      {selectedCards.length > 0 ? (
+        <div className={styles.field}>
+          <span className={styles.label}>已选主题</span>
+          <SelectedPlanCards cards={selectedCards} />
+        </div>
+      ) : null}
       <GenerateForm
         form={form}
         disabled={disabled}

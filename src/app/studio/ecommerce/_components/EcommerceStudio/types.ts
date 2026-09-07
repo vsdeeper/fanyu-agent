@@ -1,4 +1,5 @@
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
+import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
 
 export type { StudioResultImage };
@@ -45,8 +46,6 @@ export type StudioFormState = StudioSpecFields & {
 
 export type DesignFormState = StudioFormState & {
   taskType: EcommerceTaskType;
-  /** 主图生成要求；详情图 / 海报忽略 */
-  requirement?: string;
 };
 
 export type DesignResultGroups = Partial<Record<EcommerceTaskType, StudioResultImage[]>>;
@@ -55,6 +54,9 @@ export type AnalysisStepSnapshot = {
   images: ProductImageItem[];
   documents: ProductDocItem[];
   analysisText: string;
+  visualLock?: string;
+  planCards?: MainImagePlanCard[];
+  selectedThemeIds?: string[];
 };
 
 export type VisualStepSnapshot = {

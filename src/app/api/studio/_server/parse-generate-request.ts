@@ -69,8 +69,16 @@ const visualGenerateSchema = specFieldsSchema.extend({
 const mainImageGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('mainImage'),
   count: countSchema,
-  requirement: z.string().trim().min(1),
-  analysisText: z.string().min(1),
+  visualLock: z.string().trim().min(1),
+  requirements: z
+    .array(
+      z.object({
+        themeId: z.string().trim().min(1),
+        title: z.string().trim().min(1),
+        requirement: z.string().trim().min(1),
+      }),
+    )
+    .min(1),
   productViewImages: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
 });
 

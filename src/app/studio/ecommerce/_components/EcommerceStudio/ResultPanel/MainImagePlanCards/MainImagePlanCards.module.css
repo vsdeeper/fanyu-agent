@@ -1,0 +1,33 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  cursor: pointer;
+}
+
+.card :global(.ant-card-head) {
+  min-height: 44px;
+}
+
+.readonly {
+  cursor: default;
+}
+
+.selected {
+  border-color: var(--one-color-primary) !important;
+}
+
+.body {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--one-color-text);
+}
+
+.editor {
+  margin-bottom: 0;
+}
