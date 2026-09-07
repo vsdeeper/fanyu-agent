@@ -12,13 +12,17 @@ import ControlPanel from './ControlPanel';
 import {
   ANALYZE_FAILED,
   ANALYSIS_MISSING,
+  ANALYSIS_UPLOAD_MISSING,
   DESIGN_RESULT_MISSING,
   DEFAULT_DESIGN_FORM_STATE,
   DEFAULT_FORM_STATE,
+  DEFAULT_MAIN_IMAGE_REQUIREMENT,
   GENERATE_FAILED,
+  MAIN_IMAGE_RESULT_MISSING,
   MAX_MODEL_IMAGES,
   NO_IMAGE_WARNING,
   POSTER_RESULT_MISSING,
+  REQUIREMENT_MISSING,
   VISUAL_SELECT_MISSING,
 } from './constants';
 import ResultPanel from './ResultPanel';
@@ -67,9 +71,15 @@ import {
   toAnalyzePayload,
   toAnalyzeImages,
   toDesignGeneratePayload,
+  toMainImageGeneratePayload,
   toVisualGeneratePayload,
 } from './utils';
-import { getWorkflowStepIndex, isPosterTask, resolveEcommerceWorkflow } from './workflow';
+import {
+  getWorkflowStepIndex,
+  isMainImageTask,
+  isPosterTask,
+  resolveEcommerceWorkflow,
+} from './workflow';
 import styles from './EcommerceStudio.module.css';
 
 /**
@@ -83,14 +93,25 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const { message } = App.useApp();
   const router = useRouter();
   const poster = isPosterTask(task.taskType);
-  const initialAnalysis = readAnalysisStepSnapshot(task.steps.analysis?.data);
-  const initialVisual = readVisualStepSnapshot(task.steps.visual?.data);
+  const mainImage = isMainImageTask(task.taskType);
+  const initialAnalysis = mainImage
+    ? undefined
+    : readAnalysisStepSnapshot(task.steps.analysis?.data);
+  const initialVisual = mainImage ? undefined : readVisualStepSnapshot(task.steps.visual?.data);
   const initialDesign = readDesignStepSnapshot(task.steps.design?.data);
   const [images, setImages] = useState<ProductImageItem[]>(
-    poster ? (initialVisual?.images ?? []) : (initialAnalysis?.images ?? []),
+    mainImage
+      ? (initialDesign?.images ?? [])
+      : poster
+        ? (initialVisual?.images ?? [])
+        : (initialAnalysis?.images ?? []),
   );
   const [documents, setDocuments] = useState<ProductDocItem[]>(
-    poster ? (initialVisual?.documents ?? []) : (initialAnalysis?.documents ?? []),
+    mainImage
+      ? (initialDesign?.documents ?? [])
+      : poster
+        ? (initialVisual?.documents ?? [])
+        : (initialAnalysis?.documents ?? []),
   );
   const [form, setForm] = useState<StudioFormState>(initialVisual?.form ?? DEFAULT_FORM_STATE);
   const [designForm, setDesignForm] = useState<DesignFormState>(() => {
@@ -98,25 +119,36 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       ...DEFAULT_DESIGN_FORM_STATE,
       taskType: task.taskType,
     };
-    return isPosterTask(task.taskType) ? { ...base, taskType: '营销海报' } : base;
+    if (mainImage) {
+      return {
+        ...base,
+        taskType: '主图',
+        requirement: base.requirement?.trim() ? base.requirement : DEFAULT_MAIN_IMAGE_REQUIREMENT,
+      };
+    }
+    return poster ? { ...base, taskType: '营销海报' } : base;
   });
   const [modelImages, setModelImages] = useState<ProductImageItem[]>(
     initialDesign?.modelImages ?? [],
   );
   const [phase, setPhase] = useState<StudioPhase>(
-    resolveInitialStudioPhase(initialAnalysis, poster),
+    resolveInitialStudioPhase(initialAnalysis, poster, mainImage),
   );
   const [analysisText, setAnalysisText] = useState(
-    poster ? (initialVisual?.analysisText ?? '') : (initialAnalysis?.analysisText ?? ''),
+    mainImage
+      ? (initialDesign?.analysisText ?? '')
+      : poster
+        ? (initialVisual?.analysisText ?? '')
+        : (initialAnalysis?.analysisText ?? ''),
   );
   const [visualImages, setVisualImages] = useState<StudioResultImage[]>(
-    initialVisual?.visualImages ?? [],
+    mainImage ? [] : (initialVisual?.visualImages ?? []),
   );
   const [designResultGroups, setDesignResultGroups] = useState<DesignResultGroups>(
     initialDesign?.designResultGroups ?? {},
   );
   const [selectedVisualIndex, setSelectedVisualIndex] = useState<number | null>(
-    initialVisual?.selectedVisualIndex ?? null,
+    mainImage ? null : (initialVisual?.selectedVisualIndex ?? null),
   );
   const [nextLoading, setNextLoading] = useState(false);
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
@@ -205,20 +237,44 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       if (saved.documents) setDocuments(saved.documents);
       if (typeof saved.analysisText === 'string') setAnalysisText(saved.analysisText);
     },
-    [analysisText, task.id, setForm, setVisualImages],
+    [analysisText, task.id, setForm, setVisualImages, setImages, setDocuments, setAnalysisText],
   );
 
   const persistDesignStep = useCallback(
     async (df: DesignFormState, groups: DesignResultGroups, modelImgs: ProductImageItem[]) => {
-      const next = await createDesignStepSnapshot(df, groups, modelImgs);
+      const next = await createDesignStepSnapshot(
+        df,
+        groups,
+        modelImgs,
+        mainImage
+          ? {
+              images: imagesRef.current,
+              documents: documentsRef.current,
+              analysisText,
+            }
+          : undefined,
+      );
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.design)) return;
       const saved = await saveStudioStep(task.id, 'design', next);
       lastSnapshotsRef.current.design = saved;
       setDesignForm(saved.form);
       setDesignResultGroups(saved.designResultGroups);
       setModelImages(saved.modelImages);
+      if (saved.images) setImages(saved.images);
+      if (saved.documents) setDocuments(saved.documents);
+      if (typeof saved.analysisText === 'string') setAnalysisText(saved.analysisText);
     },
-    [task.id, setDesignForm, setDesignResultGroups, setModelImages],
+    [
+      analysisText,
+      mainImage,
+      task.id,
+      setDesignForm,
+      setDesignResultGroups,
+      setModelImages,
+      setImages,
+      setDocuments,
+      setAnalysisText,
+    ],
   );
 
   const handleAnalyze = useCallback(async () => {
@@ -364,20 +420,31 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   ]);
 
   const handleGenerateDesign = useCallback(async () => {
-    if (!analysisText.trim()) {
-      message.warning(ANALYSIS_MISSING);
-      return;
-    }
     if (images.length === 0) {
       message.warning(NO_IMAGE_WARNING);
       return;
     }
-    const poster = isPosterTask(task.taskType);
-    const nextDesignForm = poster ? { ...designForm, taskType: '营销海报' as const } : designForm;
-    const visualDataUrl = getSelectedResultImageUrl(visualImages, selectedVisualIndex);
-    if (!visualDataUrl) {
-      message.warning(VISUAL_SELECT_MISSING);
+    if (!analysisText.trim()) {
+      message.warning(mainImage ? ANALYSIS_UPLOAD_MISSING : ANALYSIS_MISSING);
       return;
+    }
+    if (mainImage && !(designForm.requirement ?? '').trim()) {
+      message.warning(REQUIREMENT_MISSING);
+      return;
+    }
+    const nextDesignForm = poster
+      ? { ...designForm, taskType: '营销海报' as const }
+      : mainImage
+        ? { ...designForm, taskType: '主图' as const }
+        : designForm;
+    let visualDataUrl = '';
+    if (!mainImage) {
+      const selected = getSelectedResultImageUrl(visualImages, selectedVisualIndex);
+      if (!selected) {
+        message.warning(VISUAL_SELECT_MISSING);
+        return;
+      }
+      visualDataUrl = selected;
     }
     abortCurrent();
     const controller = new AbortController();
@@ -393,18 +460,19 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setPhase('designGenerating');
     setDesignResultGroups(nextDesignResultGroups);
     try {
-      const res = await fetch('/api/studio/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          await toDesignGeneratePayload(
+      const body = mainImage
+        ? await toMainImageGeneratePayload(nextDesignForm, analysisText, images)
+        : await toDesignGeneratePayload(
             nextDesignForm,
             analysisText,
             images,
             await readUrlAsDataUrl(visualDataUrl),
             await toAnalyzeImages(modelImages),
-          ),
-        ),
+          );
+      const res = await fetch('/api/studio/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);
@@ -448,12 +516,13 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     designResultGroups,
     expectedDesignCount,
     images,
+    mainImage,
     message,
     modelImages,
     persistDesignStep,
+    poster,
     selectedVisualIndex,
     setDesignForm,
-    task.taskType,
     visualImages,
   ]);
 
@@ -473,20 +542,21 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
 
   const handleDocsAppend = useCallback(
     (files: File[]) => {
-      setDocuments((current) => appendProductDocs(current, files, poster ? 1 : undefined));
-      if (poster && files[0]) {
+      const singleDoc = poster || mainImage;
+      setDocuments((current) => appendProductDocs(current, files, singleDoc ? 1 : undefined));
+      if (singleDoc && files[0]) {
         void files[0].text().then((text) => setAnalysisText(text));
       }
     },
-    [poster],
+    [mainImage, poster, setDocuments, setAnalysisText],
   );
 
   const handleDocRemove = useCallback(
     (uid: string) => {
       setDocuments((current) => removeProductDoc(current, uid));
-      if (poster) setAnalysisText('');
+      if (poster || mainImage) setAnalysisText('');
     },
-    [poster],
+    [mainImage, poster, setDocuments, setAnalysisText],
   );
 
   const handleModelImagesAppend = useCallback(
@@ -512,8 +582,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     if (phase === 'analyzing' || phase === 'visualGenerating' || phase === 'designGenerating') {
       abortCurrent();
     }
-    setPhase((current) => phaseAfterPrev(current, poster));
-  }, [abortCurrent, phase, poster]);
+    setPhase((current) => phaseAfterPrev(current, poster, mainImage));
+  }, [abortCurrent, mainImage, phase, poster]);
 
   const handleNext = useCallback(async () => {
     if (phase === 'visual' && selectedVisualIndex === null) {
@@ -526,7 +596,13 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         group?.some((image) => image.status === 'ready' && Boolean(image.url)),
       )
     ) {
-      message.warning(isPosterTask(task.taskType) ? POSTER_RESULT_MISSING : DESIGN_RESULT_MISSING);
+      message.warning(
+        isMainImageTask(task.taskType)
+          ? MAIN_IMAGE_RESULT_MISSING
+          : isPosterTask(task.taskType)
+            ? POSTER_RESULT_MISSING
+            : DESIGN_RESULT_MISSING,
+      );
       return;
     }
     // 下一步/完成：左右栏有变化才落库；PUT 或下游删除失败不跳步
@@ -608,6 +684,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
               analysisText={analysisText}
               visualImages={visualImages}
               designResultGroups={designResultGroups}
+              showDesignTitles={!mainImage}
               onPrev={handlePrev}
             />
           ) : (
@@ -622,6 +699,13 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 phase={phase}
                 formLocked={formLocked}
                 canGenerateVisual={images.length > 0 && Boolean(analysisText.trim())}
+                canGenerateDesign={
+                  mainImage
+                    ? images.length > 0 &&
+                      Boolean(analysisText.trim()) &&
+                      Boolean((designForm.requirement ?? '').trim())
+                    : true
+                }
                 onImagesAppend={handleImagesAppend}
                 onImageRemove={handleImageRemove}
                 onDocsAppend={handleDocsAppend}

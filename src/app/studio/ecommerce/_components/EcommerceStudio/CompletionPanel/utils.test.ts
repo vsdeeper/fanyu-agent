@@ -49,4 +49,13 @@ describe('电商成果整理', () => {
     expect(names).toContain('营销主视觉/1:1-01.png');
     expect(names).toContain('营销海报/3:4-01.png');
   });
+
+  it('仅一类图片时落在 ZIP 根目录，不套类型文件夹', async () => {
+    const archive = await createResultArchive([], { 主图: [READY_IMAGE] }, '# 分析');
+    const names = Object.keys(unzipSync(new Uint8Array(archive)));
+
+    expect(names).toContain('1:1-01.png');
+    expect(names).toContain('商业分析.md');
+    expect(names.some((name) => name.startsWith('主图/'))).toBe(false);
+  });
 });

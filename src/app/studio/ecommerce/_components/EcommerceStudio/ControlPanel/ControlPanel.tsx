@@ -4,7 +4,13 @@ import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-
 import AnalyzeForm from '@/app/studio/_components/AnalyzeForm';
 import ProductDocsUpload from '@/business-components/ProductDocsUpload';
 import StudioImageUpload from '@/business-components/StudioImageUpload';
-import { ANALYZE_BUTTON, DESIGN_BUTTON, POSTER_BUTTON, VISUAL_BUTTON } from '../constants';
+import {
+  ANALYZE_BUTTON,
+  DESIGN_BUTTON,
+  MAIN_IMAGE_BUTTON,
+  POSTER_BUTTON,
+  VISUAL_BUTTON,
+} from '../constants';
 import type {
   DesignFormState,
   ProductDocItem,
@@ -13,9 +19,10 @@ import type {
   StudioPhase,
   StudioSpecFields,
 } from '../types';
-import { isPosterTask } from '../workflow';
+import { isMainImageTask, isPosterTask } from '../workflow';
 import DesignForm from './DesignForm';
 import GenerateForm from './GenerateForm';
+import MainImageForm from './MainImageForm';
 import { isAnalyzePhase, isDesignPhase, isVisualPhase } from './utils';
 import styles from './ControlPanel.module.css';
 
@@ -29,6 +36,7 @@ type ControlPanelProps = {
   phase: StudioPhase;
   formLocked: boolean;
   canGenerateVisual: boolean;
+  canGenerateDesign: boolean;
   onImagesAppend: (files: File[]) => void;
   onImageRemove: (uid: string) => void;
   onDocsAppend: (files: File[]) => void;
@@ -43,7 +51,7 @@ type ControlPanelProps = {
 };
 
 /**
- * 电商工作台左侧栏：分析资料、主视觉规格或视觉设计 / 营销海报表单。
+ * 电商工作台左侧栏：分析资料、主视觉规格、主图设计或视觉设计 / 营销海报表单。
  */
 export default function ControlPanel({
   taskType,
@@ -55,6 +63,7 @@ export default function ControlPanel({
   phase,
   formLocked,
   canGenerateVisual,
+  canGenerateDesign,
   onImagesAppend,
   onImageRemove,
   onDocsAppend,
@@ -75,6 +84,7 @@ export default function ControlPanel({
   const showDesignForm = isDesignPhase(phase);
   const analyzeDisabled = images.length === 0;
   const poster = isPosterTask(taskType);
+  const mainImage = isMainImageTask(taskType);
 
   const handleVisualSpecChange = (next: StudioSpecFields) => {
     onFormChange({ ...form, ...next });
@@ -123,6 +133,18 @@ export default function ControlPanel({
               onCountChange={(value) => onFormChange({ ...form, count: value })}
             />
           </>
+        ) : showDesignForm && mainImage ? (
+          <MainImageForm
+            form={designForm}
+            images={images}
+            documents={documents}
+            disabled={formLocked}
+            onFormChange={onDesignFormChange}
+            onImagesAppend={onImagesAppend}
+            onImageRemove={onImageRemove}
+            onDocsAppend={onDocsAppend}
+            onDocRemove={onDocRemove}
+          />
         ) : showDesignForm ? (
           <DesignForm
             form={designForm}
@@ -176,9 +198,10 @@ export default function ControlPanel({
             size="large"
             icon={<HighlightOutlined />}
             loading={designGenerating}
+            disabled={!canGenerateDesign}
             onClick={onGenerateDesign}
           >
-            {poster ? POSTER_BUTTON : DESIGN_BUTTON}
+            {mainImage ? MAIN_IMAGE_BUTTON : poster ? POSTER_BUTTON : DESIGN_BUTTON}
           </Button>
         </div>
       ) : null}

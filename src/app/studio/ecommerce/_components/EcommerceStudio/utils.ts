@@ -155,6 +155,25 @@ export async function toDesignGeneratePayload(
   };
 }
 
+/** 主图请求体：规格 + 生成要求 + 商业分析正文 + 产品精修图 */
+export async function toMainImageGeneratePayload(
+  form: DesignFormState,
+  analysisText: string,
+  productImages: ProductImageItem[],
+): Promise<StudioGenerateRequest> {
+  return {
+    kind: 'mainImage',
+    model: form.model,
+    aspectRatio: form.aspectRatio,
+    quality: form.quality,
+    clarity: form.clarity,
+    count: Number.parseInt(form.count, 10) || 1,
+    requirement: (form.requirement ?? '').trim(),
+    analysisText: analysisText.trim(),
+    productViewImages: await toAnalyzeImages(productImages),
+  };
+}
+
 /** 本地 txt/md 的 MIME。 */
 export function toDocMediaType(file: File): string {
   if (file.type) return file.type;
@@ -268,11 +287,13 @@ export async function deleteStudioStep(taskId: string, stepKey: EcommerceStepKey
   await apiDelete(`/api/studio/ecommerce/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`);
 }
 
-/** 再次进入流程时停在第一步：海报停在主视觉，其余有分析正文则视为已完成分析。 */
+/** 再次进入流程时停在第一步：主图停在设计，海报停在主视觉，其余有分析正文则视为已完成分析。 */
 export function resolveInitialStudioPhase(
   analysis: AnalysisStepSnapshot | undefined,
   isPoster = false,
+  isMainImage = false,
 ): StudioPhase {
+  if (isMainImage) return 'design';
   if (isPoster) return 'visual';
   return analysis?.analysisText.trim() ? 'analyzed' : 'input';
 }
@@ -337,27 +358,56 @@ export function readDesignStepSnapshot(value: unknown): DesignStepSnapshot | und
     form: {
       ...formRest,
       taskType: snapshot.form.taskType ?? designType ?? '主图',
+      ...(typeof snapshot.form.requirement === 'string'
+        ? { requirement: snapshot.form.requirement }
+        : {}),
     },
     designResultGroups: snapshot.designResultGroups,
     modelImages: Array.isArray(snapshot.modelImages) ? snapshot.modelImages : [],
+    images: Array.isArray(snapshot.images) ? snapshot.images : undefined,
+    documents: Array.isArray(snapshot.documents) ? snapshot.documents : undefined,
+    analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : undefined,
   };
 }
 
-/** 构造视觉设计步骤的完整持久化快照，含可选模特形象。 */
+/** 构造视觉设计步骤的完整持久化快照；主图另含精修图与分析文件。 */
 export async function createDesignStepSnapshot(
   form: DesignFormState,
   designResultGroups: DesignResultGroups,
   modelImages: ProductImageItem[],
+  extras?: {
+    images: ProductImageItem[];
+    documents: ProductDocItem[];
+    analysisText: string;
+  },
 ): Promise<DesignStepSnapshot> {
   return {
     form,
     designResultGroups,
     modelImages: (await Promise.all(modelImages.map(serializeUploadItem))) as ProductImageItem[],
+    ...(extras
+      ? {
+          images: (await Promise.all(extras.images.map(serializeUploadItem))) as ProductImageItem[],
+          documents: (await Promise.all(
+            extras.documents.map(serializeUploadItem),
+          )) as ProductDocItem[],
+          analysisText: extras.analysisText,
+        }
+      : {}),
   };
 }
 
-/** 上一步：各步回退到前一步；海报主视觉为第一步，不再回到分析。 */
-export function phaseAfterPrev(phase: StudioPhase, isPoster = false): StudioPhase {
+/** 上一步：各步回退到前一步；主图设计与海报主视觉为第一步。 */
+export function phaseAfterPrev(
+  phase: StudioPhase,
+  isPoster = false,
+  isMainImage = false,
+): StudioPhase {
+  if (isMainImage) {
+    if (phase === 'designGenerating') return 'design';
+    if (phase === 'complete') return 'design';
+    return phase;
+  }
   if (phase === 'analyzing') return 'input';
   if (phase === 'visual' || phase === 'visualGenerating') return isPoster ? 'visual' : 'analyzed';
   if (phase === 'design' || phase === 'designGenerating') return 'visual';

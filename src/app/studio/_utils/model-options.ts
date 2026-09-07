@@ -103,7 +103,7 @@ export function toModelOptions(): { value: string; label: string }[] {
 }
 
 /** 工作台生图数量档位 */
-export const VISUAL_COUNT_OPTIONS = ['1', '2', '3', '4'] as const;
+export const VISUAL_COUNT_OPTIONS = ['1', '2', '3', '4', '5'] as const;
 
 export const VISUAL_COUNT_DEFAULT = '1';
 

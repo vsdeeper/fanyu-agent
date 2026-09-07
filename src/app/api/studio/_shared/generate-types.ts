@@ -5,7 +5,13 @@ export type StudioImageInput = {
 };
 
 export type StudioGenerateKind =
-  'productRefine' | 'productMultiview' | 'productView' | 'productModel' | 'visual' | 'design';
+  | 'productRefine'
+  | 'productMultiview'
+  | 'productView'
+  | 'productModel'
+  | 'visual'
+  | 'design'
+  | 'mainImage';
 
 type StudioGenerateBase = {
   model: string;
@@ -66,13 +72,23 @@ export type StudioDesignGenerateRequest = StudioGenerateBase & {
   modelImages?: StudioImageInput[];
 };
 
+/** 电商主图：规格 + 生成要求 + 商业分析正文 + 产品精修图 */
+export type StudioMainImageGenerateRequest = StudioGenerateBase & {
+  kind: 'mainImage';
+  count: number;
+  requirement: string;
+  analysisText: string;
+  productViewImages: StudioImageInput[];
+};
+
 export type StudioGenerateRequest =
   | StudioProductRefineGenerateRequest
   | StudioProductMultiviewGenerateRequest
   | StudioProductViewGenerateRequest
   | StudioProductModelGenerateRequest
   | StudioVisualGenerateRequest
-  | StudioDesignGenerateRequest;
+  | StudioDesignGenerateRequest
+  | StudioMainImageGenerateRequest;
 
 export type StudioGenerateImageEvent = {
   index: number;

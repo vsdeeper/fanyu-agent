@@ -2,8 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { getWorkflowStepIndex, resolveEcommerceWorkflow } from './workflow';
 
 describe('resolveEcommerceWorkflow', () => {
-  it.each(['主图', '详情图'] as const)('%s 保留商业分析到完成四步', (taskType) => {
-    expect(resolveEcommerceWorkflow(taskType).map((step) => step.key)).toEqual([
+  it('主图为设计到完成两步', () => {
+    expect(resolveEcommerceWorkflow('主图').map((step) => step.key)).toEqual([
+      'design',
+      'complete',
+    ]);
+    expect(resolveEcommerceWorkflow('主图').map((step) => step.title)).toEqual([
+      '主图设计',
+      '预览生成物料',
+    ]);
+  });
+
+  it('详情图保留商业分析到完成四步', () => {
+    expect(resolveEcommerceWorkflow('详情图').map((step) => step.key)).toEqual([
       'analysis',
       'visual',
       'design',

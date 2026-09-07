@@ -52,6 +52,24 @@ export function buildProductViewPrompt(): string {
 }
 
 /**
+ * 电商主图出站 prompt：用户生成要求为主体，商业分析为卖点与文案依据，精修图为产品事实。
+ */
+export function buildMainImagePrompt(requirement: string, analysisText: string): string {
+  return [
+    '生成恰好一张电商主图，不要输出说明、草图或多方案拼图。',
+    '第1个参考图=用户上传的产品精修图，定义产品本体；其余参考图仅补充同一产品的可见角度与细节，不得混合不同 SKU。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。',
+    '【生成要求】',
+    requirement.trim(),
+    '【商业分析】',
+    analysisText.trim(),
+    MARKETING_COPY_TYPOGRAPHY_PROMPT,
+    PRODUCT_SCALE_PROMPT_GUARD,
+    PRODUCT_PLACEMENT_PROMPT_GUARD,
+    PRODUCT_FIDELITY_PROMPT_GUARD,
+  ].join('\n');
+}
+
+/**
  * 营销主视觉出站 prompt：商业分析为内容依据，上传的全部产品图为改图参考。
  */
 export function buildVisualPrompt(analysisText: string): string {

@@ -22,19 +22,27 @@ function appendAnalysisFile(files: Record<string, Uint8Array>, analysisText: str
   files[ANALYSIS_FILE_NAME] = new TextEncoder().encode(analysisText);
 }
 
-/** 将营销主视觉、各类视觉设计与商业分析打包为 ZIP 字节。 */
+/** 将营销主视觉、各类视觉设计与商业分析打包为 ZIP 字节。仅一组图片时不套类型文件夹。 */
 export async function createResultArchive(
   visualImages: readonly StudioResultImage[],
   designGroups: DesignResultGroups,
   analysisText: string,
 ): Promise<Uint8Array> {
   const files: Record<string, Uint8Array> = {};
-  await Promise.all([
-    appendGroupFiles(files, VISUAL_GROUP_TITLE, visualImages),
-    ...ECOMMERCE_TASK_TYPES.map((taskType) =>
-      appendGroupFiles(files, taskType, designGroups[taskType] ?? []),
-    ),
-  ]);
+  const packedGroups: { name: string; images: readonly StudioResultImage[] }[] = [];
+  if (getGeneratedImages(visualImages).length > 0) {
+    packedGroups.push({ name: VISUAL_GROUP_TITLE, images: visualImages });
+  }
+  for (const taskType of ECOMMERCE_TASK_TYPES) {
+    const images = designGroups[taskType] ?? [];
+    if (getGeneratedImages(images).length > 0) {
+      packedGroups.push({ name: taskType, images });
+    }
+  }
+  const flatten = packedGroups.length === 1;
+  await Promise.all(
+    packedGroups.map((group) => appendGroupFiles(files, flatten ? '' : group.name, group.images)),
+  );
   appendAnalysisFile(files, analysisText);
   return zipFiles(files);
 }

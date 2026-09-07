@@ -46,12 +46,13 @@ export async function readImageBytes(source: string): Promise<{
   };
 }
 
-/** 将一组图片按比例拆成二级子组写入待打包文件表；文件名「比例-序号」，每比例内序号从 01 起。 */
+/** 将一组图片按比例拆成二级子组写入待打包文件表；文件名「比例-序号」，每比例内序号从 01 起。groupName 为空时落在 ZIP 根目录。 */
 export async function appendGroupFiles(
   files: Record<string, Uint8Array>,
   groupName: string,
   images: readonly StudioResultImage[],
 ): Promise<void> {
+  const prefix = groupName ? `${groupName}/` : '';
   await Promise.all(
     groupResultImagesByRatio(getGeneratedImages(images)).flatMap(
       ({ aspectRatio, images: ratioImages }) =>
@@ -59,7 +60,7 @@ export async function appendGroupFiles(
           const { mediaType, bytes } = await readImageBytes(image.url);
           const extension = IMAGE_EXTENSION_BY_MEDIA_TYPE[mediaType] ?? 'png';
           const seq = String(index + 1).padStart(2, '0');
-          files[`${groupName}/${aspectRatio}-${seq}.${extension}`] = bytes;
+          files[`${prefix}${aspectRatio}-${seq}.${extension}`] = bytes;
         }),
     ),
   );

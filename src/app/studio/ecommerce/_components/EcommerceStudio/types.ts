@@ -45,6 +45,8 @@ export type StudioFormState = StudioSpecFields & {
 
 export type DesignFormState = StudioFormState & {
   taskType: EcommerceTaskType;
+  /** 主图生成要求；详情图 / 海报忽略 */
+  requirement?: string;
 };
 
 export type DesignResultGroups = Partial<Record<EcommerceTaskType, StudioResultImage[]>>;
@@ -68,4 +70,7 @@ export type DesignStepSnapshot = {
   form: DesignFormState;
   designResultGroups: DesignResultGroups;
   modelImages: ProductImageItem[];
+  images?: ProductImageItem[];
+  documents?: ProductDocItem[];
+  analysisText?: string;
 };

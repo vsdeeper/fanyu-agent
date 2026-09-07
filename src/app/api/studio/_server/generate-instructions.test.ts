@@ -5,6 +5,7 @@ vi.mock('server-only', () => ({}));
 import { ECOMMERCE_TASK_TYPES } from '@/app/api/studio/ecommerce/_shared/task-constants';
 import {
   buildDesignPrompt,
+  buildMainImagePrompt,
   buildProductModelPrompt,
   buildProductMultiviewPrompt,
   buildProductRefinePrompt,
@@ -97,6 +98,17 @@ describe('电商生图指令', () => {
     expect(prompt).toContain('文字编排');
     expect(prompt).toContain('层次分明');
     expect(prompt).not.toContain('显著小于画面主视觉');
+  });
+
+  it('电商主图以用户生成要求为主体，不依赖主视觉', () => {
+    const prompt = buildMainImagePrompt('本轮只出使用场景', '目标人群偏好暖色');
+
+    expect(prompt).toContain('【生成要求】\n本轮只出使用场景');
+    expect(prompt).toContain('【商业分析】\n目标人群偏好暖色');
+    expect(prompt).toContain('第1个参考图=用户上传的产品精修图');
+    expect(prompt).not.toContain('已选营销主视觉');
+    expect(prompt).toContain('文字编排');
+    expect(prompt).toContain('产品必须稳定放置在场景中的支撑面');
   });
 
   it.each(ECOMMERCE_TASK_TYPES)('视觉设计为“%s”时包含类型要求与商业分析', (taskType) => {
@@ -348,5 +360,37 @@ describe('营销主视觉请求契约', () => {
   it('缺少产品图或无商业分析时拒绝', () => {
     expect(parseGenerateBody({ ...BASE_VISUAL_REQUEST, productViewImages: [] })).toBeNull();
     expect(parseGenerateBody({ ...BASE_VISUAL_REQUEST, analysisText: '' })).toBeNull();
+  });
+});
+
+describe('电商主图请求契约', () => {
+  const BASE_MAIN_IMAGE_REQUEST = {
+    kind: 'mainImage',
+    ...SPEC_FIELDS,
+    count: 2,
+    requirement: '本轮只出使用场景',
+    analysisText: '商业分析',
+    productViewImages: [
+      {
+        filename: 'product.png',
+        mediaType: 'image/png',
+        dataUrl: 'data:image/png;base64,PRODUCT',
+      },
+    ],
+  } as const;
+
+  it('接受生成要求、商业分析与产品精修图', () => {
+    const parsed = parseGenerateBody(BASE_MAIN_IMAGE_REQUEST);
+
+    expect(parsed?.kind).toBe('mainImage');
+    expect(parsed && parsed.kind === 'mainImage' ? parsed.requirement : '').toBe(
+      '本轮只出使用场景',
+    );
+  });
+
+  it('缺少产品图、商业分析或生成要求时拒绝', () => {
+    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, productViewImages: [] })).toBeNull();
+    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: '' })).toBeNull();
+    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, requirement: ' ' })).toBeNull();
   });
 });

@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DESIGN_FORM_STATE, DEFAULT_FORM_STATE } from './constants';
-import { groupResultImagesByRatio, isNextDisabled, isPrevVisible } from './ResultPanel/utils';
+import {
+  groupResultImagesByRatio,
+  isNextDisabled,
+  isPrevVisible,
+  toEmptyHint,
+  toResultHeadTitle,
+} from './ResultPanel/utils';
 import type { ProductImageItem, StudioResultImage } from './types';
 import {
   appendPendingDesignImages,
@@ -17,6 +23,7 @@ import {
   readVisualStepSnapshot,
   resolveInitialStudioPhase,
   toDesignGeneratePayload,
+  toMainImageGeneratePayload,
   toVisualGeneratePayload,
 } from './utils';
 
@@ -133,6 +140,23 @@ describe('视觉设计请求体', () => {
       ],
     });
     expect(payload).not.toHaveProperty('modelImages');
+  });
+
+  it('主图请求体不含主视觉与模特，并带入生成要求', async () => {
+    const payload = await toMainImageGeneratePayload(
+      { ...DEFAULT_DESIGN_FORM_STATE, requirement: '本轮只出使用场景' },
+      ' 商业分析 ',
+      [IMAGE_ITEM('p-1', 'product.png')],
+    );
+
+    expect(payload).toMatchObject({
+      kind: 'mainImage',
+      requirement: '本轮只出使用场景',
+      analysisText: '商业分析',
+    });
+    expect(payload).not.toHaveProperty('visualDataUrl');
+    expect(payload).not.toHaveProperty('modelImages');
+    expect(payload).not.toHaveProperty('taskType');
   });
 
   it('营销海报同样带入主视觉，并可附带可选模特形象', async () => {
@@ -295,6 +319,26 @@ describe('步骤快照水合', () => {
     expect(visual?.analysisText).toBe('上传的商业分析正文');
   });
 
+  it('主图设计快照读取精修图、分析文件、正文与生成要求', () => {
+    const design = readDesignStepSnapshot({
+      form: { ...DEFAULT_DESIGN_FORM_STATE, requirement: '本轮只出核心卖点' },
+      designResultGroups: {
+        主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }],
+      },
+      images: [
+        { uid: 'img-1', previewUrl: '/api/studio/ecommerce/tasks/t1/assets/p1', name: 'p.png' },
+      ],
+      documents: [
+        { uid: 'doc-1', previewUrl: '/api/studio/ecommerce/tasks/t1/assets/a1', name: '分析.md' },
+      ],
+      analysisText: '上传的商业分析正文',
+    });
+    expect(design?.form.requirement).toBe('本轮只出核心卖点');
+    expect(design?.images).toHaveLength(1);
+    expect(design?.documents?.[0]?.name).toBe('分析.md');
+    expect(design?.analysisText).toBe('上传的商业分析正文');
+  });
+
   it('再次进入流程时默认停在第一步', () => {
     expect(resolveInitialStudioPhase(undefined)).toBe('input');
     expect(
@@ -305,6 +349,7 @@ describe('步骤快照水合', () => {
       }),
     ).toBe('analyzed');
     expect(resolveInitialStudioPhase(undefined, true)).toBe('visual');
+    expect(resolveInitialStudioPhase(undefined, false, true)).toBe('design');
   });
 });
 
@@ -317,19 +362,31 @@ describe('四步导航', () => {
     expect(phaseAfterPrev('designGenerating')).toBe('visual');
     expect(phaseAfterPrev('visual')).toBe('analyzed');
     expect(phaseAfterPrev('visual', true)).toBe('visual');
+    expect(phaseAfterPrev('complete', false, true)).toBe('design');
+    expect(phaseAfterPrev('designGenerating', false, true)).toBe('design');
+    expect(phaseAfterPrev('design', false, true)).toBe('design');
   });
 
-  it('上一步按钮：主图/详情图在分析步隐藏，海报在主视觉步隐藏', () => {
+  it('上一步按钮：详情图在分析步隐藏，海报在主视觉步隐藏，主图在设计步隐藏', () => {
     expect(isPrevVisible('analyzed')).toBe(false);
     expect(isPrevVisible('visual')).toBe(true);
     expect(isPrevVisible('visual', true)).toBe(false);
     expect(isPrevVisible('visualGenerating', true)).toBe(false);
     expect(isPrevVisible('design', true)).toBe(true);
+    expect(isPrevVisible('design', false, true)).toBe(false);
+    expect(isPrevVisible('designGenerating', false, true)).toBe(false);
+    expect(isPrevVisible('complete', false, true)).toBe(true);
   });
 
   it('视觉设计至少有一张成果时才能进入完成', () => {
     expect(isNextDisabled('design', '分析', 0, false)).toBe(true);
     expect(isNextDisabled('design', '分析', 0, true)).toBe(false);
+  });
+
+  it('主图设计步标题与空态不走视觉设计文案', () => {
+    expect(toResultHeadTitle('design', '主图')).toBe('主图设计');
+    expect(toEmptyHint('design', '主图')).toBe('设置参数后点击「生成主图」');
+    expect(toResultHeadTitle('design', '详情图')).toBe('视觉设计');
   });
 });
 

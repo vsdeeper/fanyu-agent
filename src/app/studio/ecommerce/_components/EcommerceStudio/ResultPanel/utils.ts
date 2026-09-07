@@ -1,20 +1,23 @@
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import {
   EMPTY_DESIGN_HINT,
+  EMPTY_MAIN_IMAGE_HINT,
   EMPTY_POSTER_HINT,
   EMPTY_RESULT_HINT,
   EMPTY_VISUAL_HINT,
   RESULT_TITLE_DESIGN,
+  RESULT_TITLE_MAIN_IMAGE,
   RESULT_TITLE_POSTER,
   RESULT_TITLE_ANALYSIS,
   RESULT_TITLE_VISUAL,
 } from '../constants';
 import type { StudioPhase } from '../types';
-import { isPosterTask } from '../workflow';
+import { isMainImageTask, isPosterTask } from '../workflow';
 
 /** 右侧标题随步骤切换 */
 export function toResultHeadTitle(phase: StudioPhase, taskType: EcommerceTaskType): string {
   if (isDesignResultPhase(phase)) {
+    if (isMainImageTask(taskType)) return RESULT_TITLE_MAIN_IMAGE;
     return isPosterTask(taskType) ? RESULT_TITLE_POSTER : RESULT_TITLE_DESIGN;
   }
   if (isVisualResultPhase(phase)) return RESULT_TITLE_VISUAL;
@@ -36,8 +39,9 @@ export function isDesignResultPhase(phase: StudioPhase): boolean {
   return phase === 'design' || phase === 'designGenerating';
 }
 
-/** 第一步不展示上一步：主图/详情图为商业分析，海报为主视觉。 */
-export function isPrevVisible(phase: StudioPhase, isPoster = false): boolean {
+/** 第一步不展示上一步：主图为设计，海报为主视觉，详情图为商业分析。 */
+export function isPrevVisible(phase: StudioPhase, isPoster = false, isMainImage = false): boolean {
+  if (isMainImage) return phase !== 'design' && phase !== 'designGenerating';
   if (isPoster) return phase !== 'visual' && phase !== 'visualGenerating';
   return phase !== 'input' && phase !== 'analyzing' && phase !== 'analyzed';
 }
@@ -101,6 +105,7 @@ export function isNextDisabled(
 /** 空态提示随步骤切换 */
 export function toEmptyHint(phase: StudioPhase, taskType: EcommerceTaskType): string {
   if (isDesignResultPhase(phase)) {
+    if (isMainImageTask(taskType)) return EMPTY_MAIN_IMAGE_HINT;
     return isPosterTask(taskType) ? EMPTY_POSTER_HINT : EMPTY_DESIGN_HINT;
   }
   if (isVisualResultPhase(phase)) return EMPTY_VISUAL_HINT;

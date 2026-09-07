@@ -9,7 +9,7 @@ import { useThemeMode } from '@/components/theme';
 import { COMPLETE_BUTTON, NEXT_BUTTON, PREV_BUTTON, VISUAL_STANDARD_BADGE } from '../constants';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import type { DesignResultGroups, StudioPhase, StudioResultImage } from '../types';
-import { isPosterTask } from '../workflow';
+import { isMainImageTask, isPosterTask } from '../workflow';
 import {
   MARKDOWN_COMPONENTS,
   MARKDOWN_DISABLE_STYLES,
@@ -178,7 +178,7 @@ export default function ResultPanel({
         <div className={styles.scroll}>
           <DesignResultGroupsView
             groups={designResultGroups}
-            showTitles={!isPosterTask(taskType)}
+            showTitles={!isPosterTask(taskType) && !isMainImageTask(taskType)}
           />
         </div>
       ) : (
@@ -188,7 +188,7 @@ export default function ResultPanel({
         </div>
       )}
       <div className={styles.footer}>
-        {isPrevVisible(phase, isPoster) ? (
+        {isPrevVisible(phase, isPoster, isMainImageTask(taskType)) ? (
           <Button size="large" disabled={isEditing} onClick={onPrev}>
             {PREV_BUTTON}
           </Button>

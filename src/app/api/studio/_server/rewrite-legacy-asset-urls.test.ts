@@ -27,8 +27,8 @@ describe('rewriteLegacyStudioAssetUrls', () => {
   });
 
   it('递归处理数组且忽略非 URL 字符串', () => {
-    expect(rewriteLegacyStudioAssetUrls(['ok', { url: '/api/ecommerce/tasks/t/assets/a' }])).toEqual(
-      ['ok', { url: '/api/studio/ecommerce/tasks/t/assets/a' }],
-    );
+    expect(
+      rewriteLegacyStudioAssetUrls(['ok', { url: '/api/ecommerce/tasks/t/assets/a' }]),
+    ).toEqual(['ok', { url: '/api/studio/ecommerce/tasks/t/assets/a' }]);
   });
 });

@@ -27,10 +27,14 @@ export const NO_IMAGE_WARNING = '请先上传产品图';
 export const ANALYSIS_MISSING = '请先完成产品分析';
 export const VISUAL_SELECT_MISSING = '请先点选一张主视觉作为视觉标准';
 export const DESIGN_RESULT_MISSING = '请先生成至少一张视觉设计';
+export const MAIN_IMAGE_RESULT_MISSING = '请先生成至少一张主图';
 export const POSTER_RESULT_MISSING = '请先生成至少一张营销海报';
+export const REQUIREMENT_MISSING = '请先填写生成要求';
+export const ANALYSIS_UPLOAD_MISSING = '请先上传商业分析';
 export const ANALYZE_BUTTON = '开始分析';
 export const VISUAL_BUTTON = '生成营销主视觉';
 export const DESIGN_BUTTON = '生成视觉设计';
+export const MAIN_IMAGE_BUTTON = '生成主图';
 export const POSTER_BUTTON = '生成营销海报';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
@@ -41,11 +45,13 @@ export const GENERATE_FAILED = '生图失败，请稍后重试';
 export const EMPTY_RESULT_HINT = '上传产品资料和产品图，点击「分析产品」开始';
 export const EMPTY_VISUAL_HINT = '设置参数后点击「生成主视觉」';
 export const EMPTY_DESIGN_HINT = '设置视觉设计参数后点击「生成视觉设计」';
+export const EMPTY_MAIN_IMAGE_HINT = '设置参数后点击「生成主图」';
 export const EMPTY_POSTER_HINT = '设置参数后点击「生成营销海报」';
 
 export const RESULT_TITLE_ANALYSIS = '分析结果';
 export const RESULT_TITLE_VISUAL = '营销主视觉';
 export const RESULT_TITLE_DESIGN = '视觉设计';
+export const RESULT_TITLE_MAIN_IMAGE = '主图设计';
 export const RESULT_TITLE_POSTER = '营销海报';
 export const VISUAL_STANDARD_BADGE = '视觉标准';
 
@@ -72,6 +78,9 @@ export const DEFAULT_FORM_STATE: StudioFormState = {
   count: '1',
 };
 
+export const DEFAULT_MAIN_IMAGE_REQUIREMENT =
+  '根据产品精修图、商业分析设计整套电商主图，内容覆盖：产品展示、核心卖点、功能特点、使用场景、用户价值，一张图突出一个重点，版式统一，突出购买欲望。';
+
 export const DEFAULT_DESIGN_FORM_STATE: DesignFormState = {
   model: 'gpt-image-2-vip',
   taskType: '主图',
@@ -79,4 +88,5 @@ export const DEFAULT_DESIGN_FORM_STATE: DesignFormState = {
   quality: 'high',
   clarity: '2K',
   count: '1',
+  requirement: DEFAULT_MAIN_IMAGE_REQUIREMENT,
 };

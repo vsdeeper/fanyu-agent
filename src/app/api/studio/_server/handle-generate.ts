@@ -11,6 +11,7 @@ import {
 } from './constants';
 import {
   buildDesignPrompt,
+  buildMainImagePrompt,
   buildProductModelPrompt,
   buildProductMultiviewPrompt,
   buildProductRefinePrompt,
@@ -22,7 +23,7 @@ import { parseGenerateBody } from './parse-generate-request';
 import { createPushStreamResponse, encodeNdjsonLine, NDJSON_STREAM_HEADERS } from './stream-encode';
 
 /**
- * POST /api/studio/generate：按 kind 出产品精修、多视角、主视觉、模特或视觉设计图，NDJSON 推送每张 data URL。
+ * POST /api/studio/generate：按 kind 出产品精修、多视角、主视觉、主图、模特或视觉设计图，NDJSON 推送每张 data URL。
  */
 export async function handleStudioGenerate(req: Request): Promise<Response> {
   let json: unknown;
@@ -47,7 +48,7 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
     }
   }
 
-  if (body.kind === 'visual') {
+  if (body.kind === 'visual' || body.kind === 'mainImage') {
     if (body.productViewImages.length === 0) {
       return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_IMAGE, 400);
     }
@@ -80,6 +81,9 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
     ];
   } else if (body.kind === 'visual') {
     prompt = buildVisualPrompt(body.analysisText);
+    referenceImageDataUrls = body.productViewImages.map((image) => image.dataUrl);
+  } else if (body.kind === 'mainImage') {
+    prompt = buildMainImagePrompt(body.requirement, body.analysisText);
     referenceImageDataUrls = body.productViewImages.map((image) => image.dataUrl);
   } else {
     prompt = buildDesignPrompt(body.taskType, body.analysisText, body.includeModel);
