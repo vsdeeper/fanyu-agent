@@ -60,7 +60,7 @@ export default function ControlPanel({
           onRemove={onModelImageRemove}
         />
         <label className={styles.field}>
-          <span className={styles.label}>视角要求</span>
+          <span className={styles.label}>生成要求</span>
           <Input.TextArea
             value={form.viewRequirement}
             disabled={generating}
