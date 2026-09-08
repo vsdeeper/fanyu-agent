@@ -5,10 +5,11 @@ import { ArrowLeftOutlined } from '@ant-design/icons';
 import { App, Button, Layout, Steps, Tag, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import type { EcommerceTaskDetail } from '@/app/api/studio/ecommerce/_shared/task-types';
-import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
+import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import { ECOMMERCE_PATH } from '@/components/AppLayout/constants';
 import ModeSwitch from '@/components/ModeSwitch';
 import CompletionPanel from './CompletionPanel';
+import { toggleExportIndexByTheme } from './CompletionPanel/utils';
 import ControlPanel from './ControlPanel';
 import {
   ANALYZE_FAILED,
@@ -17,6 +18,7 @@ import {
   DESIGN_RESULT_MISSING,
   DEFAULT_DESIGN_FORM_STATE,
   DEFAULT_FORM_STATE,
+  DETAIL_IMAGE_RESULT_MISSING,
   GENERATE_FAILED,
   MAIN_IMAGE_RESULT_MISSING,
   MAX_MODEL_IMAGES,
@@ -42,7 +44,7 @@ import {
   appendProductDocs,
   appendProductImages,
   appendPendingDesignImages,
-  appendPendingMainImageImages,
+  appendPendingThemeImages,
   applyDesignGenerateEvent,
   applyGenerateEvent,
   assertOkOrJsonFail,
@@ -75,15 +77,19 @@ import {
   toAnalyzePayload,
   toAnalyzeImages,
   toDesignGeneratePayload,
-  toMainImageAnalyzePayload,
+  toDetailImageGeneratePayload,
+  toThemeAnalyzePayload,
   toMainImageGeneratePayload,
   toVisualGeneratePayload,
 } from './utils';
+import { parseDetailImagePlan } from './_utils/parse-detail-image-plan';
 import { parseMainImagePlan } from './_utils/parse-main-image-plan';
 import {
   getWorkflowStepIndex,
+  isDetailImageTask,
   isMainImageTask,
   isPosterTask,
+  isThemePlanTask,
   resolveEcommerceWorkflow,
 } from './workflow';
 import styles from './EcommerceStudio.module.css';
@@ -100,18 +106,20 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const router = useRouter();
   const poster = isPosterTask(task.taskType);
   const mainImage = isMainImageTask(task.taskType);
+  const detailImage = isDetailImageTask(task.taskType);
+  const themePlan = isThemePlanTask(task.taskType);
   const initialAnalysis = readAnalysisStepSnapshot(task.steps.analysis?.data);
-  const initialVisual = mainImage ? undefined : readVisualStepSnapshot(task.steps.visual?.data);
+  const initialVisual = themePlan ? undefined : readVisualStepSnapshot(task.steps.visual?.data);
   const initialDesign = readDesignStepSnapshot(task.steps.design?.data);
   const [images, setImages] = useState<ProductImageItem[]>(
-    mainImage
+    themePlan
       ? (initialDesign?.images ?? [])
       : poster
         ? (initialVisual?.images ?? [])
         : (initialAnalysis?.images ?? []),
   );
   const [documents, setDocuments] = useState<ProductDocItem[]>(
-    mainImage
+    themePlan
       ? (initialAnalysis?.documents ?? initialDesign?.documents ?? [])
       : poster
         ? (initialVisual?.documents ?? [])
@@ -122,40 +130,48 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     const base = initialDesign?.form ?? {
       ...DEFAULT_DESIGN_FORM_STATE,
       taskType: task.taskType,
+      ...(detailImage ? { aspectRatio: '3:4' } : {}),
     };
     if (mainImage) return { ...base, taskType: '主图' };
+    if (detailImage) return { ...base, taskType: '详情图', aspectRatio: base.aspectRatio || '3:4' };
     return poster ? { ...base, taskType: '营销海报' } : base;
   });
   const [modelImages, setModelImages] = useState<ProductImageItem[]>(
     initialDesign?.modelImages ?? [],
   );
   const [phase, setPhase] = useState<StudioPhase>(
-    resolveInitialStudioPhase(initialAnalysis, poster, mainImage, Boolean(initialDesign)),
+    resolveInitialStudioPhase(initialAnalysis, poster, themePlan, Boolean(initialDesign)),
   );
   const [analysisText, setAnalysisText] = useState(
-    mainImage
+    themePlan
       ? (initialAnalysis?.analysisText ?? '')
       : poster
         ? (initialVisual?.analysisText ?? '')
         : (initialAnalysis?.analysisText ?? ''),
   );
-  const initialParsedPlan = mainImage
-    ? parseMainImagePlan(initialAnalysis?.analysisText ?? '')
+  const initialParsedPlan = themePlan
+    ? (detailImage ? parseDetailImagePlan : parseMainImagePlan)(initialAnalysis?.analysisText ?? '')
     : { cards: [] };
-  const [planCards, setPlanCards] = useState<MainImagePlanCard[]>(
+  const [planCards, setPlanCards] = useState<ThemePlanCard[]>(
     initialAnalysis?.planCards?.length ? initialAnalysis.planCards : initialParsedPlan.cards,
   );
   const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>(
     initialAnalysis?.selectedThemeIds ?? [],
   );
   const [visualImages, setVisualImages] = useState<StudioResultImage[]>(
-    mainImage ? [] : (initialVisual?.visualImages ?? []),
+    themePlan ? [] : (initialVisual?.visualImages ?? []),
   );
   const [designResultGroups, setDesignResultGroups] = useState<DesignResultGroups>(
     initialDesign?.designResultGroups ?? {},
   );
   const [selectedVisualIndex, setSelectedVisualIndex] = useState<number | null>(
-    mainImage ? null : (initialVisual?.selectedVisualIndex ?? null),
+    themePlan ? null : (initialVisual?.selectedVisualIndex ?? null),
+  );
+  const [referenceImageIndex, setReferenceImageIndex] = useState<number | null>(
+    initialDesign?.referenceImageIndex ?? null,
+  );
+  const [selectedExportIndexes, setSelectedExportIndexes] = useState<number[]>(
+    initialDesign?.selectedExportIndexes ?? [],
   );
   const [nextLoading, setNextLoading] = useState(false);
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
@@ -211,22 +227,22 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   }, [analysisBuffer]);
 
   // 落盘与下一步/完成共用同一份动作：把当前步左栏 + 右栏整体快照入库（data: URL 由服务端转资产 URL）
-  // 注：详情图分析变更后，下游 visual/design 在 handleNext 时删除；主图保留已出主图。生成完成即落库不误删已提交结果
+  // 主题规划类分析变更后保留已出图；非主题规划任务在 handleNext 时删除下游 visual/design。生成完成即落库不误删已提交结果
   const persistAnalysisStep = useCallback(
     async (
       imgs: ProductImageItem[],
       docs: ProductDocItem[],
       text: string,
       extras?: {
-        planCards?: MainImagePlanCard[];
+        planCards?: ThemePlanCard[];
         selectedThemeIds?: string[];
       },
     ) => {
       const next = await createAnalysisStepSnapshot(
-        mainImage ? [] : imgs,
+        themePlan ? [] : imgs,
         docs,
         text,
-        mainImage
+        themePlan
           ? {
               planCards: extras?.planCards ?? planCards,
               selectedThemeIds: extras?.selectedThemeIds ?? selectedThemeIds,
@@ -236,13 +252,13 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.analysis)) return;
       const saved = await saveStudioStep(task.id, 'analysis', next);
       lastSnapshotsRef.current.analysis = saved;
-      if (!mainImage) setImages(saved.images);
+      if (!themePlan) setImages(saved.images);
       setDocuments(saved.documents);
       setAnalysisText(saved.analysisText);
       if (saved.planCards) setPlanCards(saved.planCards);
       if (saved.selectedThemeIds) setSelectedThemeIds(saved.selectedThemeIds);
     },
-    [mainImage, planCards, selectedThemeIds, task.id, setImages, setDocuments, setAnalysisText],
+    [themePlan, planCards, selectedThemeIds, task.id, setImages, setDocuments, setAnalysisText],
   );
 
   const persistVisualStep = useCallback(
@@ -273,9 +289,15 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         df,
         groups,
         modelImgs,
-        mainImage
+        themePlan
           ? {
               images: imagesRef.current,
+              ...(detailImage
+                ? {
+                    referenceImageIndex,
+                    selectedExportIndexes,
+                  }
+                : {}),
             }
           : undefined,
       );
@@ -287,10 +309,19 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       setModelImages(saved.modelImages);
       if (saved.images) setImages(saved.images);
       if (saved.documents) setDocuments(saved.documents);
-      if (typeof saved.analysisText === 'string' && !mainImage) setAnalysisText(saved.analysisText);
+      if (typeof saved.analysisText === 'string' && !themePlan) setAnalysisText(saved.analysisText);
+      if (typeof saved.referenceImageIndex === 'number' || saved.referenceImageIndex === null) {
+        setReferenceImageIndex(saved.referenceImageIndex);
+      }
+      if (Array.isArray(saved.selectedExportIndexes)) {
+        setSelectedExportIndexes(saved.selectedExportIndexes);
+      }
     },
     [
-      mainImage,
+      detailImage,
+      referenceImageIndex,
+      selectedExportIndexes,
+      themePlan,
       task.id,
       setDesignForm,
       setDesignResultGroups,
@@ -301,11 +332,14 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     ],
   );
 
-  const streamedPlan = mainImage && phase === 'analyzing' ? parseMainImagePlan(analysisText) : null;
+  const streamedPlan =
+    themePlan && phase === 'analyzing'
+      ? (detailImage ? parseDetailImagePlan : parseMainImagePlan)(analysisText)
+      : null;
   const displayPlanCards = streamedPlan ? streamedPlan.cards : planCards;
 
   const handleAnalyze = useCallback(async () => {
-    if (mainImage) {
+    if (themePlan) {
       if (documents.length === 0) {
         message.warning(ANALYSIS_UPLOAD_MISSING);
         return;
@@ -319,7 +353,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     abortRef.current = controller;
     setPhase('analyzing');
     analysisBuffer.reset();
-    if (mainImage) {
+    if (themePlan) {
       setPlanCards([]);
       setSelectedThemeIds([]);
     } else {
@@ -328,11 +362,11 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       setSelectedVisualIndex(null);
     }
     try {
-      const payload = mainImage
-        ? await toMainImageAnalyzePayload(documents)
+      const payload = themePlan
+        ? await toThemeAnalyzePayload(documents, detailImage ? 'detailImage' : 'mainImage')
         : await toAnalyzePayload(images, documents);
       const res = await fetch(
-        mainImage ? '/api/studio/ecommerce/analyze' : '/api/studio/business-analysis/analyze',
+        themePlan ? '/api/studio/ecommerce/analyze' : '/api/studio/business-analysis/analyze',
         {
           method: 'POST',
           headers: {
@@ -363,8 +397,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       }
       if (receivedDone) {
         const text = analysisBuffer.getText();
-        if (mainImage) {
-          const parsed = parseMainImagePlan(text);
+        if (themePlan) {
+          const parsed = (detailImage ? parseDetailImagePlan : parseMainImagePlan)(text);
           setPlanCards(parsed.cards);
           analysisDirtyRef.current = true;
           setPhase('analyzed');
@@ -403,13 +437,14 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   }, [
     abortCurrent,
     analysisBuffer,
+    detailImage,
     documents,
     images,
-    mainImage,
     message,
     persistAnalysisStep,
     setModelImages,
     setPhase,
+    themePlan,
   ]);
 
   const handleGenerateVisual = useCallback(async () => {
@@ -501,7 +536,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     }
     const selectedCards = planCards.filter((card) => selectedThemeIds.includes(card.themeId));
     let analysisFromDocs = '';
-    if (mainImage) {
+    if (themePlan) {
       if (selectedCards.length === 0) {
         message.warning(THEME_SELECT_MISSING);
         return;
@@ -519,9 +554,11 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       ? { ...designForm, taskType: '营销海报' as const }
       : mainImage
         ? { ...designForm, taskType: '主图' as const }
-        : designForm;
+        : detailImage
+          ? { ...designForm, taskType: '详情图' as const }
+          : designForm;
     let visualDataUrl = '';
-    if (!mainImage) {
+    if (!themePlan) {
       const selected = getSelectedResultImageUrl(visualImages, selectedVisualIndex);
       if (!selected) {
         message.warning(VISUAL_SELECT_MISSING);
@@ -529,15 +566,24 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       }
       visualDataUrl = selected;
     }
+    let previousScreenDataUrl: string | undefined;
+    if (detailImage && referenceImageIndex !== null) {
+      const selected = getSelectedResultImageUrl(
+        designResultGroups['详情图'] ?? [],
+        referenceImageIndex,
+      );
+      if (selected) previousScreenDataUrl = await readUrlAsDataUrl(selected);
+    }
     abortCurrent();
     const controller = new AbortController();
     abortRef.current = controller;
     const taskType = nextDesignForm.taskType;
     const batchStartIndex = designResultGroups[taskType]?.length ?? 0;
     const perCardCount = Number.parseInt(nextDesignForm.count, 10) || 1;
-    let nextDesignResultGroups = mainImage
-      ? appendPendingMainImageImages(
+    let nextDesignResultGroups = themePlan
+      ? appendPendingThemeImages(
           designResultGroups,
+          taskType,
           selectedCards,
           perCardCount,
           nextDesignForm.aspectRatio,
@@ -551,8 +597,21 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setPhase('designGenerating');
     setDesignResultGroups(nextDesignResultGroups);
     try {
-      const body = mainImage
-        ? await toMainImageGeneratePayload(nextDesignForm, analysisFromDocs, selectedCards, images)
+      const body = themePlan
+        ? detailImage
+          ? await toDetailImageGeneratePayload(
+              nextDesignForm,
+              analysisFromDocs,
+              selectedCards,
+              images,
+              previousScreenDataUrl,
+            )
+          : await toMainImageGeneratePayload(
+              nextDesignForm,
+              analysisFromDocs,
+              selectedCards,
+              images,
+            )
         : await toDesignGeneratePayload(
             nextDesignForm,
             analysisText,
@@ -619,6 +678,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     analysisText,
     designForm,
     designResultGroups,
+    detailImage,
     documents,
     expectedDesignCount,
     images,
@@ -628,10 +688,12 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     persistDesignStep,
     planCards,
     poster,
+    referenceImageIndex,
     selectedThemeIds,
     selectedVisualIndex,
     setDesignForm,
     setPhase,
+    themePlan,
     visualImages,
   ]);
 
@@ -651,13 +713,13 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
 
   const handleDocsAppend = useCallback(
     (files: File[]) => {
-      const singleDoc = poster || mainImage;
+      const singleDoc = poster || themePlan;
       setDocuments((current) => appendProductDocs(current, files, singleDoc ? 1 : undefined));
       if (poster && files[0]) {
         void files[0].text().then((text) => setAnalysisText(text));
       }
     },
-    [mainImage, poster, setDocuments, setAnalysisText],
+    [poster, setDocuments, setAnalysisText, themePlan],
   );
 
   const handleDocRemove = useCallback(
@@ -687,11 +749,50 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setSelectedVisualIndex(index);
   }, []);
 
-  const handlePrev = useCallback(() => {
+  const handleSelectReference = useCallback((index: number) => {
+    setReferenceImageIndex((current) => (current === index ? null : index));
+  }, []);
+
+  const handleSelectExport = useCallback(
+    (index: number) => {
+      setSelectedExportIndexes((current) =>
+        toggleExportIndexByTheme(current, index, designResultGroups['详情图'] ?? []),
+      );
+    },
+    [designResultGroups],
+  );
+
+  const handleExportPersist = useCallback(async () => {
+    try {
+      await persistDesignStep(designForm, designResultGroups, modelImages);
+    } catch (err) {
+      console.error('[ecommerce-studio] persist design on export', err);
+    }
+  }, [designForm, designResultGroups, modelImages, persistDesignStep]);
+
+  const handlePrev = useCallback(async () => {
     // 以进行中请求为准中止，避免相位与 abortRef 短暂不一致时漏 abort
     if (abortRef.current) abortCurrent();
-    setPhase((current) => phaseAfterPrev(current, poster, mainImage));
-  }, [abortCurrent, mainImage, poster, setPhase]);
+    if (detailImage && phase === 'complete') {
+      try {
+        await persistDesignStep(designForm, designResultGroups, modelImages);
+      } catch (err) {
+        console.error('[ecommerce-studio] persist design on prev', err);
+      }
+    }
+    setPhase((current) => phaseAfterPrev(current, poster, themePlan));
+  }, [
+    abortCurrent,
+    designForm,
+    designResultGroups,
+    detailImage,
+    modelImages,
+    persistDesignStep,
+    phase,
+    poster,
+    setPhase,
+    themePlan,
+  ]);
 
   const handleNext = useCallback(async () => {
     if (phase === 'visual' && selectedVisualIndex === null) {
@@ -709,7 +810,9 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
           ? MAIN_IMAGE_RESULT_MISSING
           : isPosterTask(task.taskType)
             ? POSTER_RESULT_MISSING
-            : DESIGN_RESULT_MISSING,
+            : isDetailImageTask(task.taskType)
+              ? DETAIL_IMAGE_RESULT_MISSING
+              : DESIGN_RESULT_MISSING,
       );
       return;
     }
@@ -721,10 +824,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
           images,
           documents,
           analysisText,
-          mainImage ? { selectedThemeIds } : undefined,
+          themePlan ? { selectedThemeIds } : undefined,
         );
         if (analysisDirtyRef.current) {
-          if (!mainImage) {
+          if (!themePlan) {
             await Promise.all([
               deleteStudioStep(task.id, 'visual'),
               deleteStudioStep(task.id, 'design'),
@@ -739,7 +842,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       } else if (phase === 'design') {
         await persistDesignStep(designForm, designResultGroups, modelImages);
       }
-      setPhase((current) => phaseAfterNext(current, mainImage));
+      setPhase((current) => phaseAfterNext(current, themePlan));
     } catch (err) {
       console.error('[ecommerce-studio] persist step on next', err);
     } finally {
@@ -752,7 +855,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     documents,
     form,
     images,
-    mainImage,
     message,
     modelImages,
     persistAnalysisStep,
@@ -765,16 +867,23 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setPhase,
     task.id,
     task.taskType,
+    themePlan,
     visualImages,
   ]);
 
   const selectedCards = planCards.filter((card) => selectedThemeIds.includes(card.themeId));
 
-  const handleToggleTheme = useCallback((themeId: string) => {
-    setSelectedThemeIds((current) =>
-      current.includes(themeId) ? current.filter((id) => id !== themeId) : [...current, themeId],
-    );
-  }, []);
+  const handleToggleTheme = useCallback(
+    (themeId: string) => {
+      setSelectedThemeIds((current) => {
+        if (detailImage) return current[0] === themeId ? [] : [themeId];
+        return current.includes(themeId)
+          ? current.filter((id) => id !== themeId)
+          : [...current, themeId];
+      });
+    },
+    [detailImage],
+  );
 
   const handlePlanCardSave = useCallback(
     (themeId: string, requirement: string) => {
@@ -823,9 +932,14 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
               analysisText={analysisText}
               visualImages={visualImages}
               designResultGroups={designResultGroups}
-              showDesignTitles={!mainImage}
-              groupByTheme={mainImage}
-              onPrev={handlePrev}
+              taskType={task.taskType}
+              showDesignTitles={!themePlan}
+              groupByTheme={themePlan}
+              detailPreview={detailImage}
+              selectedExportIndexes={selectedExportIndexes}
+              onSelectExport={handleSelectExport}
+              onPrev={() => void handlePrev()}
+              onExportPersist={handleExportPersist}
             />
           ) : (
             <>
@@ -840,7 +954,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 formLocked={formLocked}
                 canGenerateVisual={images.length > 0 && Boolean(analysisText.trim())}
                 canGenerateDesign={
-                  mainImage
+                  themePlan
                     ? images.length > 0 && selectedCards.length > 0 && documents.length > 0
                     : true
                 }
@@ -870,8 +984,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 isPoster={poster}
                 planCards={displayPlanCards}
                 selectedThemeIds={selectedThemeIds}
+                referenceImageIndex={referenceImageIndex}
                 onSelectVisual={handleSelectVisual}
-                onPrev={handlePrev}
+                onSelectReference={handleSelectReference}
+                onPrev={() => void handlePrev()}
                 onNext={handleNext}
                 onAnalysisTextChange={setAnalysisText}
                 onToggleTheme={handleToggleTheme}

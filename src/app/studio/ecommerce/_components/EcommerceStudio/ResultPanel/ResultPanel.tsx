@@ -6,11 +6,19 @@ import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
 import { useState } from 'react';
 import { useThemeMode } from '@/components/theme';
-import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
-import { COMPLETE_BUTTON, NEXT_BUTTON, PREV_BUTTON, VISUAL_STANDARD_BADGE } from '../constants';
+import { DETAIL_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/detail-image-plan';
+import { MAIN_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
+import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
+import {
+  COMPLETE_BUTTON,
+  NEXT_BUTTON,
+  PREV_BUTTON,
+  PREVIOUS_SCREEN_BADGE,
+  VISUAL_STANDARD_BADGE,
+} from '../constants';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import type { DesignResultGroups, StudioPhase, StudioResultImage } from '../types';
-import { isMainImageTask, isPosterTask } from '../workflow';
+import { isDetailImageTask, isPosterTask, isThemePlanTask } from '../workflow';
 import {
   MARKDOWN_COMPONENTS,
   MARKDOWN_DISABLE_STYLES,
@@ -19,7 +27,7 @@ import {
 } from './constants';
 import ResultImageGrid from './ResultImageGrid';
 import DesignResultGroupsView from './DesignResultGroups';
-import MainImagePlanCards from './MainImagePlanCards';
+import ThemePlanCards from './ThemePlanCards';
 import { usePlanStreamScroll } from './hooks/usePlanStreamScroll';
 import {
   groupResultImagesByRatio,
@@ -44,9 +52,11 @@ type ResultPanelProps = {
   selectedVisualIndex: number | null;
   nextLoading: boolean;
   isPoster?: boolean;
-  planCards?: MainImagePlanCard[];
+  planCards?: ThemePlanCard[];
   selectedThemeIds?: string[];
+  referenceImageIndex?: number | null;
   onSelectVisual: (index: number) => void;
+  onSelectReference?: (index: number) => void;
   onPrev: () => void;
   onNext: () => void;
   onAnalysisTextChange: (next: string) => void;
@@ -55,7 +65,7 @@ type ResultPanelProps = {
 };
 
 /**
- * 右侧结果区：空态、分析 Markdown 或主图主题卡、主视觉与设计结果；
+ * 右侧结果区：空态、分析 Markdown 或主题规划卡、主视觉与设计结果；
  * 右下角下一步，上一步仅第二步起显示。
  */
 export default function ResultPanel({
@@ -71,7 +81,9 @@ export default function ResultPanel({
   isPoster = false,
   planCards = [],
   selectedThemeIds = [],
+  referenceImageIndex = null,
   onSelectVisual,
+  onSelectReference,
   onPrev,
   onNext,
   onAnalysisTextChange,
@@ -82,30 +94,31 @@ export default function ResultPanel({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [planEditing, setPlanEditing] = useState(false);
-  const mainImage = isMainImageTask(taskType);
-  const showPlan = isPlanPhase(phase) && Boolean(analysisText) && !mainImage;
-  const showMainImagePlan = mainImage && isPlanPhase(phase) && planCards.length > 0;
+  const themePlan = isThemePlanTask(taskType);
+  const detailImage = isDetailImageTask(taskType);
+  const showPlan = isPlanPhase(phase) && Boolean(analysisText) && !themePlan;
+  const showThemePlan = themePlan && isPlanPhase(phase) && planCards.length > 0;
   const showVisualGrid = isVisualResultPhase(phase) && visualImages.length > 0;
   const visualRatioGroups = groupResultImagesByRatio(visualImages);
   const showDesignGroups =
     isDesignResultPhase(phase) &&
     Object.values(designResultGroups).some((images) => Boolean(images?.length));
   const isEditing = editing && phase === 'analyzed';
-  const canEdit = phase === 'analyzed' && Boolean(analysisText) && !editing && !mainImage;
+  const canEdit = phase === 'analyzed' && Boolean(analysisText) && !editing && !themePlan;
   const hasDesignResults = Object.values(designResultGroups).some((images) =>
     images?.some((image) => image.status === 'ready' && Boolean(image.url)),
   );
   const nextDisabled =
     isEditing ||
     isNextDisabled(phase, analysisText, selectedVisualIndex, hasDesignResults, {
-      isMainImage: mainImage,
+      isThemePlan: themePlan,
       selectedThemeCount: selectedThemeIds.length,
       isEditing: planEditing,
     });
   const { scrollRef, contentRef, onScroll } = usePlanStreamScroll(
-    showPlan || showMainImagePlan,
+    showPlan || showThemePlan,
     analysisStreaming,
-    showMainImagePlan ? planCards.map((card) => card.requirement).join('\n') : analysisText,
+    showThemePlan ? planCards.map((card) => card.requirement).join('\n') : analysisText,
   );
 
   const startEdit = () => {
@@ -152,12 +165,13 @@ export default function ResultPanel({
             style={{ height: '100%' }}
           />
         </div>
-      ) : showMainImagePlan ? (
+      ) : showThemePlan ? (
         <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
           <div ref={contentRef}>
-            <MainImagePlanCards
+            <ThemePlanCards
               cards={planCards}
               selectedThemeIds={selectedThemeIds}
+              selectionMode={detailImage ? 'single' : 'multiple'}
               streaming={analysisStreaming}
               onToggleTheme={onToggleTheme ?? (() => undefined)}
               onCardSave={onPlanCardSave ?? (() => undefined)}
@@ -209,8 +223,13 @@ export default function ResultPanel({
         <div className={styles.scroll}>
           <DesignResultGroupsView
             groups={designResultGroups}
-            showTitles={!isPosterTask(taskType) && !mainImage}
-            groupByTheme={mainImage}
+            showTitles={!isPosterTask(taskType) && !themePlan}
+            groupByTheme={themePlan}
+            themes={detailImage ? DETAIL_IMAGE_THEMES : MAIN_IMAGE_THEMES}
+            selectable={detailImage && phase === 'design'}
+            selectedIndex={detailImage ? referenceImageIndex : null}
+            selectedBadge={detailImage ? PREVIOUS_SCREEN_BADGE : undefined}
+            onSelect={detailImage ? onSelectReference : undefined}
           />
         </div>
       ) : (
@@ -220,7 +239,7 @@ export default function ResultPanel({
         </div>
       )}
       <div className={styles.footer}>
-        {isPrevVisible(phase, isPoster, mainImage) ? (
+        {isPrevVisible(phase, isPoster, themePlan) ? (
           <Button size="large" disabled={isEditing || planEditing} onClick={onPrev}>
             {PREV_BUTTON}
           </Button>

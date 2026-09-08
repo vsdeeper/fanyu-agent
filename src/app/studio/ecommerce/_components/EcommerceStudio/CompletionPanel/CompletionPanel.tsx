@@ -2,7 +2,10 @@ import { DownloadOutlined, FileTextOutlined, StarOutlined } from '@ant-design/ic
 import { Button, Empty, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import FileCard from '@/components/FileCard';
+import { DETAIL_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/detail-image-plan';
+import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import AnalysisPreview from './AnalysisPreview';
+import PhoneConcatPreview from './PhoneConcatPreview';
 import { PREV_BUTTON } from '../constants';
 import type { DesignResultGroups, StudioResultImage } from '../types';
 import DesignResultGroupsView from '../ResultPanel/DesignResultGroups';
@@ -17,16 +20,21 @@ import {
   VISUAL_GROUP_TITLE,
 } from './constants';
 import { useExportResultImages } from './hooks/useExportResultImages';
-import { getGeneratedDesignGroups, getGeneratedImages } from './utils';
+import { getGeneratedDesignGroups, getGeneratedImages, orderSelectedImagesByTheme } from './utils';
 import styles from './CompletionPanel.module.css';
 
 type CompletionPanelProps = {
   analysisText: string;
   visualImages: readonly StudioResultImage[];
   designResultGroups: DesignResultGroups;
+  taskType: EcommerceTaskType;
   showDesignTitles?: boolean;
   groupByTheme?: boolean;
+  detailPreview?: boolean;
+  selectedExportIndexes?: number[];
+  onSelectExport?: (index: number) => void;
   onPrev: () => void;
+  onExportPersist?: () => void | Promise<void>;
 };
 
 /** 汇总商业分析、营销主视觉与各类视觉设计，并提供全部图片打包导出。 */
@@ -34,33 +42,52 @@ export default function CompletionPanel({
   analysisText,
   visualImages,
   designResultGroups,
+  taskType,
   showDesignTitles = true,
   groupByTheme = false,
+  detailPreview = false,
+  selectedExportIndexes = [],
+  onSelectExport,
   onPrev,
+  onExportPersist,
 }: CompletionPanelProps) {
   const visualResults = getGeneratedImages(visualImages);
   const designResults = getGeneratedDesignGroups(designResultGroups);
   const hasDesignResults = Object.keys(designResults).length > 0;
   const hasResults = visualResults.length > 0 || hasDesignResults;
   const [open, setOpen] = useState(false);
+  const detailImages = designResults['详情图'] ?? [];
+  const selectedDetailImages = orderSelectedImagesByTheme(
+    detailImages,
+    selectedExportIndexes,
+    DETAIL_IMAGE_THEMES,
+  );
   const { exporting, handleExport } = useExportResultImages(
     visualResults,
     designResults,
     analysisText,
+    taskType,
+    detailPreview ? selectedDetailImages : undefined,
   );
   const analysisFile = useMemo(() => {
-    if (!analysisText.trim()) return undefined;
+    if (detailPreview || !analysisText.trim()) return undefined;
     return {
       href: URL.createObjectURL(new Blob([analysisText], { type: ANALYSIS_MEDIA_TYPE })),
       byteSize: new TextEncoder().encode(analysisText).length,
     };
-  }, [analysisText]);
+  }, [analysisText, detailPreview]);
   useEffect(() => {
     return () => {
       if (analysisFile) URL.revokeObjectURL(analysisFile.href);
     };
   }, [analysisFile]);
   const visualGroups = groupResultImagesByRatio(visualResults);
+  const exportDisabled = detailPreview ? selectedDetailImages.length === 0 : !hasResults;
+
+  const runExport = async () => {
+    await onExportPersist?.();
+    await handleExport();
+  };
 
   return (
     <section className={styles.panel}>
@@ -68,8 +95,29 @@ export default function CompletionPanel({
         <StarOutlined className={styles.star} />
         {COMPLETION_TITLE}
       </div>
-      <div className={styles.scroll}>
-        {hasResults || analysisFile ? (
+      <div className={detailPreview ? styles.splitScroll : styles.scroll}>
+        {detailPreview ? (
+          <>
+            <div className={styles.splitMain}>
+              {hasDesignResults ? (
+                <DesignResultGroupsView
+                  groups={designResults}
+                  showTitles={false}
+                  groupByTheme
+                  themes={DETAIL_IMAGE_THEMES}
+                  selectable
+                  selectedIndexes={selectedExportIndexes}
+                  onSelect={onSelectExport}
+                />
+              ) : (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生成图片" />
+              )}
+            </div>
+            <aside className={styles.splitSide}>
+              <PhoneConcatPreview images={selectedDetailImages} />
+            </aside>
+          </>
+        ) : hasResults || analysisFile ? (
           <div className={styles.groups}>
             {analysisFile ? (
               <>
@@ -131,8 +179,8 @@ export default function CompletionPanel({
           type="primary"
           icon={<DownloadOutlined />}
           loading={exporting}
-          disabled={!hasResults}
-          onClick={handleExport}
+          disabled={exportDisabled}
+          onClick={() => void runExport()}
         >
           {EXPORT_BUTTON}
         </Button>

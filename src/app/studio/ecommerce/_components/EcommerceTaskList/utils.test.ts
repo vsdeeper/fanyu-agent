@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatTaskDateTime, getTaskEditorPath, normalizeSearchName } from './utils';
+import { stepLabelFor } from './constants';
 
 describe('getTaskEditorPath', () => {
   it('生成流程设计页地址', () => {
@@ -23,5 +24,14 @@ describe('normalizeSearchName', () => {
   it('空白视为未筛选', () => {
     expect(normalizeSearchName('  ')).toBeUndefined();
     expect(normalizeSearchName(' 主图 ')).toBe('主图');
+  });
+});
+
+describe('stepLabelFor', () => {
+  it('详情图显示结构规划与详情图设计', () => {
+    expect(stepLabelFor('详情图', 'analysis')).toBe('结构规划');
+    expect(stepLabelFor('详情图', 'design')).toBe('详情图设计');
+    expect(stepLabelFor('主图', 'analysis')).toBe('商业分析');
+    expect(stepLabelFor('主图', 'design')).toBe('视觉设计');
   });
 });

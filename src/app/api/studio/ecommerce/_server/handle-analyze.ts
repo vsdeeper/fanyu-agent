@@ -17,8 +17,11 @@ import {
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 import { INVALID_FORM, INVALID_JSON } from '@/app/api/studio/_server/constants';
 import { ANALYZE_FAILED, EMPTY_ANALYSIS_DOC } from './constants';
-import { MAIN_IMAGE_ANALYZE_INSTRUCTIONS } from './analyze-instructions';
-import { parseMainImageAnalyzeBody } from './parse-analyze-request';
+import {
+  DETAIL_IMAGE_ANALYZE_INSTRUCTIONS,
+  MAIN_IMAGE_ANALYZE_INSTRUCTIONS,
+} from './analyze-instructions';
+import { parseEcommerceAnalyzeBody, type EcommerceAnalyzeKind } from './parse-analyze-request';
 import {
   createPushStreamResponse,
   encodeSseEvent,
@@ -31,17 +34,30 @@ type SseSend = (event: string, data: unknown) => Promise<void>;
 /**
  * 把商业分析资料拼成 streamText 的用户 prompt。
  */
-function buildMainImageAnalyzePrompt(documentsText: string): string {
+function buildAnalyzePrompt(kind: EcommerceAnalyzeKind, documentsText: string): string {
+  if (kind === 'detailImage') {
+    return [
+      '【详情图结构规划】请按指令输出六个互斥主题卡，每张含设计目标与展示重点。本轮不要出图。',
+      `- 商业分析：${documentsText}`,
+    ].join('\n');
+  }
   return [
     '【主图分析】请按指令输出五个互斥主题卡，每张含文案与互斥拍摄场景。本轮不要出图。',
     `- 商业分析：${documentsText}`,
   ].join('\n');
 }
 
+function analyzeInstructions(kind: EcommerceAnalyzeKind): string {
+  return kind === 'detailImage'
+    ? DETAIL_IMAGE_ANALYZE_INSTRUCTIONS
+    : MAIN_IMAGE_ANALYZE_INSTRUCTIONS;
+}
+
 /**
- * 抽取商业分析并流式输出主图策划 Markdown。
+ * 抽取商业分析并流式输出策划 Markdown。
  */
-async function pipeMainImageAnalyzeEvents(
+async function pipeAnalyzeEvents(
+  kind: EcommerceAnalyzeKind,
   documents: { filename: string; mediaType: string; dataUrl: string }[],
   signal: AbortSignal,
   send: SseSend,
@@ -64,8 +80,8 @@ async function pipeMainImageAnalyzeEvents(
 
   const result = streamText({
     model: runtime.getMainModel(getModelId(provider, 'pro')),
-    instructions: MAIN_IMAGE_ANALYZE_INSTRUCTIONS,
-    prompt: buildMainImageAnalyzePrompt(documentsText),
+    instructions: analyzeInstructions(kind),
+    prompt: buildAnalyzePrompt(kind, documentsText),
     abortSignal: signal,
     providerOptions: { openai: openaiOptions },
   });
@@ -89,9 +105,9 @@ async function pipeMainImageAnalyzeEvents(
 }
 
 /**
- * POST /api/studio/ecommerce/analyze：仅商业分析文档，规划五张含互斥拍摄场景的主题卡。
+ * POST /api/studio/ecommerce/analyze：仅商业分析文档，按 kind 规划主图或详情图主题卡。
  */
-export async function handleEcommerceMainImageAnalyze(req: Request): Promise<Response> {
+export async function handleEcommerceAnalyze(req: Request): Promise<Response> {
   let json: unknown;
   try {
     json = await req.json();
@@ -99,7 +115,7 @@ export async function handleEcommerceMainImageAnalyze(req: Request): Promise<Res
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseMainImageAnalyzeBody(json);
+  const body = parseEcommerceAnalyzeBody(json);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
@@ -109,7 +125,7 @@ export async function handleEcommerceMainImageAnalyze(req: Request): Promise<Res
     async (write) => {
       const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
       try {
-        await pipeMainImageAnalyzeEvents(body.documents, req.signal, send);
+        await pipeAnalyzeEvents(body.kind, body.documents, req.signal, send);
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[ecommerce/analyze]', err);

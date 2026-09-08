@@ -11,7 +11,8 @@ export type StudioGenerateKind =
   | 'productModel'
   | 'visual'
   | 'design'
-  | 'mainImage';
+  | 'mainImage'
+  | 'detailImage';
 
 type StudioGenerateBase = {
   model: string;
@@ -85,6 +86,20 @@ export type StudioMainImageGenerateRequest = StudioGenerateBase & {
   productViewImages: StudioImageInput[];
 };
 
+/** 电商详情图：规格 + 商业分析 + 当前屏主题卡 + 产品精修图 + 可选上一屏 */
+export type StudioDetailImageGenerateRequest = StudioGenerateBase & {
+  kind: 'detailImage';
+  count: number;
+  analysisText: string;
+  requirements: Array<{
+    themeId: string;
+    title: string;
+    requirement: string;
+  }>;
+  productViewImages: StudioImageInput[];
+  previousScreenDataUrl?: string;
+};
+
 export type StudioGenerateRequest =
   | StudioProductRefineGenerateRequest
   | StudioProductMultiviewGenerateRequest
@@ -92,7 +107,8 @@ export type StudioGenerateRequest =
   | StudioProductModelGenerateRequest
   | StudioVisualGenerateRequest
   | StudioDesignGenerateRequest
-  | StudioMainImageGenerateRequest;
+  | StudioMainImageGenerateRequest
+  | StudioDetailImageGenerateRequest;
 
 export type StudioGenerateImageEvent = {
   index: number;

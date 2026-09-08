@@ -18,3 +18,18 @@ export const STEP_LABELS = {
   visual: '营销主视觉',
   design: '视觉设计',
 } as const;
+
+export const DETAIL_IMAGE_STEP_LABELS = {
+  analysis: '结构规划',
+  visual: '营销主视觉',
+  design: '详情图设计',
+} as const;
+
+/** 列表「已产出步骤」文案：详情图用结构规划/详情图设计，其余沿用默认。 */
+export function stepLabelFor(
+  taskType: (typeof ECOMMERCE_TASK_TYPES)[number],
+  key: keyof typeof STEP_LABELS,
+): string {
+  if (taskType === '详情图') return DETAIL_IMAGE_STEP_LABELS[key];
+  return STEP_LABELS[key];
+}

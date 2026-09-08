@@ -102,6 +102,16 @@ export async function downloadImage(
   return { bytes, mimeType: sniffImageMime(bytes, headerMime || 'image/jpeg') };
 }
 
+/** 单张出站生图超时。低于 studio/chat route `maxDuration` 600s，给 2K/high 慢模型留足时间。 */
+export const IMAGE_REQUEST_TIMEOUT_MS = 540_000;
+
+/**
+ * 出站 fetch 被中止（用户取消或单张超时）。不含业务 Error。
+ */
+export function isImageAbortError(err: unknown): boolean {
+  return err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError');
+}
+
 /**
  * 组装出站生图的 abort 信号：转发入参 signal 的中止事件 + N 秒超时，每请求只生成一个，
  * 供上游出图 fetch 与结果图下载复用，避免重复订阅 req.signal。
@@ -110,15 +120,18 @@ export async function downloadImage(
  */
 export function createRequestAbortSignal(
   abortSignal?: AbortSignal,
-  timeoutMs = 300_000,
+  timeoutMs = IMAGE_REQUEST_TIMEOUT_MS,
 ): AbortSignal {
   const controller = new AbortController();
-  const forward = () => controller.abort();
+  const abortOnce = (reason?: unknown) => {
+    if (!controller.signal.aborted) controller.abort(reason);
+  };
   if (abortSignal) {
-    if (abortSignal.aborted) forward();
-    else abortSignal.addEventListener('abort', forward, { once: true });
+    if (abortSignal.aborted) abortOnce(abortSignal.reason);
+    else abortSignal.addEventListener('abort', () => abortOnce(abortSignal.reason), { once: true });
   }
-  AbortSignal.timeout(timeoutMs).addEventListener('abort', forward, { once: true });
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  timeoutSignal.addEventListener('abort', () => abortOnce(timeoutSignal.reason), { once: true });
   return controller.signal;
 }
 

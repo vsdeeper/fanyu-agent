@@ -1,5 +1,5 @@
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
-import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
+import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
 
 export type { StudioResultImage };
@@ -54,7 +54,7 @@ export type AnalysisStepSnapshot = {
   images: ProductImageItem[];
   documents: ProductDocItem[];
   analysisText: string;
-  planCards?: MainImagePlanCard[];
+  planCards?: ThemePlanCard[];
   selectedThemeIds?: string[];
 };
 
@@ -74,4 +74,6 @@ export type DesignStepSnapshot = {
   images?: ProductImageItem[];
   documents?: ProductDocItem[];
   analysisText?: string;
+  referenceImageIndex?: number | null;
+  selectedExportIndexes?: number[];
 };

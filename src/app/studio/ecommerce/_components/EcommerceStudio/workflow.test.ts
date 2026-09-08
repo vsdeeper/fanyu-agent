@@ -15,12 +15,16 @@ describe('resolveEcommerceWorkflow', () => {
     ]);
   });
 
-  it('详情图保留商业分析到完成四步', () => {
+  it('详情图为结构规划到设计到完成三步', () => {
     expect(resolveEcommerceWorkflow('详情图').map((step) => step.key)).toEqual([
       'analysis',
-      'visual',
       'design',
       'complete',
+    ]);
+    expect(resolveEcommerceWorkflow('详情图').map((step) => step.title)).toEqual([
+      '结构规划',
+      '详情图设计',
+      '预览生成物料',
     ]);
   });
 

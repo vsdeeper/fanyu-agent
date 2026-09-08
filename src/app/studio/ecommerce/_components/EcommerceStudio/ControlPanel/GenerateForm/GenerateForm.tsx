@@ -1,6 +1,7 @@
 import GenerateSpecForm from '@/app/studio/_components/GenerateSpecForm';
 import { ASPECT_RATIO_OPTIONS, MODEL_OPTIONS } from '../../constants';
 import type { StudioFormState, StudioSpecFields } from '../../types';
+import { dispatchSpecFormChange } from './utils';
 
 type GenerateFormProps = {
   form: StudioSpecFields;
@@ -28,11 +29,7 @@ export default function GenerateForm({
     <GenerateSpecForm
       form={specForm}
       disabled={disabled}
-      onChange={(next) => {
-        const { count: nextCount, ...rest } = next;
-        onFormChange(rest);
-        if (count !== undefined && onCountChange) onCountChange(nextCount);
-      }}
+      onChange={(next) => dispatchSpecFormChange(next, count, onFormChange, onCountChange)}
       modelOptions={MODEL_OPTIONS}
       aspectRatioOptions={ASPECT_RATIO_OPTIONS}
       showCount={count !== undefined}

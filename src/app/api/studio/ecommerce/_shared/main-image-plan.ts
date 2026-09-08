@@ -1,3 +1,7 @@
+import { themeIdByTitle as themeIdByTitleFromList } from './theme-plan';
+
+export type { ThemePlanCard } from './theme-plan';
+
 export const MAIN_IMAGE_THEME_IDS = [
   'product',
   'sellingPoint',
@@ -24,7 +28,5 @@ export type MainImagePlanCard = {
 
 /** 按固定主题标题解析 themeId；无法识别则返回 null */
 export function themeIdByTitle(title: string): MainImageThemeId | null {
-  const normalized = title.trim();
-  const found = MAIN_IMAGE_THEMES.find((theme) => theme.title === normalized);
-  return found?.id ?? null;
+  return themeIdByTitleFromList(title, MAIN_IMAGE_THEMES);
 }

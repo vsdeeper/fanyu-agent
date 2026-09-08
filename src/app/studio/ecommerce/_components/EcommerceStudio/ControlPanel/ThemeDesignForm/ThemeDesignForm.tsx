@@ -1,15 +1,15 @@
 import StudioImageUpload from '@/business-components/StudioImageUpload';
-import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
+import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import GenerateForm from '../GenerateForm';
 import { patchFormState } from '../utils';
 import type { DesignFormState, ProductImageItem, StudioSpecFields } from '../../types';
 import SelectedPlanCards from './SelectedPlanCards';
-import styles from './MainImageForm.module.css';
+import styles from './ThemeDesignForm.module.css';
 
-type MainImageFormProps = {
+type ThemeDesignFormProps = {
   form: DesignFormState;
   images: ProductImageItem[];
-  selectedCards: MainImagePlanCard[];
+  selectedCards: ThemePlanCard[];
   disabled: boolean;
   onFormChange: (next: DesignFormState) => void;
   onImagesAppend: (files: File[]) => void;
@@ -17,9 +17,9 @@ type MainImageFormProps = {
 };
 
 /**
- * 主图设计表单：精修图、已选主题卡片与出图规格。
+ * 主题出图表单：精修图、已选主题卡片与出图规格。主图与详情图共用。
  */
-export default function MainImageForm({
+export default function ThemeDesignForm({
   form,
   images,
   selectedCards,
@@ -27,7 +27,7 @@ export default function MainImageForm({
   onFormChange,
   onImagesAppend,
   onImageRemove,
-}: MainImageFormProps) {
+}: ThemeDesignFormProps) {
   const handleSpecChange = (next: StudioSpecFields) => {
     onFormChange({ ...form, ...next });
   };

@@ -11,6 +11,7 @@ import {
 } from './constants';
 import {
   buildDesignPrompt,
+  buildDetailImagePrompt,
   buildMainImagePrompt,
   buildProductModelPrompt,
   buildProductMultiviewPrompt,
@@ -58,7 +59,7 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
     }
   }
 
-  if (body.kind === 'mainImage') {
+  if (body.kind === 'mainImage' || body.kind === 'detailImage') {
     if (body.productViewImages.length === 0) {
       return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PRODUCT_IMAGE, 400);
     }
@@ -90,6 +91,11 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
     referenceImageDataUrls = body.productViewImages.map((image) => image.dataUrl);
   } else if (body.kind === 'mainImage') {
     referenceImageDataUrls = body.productViewImages.map((image) => image.dataUrl);
+  } else if (body.kind === 'detailImage') {
+    referenceImageDataUrls = [
+      ...body.productViewImages.map((image) => image.dataUrl),
+      ...(body.previousScreenDataUrl ? [body.previousScreenDataUrl] : []),
+    ];
   } else {
     prompt = buildDesignPrompt(body.taskType, body.analysisText, body.includeModel);
     referenceImageDataUrls = [
@@ -126,10 +132,21 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
         return;
       }
 
-      if (body.kind === 'mainImage') {
+      if (body.kind === 'mainImage' || body.kind === 'detailImage') {
         let index = 0;
+        const productImageCount = body.productViewImages.length;
+        const hasPreviousScreen =
+          body.kind === 'detailImage' ? Boolean(body.previousScreenDataUrl) : false;
         for (const item of body.requirements) {
-          const themePrompt = buildMainImagePrompt(item.requirement, body.analysisText);
+          const themePrompt =
+            body.kind === 'detailImage'
+              ? buildDetailImagePrompt(
+                  item.requirement,
+                  body.analysisText,
+                  productImageCount,
+                  hasPreviousScreen,
+                )
+              : buildMainImagePrompt(item.requirement, body.analysisText);
           for (let i = 0; i < count; i++) {
             if (req.signal.aborted) return;
             const result = await generateStudioImage({

@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 
 import { ECOMMERCE_TASK_TYPES } from '@/app/api/studio/ecommerce/_shared/task-constants';
+import { DETAIL_IMAGE_CONTINUITY_PROMPT } from './constants';
 import {
   buildDesignPrompt,
+  buildDetailImagePrompt,
   buildMainImagePrompt,
   buildProductModelPrompt,
   buildProductMultiviewPrompt,
@@ -133,6 +135,43 @@ describe('电商生图指令', () => {
     expect(prompt).toContain('主图不允许悬浮创意');
     expect(prompt).toContain('字体家族、文案配色必须整套遵守【商业分析】');
     expect(prompt).toContain('构图、光影、场景与道具以本张拍摄场景为准');
+  });
+
+  it('详情图有上一屏时标明参考图角色、当前屏主题卡与连贯句', () => {
+    const prompt = buildDetailImagePrompt(
+      '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
+      '目标人群偏好冷白',
+      2,
+      true,
+    );
+
+    expect(prompt).toContain('第1至第2个参考图=用户上传的产品精修图');
+    expect(prompt).toContain('不得把精修图的拍摄角度、取景远近或产品占画面大小复制到本屏');
+    expect(prompt).toContain('第3个参考图=上一屏详情图');
+    expect(prompt).toContain('【当前屏主题卡】');
+    expect(prompt).toContain('设计目标：建立品牌第一印象。');
+    expect(prompt).toContain(DETAIL_IMAGE_CONTINUITY_PROMPT);
+    expect(prompt).toContain(
+      '产品拍摄角度、取景远近与占画面比例必须按【当前屏主题卡】的展示重点重新决定',
+    );
+    expect(prompt).toContain('【商业分析】\n目标人群偏好冷白');
+  });
+
+  it('详情图无上一屏时不含上一屏角色说明与连贯句', () => {
+    const prompt = buildDetailImagePrompt(
+      '设计目标：建立品牌第一印象。',
+      '目标人群偏好冷白',
+      1,
+      false,
+    );
+
+    expect(prompt).toContain('第1个参考图=用户上传的产品精修图');
+    expect(prompt).not.toContain('上一屏');
+    expect(prompt).not.toContain(DETAIL_IMAGE_CONTINUITY_PROMPT);
+    expect(prompt).toContain('【当前屏主题卡】');
+    expect(prompt).toContain(
+      '产品拍摄角度、取景远近与占画面比例必须按【当前屏主题卡】的展示重点重新决定',
+    );
   });
 
   it.each(ECOMMERCE_TASK_TYPES)('视觉设计为“%s”时包含类型要求与商业分析', (taskType) => {
@@ -463,5 +502,49 @@ describe('电商主图请求契约', () => {
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, productViewImages: [] })).toBeNull();
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: ' ' })).toBeNull();
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, requirements: [] })).toBeNull();
+  });
+});
+
+describe('电商详情图请求契约', () => {
+  const BASE_DETAIL_IMAGE_REQUEST = {
+    kind: 'detailImage',
+    ...SPEC_FIELDS,
+    count: 1,
+    analysisText: '目标人群偏好冷白',
+    requirements: [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }],
+    productViewImages: [
+      {
+        filename: 'product.png',
+        mediaType: 'image/png',
+        dataUrl: 'data:image/png;base64,PRODUCT',
+      },
+    ],
+  } as const;
+
+  it('接受商业分析、当前屏主题卡与产品精修图', () => {
+    const parsed = parseGenerateBody(BASE_DETAIL_IMAGE_REQUEST);
+
+    expect(parsed?.kind).toBe('detailImage');
+    expect(parsed && parsed.kind === 'detailImage' ? parsed.requirements : []).toEqual([
+      { themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' },
+    ]);
+  });
+
+  it('可附带上一屏参考图', () => {
+    const parsed = parseGenerateBody({
+      ...BASE_DETAIL_IMAGE_REQUEST,
+      previousScreenDataUrl: 'data:image/png;base64,PREV',
+    });
+
+    expect(parsed?.kind).toBe('detailImage');
+    expect(parsed && parsed.kind === 'detailImage' ? parsed.previousScreenDataUrl : '').toBe(
+      'data:image/png;base64,PREV',
+    );
+  });
+
+  it('缺少产品图、商业分析或主题要求时拒绝', () => {
+    expect(parseGenerateBody({ ...BASE_DETAIL_IMAGE_REQUEST, productViewImages: [] })).toBeNull();
+    expect(parseGenerateBody({ ...BASE_DETAIL_IMAGE_REQUEST, analysisText: ' ' })).toBeNull();
+    expect(parseGenerateBody({ ...BASE_DETAIL_IMAGE_REQUEST, requirements: [] })).toBeNull();
   });
 });

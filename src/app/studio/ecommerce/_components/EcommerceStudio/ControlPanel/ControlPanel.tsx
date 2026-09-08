@@ -1,6 +1,6 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
-import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
+import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import AnalyzeForm from '@/app/studio/_components/AnalyzeForm';
 import ProductDocsUpload from '@/business-components/ProductDocsUpload';
@@ -8,6 +8,8 @@ import StudioImageUpload from '@/business-components/StudioImageUpload';
 import {
   ANALYZE_BUTTON,
   DESIGN_BUTTON,
+  DETAIL_IMAGE_ANALYZE_BUTTON,
+  DETAIL_IMAGE_BUTTON,
   MAIN_IMAGE_ANALYZE_BUTTON,
   MAIN_IMAGE_BUTTON,
   POSTER_BUTTON,
@@ -21,10 +23,10 @@ import type {
   StudioPhase,
   StudioSpecFields,
 } from '../types';
-import { isMainImageTask, isPosterTask } from '../workflow';
+import { isDetailImageTask, isMainImageTask, isPosterTask, isThemePlanTask } from '../workflow';
 import DesignForm from './DesignForm';
 import GenerateForm from './GenerateForm';
-import MainImageForm from './MainImageForm';
+import ThemeDesignForm from './ThemeDesignForm';
 import { isAnalyzePhase, isDesignPhase, isVisualPhase } from './utils';
 import styles from './ControlPanel.module.css';
 
@@ -39,7 +41,7 @@ type ControlPanelProps = {
   formLocked: boolean;
   canGenerateVisual: boolean;
   canGenerateDesign: boolean;
-  selectedCards?: MainImagePlanCard[];
+  selectedCards?: ThemePlanCard[];
   onImagesAppend: (files: File[]) => void;
   onImageRemove: (uid: string) => void;
   onDocsAppend: (files: File[]) => void;
@@ -54,7 +56,7 @@ type ControlPanelProps = {
 };
 
 /**
- * 电商工作台左侧栏：分析资料、主视觉规格、主图设计或视觉设计 / 营销海报表单。
+ * 电商工作台左侧栏：分析资料、主视觉规格、主题设计或视觉设计 / 营销海报表单。
  */
 export default function ControlPanel({
   taskType,
@@ -87,16 +89,30 @@ export default function ControlPanel({
   const showVisualForm = isVisualPhase(phase);
   const showDesignForm = isDesignPhase(phase);
   const poster = isPosterTask(taskType);
-  const mainImage = isMainImageTask(taskType);
-  const analyzeDisabled = mainImage ? documents.length === 0 : images.length === 0;
+  const themePlan = isThemePlanTask(taskType);
+  const analyzeDisabled = themePlan ? documents.length === 0 : images.length === 0;
 
   const handleVisualSpecChange = (next: StudioSpecFields) => {
     onFormChange({ ...form, ...next });
   };
+
+  const analyzeButton = isDetailImageTask(taskType)
+    ? DETAIL_IMAGE_ANALYZE_BUTTON
+    : isMainImageTask(taskType)
+      ? MAIN_IMAGE_ANALYZE_BUTTON
+      : ANALYZE_BUTTON;
+  const designButton = isDetailImageTask(taskType)
+    ? DETAIL_IMAGE_BUTTON
+    : isMainImageTask(taskType)
+      ? MAIN_IMAGE_BUTTON
+      : poster
+        ? POSTER_BUTTON
+        : DESIGN_BUTTON;
+
   return (
     <aside className={styles.panel}>
       <div className={styles.scroll}>
-        {showAnalyzeForm && mainImage ? (
+        {showAnalyzeForm && themePlan ? (
           <ProductDocsUpload
             documents={documents}
             disabled={formLocked}
@@ -148,8 +164,8 @@ export default function ControlPanel({
               onCountChange={(value) => onFormChange({ ...form, count: value })}
             />
           </>
-        ) : showDesignForm && mainImage ? (
-          <MainImageForm
+        ) : showDesignForm && themePlan ? (
+          <ThemeDesignForm
             form={designForm}
             images={images}
             selectedCards={selectedCards}
@@ -182,7 +198,7 @@ export default function ControlPanel({
             disabled={analyzeDisabled}
             onClick={onAnalyze}
           >
-            {mainImage ? MAIN_IMAGE_ANALYZE_BUTTON : ANALYZE_BUTTON}
+            {analyzeButton}
           </Button>
         </div>
       ) : null}
@@ -214,7 +230,7 @@ export default function ControlPanel({
             disabled={!canGenerateDesign}
             onClick={onGenerateDesign}
           >
-            {mainImage ? MAIN_IMAGE_BUTTON : poster ? POSTER_BUTTON : DESIGN_BUTTON}
+            {designButton}
           </Button>
         </div>
       ) : null}

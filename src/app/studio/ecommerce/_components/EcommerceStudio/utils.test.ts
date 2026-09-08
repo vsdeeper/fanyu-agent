@@ -12,6 +12,7 @@ import type { ProductImageItem, StudioResultImage } from './types';
 import {
   appendPendingDesignImages,
   appendPendingMainImageImages,
+  appendPendingThemeImages,
   appendProductDocs,
   appendProductImages,
   applyDesignGenerateEvent,
@@ -26,6 +27,7 @@ import {
   readVisualStepSnapshot,
   resolveInitialStudioPhase,
   toDesignGeneratePayload,
+  toDetailImageGeneratePayload,
   toMainImageGeneratePayload,
   toVisualGeneratePayload,
 } from './utils';
@@ -164,6 +166,26 @@ describe('视觉设计请求体', () => {
     expect(payload).not.toHaveProperty('visualLock');
   });
 
+  it('详情图请求体含当前屏主题卡，可选上一屏参考图', async () => {
+    const payload = await toDetailImageGeneratePayload(
+      { ...DEFAULT_DESIGN_FORM_STATE, taskType: '详情图', aspectRatio: '3:4' },
+      ' 气质冷白 ',
+      [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }],
+      [IMAGE_ITEM('p-1', 'product.png')],
+      'data:image/png;base64,previous',
+    );
+
+    expect(payload).toMatchObject({
+      kind: 'detailImage',
+      analysisText: '气质冷白',
+      aspectRatio: '3:4',
+      requirements: [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }],
+      previousScreenDataUrl: 'data:image/png;base64,previous',
+    });
+    expect(payload).not.toHaveProperty('visualDataUrl');
+    expect(payload).not.toHaveProperty('taskType');
+  });
+
   it('营销海报同样带入主视觉，并可附带可选模特形象', async () => {
     const payload = await toDesignGeneratePayload(
       { ...DEFAULT_DESIGN_FORM_STATE, taskType: '营销海报' },
@@ -268,6 +290,25 @@ describe('视觉设计结果分组', () => {
       },
       { index: 2, aspectRatio: '1:1', status: 'pending', themeId: 'scene', themeTitle: '使用场景' },
       { index: 3, aspectRatio: '1:1', status: 'pending', themeId: 'scene', themeTitle: '使用场景' },
+    ]);
+  });
+
+  it('详情图 pending 写入详情图分组', () => {
+    const groups = appendPendingThemeImages(
+      {},
+      '详情图',
+      [{ themeId: 'brand', title: '品牌认知' }],
+      1,
+      '3:4',
+    );
+    expect(groups['详情图']).toEqual([
+      {
+        index: 0,
+        aspectRatio: '3:4',
+        status: 'pending',
+        themeId: 'brand',
+        themeTitle: '品牌认知',
+      },
     ]);
   });
 
@@ -376,10 +417,10 @@ describe('步骤快照水合', () => {
     const { taskType, ...formWithoutTaskType } = DEFAULT_DESIGN_FORM_STATE;
     expect(taskType).toBe('主图');
     const design = readDesignStepSnapshot({
-      form: { ...formWithoutTaskType, designType: '详情图', referenceVisual: false },
+      form: { ...formWithoutTaskType, designType: '主图', referenceVisual: false },
       designResultGroups: {},
     });
-    expect(design?.form.taskType).toBe('详情图');
+    expect(design?.form.taskType).toBe('主图');
     expect(design?.form).not.toHaveProperty('designType');
     expect(design?.form).not.toHaveProperty('referenceVisual');
   });
@@ -423,6 +464,19 @@ describe('步骤快照水合', () => {
     expect(design?.form).not.toHaveProperty('requirement');
   });
 
+  it('详情图设计快照读取上一屏与导出点选', () => {
+    const design = readDesignStepSnapshot({
+      form: { ...DEFAULT_DESIGN_FORM_STATE, taskType: '详情图' },
+      designResultGroups: {
+        详情图: [{ index: 0, aspectRatio: '3:4', status: 'ready', url: '/api/img/1' }],
+      },
+      referenceImageIndex: 0,
+      selectedExportIndexes: [0],
+    });
+    expect(design?.referenceImageIndex).toBe(0);
+    expect(design?.selectedExportIndexes).toEqual([0]);
+  });
+
   it('再次进入流程时默认停在第一步', () => {
     expect(resolveInitialStudioPhase(undefined)).toBe('input');
     expect(
@@ -456,7 +510,7 @@ describe('步骤快照水合', () => {
   });
 });
 
-describe('四步导航', () => {
+describe('流程导航', () => {
   it('分析、主视觉、视觉设计与完成依次流转', () => {
     expect(phaseAfterNext('analyzed')).toBe('visual');
     expect(phaseAfterNext('visual')).toBe('design');
@@ -490,10 +544,10 @@ describe('四步导航', () => {
 
   it('主图分析未点选主题时不能进入设计', () => {
     expect(
-      isNextDisabled('analyzed', '分析', null, false, { isMainImage: true, selectedThemeCount: 0 }),
+      isNextDisabled('analyzed', '分析', null, false, { isThemePlan: true, selectedThemeCount: 0 }),
     ).toBe(true);
     expect(
-      isNextDisabled('analyzed', '分析', null, false, { isMainImage: true, selectedThemeCount: 2 }),
+      isNextDisabled('analyzed', '分析', null, false, { isThemePlan: true, selectedThemeCount: 2 }),
     ).toBe(false);
   });
 
@@ -502,7 +556,10 @@ describe('四步导航', () => {
     expect(toEmptyHint('design', '主图')).toBe('设置参数后点击「生成主图」');
     expect(toResultHeadTitle('analyzed', '主图')).toBe('主图分析');
     expect(toEmptyHint('input', '主图')).toBe('上传商业分析，点击「开始主图分析」');
-    expect(toResultHeadTitle('design', '详情图')).toBe('视觉设计');
+    expect(toResultHeadTitle('design', '详情图')).toBe('详情图设计');
+    expect(toResultHeadTitle('analyzed', '详情图')).toBe('结构规划');
+    expect(toEmptyHint('input', '详情图')).toBe('上传商业分析，点击「开始规划」');
+    expect(toEmptyHint('design', '详情图')).toBe('设置参数后点击「生成详情图」');
   });
 });
 

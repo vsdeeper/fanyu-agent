@@ -282,7 +282,6 @@ export const laozhangProvider: ImageProvider = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(candidateBody),
-        // 生图耗时长，显式设置 5 分钟超时；signal 复用 requestSignal，避免缺省 fetch 无限等待。
         signal: requestSignal,
       });
       let payload: GeminiGenerateResponse = {};

@@ -18,6 +18,7 @@ type ResultImageGridProps = {
   aspectRatio: string;
   selectable?: boolean;
   selectedIndex?: number | null;
+  selectedIndexes?: readonly number[];
   selectedBadge?: string;
   onSelect?: (index: number) => void;
 };
@@ -32,6 +33,7 @@ export default function ResultImageGrid({
   aspectRatio,
   selectable = false,
   selectedIndex = null,
+  selectedIndexes,
   selectedBadge,
   onSelect,
 }: ResultImageGridProps) {
@@ -71,7 +73,9 @@ export default function ResultImageGrid({
               width={width}
               height={height}
               selectable={selectable}
-              selected={selectedIndex === item.index}
+              selected={
+                selectedIndex === item.index || Boolean(selectedIndexes?.includes(item.index))
+              }
               selectedBadge={selectedBadge}
               onSelect={onSelect}
               getSrc={getImageSrc}

@@ -82,6 +82,23 @@ const mainImageGenerateSchema = specFieldsSchema.extend({
   productViewImages: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
 });
 
+const detailImageGenerateSchema = specFieldsSchema.extend({
+  kind: z.literal('detailImage'),
+  count: countSchema,
+  analysisText: z.string().trim().min(1),
+  requirements: z
+    .array(
+      z.object({
+        themeId: z.string().trim().min(1),
+        title: z.string().trim().min(1),
+        requirement: z.string().trim().min(1),
+      }),
+    )
+    .min(1),
+  productViewImages: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
+  previousScreenDataUrl: imageDataUrlSchema.optional(),
+});
+
 const designGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('design'),
   count: countSchema,
@@ -102,6 +119,7 @@ const generateBodySchema = z
     visualGenerateSchema,
     designGenerateSchema,
     mainImageGenerateSchema,
+    detailImageGenerateSchema,
   ])
   .superRefine((value, context) => {
     if (value.kind !== 'design') return;

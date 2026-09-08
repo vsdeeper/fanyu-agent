@@ -13,16 +13,22 @@ const documentInputSchema = z
   })
   .refine((value) => isAllowedStudioDocument(value.filename, value.mediaType));
 
+const analyzeKindSchema = z.enum(['mainImage', 'detailImage']);
+
 const analyzeBodySchema = z.object({
+  kind: analyzeKindSchema.optional().default('mainImage'),
   documents: z.array(documentInputSchema).min(1).max(MAX_STUDIO_PRODUCT_DOCS),
 });
 
-export type EcommerceMainImageAnalyzeRequest = {
+export type EcommerceAnalyzeKind = z.infer<typeof analyzeKindSchema>;
+
+export type EcommerceAnalyzeRequest = {
+  kind: EcommerceAnalyzeKind;
   documents: BusinessAnalysisDocumentInput[];
 };
 
-/** 校验主图分析请求体；失败返回 null */
-export function parseMainImageAnalyzeBody(json: unknown): EcommerceMainImageAnalyzeRequest | null {
+/** 校验电商规划分析请求体；失败返回 null */
+export function parseEcommerceAnalyzeBody(json: unknown): EcommerceAnalyzeRequest | null {
   const parsed = analyzeBodySchema.safeParse(json);
   return parsed.success ? parsed.data : null;
 }

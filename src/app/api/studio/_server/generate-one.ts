@@ -5,8 +5,10 @@ import {
   isValidImageSize,
   resolveImageQuality,
 } from '@/app/api/images/_server/image-spec';
+import { isImageAbortError } from '@/app/api/images/_server/image-utils';
 import { resolveExplicitImageModelId } from '@/app/api/images/_server/registry';
 import { generateImageViaRouter } from '@/app/api/images/_server/router';
+import { GENERATE_TIMEOUT } from './constants';
 
 export type GenerateOneResult = { ok: true; url: string } | { ok: false; error: string };
 
@@ -82,6 +84,10 @@ export async function generateStudioImage(input: {
   } catch (err) {
     if (input.abortSignal?.aborted) {
       return { ok: false, error: '已取消' };
+    }
+    if (isImageAbortError(err)) {
+      console.warn('[studio/generate] generateStudioImage timeout');
+      return { ok: false, error: GENERATE_TIMEOUT };
     }
     console.error('[studio/generate] generateStudioImage', err);
     return { ok: false, error: '生图服务暂不可用' };

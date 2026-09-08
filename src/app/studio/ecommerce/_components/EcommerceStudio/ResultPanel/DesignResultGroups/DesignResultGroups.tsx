@@ -1,6 +1,7 @@
 import { Typography } from 'antd';
 import { ECOMMERCE_TASK_TYPES } from '@/app/api/studio/ecommerce/_shared/task-constants';
 import { MAIN_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
+import type { ThemeDefinition } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { DesignResultGroups as DesignResultGroupsState } from '../../types';
 import ResultImageGrid from '../ResultImageGrid';
 import { groupResultImagesByRatio, groupResultImagesByTheme } from '../utils';
@@ -10,8 +11,14 @@ type DesignResultGroupsProps = {
   groups: DesignResultGroupsState;
   /** 是否展示物料类型标题；营销海报关闭以免与结果区标题重复 */
   showTitles?: boolean;
-  /** 主图按主题一级、比例二级分组 */
+  /** 按主题一级、比例二级分组 */
   groupByTheme?: boolean;
+  themes?: readonly ThemeDefinition[];
+  selectable?: boolean;
+  selectedIndex?: number | null;
+  selectedIndexes?: readonly number[];
+  selectedBadge?: string;
+  onSelect?: (index: number) => void;
 };
 
 /**
@@ -21,13 +28,19 @@ export default function DesignResultGroups({
   groups,
   showTitles = true,
   groupByTheme = false,
+  themes = MAIN_IMAGE_THEMES,
+  selectable = false,
+  selectedIndex = null,
+  selectedIndexes,
+  selectedBadge,
+  onSelect,
 }: DesignResultGroupsProps) {
   return (
     <div className={styles.groups}>
       {ECOMMERCE_TASK_TYPES.map((taskType) => {
         const images = groups[taskType];
         if (!images?.length) return null;
-        const themeGroups = groupByTheme ? groupResultImagesByTheme(images, MAIN_IMAGE_THEMES) : [];
+        const themeGroups = groupByTheme ? groupResultImagesByTheme(images, themes) : [];
         return (
           <section key={taskType} className={styles.group}>
             {showTitles ? (
@@ -51,6 +64,11 @@ export default function DesignResultGroups({
                             images={ratioImages}
                             expectedCount={ratioImages.length}
                             aspectRatio={aspectRatio}
+                            selectable={selectable}
+                            selectedIndex={selectedIndex}
+                            selectedIndexes={selectedIndexes}
+                            selectedBadge={selectedBadge}
+                            onSelect={onSelect}
                           />
                         </section>
                       ),
@@ -64,6 +82,11 @@ export default function DesignResultGroups({
                       images={ratioImages}
                       expectedCount={ratioImages.length}
                       aspectRatio={aspectRatio}
+                      selectable={selectable}
+                      selectedIndex={selectedIndex}
+                      selectedIndexes={selectedIndexes}
+                      selectedBadge={selectedBadge}
+                      onSelect={onSelect}
                     />
                   </section>
                 ))}

@@ -1,11 +1,14 @@
 import { Button, Card, Input } from 'antd';
 import { useState } from 'react';
-import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
-import styles from './MainImagePlanCards.module.css';
+import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
+import styles from './ThemePlanCards.module.css';
 
-type MainImagePlanCardsProps = {
-  cards: MainImagePlanCard[];
+export type ThemePlanSelectionMode = 'single' | 'multiple';
+
+type ThemePlanCardsProps = {
+  cards: ThemePlanCard[];
   selectedThemeIds: string[];
+  selectionMode?: ThemePlanSelectionMode;
   streaming?: boolean;
   disabled?: boolean;
   onToggleTheme: (themeId: string) => void;
@@ -14,17 +17,18 @@ type MainImagePlanCardsProps = {
 };
 
 /**
- * 主图分析右栏：可多选、可逐卡编辑的主题 Card。
+ * 主题规划右栏：可点选、可逐卡编辑的主题 Card；主图多选，详情图单选。
  */
-export default function MainImagePlanCards({
+export default function ThemePlanCards({
   cards,
   selectedThemeIds,
+  selectionMode = 'multiple',
   streaming = false,
   disabled = false,
   onToggleTheme,
   onCardSave,
   onEditingChange,
-}: MainImagePlanCardsProps) {
+}: ThemePlanCardsProps) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const canInteract = !streaming && !disabled;
@@ -78,7 +82,7 @@ export default function MainImagePlanCards({
   };
 
   return (
-    <div className={styles.list}>
+    <div className={styles.list} data-selection-mode={selectionMode}>
       {cards.map((card) => {
         const selected = selectedThemeIds.includes(card.themeId);
         const editing = editingKey === card.themeId;

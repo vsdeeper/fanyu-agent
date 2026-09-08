@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { unzipSync } from 'fflate';
 import type { DesignResultGroups, StudioResultImage } from '../types';
-import { createResultArchive, getGeneratedDesignGroups, getGeneratedImages } from './utils';
+import {
+  createResultArchive,
+  createSelectedImageArchive,
+  getGeneratedDesignGroups,
+  getGeneratedImages,
+  orderSelectedImagesByTheme,
+  toExportArchiveName,
+  toggleExportIndexByTheme,
+} from './utils';
 
 const READY_IMAGE: StudioResultImage = {
   index: 0,
@@ -95,5 +103,73 @@ describe('电商成果整理', () => {
       expect.arrayContaining(['产品展示-1:1-01.png', '产品展示-1:1-02.png', '使用场景-3:4-01.png']),
     );
     expect(names.some((name) => name === '1:1-01.png' || name.startsWith('主图/'))).toBe(false);
+  });
+
+  it('每主题最多点选一张，再点同主题则替换', () => {
+    const images: StudioResultImage[] = [
+      {
+        ...READY_IMAGE,
+        index: 0,
+        themeId: 'brand',
+        themeTitle: '品牌认知',
+      },
+      {
+        ...READY_IMAGE,
+        index: 1,
+        themeId: 'brand',
+        themeTitle: '品牌认知',
+      },
+      {
+        ...READY_IMAGE,
+        index: 2,
+        themeId: 'scene',
+        themeTitle: '使用场景',
+      },
+    ];
+
+    const first = toggleExportIndexByTheme([], 0, images);
+    expect(first).toEqual([0]);
+    expect(toggleExportIndexByTheme(first, 1, images)).toEqual([1]);
+    expect(toggleExportIndexByTheme([1], 2, images)).toEqual([1, 2]);
+    expect(toggleExportIndexByTheme([1, 2], 1, images)).toEqual([2]);
+  });
+
+  it('点选导出只含所选图，按主题-比例-编号命名且不附商业分析', async () => {
+    const images: StudioResultImage[] = [
+      {
+        ...READY_IMAGE,
+        index: 0,
+        aspectRatio: '3:4',
+        themeId: 'brand',
+        themeTitle: '品牌认知',
+      },
+      {
+        ...READY_IMAGE,
+        index: 1,
+        aspectRatio: '3:4',
+        themeId: 'scene',
+        themeTitle: '使用场景',
+      },
+    ];
+    const selected = orderSelectedImagesByTheme(
+      images,
+      [1],
+      [
+        { id: 'brand', title: '品牌认知' },
+        { id: 'scene', title: '使用场景' },
+      ],
+    );
+    expect(selected).toHaveLength(1);
+    expect(selected[0]?.themeId).toBe('scene');
+
+    const names = Object.keys(unzipSync(await createSelectedImageArchive(selected)));
+    expect(names).toEqual(['使用场景-3:4-01.png']);
+    expect(names).not.toContain('商业分析.md');
+  });
+
+  it('导出 ZIP 按任务类型命名', () => {
+    expect(toExportArchiveName('主图')).toBe('主图设计成果.zip');
+    expect(toExportArchiveName('详情图')).toBe('详情图设计成果.zip');
+    expect(toExportArchiveName('营销海报')).toBe('营销海报设计成果.zip');
   });
 });

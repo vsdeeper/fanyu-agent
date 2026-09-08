@@ -11,13 +11,6 @@ export type EcommerceWorkflowStep = {
   title: string;
 };
 
-const CURRENT_WORKFLOW: EcommerceWorkflowStep[] = [
-  { key: 'analysis', title: '商业分析' },
-  { key: 'visual', title: '营销主视觉' },
-  { key: 'design', title: '视觉设计' },
-  { key: 'complete', title: '预览生成物料' },
-];
-
 const POSTER_WORKFLOW: EcommerceWorkflowStep[] = [
   { key: 'visual', title: '营销主视觉' },
   { key: 'design', title: '营销海报' },
@@ -27,6 +20,12 @@ const POSTER_WORKFLOW: EcommerceWorkflowStep[] = [
 const MAIN_IMAGE_WORKFLOW: EcommerceWorkflowStep[] = [
   { key: 'analysis', title: '主图分析' },
   { key: 'design', title: '主图设计' },
+  { key: 'complete', title: '预览生成物料' },
+];
+
+const DETAIL_IMAGE_WORKFLOW: EcommerceWorkflowStep[] = [
+  { key: 'analysis', title: '结构规划' },
+  { key: 'design', title: '详情图设计' },
   { key: 'complete', title: '预览生成物料' },
 ];
 
@@ -40,10 +39,21 @@ export function isMainImageTask(taskType: EcommerceTaskType): boolean {
   return taskType === '主图';
 }
 
-/** 按任务类型解析流程；主图三步，营销海报无商业分析步。 */
+/** 详情图任务：结构规划到详情图设计，跳过主视觉。 */
+export function isDetailImageTask(taskType: EcommerceTaskType): boolean {
+  return taskType === '详情图';
+}
+
+/** 主题规划类任务：主图与详情图共用三步骨架。 */
+export function isThemePlanTask(taskType: EcommerceTaskType): boolean {
+  return isMainImageTask(taskType) || isDetailImageTask(taskType);
+}
+
+/** 按任务类型解析流程。 */
 export function resolveEcommerceWorkflow(taskType: EcommerceTaskType): EcommerceWorkflowStep[] {
   if (isMainImageTask(taskType)) return MAIN_IMAGE_WORKFLOW;
-  return isPosterTask(taskType) ? POSTER_WORKFLOW : CURRENT_WORKFLOW;
+  if (isDetailImageTask(taskType)) return DETAIL_IMAGE_WORKFLOW;
+  return POSTER_WORKFLOW;
 }
 
 /** 将运行态 phase 映射到稳定步骤键，再由配置顺序计算 Steps 下标。 */

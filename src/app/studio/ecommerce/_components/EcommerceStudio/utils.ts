@@ -7,7 +7,7 @@ import type {
   StudioGenerateImageEvent,
   StudioGenerateRequest,
 } from '@/app/api/studio/_shared/generate-types';
-import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
+import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import {
   ECOMMERCE_STEP_SNAPSHOT_VERSION,
   ECOMMERCE_TASK_TYPES,
@@ -177,7 +177,7 @@ export async function readProductDocsAsText(documents: ProductDocItem[]): Promis
 export async function toMainImageGeneratePayload(
   form: DesignFormState,
   analysisText: string,
-  requirements: MainImagePlanCard[],
+  requirements: ThemePlanCard[],
   productImages: ProductImageItem[],
 ): Promise<StudioGenerateRequest> {
   return {
@@ -194,6 +194,32 @@ export async function toMainImageGeneratePayload(
       requirement: card.requirement.trim(),
     })),
     productViewImages: await toAnalyzeImages(productImages),
+  };
+}
+
+/** 详情图请求体：规格 + 商业分析 + 当前屏主题卡 + 产品精修图 + 可选上一屏 */
+export async function toDetailImageGeneratePayload(
+  form: DesignFormState,
+  analysisText: string,
+  requirements: ThemePlanCard[],
+  productImages: ProductImageItem[],
+  previousScreenDataUrl?: string,
+): Promise<StudioGenerateRequest> {
+  return {
+    kind: 'detailImage',
+    model: form.model,
+    aspectRatio: form.aspectRatio,
+    quality: form.quality,
+    clarity: form.clarity,
+    count: Number.parseInt(form.count, 10) || 1,
+    analysisText: analysisText.trim(),
+    requirements: requirements.map((card) => ({
+      themeId: card.themeId,
+      title: card.title,
+      requirement: card.requirement.trim(),
+    })),
+    productViewImages: await toAnalyzeImages(productImages),
+    ...(previousScreenDataUrl ? { previousScreenDataUrl } : {}),
   };
 }
 
@@ -243,23 +269,33 @@ export async function toAnalyzePayload(
   };
 }
 
-/** 组装主图分析请求体：仅商业分析文档 */
-export async function toMainImageAnalyzePayload(
+/** 组装主题规划分析请求体：仅商业分析文档 */
+export async function toThemeAnalyzePayload(
   documents: ProductDocItem[],
-): Promise<{ documents: BusinessAnalysisDocumentInput[] }> {
+  kind: 'mainImage' | 'detailImage' = 'mainImage',
+): Promise<{ kind: 'mainImage' | 'detailImage'; documents: BusinessAnalysisDocumentInput[] }> {
   return {
+    kind,
     documents: await toAnalyzeDocuments(documents),
   };
 }
 
-/** 向主图结果追加「主题 × 数量」的 pending 槽位，带上 themeId / themeTitle。 */
-export function appendPendingMainImageImages(
+/** 组装主图分析请求体：仅商业分析文档 */
+export async function toMainImageAnalyzePayload(
+  documents: ProductDocItem[],
+): Promise<{ kind: 'mainImage' | 'detailImage'; documents: BusinessAnalysisDocumentInput[] }> {
+  return toThemeAnalyzePayload(documents, 'mainImage');
+}
+
+/** 向主题出图结果追加「主题 × 数量」的 pending 槽位，带上 themeId / themeTitle。 */
+export function appendPendingThemeImages(
   current: DesignResultGroups,
+  taskType: EcommerceTaskType,
   requirements: readonly { themeId: string; title: string }[],
   count: number,
   aspectRatio: string,
 ): DesignResultGroups {
-  const images = current['主图'] ?? [];
+  const images = current[taskType] ?? [];
   let index = images.length;
   const pending = requirements.flatMap((item) =>
     Array.from({ length: Math.max(1, count) }, () => {
@@ -276,8 +312,18 @@ export function appendPendingMainImageImages(
   );
   return {
     ...current,
-    主图: [...images, ...pending],
+    [taskType]: [...images, ...pending],
   };
+}
+
+/** 向主图结果追加「主题 × 数量」的 pending 槽位，带上 themeId / themeTitle。 */
+export function appendPendingMainImageImages(
+  current: DesignResultGroups,
+  requirements: readonly { themeId: string; title: string }[],
+  count: number,
+  aspectRatio: string,
+): DesignResultGroups {
+  return appendPendingThemeImages(current, '主图', requirements, count, aspectRatio);
 }
 
 /** 向指定任务类型追加一个 pending 批次，不影响其他类型和既有结果 */
@@ -323,7 +369,7 @@ export async function createAnalysisStepSnapshot(
   documents: ProductDocItem[],
   analysisText: string,
   extras?: {
-    planCards?: MainImagePlanCard[];
+    planCards?: ThemePlanCard[];
     selectedThemeIds?: string[];
   },
 ): Promise<AnalysisStepSnapshot> {
@@ -363,14 +409,14 @@ export async function deleteStudioStep(taskId: string, stepKey: EcommerceStepKey
   await apiDelete(`/api/studio/ecommerce/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`);
 }
 
-/** 再次进入流程时停在第一步：主图有分析则停分析完成，仅有旧设计快照则停设计；海报停主视觉。 */
+/** 再次进入流程时停在第一步：主题规划类有分析则停分析完成，仅有旧设计快照则停设计；海报停主视觉。 */
 export function resolveInitialStudioPhase(
   analysis: AnalysisStepSnapshot | undefined,
   isPoster = false,
-  isMainImage = false,
+  isThemePlan = false,
   hasDesignSnapshot = false,
 ): StudioPhase {
-  if (isMainImage) {
+  if (isThemePlan) {
     const hasPlan =
       (analysis?.planCards?.length ?? 0) > 0 || Boolean(analysis?.analysisText?.trim());
     if (hasPlan) return 'analyzed';
@@ -452,47 +498,60 @@ export function readDesignStepSnapshot(value: unknown): DesignStepSnapshot | und
     images: Array.isArray(snapshot.images) ? snapshot.images : undefined,
     documents: Array.isArray(snapshot.documents) ? snapshot.documents : undefined,
     analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : undefined,
+    referenceImageIndex:
+      typeof snapshot.referenceImageIndex === 'number' ? snapshot.referenceImageIndex : null,
+    selectedExportIndexes: Array.isArray(snapshot.selectedExportIndexes)
+      ? snapshot.selectedExportIndexes.filter((id): id is number => typeof id === 'number')
+      : undefined,
   };
 }
 
-/** 构造视觉设计步骤的完整持久化快照；主图另含精修图。 */
+/** 构造视觉设计步骤的完整持久化快照；主题规划类另含精修图。 */
 export async function createDesignStepSnapshot(
   form: DesignFormState,
   designResultGroups: DesignResultGroups,
   modelImages: ProductImageItem[],
   extras?: {
-    images: ProductImageItem[];
+    images?: ProductImageItem[];
     documents?: ProductDocItem[];
     analysisText?: string;
+    referenceImageIndex?: number | null;
+    selectedExportIndexes?: number[];
   },
 ): Promise<DesignStepSnapshot> {
   return {
     form,
     designResultGroups,
     modelImages: (await Promise.all(modelImages.map(serializeUploadItem))) as ProductImageItem[],
-    ...(extras
+    ...(typeof extras?.referenceImageIndex === 'number' || extras?.referenceImageIndex === null
+      ? { referenceImageIndex: extras.referenceImageIndex }
+      : {}),
+    ...(Array.isArray(extras?.selectedExportIndexes)
+      ? { selectedExportIndexes: extras.selectedExportIndexes }
+      : {}),
+    ...(extras?.images
       ? {
           images: (await Promise.all(extras.images.map(serializeUploadItem))) as ProductImageItem[],
-          ...(extras.documents
-            ? {
-                documents: (await Promise.all(
-                  extras.documents.map(serializeUploadItem),
-                )) as ProductDocItem[],
-              }
-            : {}),
-          ...(typeof extras.analysisText === 'string' ? { analysisText: extras.analysisText } : {}),
         }
       : {}),
+    ...(extras?.documents
+      ? {
+          documents: (await Promise.all(
+            extras.documents.map(serializeUploadItem),
+          )) as ProductDocItem[],
+        }
+      : {}),
+    ...(typeof extras?.analysisText === 'string' ? { analysisText: extras.analysisText } : {}),
   };
 }
 
-/** 上一步：各步回退到前一步；主图设计回分析，海报主视觉为第一步。 */
+/** 上一步：各步回退到前一步；主题规划类设计回分析，海报主视觉为第一步。 */
 export function phaseAfterPrev(
   phase: StudioPhase,
   isPoster = false,
-  isMainImage = false,
+  isThemePlan = false,
 ): StudioPhase {
-  if (isMainImage) {
+  if (isThemePlan) {
     if (phase === 'analyzing') return 'input';
     if (phase === 'design' || phase === 'designGenerating') return 'analyzed';
     if (phase === 'complete') return 'design';
@@ -505,9 +564,9 @@ export function phaseAfterPrev(
   return phase;
 }
 
-/** 下一步：分析完成后进入主视觉或主图设计，再进入完成页 */
-export function phaseAfterNext(phase: StudioPhase, isMainImage = false): StudioPhase {
-  if (phase === 'analyzed') return isMainImage ? 'design' : 'visual';
+/** 下一步：分析完成后进入主视觉或主题设计，再进入完成页 */
+export function phaseAfterNext(phase: StudioPhase, isThemePlan = false): StudioPhase {
+  if (phase === 'analyzed') return isThemePlan ? 'design' : 'visual';
   if (phase === 'visual') return 'design';
   if (phase === 'design') return 'complete';
   return phase;

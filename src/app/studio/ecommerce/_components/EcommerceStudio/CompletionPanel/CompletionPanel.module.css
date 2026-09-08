@@ -34,6 +34,28 @@
   padding: 20px;
 }
 
+.splitScroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.splitMain {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 20px;
+}
+
+.splitSide {
+  flex-shrink: 0;
+  width: 400px;
+  overflow: auto;
+  padding: 20px 16px;
+  border-left: 1px solid var(--one-color-border-secondary);
+}
+
 .groups {
   display: flex;
   flex-direction: column;
