@@ -10,6 +10,11 @@
   object-fit: contain;
 }
 
+/* 原现象：成品图中央残留骨架图标。rc-image 在自定义 placeholder 下偶发不卸占位层，强制隐藏以免再叠上来。 */
+.frame :global(.ant-image-placeholder) {
+  display: none;
+}
+
 .selectable {
   cursor: default;
 }

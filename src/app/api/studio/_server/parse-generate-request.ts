@@ -30,16 +30,16 @@ const countSchema = z
 
 const productRefineGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('productRefine'),
-  count: countSchema,
+  count: z.literal(1),
   refineRequirement: z.string().trim().min(1),
   images: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
 });
 
 const productMultiviewGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('productMultiview'),
-  count: countSchema,
+  count: z.literal(1),
   multiviewRequirement: z.string().trim().min(1),
-  refinedImageDataUrl: imageDataUrlSchema,
+  refinedImageDataUrls: z.array(imageDataUrlSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
 });
 
 const productViewGenerateSchema = specFieldsSchema.extend({

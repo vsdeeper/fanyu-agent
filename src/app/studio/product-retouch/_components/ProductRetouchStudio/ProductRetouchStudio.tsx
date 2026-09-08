@@ -11,7 +11,7 @@ import CompletionPanel from './CompletionPanel';
 import ControlPanel from './ControlPanel';
 import ResultPanel from './ResultPanel';
 import { useProductRetouchStudio } from './hooks/useProductRetouchStudio';
-import { hasReadyImage } from './utils';
+import { hasReadyImage, getSelectedImageUrls } from './utils';
 import styles from './ProductRetouchStudio.module.css';
 
 type ProductRetouchStudioProps = {
@@ -64,6 +64,10 @@ export default function ProductRetouchStudio({ task }: ProductRetouchStudioProps
               images={studio.images}
               refineForm={studio.refineForm}
               multiviewForm={studio.multiviewForm}
+              selectedStandardUrls={getSelectedImageUrls(
+                studio.refineImages,
+                studio.selectedRefineIndexes,
+              )}
               locked={studio.locked}
               onImagesAppend={studio.handleImagesAppend}
               onImageRemove={studio.handleImageRemove}
@@ -79,11 +83,11 @@ export default function ProductRetouchStudio({ task }: ProductRetouchStudioProps
               persisting={studio.persisting}
               refineImages={studio.refineImages}
               multiviewImages={studio.multiviewImages}
-              refineExpectedCount={Number.parseInt(studio.refineForm.count, 10) || 1}
-              multiviewExpectedCount={Number.parseInt(studio.multiviewForm.count, 10) || 1}
+              refineExpectedCount={Math.max(1, studio.images.length)}
+              multiviewExpectedCount={1}
               refineAspectRatio={studio.refineForm.aspectRatio}
               multiviewAspectRatio={studio.multiviewForm.aspectRatio}
-              selectedRefineIndex={studio.selectedRefineIndex}
+              selectedRefineIndexes={studio.selectedRefineIndexes}
               onSelectRefine={studio.handleSelectRefine}
               onPrev={studio.handlePrev}
               onNext={studio.handleNext}

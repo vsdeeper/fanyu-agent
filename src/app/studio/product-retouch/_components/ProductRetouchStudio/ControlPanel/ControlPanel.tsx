@@ -9,6 +9,7 @@ import type {
   RefineFormState,
 } from '../types';
 import GenerateSpecForm from '../GenerateSpecForm';
+import SelectedStandards from './SelectedStandards';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
@@ -18,6 +19,7 @@ type ControlPanelProps = {
   images: ProductImageItem[];
   refineForm: RefineFormState;
   multiviewForm: MultiviewFormState;
+  selectedStandardUrls: readonly string[];
   locked: boolean;
   onImagesAppend: (files: File[]) => void;
   onImageRemove: (uid: string) => void;
@@ -36,6 +38,7 @@ export default function ControlPanel({
   images,
   refineForm,
   multiviewForm,
+  selectedStandardUrls,
   locked,
   onImagesAppend,
   onImageRemove,
@@ -73,6 +76,7 @@ export default function ControlPanel({
             <GenerateSpecForm
               form={refineForm}
               disabled={locked}
+              showCount={false}
               onChange={(next) => onRefineFormChange({ ...refineForm, ...next })}
             />
             {hasRefineResult ? (
@@ -92,6 +96,7 @@ export default function ControlPanel({
           </>
         ) : (
           <>
+            <SelectedStandards urls={selectedStandardUrls} />
             <label className={styles.field}>
               <span className={styles.label}>多视角要求</span>
               <Input.TextArea
@@ -109,6 +114,7 @@ export default function ControlPanel({
             <GenerateSpecForm
               form={multiviewForm}
               disabled={locked}
+              showCount={false}
               onChange={(next) => onMultiviewFormChange({ ...multiviewForm, ...next })}
             />
           </>

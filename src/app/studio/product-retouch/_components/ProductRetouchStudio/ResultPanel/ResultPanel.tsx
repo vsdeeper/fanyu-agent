@@ -23,7 +23,7 @@ type ResultPanelProps = {
   multiviewExpectedCount: number;
   refineAspectRatio: string;
   multiviewAspectRatio: string;
-  selectedRefineIndex: number | null;
+  selectedRefineIndexes: number[];
   onSelectRefine: (index: number) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -41,7 +41,7 @@ export default function ResultPanel({
   multiviewExpectedCount,
   refineAspectRatio,
   multiviewAspectRatio,
-  selectedRefineIndex,
+  selectedRefineIndexes,
   onSelectRefine,
   onPrev,
   onNext,
@@ -75,7 +75,9 @@ export default function ResultPanel({
                       width={size.width}
                       height={size.height}
                       selectable={showRefine && phase === 'refine' && needsMultiview}
-                      selected={showRefine && needsMultiview && selectedRefineIndex === image.index}
+                      selected={
+                        showRefine && needsMultiview && selectedRefineIndexes.includes(image.index)
+                      }
                       selectedBadge={REFINE_STANDARD_BADGE}
                       onSelect={onSelectRefine}
                     />
@@ -110,7 +112,7 @@ export default function ResultPanel({
       <div className={styles.footer}>
         {!showRefine ? (
           <>
-            <Button size="large" disabled={generating} onClick={onPrev}>
+            <Button size="large" onClick={onPrev}>
               {PREV_BUTTON}
             </Button>
             <Button
@@ -133,7 +135,7 @@ export default function ResultPanel({
               generating ||
               persisting ||
               !hasReadyImage(refineImages) ||
-              (needsMultiview && selectedRefineIndex === null)
+              (needsMultiview && selectedRefineIndexes.length === 0)
             }
             onClick={onNext}
           >

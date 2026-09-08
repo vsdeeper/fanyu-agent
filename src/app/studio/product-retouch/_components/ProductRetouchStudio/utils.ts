@@ -30,12 +30,14 @@ export {
   applyGenerateEvent,
   assertOkOrJsonFail,
   consumeGenerateNdjson,
+  dropPendingImages,
   isAbortError,
   pendingImages,
 } from '@/app/studio/_utils/generate-stream';
 export {
   aspectRatioToSize,
   getSelectedImageUrl,
+  getSelectedImageUrls,
   groupResultImagesByRatio,
   hasReadyImage,
 } from '@/app/studio/_utils/result-images';
@@ -79,7 +81,7 @@ export async function toImageInputs(items: ProductImageItem[]): Promise<StudioIm
   );
 }
 
-/** 组装产品精修请求体。 */
+/** 组装产品精修请求体；生成数量固定为 1，服务端按原图张数一对一出图。 */
 export async function toRefinePayload(
   form: RefineFormState,
   images: ProductImageItem[],
@@ -90,16 +92,16 @@ export async function toRefinePayload(
     aspectRatio: form.aspectRatio,
     quality: form.quality,
     clarity: form.clarity,
-    count: Number.parseInt(form.count, 10) || 1,
+    count: 1,
     refineRequirement: form.requirement.trim(),
     images: await toImageInputs(images),
   };
 }
 
-/** 组装产品多视角请求体。 */
+/** 组装产品多视角请求体；生成数量固定为 1，全部选中精修图作为参考。 */
 export function toMultiviewPayload(
   form: MultiviewFormState,
-  refinedImageDataUrl: string,
+  refinedImageDataUrls: string[],
 ): StudioGenerateRequest {
   return {
     kind: 'productMultiview',
@@ -107,10 +109,39 @@ export function toMultiviewPayload(
     aspectRatio: form.aspectRatio,
     quality: form.quality,
     clarity: form.clarity,
-    count: Number.parseInt(form.count, 10) || 1,
+    count: 1,
     multiviewRequirement: form.requirement.trim(),
-    refinedImageDataUrl,
+    refinedImageDataUrls,
   };
+}
+
+/**
+ * 切换精修标准选中项。已选则取消；未选且未达上限则追加；达上限返回 atLimit。
+ */
+export function toggleSelectedIndex(
+  current: readonly number[],
+  index: number,
+  maxCount: number,
+): { indexes: number[]; atLimit: boolean } {
+  if (current.includes(index)) {
+    return { indexes: current.filter((item) => item !== index), atLimit: false };
+  }
+  if (current.length >= maxCount) {
+    return { indexes: [...current], atLimit: true };
+  }
+  return { indexes: [...current, index], atLimit: false };
+}
+
+/** 读取快照中的精修标准下标；兼容旧字段 selectedIndex。 */
+export function readSelectedIndexes(snapshot: {
+  selectedIndexes?: unknown;
+  selectedIndex?: unknown;
+}): number[] {
+  if (Array.isArray(snapshot.selectedIndexes)) {
+    return snapshot.selectedIndexes.filter((value): value is number => typeof value === 'number');
+  }
+  if (typeof snapshot.selectedIndex === 'number') return [snapshot.selectedIndex];
+  return [];
 }
 
 /** 根据多视角选项返回精修步骤的后续阶段。 */
@@ -136,14 +167,14 @@ export async function createRefineStepSnapshot(
   form: RefineFormState,
   images: ProductImageItem[],
   results: import('./types').ResultImage[],
-  selectedIndex: number | null,
+  selectedIndexes: number[],
   needsMultiview: boolean,
 ): Promise<ProductRetouchRefineStepSnapshot> {
   return {
     form,
     images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
     results,
-    selectedIndex,
+    selectedIndexes,
     needsMultiview,
   };
 }
@@ -168,7 +199,7 @@ export function readRefineStepSnapshot(
     form: snapshot.form,
     images: snapshot.images,
     results: snapshot.results,
-    selectedIndex: typeof snapshot.selectedIndex === 'number' ? snapshot.selectedIndex : null,
+    selectedIndexes: readSelectedIndexes(snapshot),
     needsMultiview: typeof snapshot.needsMultiview === 'boolean' ? snapshot.needsMultiview : true,
   };
 }

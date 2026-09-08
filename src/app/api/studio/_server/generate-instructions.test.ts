@@ -22,18 +22,28 @@ const SPEC_FIELDS = {
 };
 
 describe('电商生图指令', () => {
-  it('独立产品精修使用用户要求并保留产品保真底线', () => {
-    const prompt = buildProductRefinePrompt('清理划痕并优化金属高光');
+  it('独立产品精修按原图一对一出图', () => {
+    const prompt = buildProductRefinePrompt('清理划痕并优化金属高光', 3);
 
+    expect(prompt).toContain('本批共 3 张原图');
+    expect(prompt).toContain('当前参考图只对应其中一张');
     expect(prompt).toContain('【精修要求】\n清理划痕并优化金属高光');
     expect(prompt).toContain('Logo、品牌文字、标签和图案必须原样、清晰、完整保留');
+    expect(prompt).not.toContain('第1个参考图定义产品本体');
+    expect(prompt).not.toContain('其余参考图仅补充同一产品的可见角度与细节');
     expect(prompt).not.toContain('【多视角要求】');
+
+    const single = buildProductRefinePrompt('清理划痕并优化金属高光');
+    expect(single).toContain('当前参考图就是待精修的原图');
+    expect(single).not.toContain('本批共');
   });
 
-  it('独立产品多视角以精修标准图为事实依据', () => {
+  it('独立产品多视角以已选精修标准图为事实依据', () => {
     const prompt = buildProductMultiviewPrompt('生成正面、侧面与背面视角');
 
-    expect(prompt).toContain('第1个参考图=已选精修标准图');
+    expect(prompt).toContain('已选精修标准图均为同一产品的事实依据');
+    expect(prompt).toContain('第1张锁定外观');
+    expect(prompt).toContain('其余各张补充该产品其它可见角度与细节');
     expect(prompt).toContain('【多视角要求】\n生成正面、侧面与背面视角');
     expect(prompt).toContain('背面或被遮挡的部件不得搬移、复制或补画');
   });
@@ -182,16 +192,59 @@ describe('产品多视角请求契约', () => {
     expect(parsed?.kind).toBe('productRefine');
   });
 
+  it('拒绝产品精修修改生成数量', () => {
+    expect(
+      parseGenerateBody({
+        kind: 'productRefine',
+        ...SPEC_FIELDS,
+        count: 2,
+        refineRequirement: '优化材质与光影',
+        images: [
+          {
+            filename: 'product.png',
+            mediaType: 'image/png',
+            dataUrl: 'data:image/png;base64,AA==',
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
   it('接受基于精修标准图的独立多视角请求', () => {
     const parsed = parseGenerateBody({
       kind: 'productMultiview',
       ...SPEC_FIELDS,
-      count: 2,
+      count: 1,
       multiviewRequirement: '统一光线生成六个角度',
-      refinedImageDataUrl: 'data:image/png;base64,REFINED',
+      refinedImageDataUrls: ['data:image/png;base64,REFINED', 'data:image/png;base64,SIDE'],
     });
 
     expect(parsed?.kind).toBe('productMultiview');
+    if (parsed?.kind === 'productMultiview') {
+      expect(parsed.refinedImageDataUrls).toHaveLength(2);
+      expect(parsed.count).toBe(1);
+    }
+  });
+
+  it('拒绝产品多视角修改生成数量或缺少标准图', () => {
+    expect(
+      parseGenerateBody({
+        kind: 'productMultiview',
+        ...SPEC_FIELDS,
+        count: 2,
+        multiviewRequirement: '统一光线生成六个角度',
+        refinedImageDataUrls: ['data:image/png;base64,REFINED'],
+      }),
+    ).toBeNull();
+    expect(
+      parseGenerateBody({
+        kind: 'productMultiview',
+        ...SPEC_FIELDS,
+        count: 1,
+        multiviewRequirement: '统一光线生成六个角度',
+        refinedImageDataUrls: [],
+      }),
+    ).toBeNull();
   });
 
   it('拒绝空要求或缺失精修标准图', () => {

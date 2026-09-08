@@ -64,6 +64,7 @@ export default function ResultImageItem({
       <div className={styles.failed}>{image.error || '图片生成失败'}</div>
     );
   } else {
+    // 原现象：精修第一张就绪后成品中央仍叠着骨架图标。根因：传入 placeholder 时 rc-image 以 loading 起步，data URL 偶发不触发 onLoad，占位层不卸。pending 已由外层 Skeleton.Image 承担，ready 不再传 placeholder。
     body = (
       <Image
         src={src}
@@ -73,7 +74,6 @@ export default function ResultImageItem({
         preview={{ mask: '预览' }}
         className={styles.image}
         classNames={imageClassNames}
-        placeholder={<Skeleton.Image active style={{ width, height }} />}
         fallback={failedFallbackSrc}
       />
     );

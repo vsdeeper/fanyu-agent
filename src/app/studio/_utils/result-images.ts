@@ -95,7 +95,19 @@ export function getSelectedImageUrl(
   images: readonly StudioResultImage[],
   selectedIndex: number | null,
 ): string | null {
-  if (selectedIndex === null) return null;
-  const image = images.find((item) => item.index === selectedIndex);
-  return image?.status === 'ready' && image.url ? image.url : null;
+  const [url] = getSelectedImageUrls(images, selectedIndex === null ? [] : [selectedIndex]);
+  return url ?? null;
+}
+
+/** 按点选顺序返回已就绪的结果图 URL。 */
+export function getSelectedImageUrls(
+  images: readonly StudioResultImage[],
+  selectedIndexes: readonly number[],
+): string[] {
+  const urls: string[] = [];
+  for (const selectedIndex of selectedIndexes) {
+    const image = images.find((item) => item.index === selectedIndex);
+    if (image?.status === 'ready' && image.url) urls.push(image.url);
+  }
+  return urls;
 }

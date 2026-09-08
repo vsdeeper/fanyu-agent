@@ -23,7 +23,7 @@ type StudioGenerateBase = {
 /** 产品精修：表单规格、精修要求与原始产品图 */
 export type StudioProductRefineGenerateRequest = StudioGenerateBase & {
   kind: 'productRefine';
-  count: number;
+  count: 1;
   refineRequirement: string;
   images: StudioImageInput[];
 };
@@ -31,9 +31,9 @@ export type StudioProductRefineGenerateRequest = StudioGenerateBase & {
 /** 产品多视角：表单规格、多视角要求与选中的精修标准图 */
 export type StudioProductMultiviewGenerateRequest = StudioGenerateBase & {
   kind: 'productMultiview';
-  count: number;
+  count: 1;
   multiviewRequirement: string;
-  refinedImageDataUrl: string;
+  refinedImageDataUrls: string[];
 };
 
 /** 产品多视角：表单规格 + 产品图 */

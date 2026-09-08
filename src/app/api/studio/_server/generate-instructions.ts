@@ -6,29 +6,35 @@ import {
   MARKETING_COPY_TYPOGRAPHY_PROMPT,
   PRODUCT_FIDELITY_PROMPT_GUARD,
   PRODUCT_PLACEMENT_PROMPT_GUARD,
+  PRODUCT_REFINE_FIDELITY_PROMPT_GUARD,
   PRODUCT_SCALE_PROMPT_GUARD,
   VISUAL_AD_PROMPT_GUARD,
 } from './constants';
 
 /**
- * 产品精修出站 prompt：以用户要求为主体，并追加产品保真底线。
+ * 产品精修出站 prompt：每张原图独立精修一张；以用户要求为主体，并锁定同批背景与产品保真底线。
+ * `batchSize` 为本批原图张数。
  */
-export function buildProductRefinePrompt(refineRequirement: string): string {
+export function buildProductRefinePrompt(refineRequirement: string, batchSize = 1): string {
+  const batchRule =
+    batchSize > 1
+      ? `本批共 ${batchSize} 张原图，当前参考图只对应其中一张：生成恰好一张精修图，保持该原图的拍摄角度、构图与产品朝向。`
+      : '当前参考图就是待精修的原图：生成恰好一张精修图，保持该原图的拍摄角度、构图与产品朝向。';
   return [
-    '生成恰好一张精修后的电商产品图，不要输出说明、对比图或多方案拼图。',
+    batchRule,
     '【精修要求】',
     refineRequirement.trim(),
-    PRODUCT_FIDELITY_PROMPT_GUARD,
+    PRODUCT_REFINE_FIDELITY_PROMPT_GUARD,
   ].join('\n');
 }
 
 /**
- * 产品多视角出站 prompt：以精修标准图锁定产品，并按用户要求生成单张视图板。
+ * 产品多视角出站 prompt：以已选精修标准图锁定同一产品，并按用户要求生成单张视图板。
  */
 export function buildProductMultiviewPrompt(multiviewRequirement: string): string {
   return [
     '生成恰好一张电商产品多视角视图板，不要拆成多张图。',
-    '第1个参考图=已选精修标准图，是产品外观、颜色、比例、结构、材质与细节的唯一事实依据。',
+    '已选精修标准图均为同一产品的事实依据：第1张锁定外观、颜色、比例、结构、材质与细节；其余各张补充该产品其它可见角度与细节，不得混合不同 SKU。',
     '【多视角要求】',
     multiviewRequirement.trim(),
     PRODUCT_FIDELITY_PROMPT_GUARD,

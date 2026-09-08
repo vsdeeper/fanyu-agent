@@ -36,7 +36,7 @@ export type ProductRetouchRefineStepSnapshot = {
   form: RefineFormState;
   images: ProductImageItem[];
   results: ResultImage[];
-  selectedIndex: number | null;
+  selectedIndexes: number[];
   needsMultiview: boolean;
 };
 

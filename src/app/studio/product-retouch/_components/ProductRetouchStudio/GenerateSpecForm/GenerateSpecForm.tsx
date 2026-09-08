@@ -6,13 +6,15 @@ type ProductGenerateSpecFormProps = {
   form: GenerateSpecFields;
   disabled: boolean;
   onChange: (next: GenerateSpecFields) => void;
+  showCount?: boolean;
 };
 
-/** 产品精修规格：模型、比例、清晰度与生成数量。 */
+/** 产品精修规格：模型、比例、清晰度；传入 showCount=false 时隐藏生成数量。 */
 export default function ProductRetouchGenerateSpecForm({
   form,
   disabled,
   onChange,
+  showCount = true,
 }: ProductGenerateSpecFormProps) {
   return (
     <GenerateSpecForm
@@ -21,6 +23,7 @@ export default function ProductRetouchGenerateSpecForm({
       onChange={onChange}
       modelOptions={MODEL_OPTIONS}
       aspectRatioOptions={ASPECT_RATIO_OPTIONS}
+      showCount={showCount}
     />
   );
 }

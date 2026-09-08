@@ -24,6 +24,7 @@ import { createPushStreamResponse, encodeNdjsonLine, NDJSON_STREAM_HEADERS } fro
 
 /**
  * POST /api/studio/generate：按 kind 出产品精修、多视角、主视觉、主图、模特或视觉设计图，NDJSON 推送每张 data URL。
+ * 产品精修按上传原图一对一出图，忽略表单生成数量。
  */
 export async function handleStudioGenerate(req: Request): Promise<Response> {
   let json: unknown;
@@ -65,13 +66,12 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
 
   const count = body.count;
   let prompt = '';
-  let referenceImageDataUrls: string[];
+  let referenceImageDataUrls: string[] = [];
   if (body.kind === 'productRefine') {
-    prompt = buildProductRefinePrompt(body.refineRequirement);
-    referenceImageDataUrls = body.images.map((image) => image.dataUrl);
+    prompt = buildProductRefinePrompt(body.refineRequirement, body.images.length);
   } else if (body.kind === 'productMultiview') {
     prompt = buildProductMultiviewPrompt(body.multiviewRequirement);
-    referenceImageDataUrls = [body.refinedImageDataUrl];
+    referenceImageDataUrls = body.refinedImageDataUrls;
   } else if (body.kind === 'productView') {
     prompt = buildProductViewPrompt();
     referenceImageDataUrls = body.images.map((image) => image.dataUrl);
@@ -102,6 +102,30 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
   return createPushStreamResponse(NDJSON_STREAM_HEADERS, async (write) => {
     const send = (event: StudioGenerateImageEvent) => write(encodeNdjsonLine(event));
     try {
+      if (body.kind === 'productRefine') {
+        for (let index = 0; index < body.images.length; index++) {
+          const sourceImage = body.images[index];
+          if (!sourceImage) continue;
+          if (req.signal.aborted) return;
+          const result = await generateStudioImage({
+            prompt,
+            model: body.model,
+            aspectRatio: body.aspectRatio,
+            clarity: body.clarity,
+            quality: body.quality,
+            referenceImageDataUrls: [sourceImage.dataUrl],
+            abortSignal: req.signal,
+          });
+          if (req.signal.aborted) return;
+          if (result.ok) {
+            await send({ index, url: result.url });
+          } else {
+            await send({ index, error: result.error });
+          }
+        }
+        return;
+      }
+
       if (body.kind === 'mainImage') {
         let index = 0;
         for (const item of body.requirements) {

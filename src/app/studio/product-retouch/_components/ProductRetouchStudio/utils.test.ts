@@ -3,15 +3,21 @@ import type { ResultImage } from './types';
 import {
   appendProductImages,
   applyGenerateEvent,
+  dropPendingImages,
   getSelectedImageUrl,
+  getSelectedImageUrls,
   hasReadyImage,
   isSameStepSnapshot,
   pendingImages,
   phaseAfterNext,
   phaseAfterPrev,
+  readRefineStepSnapshot,
+  readSelectedIndexes,
   toMultiviewPayload,
+  toRefinePayload,
+  toggleSelectedIndex,
 } from './utils';
-import { DEFAULT_MULTIVIEW_FORM } from './constants';
+import { DEFAULT_MULTIVIEW_FORM, DEFAULT_REFINE_FORM } from './constants';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -55,11 +61,25 @@ describe('产品精修结果流', () => {
     const images: ResultImage[] = [
       { index: 0, aspectRatio: '1:1', status: 'failed' },
       { index: 1, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,READY' },
+      { index: 2, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,SIDE' },
     ];
 
     expect(getSelectedImageUrl(images, 0)).toBeNull();
     expect(getSelectedImageUrl(images, 1)).toBe('data:image/png;base64,READY');
+    expect(getSelectedImageUrls(images, [2, 1, 0])).toEqual([
+      'data:image/png;base64,SIDE',
+      'data:image/png;base64,READY',
+    ]);
     expect(hasReadyImage(images)).toBe(true);
+  });
+
+  it('丢掉本批 pending 占位并保留已完成结果', () => {
+    const images: ResultImage[] = [
+      { index: 0, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,OLD' },
+      { index: 1, aspectRatio: '1:1', status: 'pending' },
+      { index: 2, aspectRatio: '1:1', status: 'failed', error: '失败' },
+    ];
+    expect(dropPendingImages(images)).toEqual([images[0], images[2]]);
   });
 });
 
@@ -69,20 +89,55 @@ describe('产品精修步骤与请求', () => {
     expect(phaseAfterNext('refine', false)).toBe('complete');
     expect(phaseAfterNext('refineGenerating', false)).toBe('refineGenerating');
     expect(phaseAfterPrev('multiview', true)).toBe('refine');
+    expect(phaseAfterPrev('multiviewGenerating', true)).toBe('refine');
     expect(phaseAfterPrev('complete', true)).toBe('multiview');
     expect(phaseAfterPrev('complete', false)).toBe('refine');
   });
 
-  it('多视角请求携带用户要求与精修标准图', () => {
+  it('精修标准下标可切换且达上限拒绝追加', () => {
+    expect(toggleSelectedIndex([0], 1, 6)).toEqual({ indexes: [0, 1], atLimit: false });
+    expect(toggleSelectedIndex([0, 1], 0, 6)).toEqual({ indexes: [1], atLimit: false });
+    expect(toggleSelectedIndex([0, 1], 2, 2)).toEqual({ indexes: [0, 1], atLimit: true });
+  });
+
+  it('读取精修快照时把旧 selectedIndex 迁成数组', () => {
+    expect(readSelectedIndexes({ selectedIndex: 2 })).toEqual([2]);
+    expect(readSelectedIndexes({ selectedIndexes: [1, 3] })).toEqual([1, 3]);
+    expect(
+      readRefineStepSnapshot({
+        form: DEFAULT_REFINE_FORM,
+        images: [],
+        results: [],
+        selectedIndex: 0,
+        needsMultiview: true,
+      })?.selectedIndexes,
+    ).toEqual([0]);
+  });
+
+  it('精修请求固定生成数量为 1，按上传原图组装参考图', async () => {
+    await expect(
+      toRefinePayload({ ...DEFAULT_REFINE_FORM, count: '3', requirement: ' 优化光影 ' }, [
+        { uid: 'u1', previewUrl: 'data:image/png;base64,AA==' },
+      ]),
+    ).resolves.toMatchObject({
+      kind: 'productRefine',
+      count: 1,
+      refineRequirement: '优化光影',
+      images: [{ dataUrl: 'data:image/png;base64,AA==' }],
+    });
+  });
+
+  it('多视角请求固定生成数量为 1，携带全部精修标准图', () => {
     expect(
       toMultiviewPayload(
-        { ...DEFAULT_MULTIVIEW_FORM, requirement: ' 生成六个统一视角 ' },
-        'data:image/png;base64,REFINED',
+        { ...DEFAULT_MULTIVIEW_FORM, count: '3', requirement: ' 生成六个统一视角 ' },
+        ['data:image/png;base64,REFINED', 'data:image/png;base64,SIDE'],
       ),
     ).toMatchObject({
       kind: 'productMultiview',
+      count: 1,
       multiviewRequirement: '生成六个统一视角',
-      refinedImageDataUrl: 'data:image/png;base64,REFINED',
+      refinedImageDataUrls: ['data:image/png;base64,REFINED', 'data:image/png;base64,SIDE'],
     });
   });
 });
@@ -99,10 +154,10 @@ describe('isSameStepSnapshot', () => {
       form: DEFAULT_MULTIVIEW_FORM,
       images: [],
       results: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }],
-      selectedIndex: 0,
+      selectedIndexes: [0],
       needsMultiview: true,
     };
-    expect(isSameStepSnapshot({ ...baseline, selectedIndex: 1 }, baseline)).toBe(false);
+    expect(isSameStepSnapshot({ ...baseline, selectedIndexes: [1] }, baseline)).toBe(false);
     expect(isSameStepSnapshot(baseline, baseline)).toBe(true);
   });
 

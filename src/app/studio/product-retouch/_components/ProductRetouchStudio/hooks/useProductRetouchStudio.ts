@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { App } from 'antd';
+import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import type { ProductRetouchTaskDetail } from '@/app/api/studio/product-retouch/_shared/task-types';
 import { ApiClientError } from '@/lib/shared/client/api-client';
 import {
@@ -9,6 +10,7 @@ import {
   MULTIVIEW_RESULT_MISSING,
   NO_IMAGE_WARNING,
   REFINE_RESULT_MISSING,
+  REFINE_SELECT_MAX,
   REFINE_SELECT_MISSING,
   REQUIREMENT_MISSING,
 } from '../constants';
@@ -28,7 +30,8 @@ import {
   consumeGenerateNdjson,
   createMultiviewStepSnapshot,
   createRefineStepSnapshot,
-  getSelectedImageUrl,
+  dropPendingImages,
+  getSelectedImageUrls,
   hasReadyImage,
   isAbortError,
   isSameStepSnapshot,
@@ -43,6 +46,7 @@ import {
   saveProductRetouchStep,
   toMultiviewPayload,
   toRefinePayload,
+  toggleSelectedIndex,
 } from '../utils';
 
 /** 管理产品精修三步工作流的表单、选择、请求、结果与任务快照持久化。 */
@@ -64,8 +68,8 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
   const [multiviewImages, setMultiviewImages] = useState<ResultImage[]>(
     initialMultiview?.results ?? [],
   );
-  const [selectedRefineIndex, setSelectedRefineIndex] = useState<number | null>(
-    initialRefine?.selectedIndex ?? null,
+  const [selectedRefineIndexes, setSelectedRefineIndexes] = useState<number[]>(
+    initialRefine?.selectedIndexes ?? [],
   );
   const imagesRef = useRef(images);
   const abortRef = useRef<AbortController | null>(null);
@@ -112,7 +116,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
         refineForm,
         images,
         results,
-        selectedRefineIndex,
+        selectedRefineIndexes,
         needsMultiview,
       );
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.refine)) return;
@@ -121,7 +125,15 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
       setImages(saved.images);
       setRefineImages(saved.results);
     },
-    [task.id, refineForm, images, selectedRefineIndex, needsMultiview, setImages, setRefineImages],
+    [
+      task.id,
+      refineForm,
+      images,
+      selectedRefineIndexes,
+      needsMultiview,
+      setImages,
+      setRefineImages,
+    ],
   );
 
   const persistMultiviewStep = useCallback(
@@ -148,7 +160,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     abortCurrent();
     const controller = new AbortController();
     abortRef.current = controller;
-    const count = Number.parseInt(refineForm.count, 10) || 1;
+    const count = images.length;
     const batchStartIndex = refineImages.length;
     let nextRefineImages = [
       ...refineImages,
@@ -189,8 +201,8 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
 
   /** 以选中的精修标准图生成产品多视角；生成完成即落库（与下一步/完成同一动作）。 */
   const handleMultiview = useCallback(async () => {
-    const selectedRefinedUrl = getSelectedImageUrl(refineImages, selectedRefineIndex);
-    if (!selectedRefinedUrl) {
+    const selectedRefinedUrls = getSelectedImageUrls(refineImages, selectedRefineIndexes);
+    if (selectedRefinedUrls.length === 0) {
       message.warning(REFINE_SELECT_MISSING);
       return;
     }
@@ -201,21 +213,22 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     abortCurrent();
     const controller = new AbortController();
     abortRef.current = controller;
-    const count = Number.parseInt(multiviewForm.count, 10) || 1;
     const batchStartIndex = multiviewImages.length;
     let nextMultiviewImages = [
       ...multiviewImages,
-      ...pendingImages(count, batchStartIndex, multiviewForm.aspectRatio),
+      ...pendingImages(1, batchStartIndex, multiviewForm.aspectRatio),
     ];
     setPhase('multiviewGenerating');
     setMultiviewImages(nextMultiviewImages);
     try {
       // 恢复后的标准图为站内资产 URL，需先转成 data URL 再入参
-      const refinedImageDataUrl = await readUrlAsDataUrl(selectedRefinedUrl);
+      const refinedImageDataUrls = await Promise.all(
+        selectedRefinedUrls.map((url) => readUrlAsDataUrl(url)),
+      );
       const response = await fetch('/api/studio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(toMultiviewPayload(multiviewForm, refinedImageDataUrl)),
+        body: JSON.stringify(toMultiviewPayload(multiviewForm, refinedImageDataUrls)),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(response);
@@ -247,13 +260,20 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     multiviewImages,
     persistMultiviewStep,
     refineImages,
-    selectedRefineIndex,
+    selectedRefineIndexes,
   ]);
 
-  /** 点选精修标准图：仅更新选中，不落盘（落盘在「下一步/完成」时进行）。 */
-  const handleSelectRefine = useCallback((index: number) => {
-    setSelectedRefineIndex(index);
-  }, []);
+  /** 点选精修标准图：切换选中，不落盘（落盘在「下一步/完成」时进行）。 */
+  const handleSelectRefine = useCallback(
+    (index: number) => {
+      setSelectedRefineIndexes((current) => {
+        const { indexes, atLimit } = toggleSelectedIndex(current, index, MAX_STUDIO_IMAGES);
+        if (atLimit) message.warning(REFINE_SELECT_MAX);
+        return indexes;
+      });
+    },
+    [message],
+  );
 
   /** 下一步：落盘精修快照并以加载态呈现，再按多视角选项进入第二步或直接完成。 */
   const handleNext = useCallback(async () => {
@@ -261,7 +281,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
       message.warning(REFINE_RESULT_MISSING);
       return;
     }
-    if (needsMultiview && !getSelectedImageUrl(refineImages, selectedRefineIndex)) {
+    if (needsMultiview && getSelectedImageUrls(refineImages, selectedRefineIndexes).length === 0) {
       message.warning(REFINE_SELECT_MISSING);
       return;
     }
@@ -277,7 +297,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     } finally {
       setPersisting(false);
     }
-  }, [message, needsMultiview, persistRefineStep, refineImages, selectedRefineIndex]);
+  }, [message, needsMultiview, persistRefineStep, refineImages, selectedRefineIndexes]);
 
   /** 完成：落盘多视角快照并以加载态呈现，再进入完成页。 */
   const handleComplete = useCallback(async () => {
@@ -299,9 +319,10 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     }
   }, [message, multiviewImages, persistMultiviewStep]);
 
-  /** 返回实际访问的上一步，并在必要时中止多视角生成。 */
+  /** 返回实际访问的上一步；生成中则中止请求并丢掉本批未完成占位。 */
   const handlePrev = useCallback(() => {
     abortCurrent();
+    setMultiviewImages((current) => dropPendingImages(current));
     setPhase((current) => phaseAfterPrev(current, needsMultiview));
   }, [abortCurrent, needsMultiview]);
 
@@ -313,7 +334,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     multiviewForm,
     refineImages,
     multiviewImages,
-    selectedRefineIndex,
+    selectedRefineIndexes,
     persisting,
     locked: phase === 'refineGenerating' || phase === 'multiviewGenerating',
     setRefineForm,

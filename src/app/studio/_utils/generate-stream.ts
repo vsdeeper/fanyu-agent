@@ -2,6 +2,11 @@ import type { StudioGenerateImageEvent } from '@/app/api/studio/_shared/generate
 import { ApiClientError } from '@/lib/shared/client/api-client';
 import type { StudioResultImage } from './result-images';
 
+/** 去掉尚未完成的占位图，保留已成功或失败的结果。 */
+export function dropPendingImages<T extends StudioResultImage>(images: readonly T[]): T[] {
+  return images.filter((item) => item.status !== 'pending');
+}
+
 /** 为一批待生成图片建立占位状态。 */
 export function pendingImages(
   count: number,
