@@ -8,9 +8,7 @@ import StudioImageUpload from '@/business-components/StudioImageUpload';
 import {
   ANALYZE_BUTTON,
   DESIGN_BUTTON,
-  DETAIL_IMAGE_ANALYZE_BUTTON,
   DETAIL_IMAGE_BUTTON,
-  MAIN_IMAGE_ANALYZE_BUTTON,
   MAIN_IMAGE_BUTTON,
   POSTER_BUTTON,
   VISUAL_BUTTON,
@@ -96,11 +94,6 @@ export default function ControlPanel({
     onFormChange({ ...form, ...next });
   };
 
-  const analyzeButton = isDetailImageTask(taskType)
-    ? DETAIL_IMAGE_ANALYZE_BUTTON
-    : isMainImageTask(taskType)
-      ? MAIN_IMAGE_ANALYZE_BUTTON
-      : ANALYZE_BUTTON;
   const designButton = isDetailImageTask(taskType)
     ? DETAIL_IMAGE_BUTTON
     : isMainImageTask(taskType)
@@ -198,7 +191,7 @@ export default function ControlPanel({
             disabled={analyzeDisabled}
             onClick={onAnalyze}
           >
-            {analyzeButton}
+            {ANALYZE_BUTTON}
           </Button>
         </div>
       ) : null}

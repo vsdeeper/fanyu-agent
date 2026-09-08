@@ -28,8 +28,8 @@ describe('normalizeSearchName', () => {
 });
 
 describe('stepLabelFor', () => {
-  it('详情图显示结构规划与详情图设计', () => {
-    expect(stepLabelFor('详情图', 'analysis')).toBe('结构规划');
+  it('详情图显示详情图分析与详情图设计', () => {
+    expect(stepLabelFor('详情图', 'analysis')).toBe('详情图分析');
     expect(stepLabelFor('详情图', 'design')).toBe('详情图设计');
     expect(stepLabelFor('主图', 'analysis')).toBe('商业分析');
     expect(stepLabelFor('主图', 'design')).toBe('视觉设计');

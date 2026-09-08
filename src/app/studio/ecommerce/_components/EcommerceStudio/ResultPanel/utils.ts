@@ -9,7 +9,7 @@ import {
   EMPTY_VISUAL_HINT,
   RESULT_TITLE_DESIGN,
   RESULT_TITLE_DETAIL_IMAGE,
-  RESULT_TITLE_DETAIL_IMAGE_PLAN,
+  RESULT_TITLE_DETAIL_IMAGE_ANALYSIS,
   RESULT_TITLE_MAIN_IMAGE,
   RESULT_TITLE_POSTER,
   RESULT_TITLE_ANALYSIS,
@@ -29,7 +29,7 @@ export function toResultHeadTitle(phase: StudioPhase, taskType: EcommerceTaskTyp
   }
   if (isVisualResultPhase(phase)) return RESULT_TITLE_VISUAL;
   if (isMainImageTask(taskType)) return RESULT_TITLE_MAIN_IMAGE_ANALYSIS;
-  if (isDetailImageTask(taskType)) return RESULT_TITLE_DETAIL_IMAGE_PLAN;
+  if (isDetailImageTask(taskType)) return RESULT_TITLE_DETAIL_IMAGE_ANALYSIS;
   return RESULT_TITLE_ANALYSIS;
 }
 

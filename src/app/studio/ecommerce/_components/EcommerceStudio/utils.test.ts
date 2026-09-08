@@ -567,10 +567,10 @@ describe('流程导航', () => {
     expect(toResultHeadTitle('design', '主图')).toBe('主图设计');
     expect(toEmptyHint('design', '主图')).toBe('设置参数后点击「生成主图」');
     expect(toResultHeadTitle('analyzed', '主图')).toBe('主图分析');
-    expect(toEmptyHint('input', '主图')).toBe('上传商业分析，点击「开始主图分析」');
+    expect(toEmptyHint('input', '主图')).toBe('上传商业分析，点击「开始分析」');
     expect(toResultHeadTitle('design', '详情图')).toBe('详情图设计');
-    expect(toResultHeadTitle('analyzed', '详情图')).toBe('结构规划');
-    expect(toEmptyHint('input', '详情图')).toBe('上传商业分析，点击「开始规划」');
+    expect(toResultHeadTitle('analyzed', '详情图')).toBe('详情图分析');
+    expect(toEmptyHint('input', '详情图')).toBe('上传商业分析，点击「开始分析」');
     expect(toEmptyHint('design', '详情图')).toBe('设置参数后点击「生成详情图」');
   });
 });

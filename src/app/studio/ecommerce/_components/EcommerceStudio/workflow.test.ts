@@ -15,14 +15,14 @@ describe('resolveEcommerceWorkflow', () => {
     ]);
   });
 
-  it('详情图为结构规划到设计到完成三步', () => {
+  it('详情图为分析到设计到完成三步', () => {
     expect(resolveEcommerceWorkflow('详情图').map((step) => step.key)).toEqual([
       'analysis',
       'design',
       'complete',
     ]);
     expect(resolveEcommerceWorkflow('详情图').map((step) => step.title)).toEqual([
-      '结构规划',
+      '详情图分析',
       '详情图设计',
       '预览生成物料',
     ]);

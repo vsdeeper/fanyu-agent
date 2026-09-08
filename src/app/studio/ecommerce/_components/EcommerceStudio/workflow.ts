@@ -24,7 +24,7 @@ const MAIN_IMAGE_WORKFLOW: EcommerceWorkflowStep[] = [
 ];
 
 const DETAIL_IMAGE_WORKFLOW: EcommerceWorkflowStep[] = [
-  { key: 'analysis', title: '结构规划' },
+  { key: 'analysis', title: '详情图分析' },
   { key: 'design', title: '详情图设计' },
   { key: 'complete', title: '预览生成物料' },
 ];
@@ -39,7 +39,7 @@ export function isMainImageTask(taskType: EcommerceTaskType): boolean {
   return taskType === '主图';
 }
 
-/** 详情图任务：结构规划到详情图设计，跳过主视觉。 */
+/** 详情图任务：详情图分析到详情图设计，跳过主视觉。 */
 export function isDetailImageTask(taskType: EcommerceTaskType): boolean {
   return taskType === '详情图';
 }
