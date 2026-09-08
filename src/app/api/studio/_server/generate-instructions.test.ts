@@ -100,18 +100,18 @@ describe('电商生图指令', () => {
     expect(prompt).not.toContain('显著小于画面主视觉');
   });
 
-  it('电商主图以商业分析定气质、本张拍摄场景定空间、本张文案定信息', () => {
+  it('电商主图以商业分析定气质、本张主题卡定文案与拍摄场景', () => {
     const prompt = buildMainImagePrompt(
       '主标题：午后书桌清凉\n拍摄场景：真实书房全景，午后窗光。',
       '目标人群偏好冷白，Logo 克制',
     );
 
     expect(prompt).toContain(
-      '【本张文案】\n主标题：午后书桌清凉\n拍摄场景：真实书房全景，午后窗光。',
+      '【本张主题卡】\n主标题：午后书桌清凉\n拍摄场景：真实书房全景，午后窗光。',
     );
     expect(prompt).toContain('【商业分析】\n目标人群偏好冷白，Logo 克制');
     expect(prompt).not.toContain('【套图视觉规范】');
-    expect(prompt).toContain('以【本张文案】中的拍摄场景为准');
+    expect(prompt).toContain('以【本张主题卡】中的拍摄场景为准');
     expect(prompt).toContain('禁止把拍摄场景说明写进画面文字');
     expect(prompt).toContain('电影感定向光');
     expect(prompt).toContain('简洁、清晰、易读');
