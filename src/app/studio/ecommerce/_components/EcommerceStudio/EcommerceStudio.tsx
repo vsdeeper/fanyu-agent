@@ -16,7 +16,6 @@ import {
   ANALYSIS_MISSING,
   ANALYSIS_UPLOAD_MISSING,
   DESIGN_RESULT_MISSING,
-  DEFAULT_DESIGN_FORM_STATE,
   DEFAULT_FORM_STATE,
   DETAIL_IMAGE_RESULT_MISSING,
   GENERATE_FAILED,
@@ -51,6 +50,7 @@ import {
   consumeAnalyzeSse,
   consumeGenerateNdjson,
   createAnalysisStepSnapshot,
+  createDefaultDesignForm,
   createDesignStepSnapshot,
   createVisualStepSnapshot,
   deleteStudioStep,
@@ -127,11 +127,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   );
   const [form, setForm] = useState<StudioFormState>(initialVisual?.form ?? DEFAULT_FORM_STATE);
   const [designForm, setDesignForm] = useState<DesignFormState>(() => {
-    const base = initialDesign?.form ?? {
-      ...DEFAULT_DESIGN_FORM_STATE,
-      taskType: task.taskType,
-      ...(detailImage ? { aspectRatio: '3:4' } : {}),
-    };
+    const base = initialDesign?.form ?? createDefaultDesignForm(task.taskType);
     if (mainImage) return { ...base, taskType: '主图' };
     if (detailImage) return { ...base, taskType: '详情图', aspectRatio: base.aspectRatio || '3:4' };
     return poster ? { ...base, taskType: '营销海报' } : base;

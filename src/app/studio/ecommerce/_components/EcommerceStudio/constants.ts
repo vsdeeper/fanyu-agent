@@ -1,5 +1,6 @@
-import type { DesignFormState, StudioFormState, StudioPhase } from './types';
+import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import { toModelOptions } from './model-options';
+import type { DesignFormState, StudioFormState, StudioPhase } from './types';
 
 export const STUDIO_TITLE = '电商设计';
 
@@ -89,11 +90,18 @@ export const DEFAULT_FORM_STATE: StudioFormState = {
   count: '1',
 };
 
+/** 电商设计任务的默认清晰度：主图/详情图 1K，营销海报 2K。 */
+export const DEFAULT_CLARITY_BY_TASK_TYPE: Record<EcommerceTaskType, string> = {
+  主图: '1K',
+  详情图: '1K',
+  营销海报: '2K',
+};
+
 export const DEFAULT_DESIGN_FORM_STATE: DesignFormState = {
   model: 'gpt-image-2-vip',
   taskType: '主图',
   aspectRatio: '1:1',
   quality: 'high',
-  clarity: '2K',
+  clarity: DEFAULT_CLARITY_BY_TASK_TYPE['主图'],
   count: '1',
 };

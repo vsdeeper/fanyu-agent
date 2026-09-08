@@ -45,6 +45,7 @@ import type {
   StudioResultImage,
   VisualStepSnapshot,
 } from './types';
+import { DEFAULT_CLARITY_BY_TASK_TYPE, DEFAULT_DESIGN_FORM_STATE } from './constants';
 
 export {
   applyGenerateEvent,
@@ -64,6 +65,16 @@ export {
   readUrlAsDataUrl,
   readUploadItemAsDataUrl,
 } from '@/app/studio/_utils/upload-items';
+
+/** 按任务类型给出设计表单默认值（主图/详情图清晰度 1K，海报 2K；详情图默认 3:4）。 */
+export function createDefaultDesignForm(taskType: EcommerceTaskType): DesignFormState {
+  return {
+    ...DEFAULT_DESIGN_FORM_STATE,
+    taskType,
+    clarity: DEFAULT_CLARITY_BY_TASK_TYPE[taskType],
+    ...(taskType === '详情图' ? { aspectRatio: '3:4' } : {}),
+  };
+}
 
 /**
  * 将选择的文件追加为本地预览项；超出上限的部分丢弃。

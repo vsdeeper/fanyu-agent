@@ -17,6 +17,7 @@ import {
   appendProductImages,
   applyDesignGenerateEvent,
   applyGenerateEvent,
+  createDefaultDesignForm,
   getGeneratedDesignGroups,
   isSameStepSnapshot,
   pendingImagesFromCount,
@@ -116,6 +117,17 @@ describe('applyGenerateEvent', () => {
       status: 'failed',
       error: '生成失败',
     });
+  });
+});
+
+describe('设计表单默认值', () => {
+  it('主图与详情图默认 1K，营销海报默认 2K', () => {
+    expect(createDefaultDesignForm('主图').clarity).toBe('1K');
+    expect(createDefaultDesignForm('详情图')).toMatchObject({
+      clarity: '1K',
+      aspectRatio: '3:4',
+    });
+    expect(createDefaultDesignForm('营销海报').clarity).toBe('2K');
   });
 });
 

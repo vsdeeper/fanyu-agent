@@ -121,14 +121,16 @@ type GenerateSpecFields = {
   quality: string;
 };
 
-/** 切换模型并同步该模型默认清晰度和质量。 */
+/** 切换模型：当前清晰度仍在新模型选项内则保留，否则回该模型默认档。 */
 export function patchModel<T extends GenerateSpecFields>(form: T, model: string): T {
   const capability = getModelCapability(model);
   if (!capability) return { ...form, model };
   return {
     ...form,
     model,
-    clarity: capability.clarityDefault,
+    clarity: capability.clarityOptions.includes(form.clarity)
+      ? form.clarity
+      : capability.clarityDefault,
     quality: capability.qualityDefault ?? form.quality,
   };
 }
