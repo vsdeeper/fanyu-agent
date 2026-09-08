@@ -57,6 +57,8 @@ import {
   isSameStepSnapshot,
   resolveInitialStudioPhase,
   getSelectedResultImageUrl,
+  getGeneratedDesignGroups,
+  getGeneratedImages,
   pendingImagesFromCount,
   phaseAfterNext,
   phaseAfterPrev,
@@ -443,8 +445,15 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         setVisualImages(nextVisualImages);
       });
       if (controller.signal.aborted) {
-        // 用户中止（通常来自上一步）：恢复本批前的视觉结果，相位由发起方 handlePrev 管理
-        setVisualImages(visualImages);
+        const kept = getGeneratedImages(nextVisualImages);
+        setVisualImages(kept);
+        if (kept.length > 0) {
+          try {
+            await persistVisualStep(form, kept, selectedVisualIndex);
+          } catch (err) {
+            console.error('[ecommerce-studio] persist visual', err);
+          }
+        }
         return;
       }
       // 生成产出右侧栏结果；生成完成即落库（与下一步/完成同一动作）
@@ -456,7 +465,15 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       }
     } catch (err) {
       if (isAbortError(err) || controller.signal.aborted) {
-        setVisualImages(visualImages);
+        const kept = getGeneratedImages(nextVisualImages);
+        setVisualImages(kept);
+        if (kept.length > 0) {
+          try {
+            await persistVisualStep(form, kept, selectedVisualIndex);
+          } catch (persistErr) {
+            console.error('[ecommerce-studio] persist visual', persistErr);
+          }
+        }
         return;
       }
       console.error('[ecommerce-studio] generate visual', err);
@@ -560,8 +577,15 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         setDesignResultGroups(nextDesignResultGroups);
       });
       if (controller.signal.aborted) {
-        // 用户中止（通常来自上一步）：恢复本批前的设计结果，相位由发起方 handlePrev 管理
-        setDesignResultGroups(designResultGroups);
+        const kept = getGeneratedDesignGroups(nextDesignResultGroups);
+        setDesignResultGroups(kept);
+        if (Object.values(kept).some((group) => Boolean(group?.length))) {
+          try {
+            await persistDesignStep(nextDesignForm, kept, modelImages);
+          } catch (err) {
+            console.error('[ecommerce-studio] persist design', err);
+          }
+        }
         return;
       }
       setDesignForm(nextDesignForm);
@@ -573,7 +597,15 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       }
     } catch (err) {
       if (isAbortError(err) || controller.signal.aborted) {
-        setDesignResultGroups(designResultGroups);
+        const kept = getGeneratedDesignGroups(nextDesignResultGroups);
+        setDesignResultGroups(kept);
+        if (Object.values(kept).some((group) => Boolean(group?.length))) {
+          try {
+            await persistDesignStep(nextDesignForm, kept, modelImages);
+          } catch (persistErr) {
+            console.error('[ecommerce-studio] persist design', persistErr);
+          }
+        }
         return;
       }
       console.error('[ecommerce-studio] generate design', err);

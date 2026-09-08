@@ -5,16 +5,7 @@ import type { DesignResultGroups, StudioResultImage } from '../types';
 import { ANALYSIS_FILE_NAME, EXPORT_ARCHIVE_NAME, VISUAL_GROUP_TITLE } from './constants';
 
 export { getGeneratedImages };
-
-/** 过滤各任务类型中的未完成与失败结果。 */
-export function getGeneratedDesignGroups(groups: DesignResultGroups): DesignResultGroups {
-  const generated: DesignResultGroups = {};
-  for (const taskType of ECOMMERCE_TASK_TYPES) {
-    const images = getGeneratedImages(groups[taskType] ?? []);
-    if (images.length > 0) generated[taskType] = images;
-  }
-  return generated;
-}
+export { getGeneratedDesignGroups } from '../utils';
 
 /** 将商业分析正文写入待打包文件表；直接在 ZIP 根目录输出单文件 .md。 */
 function appendAnalysisFile(files: Record<string, Uint8Array>, analysisText: string): void {

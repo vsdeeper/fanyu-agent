@@ -16,6 +16,7 @@ import {
   appendProductImages,
   applyDesignGenerateEvent,
   applyGenerateEvent,
+  getGeneratedDesignGroups,
   isSameStepSnapshot,
   pendingImagesFromCount,
   phaseAfterNext,
@@ -268,6 +269,20 @@ describe('视觉设计结果分组', () => {
       { index: 2, aspectRatio: '1:1', status: 'pending', themeId: 'scene', themeTitle: '使用场景' },
       { index: 3, aspectRatio: '1:1', status: 'pending', themeId: 'scene', themeTitle: '使用场景' },
     ]);
+  });
+
+  it('中止时只保留生成成功的图，丢掉 pending 与失败', () => {
+    const groups = getGeneratedDesignGroups({
+      主图: [
+        { index: 0, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,ok' },
+        { index: 1, aspectRatio: '1:1', status: 'pending' },
+        { index: 2, aspectRatio: '1:1', status: 'failed', error: '失败' },
+      ],
+      营销海报: [{ index: 0, aspectRatio: '3:4', status: 'pending' }],
+    });
+    expect(groups).toEqual({
+      主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,ok' }],
+    });
   });
 });
 

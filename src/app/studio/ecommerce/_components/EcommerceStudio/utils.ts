@@ -8,7 +8,10 @@ import type {
   StudioGenerateRequest,
 } from '@/app/api/studio/_shared/generate-types';
 import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
-import { ECOMMERCE_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/ecommerce/_shared/task-constants';
+import {
+  ECOMMERCE_STEP_SNAPSHOT_VERSION,
+  ECOMMERCE_TASK_TYPES,
+} from '@/app/api/studio/ecommerce/_shared/task-constants';
 import type {
   EcommerceStepKey,
   EcommerceTaskStepRecord,
@@ -29,6 +32,7 @@ import {
   revokeUploadItemUrls,
   serializeUploadItem,
 } from '@/app/studio/_utils/upload-items';
+import { getGeneratedImages } from '@/app/studio/_utils/result-images';
 import type {
   AnalysisStepSnapshot,
   DesignStepSnapshot,
@@ -51,7 +55,10 @@ export {
 } from '@/app/studio/_utils/generate-stream';
 export { consumeAnalyzeSse, createRafTextBuffer } from '@/app/studio/_utils/analyze-stream';
 export type { RafTextBuffer } from '@/app/studio/_utils/analyze-stream';
-export { getSelectedImageUrl as getSelectedResultImageUrl } from '@/app/studio/_utils/result-images';
+export {
+  getGeneratedImages,
+  getSelectedImageUrl as getSelectedResultImageUrl,
+} from '@/app/studio/_utils/result-images';
 export {
   readFileAsDataUrl,
   readUrlAsDataUrl,
@@ -298,6 +305,16 @@ export function applyDesignGenerateEvent(
     ...current,
     [taskType]: applyGenerateEvent(current[taskType] ?? [], event, batchStartIndex),
   };
+}
+
+/** 只保留各任务类型中生成成功且有地址的图片。 */
+export function getGeneratedDesignGroups(groups: DesignResultGroups): DesignResultGroups {
+  const generated: DesignResultGroups = {};
+  for (const taskType of ECOMMERCE_TASK_TYPES) {
+    const images = getGeneratedImages(groups[taskType] ?? []);
+    if (images.length > 0) generated[taskType] = images;
+  }
+  return generated;
 }
 
 /** 构造商业分析步骤的完整持久化快照。 */
