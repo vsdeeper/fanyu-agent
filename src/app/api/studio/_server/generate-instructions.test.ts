@@ -48,15 +48,16 @@ describe('电商生图指令', () => {
     expect(prompt).toContain('背面或被遮挡的部件不得搬移、复制或补画');
   });
 
-  it('产品多视角先精修再出多视角且不依赖商业分析', () => {
+  it('产品多视角基于精修图出视图板，不重复精修提示、不依赖商业分析', () => {
     const prompt = buildProductViewPrompt();
 
-    expect(prompt.indexOf('【第一阶段：产品精修】')).toBeLessThan(
-      prompt.indexOf('【第二阶段：产品多视角】'),
-    );
+    expect(prompt).toContain('参考图均为已精修的同一产品事实依据');
     expect(prompt).toContain('Logo、品牌文字、标签和图案必须原样、清晰、完整保留');
     expect(prompt).toContain('背面或被遮挡的部件不得搬移、复制或补画');
     expect(prompt).toContain('纯色背景和统一光线');
+    expect(prompt).not.toContain('【第一阶段：产品精修】');
+    expect(prompt).not.toContain('修复产品瑕疵');
+    expect(prompt).not.toContain('先精修、再出多视角');
     expect(prompt).not.toContain('【商业分析】');
     expect(prompt).not.toContain('电影感');
   });

@@ -17,7 +17,7 @@ export const STUDIO_STEP_INDEX: Record<ProductRetouchPhase, number> = {
 };
 
 export const DEFAULT_REFINE_REQUIREMENT =
-  '保持产品外观、颜色、比例、结构完全一致；修复产品瑕疵，优化材质质感、光影、高光、阴影和边缘细节，提高商业摄影品质。背景简洁高级，突出产品主体，整体达到产品精修效果。';
+  '保持产品外观、颜色、比例、结构完全一致；修复产品瑕疵，优化材质质感、光影、高光、阴影和边缘细节，提高商业摄影品质。背景简洁、明亮、高级，突出产品主体，整体达到产品精修效果。';
 export const DEFAULT_MULTIVIEW_REQUIREMENT =
   '保持产品外观、颜色、比例、结构完全一致，在同一画幅内生成产品正面、侧面、背面、45度、俯视、仰视等多个角度。使用纯色背景和统一光线，各视角产品比例一致；不要添加无关道具或营销装饰。';
 
