@@ -24,6 +24,7 @@ import {
 import {
   appendUploadItems,
   readUploadItemAsDataUrl,
+  readUploadItemAsText,
   removeUploadItem,
   revokeUploadItemUrls,
   serializeUploadItem,
@@ -156,10 +157,19 @@ export async function toDesignGeneratePayload(
   };
 }
 
-/** 主图请求体：规格 + 套图视觉规范 + 选中主题文案 + 产品精修图 */
+/** 读取上传的商业分析 txt/md 正文，多份以空行拼接。 */
+export async function readProductDocsAsText(documents: ProductDocItem[]): Promise<string> {
+  const texts = await Promise.all(documents.map((item) => readUploadItemAsText(item)));
+  return texts
+    .map((text) => text.trim())
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/** 主图请求体：规格 + 商业分析 + 选中主题文案 + 产品精修图 */
 export async function toMainImageGeneratePayload(
   form: DesignFormState,
-  visualLock: string,
+  analysisText: string,
   requirements: MainImagePlanCard[],
   productImages: ProductImageItem[],
 ): Promise<StudioGenerateRequest> {
@@ -170,7 +180,7 @@ export async function toMainImageGeneratePayload(
     quality: form.quality,
     clarity: form.clarity,
     count: Number.parseInt(form.count, 10) || 1,
-    visualLock: visualLock.trim(),
+    analysisText: analysisText.trim(),
     requirements: requirements.map((card) => ({
       themeId: card.themeId,
       title: card.title,
@@ -296,7 +306,6 @@ export async function createAnalysisStepSnapshot(
   documents: ProductDocItem[],
   analysisText: string,
   extras?: {
-    visualLock?: string;
     planCards?: MainImagePlanCard[];
     selectedThemeIds?: string[];
   },
@@ -305,7 +314,6 @@ export async function createAnalysisStepSnapshot(
     images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
     documents: (await Promise.all(documents.map(serializeUploadItem))) as ProductDocItem[],
     analysisText,
-    ...(extras?.visualLock !== undefined ? { visualLock: extras.visualLock } : {}),
     ...(extras?.planCards ? { planCards: extras.planCards } : {}),
     ...(extras?.selectedThemeIds ? { selectedThemeIds: extras.selectedThemeIds } : {}),
   };
@@ -347,9 +355,7 @@ export function resolveInitialStudioPhase(
 ): StudioPhase {
   if (isMainImage) {
     const hasPlan =
-      Boolean(analysis?.visualLock?.trim()) ||
-      (analysis?.planCards?.length ?? 0) > 0 ||
-      Boolean(analysis?.analysisText?.trim());
+      (analysis?.planCards?.length ?? 0) > 0 || Boolean(analysis?.analysisText?.trim());
     if (hasPlan) return 'analyzed';
     if (hasDesignSnapshot) return 'design';
     return 'input';
@@ -367,7 +373,6 @@ export function readAnalysisStepSnapshot(value: unknown): AnalysisStepSnapshot |
     images: snapshot.images,
     documents: snapshot.documents,
     analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : '',
-    visualLock: typeof snapshot.visualLock === 'string' ? snapshot.visualLock : undefined,
     planCards: Array.isArray(snapshot.planCards) ? snapshot.planCards : undefined,
     selectedThemeIds: Array.isArray(snapshot.selectedThemeIds)
       ? snapshot.selectedThemeIds.filter((id): id is string => typeof id === 'string')

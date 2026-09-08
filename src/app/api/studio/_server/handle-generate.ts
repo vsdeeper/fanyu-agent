@@ -105,7 +105,7 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
       if (body.kind === 'mainImage') {
         let index = 0;
         for (const item of body.requirements) {
-          const themePrompt = buildMainImagePrompt(item.requirement, body.visualLock);
+          const themePrompt = buildMainImagePrompt(item.requirement, body.analysisText);
           for (let i = 0; i < count; i++) {
             if (req.signal.aborted) return;
             const result = await generateStudioImage({

@@ -100,12 +100,19 @@ describe('电商生图指令', () => {
     expect(prompt).not.toContain('显著小于画面主视觉');
   });
 
-  it('电商主图以套图规范定视觉、本张文案定信息，并叠加通用画面质量底线', () => {
-    const prompt = buildMainImagePrompt('主标题：午后书桌清凉', '冷白主导，Logo 左上');
+  it('电商主图以商业分析定气质、本张拍摄场景定空间、本张文案定信息', () => {
+    const prompt = buildMainImagePrompt(
+      '主标题：午后书桌清凉\n拍摄场景：真实书房全景，午后窗光。',
+      '目标人群偏好冷白，Logo 克制',
+    );
 
-    expect(prompt).toContain('【本张文案】\n主标题：午后书桌清凉');
-    expect(prompt).toContain('【套图视觉规范】\n冷白主导，Logo 左上');
-    expect(prompt).not.toContain('【商业分析');
+    expect(prompt).toContain(
+      '【本张文案】\n主标题：午后书桌清凉\n拍摄场景：真实书房全景，午后窗光。',
+    );
+    expect(prompt).toContain('【商业分析】\n目标人群偏好冷白，Logo 克制');
+    expect(prompt).not.toContain('【套图视觉规范】');
+    expect(prompt).toContain('以【本张文案】中的拍摄场景为准');
+    expect(prompt).toContain('禁止把拍摄场景说明写进画面文字');
     expect(prompt).toContain('电影感定向光');
     expect(prompt).toContain('简洁、清晰、易读');
     expect(prompt).not.toContain('必要时辅以 3～5 条卖点要点');
@@ -113,7 +120,8 @@ describe('电商生图指令', () => {
     expect(prompt).not.toContain('已选营销主视觉');
     expect(prompt).toContain('产品必须稳定放置在场景中的支撑面');
     expect(prompt).toContain('主图不允许悬浮创意');
-    expect(prompt).toContain('字体家族、文案配色必须整套遵守【套图视觉规范】');
+    expect(prompt).toContain('字体家族、文案配色必须整套遵守【商业分析】');
+    expect(prompt).toContain('构图、光影、场景与道具以本张拍摄场景为准');
   });
 
   it.each(ECOMMERCE_TASK_TYPES)('视觉设计为“%s”时包含类型要求与商业分析', (taskType) => {
@@ -374,7 +382,7 @@ describe('电商主图请求契约', () => {
     kind: 'mainImage',
     ...SPEC_FIELDS,
     count: 2,
-    visualLock: '冷白主导',
+    analysisText: '目标人群偏好冷白',
     requirements: [{ themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' }],
     productViewImages: [
       {
@@ -385,19 +393,21 @@ describe('电商主图请求契约', () => {
     ],
   } as const;
 
-  it('接受套图视觉规范、主题要求与产品精修图', () => {
+  it('接受商业分析、主题要求与产品精修图', () => {
     const parsed = parseGenerateBody(BASE_MAIN_IMAGE_REQUEST);
 
     expect(parsed?.kind).toBe('mainImage');
-    expect(parsed && parsed.kind === 'mainImage' ? parsed.visualLock : '').toBe('冷白主导');
+    expect(parsed && parsed.kind === 'mainImage' ? parsed.analysisText : '').toBe(
+      '目标人群偏好冷白',
+    );
     expect(parsed && parsed.kind === 'mainImage' ? parsed.requirements : []).toEqual([
       { themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' },
     ]);
   });
 
-  it('缺少产品图、视觉规范或主题要求时拒绝', () => {
+  it('缺少产品图、商业分析或主题要求时拒绝', () => {
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, productViewImages: [] })).toBeNull();
-    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, visualLock: ' ' })).toBeNull();
+    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: ' ' })).toBeNull();
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, requirements: [] })).toBeNull();
   });
 });

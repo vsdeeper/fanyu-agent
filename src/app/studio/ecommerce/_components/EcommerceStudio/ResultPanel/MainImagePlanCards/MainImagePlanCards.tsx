@@ -1,36 +1,27 @@
 import { Button, Card, Input } from 'antd';
 import { useState } from 'react';
-import {
-  MAIN_IMAGE_VISUAL_LOCK_TITLE,
-  type MainImagePlanCard,
-} from '@/app/api/studio/ecommerce/_shared/main-image-plan';
+import type { MainImagePlanCard } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import styles from './MainImagePlanCards.module.css';
 
-const VISUAL_LOCK_KEY = 'visualLock';
-
 type MainImagePlanCardsProps = {
-  visualLock: string;
   cards: MainImagePlanCard[];
   selectedThemeIds: string[];
   streaming?: boolean;
   disabled?: boolean;
   onToggleTheme: (themeId: string) => void;
-  onVisualLockSave: (next: string) => void;
   onCardSave: (themeId: string, requirement: string) => void;
   onEditingChange?: (editing: boolean) => void;
 };
 
 /**
- * 主图分析右栏：上方套图视觉规范（不参与多选），下方可多选、可逐卡编辑的主题 Card。
+ * 主图分析右栏：可多选、可逐卡编辑的主题 Card。
  */
 export default function MainImagePlanCards({
-  visualLock,
   cards,
   selectedThemeIds,
   streaming = false,
   disabled = false,
   onToggleTheme,
-  onVisualLockSave,
   onCardSave,
   onEditingChange,
 }: MainImagePlanCardsProps) {
@@ -53,8 +44,7 @@ export default function MainImagePlanCards({
   const saveEdit = (key: string) => {
     const next = draft.trim();
     if (!next) return;
-    if (key === VISUAL_LOCK_KEY) onVisualLockSave(next);
-    else onCardSave(key, next);
+    onCardSave(key, next);
     cancelEdit();
   };
 
@@ -89,26 +79,6 @@ export default function MainImagePlanCards({
 
   return (
     <div className={styles.list}>
-      {visualLock || editingKey === VISUAL_LOCK_KEY ? (
-        <Card
-          size="small"
-          title={MAIN_IMAGE_VISUAL_LOCK_TITLE}
-          extra={renderExtra(VISUAL_LOCK_KEY, visualLock)}
-          className={`${styles.card} ${styles.readonly}`}
-        >
-          {editingKey === VISUAL_LOCK_KEY ? (
-            <Input.TextArea
-              className={styles.editor}
-              value={draft}
-              autoSize={{ minRows: 4, maxRows: 10 }}
-              onClick={(event) => event.stopPropagation()}
-              onChange={(event) => setDraft(event.target.value)}
-            />
-          ) : (
-            <p className={styles.body}>{visualLock}</p>
-          )}
-        </Card>
-      ) : null}
       {cards.map((card) => {
         const selected = selectedThemeIds.includes(card.themeId);
         const editing = editingKey === card.themeId;

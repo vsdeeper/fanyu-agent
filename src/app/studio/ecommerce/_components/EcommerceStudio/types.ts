@@ -54,7 +54,6 @@ export type AnalysisStepSnapshot = {
   images: ProductImageItem[];
   documents: ProductDocItem[];
   analysisText: string;
-  visualLock?: string;
   planCards?: MainImagePlanCard[];
   selectedThemeIds?: string[];
 };

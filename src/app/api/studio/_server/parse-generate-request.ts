@@ -69,7 +69,7 @@ const visualGenerateSchema = specFieldsSchema.extend({
 const mainImageGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('mainImage'),
   count: countSchema,
-  visualLock: z.string().trim().min(1),
+  analysisText: z.string().trim().min(1),
   requirements: z
     .array(
       z.object({

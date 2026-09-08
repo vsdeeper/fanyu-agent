@@ -16,8 +16,6 @@ export const MAIN_IMAGE_THEMES: readonly { id: MainImageThemeId; title: string }
   { id: 'value', title: '用户价值' },
 ] as const;
 
-export const MAIN_IMAGE_VISUAL_LOCK_TITLE = '套图视觉规范';
-
 export type MainImagePlanCard = {
   themeId: MainImageThemeId;
   title: string;

@@ -33,7 +33,7 @@ type SseSend = (event: string, data: unknown) => Promise<void>;
  */
 function buildMainImageAnalyzePrompt(documentsText: string): string {
   return [
-    '【主图分析】请按指令先输出套图视觉规范，再输出五个互斥主题的出图要求。本轮不要出图。',
+    '【主图分析】请按指令输出五个互斥主题卡，每张含文案与互斥拍摄场景。本轮不要出图。',
     `- 商业分析：${documentsText}`,
   ].join('\n');
 }
@@ -89,7 +89,7 @@ async function pipeMainImageAnalyzeEvents(
 }
 
 /**
- * POST /api/studio/ecommerce/analyze：仅商业分析文档，规划套图视觉规范与五张主题卡。
+ * POST /api/studio/ecommerce/analyze：仅商业分析文档，规划五张含互斥拍摄场景的主题卡。
  */
 export async function handleEcommerceMainImageAnalyze(req: Request): Promise<Response> {
   let json: unknown;

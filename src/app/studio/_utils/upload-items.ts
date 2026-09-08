@@ -52,6 +52,14 @@ export async function readUploadItemAsDataUrl(item: StudioUploadItem): Promise<s
   return item.file ? readFileAsDataUrl(item.file) : readUrlAsDataUrl(item.previewUrl);
 }
 
+/** 读取新上传 txt/md 或已持久化资料，统一产出 UTF-8 正文。 */
+export async function readUploadItemAsText(item: StudioUploadItem): Promise<string> {
+  if (item.file) return item.file.text();
+  const response = await fetch(item.previewUrl);
+  if (!response.ok) throw new Error('读取历史资料失败');
+  return response.text();
+}
+
 /** 将上传图剥离 file（不可序列化），并把本地 blob URL 转为 data URL 供服务端落盘。 */
 export async function serializeUploadItem<T extends StudioUploadItem>(
   item: T,

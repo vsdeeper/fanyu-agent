@@ -1,12 +1,10 @@
 import {
   MAIN_IMAGE_THEMES,
-  MAIN_IMAGE_VISUAL_LOCK_TITLE,
   themeIdByTitle,
   type MainImagePlanCard,
 } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 
 export type ParsedMainImagePlan = {
-  visualLock: string;
   cards: MainImagePlanCard[];
 };
 
@@ -16,7 +14,7 @@ type MarkdownSection = {
 };
 
 /**
- * 按二级标题切开 Markdown；标题需原文匹配「套图视觉规范」与五个主题名。
+ * 按二级标题切开 Markdown；标题需原文匹配五个主题名。
  */
 function splitMarkdownSections(markdown: string): MarkdownSection[] {
   const sections: MarkdownSection[] = [];
@@ -34,18 +32,13 @@ function splitMarkdownSections(markdown: string): MarkdownSection[] {
 }
 
 /**
- * 从主图分析 Markdown 解析套图视觉规范与主题卡片；流式半成品也尽量切出已完整的节。
+ * 从主图分析 Markdown 解析主题卡片；流式半成品也尽量切出已完整的节。
  */
 export function parseMainImagePlan(markdown: string): ParsedMainImagePlan {
   const sections = splitMarkdownSections(markdown);
-  let visualLock = '';
   const byId = new Map<string, MainImagePlanCard>();
 
   for (const section of sections) {
-    if (section.title === MAIN_IMAGE_VISUAL_LOCK_TITLE) {
-      visualLock = section.body;
-      continue;
-    }
     const themeId = themeIdByTitle(section.title);
     if (!themeId || !section.body) continue;
     byId.set(themeId, { themeId, title: section.title, requirement: section.body });
@@ -56,5 +49,5 @@ export function parseMainImagePlan(markdown: string): ParsedMainImagePlan {
     return card ? [card] : [];
   });
 
-  return { visualLock, cards };
+  return { cards };
 }

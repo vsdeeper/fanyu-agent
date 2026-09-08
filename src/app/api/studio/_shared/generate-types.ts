@@ -72,11 +72,11 @@ export type StudioDesignGenerateRequest = StudioGenerateBase & {
   modelImages?: StudioImageInput[];
 };
 
-/** 电商主图：规格 + 套图视觉规范 + 多张主题文案 + 产品精修图 */
+/** 电商主图：规格 + 商业分析 + 多张主题文案 + 产品精修图 */
 export type StudioMainImageGenerateRequest = StudioGenerateBase & {
   kind: 'mainImage';
   count: number;
-  visualLock: string;
+  analysisText: string;
   requirements: Array<{
     themeId: string;
     title: string;

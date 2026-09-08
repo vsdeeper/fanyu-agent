@@ -12,10 +12,6 @@
   min-height: 44px;
 }
 
-.readonly {
-  cursor: default;
-}
-
 .selected {
   border-color: var(--one-color-primary) !important;
 }

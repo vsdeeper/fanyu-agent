@@ -144,23 +144,23 @@ describe('视觉设计请求体', () => {
     expect(payload).not.toHaveProperty('modelImages');
   });
 
-  it('主图请求体含套图视觉规范与主题列表，不含主视觉、模特与商业分析全文', async () => {
+  it('主图请求体含商业分析与主题列表，不含主视觉、模特与套图视觉规范', async () => {
     const payload = await toMainImageGeneratePayload(
       DEFAULT_DESIGN_FORM_STATE,
-      ' 冷白主导 ',
+      ' 目标人群偏好冷白 ',
       [{ themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' }],
       [IMAGE_ITEM('p-1', 'product.png')],
     );
 
     expect(payload).toMatchObject({
       kind: 'mainImage',
-      visualLock: '冷白主导',
+      analysisText: '目标人群偏好冷白',
       requirements: [{ themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' }],
     });
     expect(payload).not.toHaveProperty('visualDataUrl');
     expect(payload).not.toHaveProperty('modelImages');
     expect(payload).not.toHaveProperty('taskType');
-    expect(payload).not.toHaveProperty('analysisText');
+    expect(payload).not.toHaveProperty('visualLock');
   });
 
   it('营销海报同样带入主视觉，并可附带可选模特形象', async () => {
@@ -425,9 +425,14 @@ describe('步骤快照水合', () => {
         {
           images: [],
           documents: [],
-          analysisText: '## 套图视觉规范\n冷白',
-          visualLock: '冷白',
-          planCards: [{ themeId: 'product', title: '产品展示', requirement: '特写' }],
+          analysisText: '## 产品展示\n特写\n拍摄场景：浅木台面。',
+          planCards: [
+            {
+              themeId: 'product',
+              title: '产品展示',
+              requirement: '特写\n拍摄场景：浅木台面。',
+            },
+          ],
         },
         false,
         true,

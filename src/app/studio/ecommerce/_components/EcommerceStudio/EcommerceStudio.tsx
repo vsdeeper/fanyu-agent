@@ -64,6 +64,7 @@ import {
   removeProductImage,
   readAnalysisStepSnapshot,
   readDesignStepSnapshot,
+  readProductDocsAsText,
   readUrlAsDataUrl,
   readVisualStepSnapshot,
   revokeProductDocUrls,
@@ -138,10 +139,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   );
   const initialParsedPlan = mainImage
     ? parseMainImagePlan(initialAnalysis?.analysisText ?? '')
-    : { visualLock: '', cards: [] };
-  const [visualLock, setVisualLock] = useState(
-    initialAnalysis?.visualLock ?? initialParsedPlan.visualLock,
-  );
+    : { cards: [] };
   const [planCards, setPlanCards] = useState<MainImagePlanCard[]>(
     initialAnalysis?.planCards?.length ? initialAnalysis.planCards : initialParsedPlan.cards,
   );
@@ -218,7 +216,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       docs: ProductDocItem[],
       text: string,
       extras?: {
-        visualLock?: string;
         planCards?: MainImagePlanCard[];
         selectedThemeIds?: string[];
       },
@@ -229,7 +226,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         text,
         mainImage
           ? {
-              visualLock: extras?.visualLock ?? visualLock,
               planCards: extras?.planCards ?? planCards,
               selectedThemeIds: extras?.selectedThemeIds ?? selectedThemeIds,
             }
@@ -241,20 +237,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       if (!mainImage) setImages(saved.images);
       setDocuments(saved.documents);
       setAnalysisText(saved.analysisText);
-      if (typeof saved.visualLock === 'string') setVisualLock(saved.visualLock);
       if (saved.planCards) setPlanCards(saved.planCards);
       if (saved.selectedThemeIds) setSelectedThemeIds(saved.selectedThemeIds);
     },
-    [
-      mainImage,
-      planCards,
-      selectedThemeIds,
-      task.id,
-      visualLock,
-      setImages,
-      setDocuments,
-      setAnalysisText,
-    ],
+    [mainImage, planCards, selectedThemeIds, task.id, setImages, setDocuments, setAnalysisText],
   );
 
   const persistVisualStep = useCallback(
@@ -314,7 +300,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   );
 
   const streamedPlan = mainImage && phase === 'analyzing' ? parseMainImagePlan(analysisText) : null;
-  const displayVisualLock = streamedPlan ? streamedPlan.visualLock : visualLock;
   const displayPlanCards = streamedPlan ? streamedPlan.cards : planCards;
 
   const handleAnalyze = useCallback(async () => {
@@ -333,7 +318,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setPhase('analyzing');
     analysisBuffer.reset();
     if (mainImage) {
-      setVisualLock('');
       setPlanCards([]);
       setSelectedThemeIds([]);
     } else {
@@ -379,13 +363,11 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         const text = analysisBuffer.getText();
         if (mainImage) {
           const parsed = parseMainImagePlan(text);
-          setVisualLock(parsed.visualLock);
           setPlanCards(parsed.cards);
           analysisDirtyRef.current = true;
           setPhase('analyzed');
           try {
             await persistAnalysisStep(images, documents, text, {
-              visualLock: parsed.visualLock,
               planCards: parsed.cards,
               selectedThemeIds: [],
             });
@@ -501,9 +483,15 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       return;
     }
     const selectedCards = planCards.filter((card) => selectedThemeIds.includes(card.themeId));
+    let analysisFromDocs = '';
     if (mainImage) {
-      if (!visualLock.trim() || selectedCards.length === 0) {
+      if (selectedCards.length === 0) {
         message.warning(THEME_SELECT_MISSING);
+        return;
+      }
+      analysisFromDocs = await readProductDocsAsText(documents);
+      if (!analysisFromDocs) {
+        message.warning(ANALYSIS_UPLOAD_MISSING);
         return;
       }
     } else if (!analysisText.trim()) {
@@ -547,7 +535,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setDesignResultGroups(nextDesignResultGroups);
     try {
       const body = mainImage
-        ? await toMainImageGeneratePayload(nextDesignForm, visualLock, selectedCards, images)
+        ? await toMainImageGeneratePayload(nextDesignForm, analysisFromDocs, selectedCards, images)
         : await toDesignGeneratePayload(
             nextDesignForm,
             analysisText,
@@ -599,6 +587,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     analysisText,
     designForm,
     designResultGroups,
+    documents,
     expectedDesignCount,
     images,
     mainImage,
@@ -612,7 +601,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setDesignForm,
     setPhase,
     visualImages,
-    visualLock,
   ]);
 
   const handleImagesAppend = useCallback(
@@ -756,18 +744,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     );
   }, []);
 
-  const handleVisualLockSave = useCallback(
-    (next: string) => {
-      setVisualLock(next);
-      void persistAnalysisStep(images, documents, analysisText, {
-        visualLock: next,
-        planCards,
-        selectedThemeIds,
-      });
-    },
-    [analysisText, documents, images, persistAnalysisStep, planCards, selectedThemeIds],
-  );
-
   const handlePlanCardSave = useCallback(
     (themeId: string, requirement: string) => {
       const nextCards = planCards.map((card) =>
@@ -775,12 +751,11 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       );
       setPlanCards(nextCards);
       void persistAnalysisStep(images, documents, analysisText, {
-        visualLock,
         planCards: nextCards,
         selectedThemeIds,
       });
     },
-    [analysisText, documents, images, persistAnalysisStep, planCards, selectedThemeIds, visualLock],
+    [analysisText, documents, images, persistAnalysisStep, planCards, selectedThemeIds],
   );
 
   return (
@@ -834,7 +809,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 canGenerateVisual={images.length > 0 && Boolean(analysisText.trim())}
                 canGenerateDesign={
                   mainImage
-                    ? images.length > 0 && selectedCards.length > 0 && Boolean(visualLock.trim())
+                    ? images.length > 0 && selectedCards.length > 0 && documents.length > 0
                     : true
                 }
                 selectedCards={selectedCards}
@@ -861,7 +836,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 selectedVisualIndex={selectedVisualIndex}
                 nextLoading={nextLoading}
                 isPoster={poster}
-                visualLock={displayVisualLock}
                 planCards={displayPlanCards}
                 selectedThemeIds={selectedThemeIds}
                 onSelectVisual={handleSelectVisual}
@@ -869,7 +843,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 onNext={handleNext}
                 onAnalysisTextChange={setAnalysisText}
                 onToggleTheme={handleToggleTheme}
-                onVisualLockSave={handleVisualLockSave}
                 onPlanCardSave={handlePlanCardSave}
               />
             </>

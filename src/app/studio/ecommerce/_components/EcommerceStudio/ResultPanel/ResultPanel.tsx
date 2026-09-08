@@ -44,7 +44,6 @@ type ResultPanelProps = {
   selectedVisualIndex: number | null;
   nextLoading: boolean;
   isPoster?: boolean;
-  visualLock?: string;
   planCards?: MainImagePlanCard[];
   selectedThemeIds?: string[];
   onSelectVisual: (index: number) => void;
@@ -52,7 +51,6 @@ type ResultPanelProps = {
   onNext: () => void;
   onAnalysisTextChange: (next: string) => void;
   onToggleTheme?: (themeId: string) => void;
-  onVisualLockSave?: (next: string) => void;
   onPlanCardSave?: (themeId: string, requirement: string) => void;
 };
 
@@ -71,7 +69,6 @@ export default function ResultPanel({
   selectedVisualIndex,
   nextLoading,
   isPoster = false,
-  visualLock = '',
   planCards = [],
   selectedThemeIds = [],
   onSelectVisual,
@@ -79,7 +76,6 @@ export default function ResultPanel({
   onNext,
   onAnalysisTextChange,
   onToggleTheme,
-  onVisualLockSave,
   onPlanCardSave,
 }: ResultPanelProps) {
   const { mode, hydrated } = useThemeMode();
@@ -88,8 +84,7 @@ export default function ResultPanel({
   const [planEditing, setPlanEditing] = useState(false);
   const mainImage = isMainImageTask(taskType);
   const showPlan = isPlanPhase(phase) && Boolean(analysisText) && !mainImage;
-  const showMainImagePlan =
-    mainImage && isPlanPhase(phase) && (Boolean(visualLock) || planCards.length > 0);
+  const showMainImagePlan = mainImage && isPlanPhase(phase) && planCards.length > 0;
   const showVisualGrid = isVisualResultPhase(phase) && visualImages.length > 0;
   const visualRatioGroups = groupResultImagesByRatio(visualImages);
   const showDesignGroups =
@@ -110,9 +105,7 @@ export default function ResultPanel({
   const { scrollRef, contentRef, onScroll } = usePlanStreamScroll(
     showPlan || showMainImagePlan,
     analysisStreaming,
-    showMainImagePlan
-      ? `${visualLock}\n${planCards.map((card) => card.requirement).join('\n')}`
-      : analysisText,
+    showMainImagePlan ? planCards.map((card) => card.requirement).join('\n') : analysisText,
   );
 
   const startEdit = () => {
@@ -163,12 +156,10 @@ export default function ResultPanel({
         <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
           <div ref={contentRef}>
             <MainImagePlanCards
-              visualLock={visualLock}
               cards={planCards}
               selectedThemeIds={selectedThemeIds}
               streaming={analysisStreaming}
               onToggleTheme={onToggleTheme ?? (() => undefined)}
-              onVisualLockSave={onVisualLockSave ?? (() => undefined)}
               onCardSave={onPlanCardSave ?? (() => undefined)}
               onEditingChange={setPlanEditing}
             />
