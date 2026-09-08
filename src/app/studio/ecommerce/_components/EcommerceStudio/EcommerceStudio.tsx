@@ -6,7 +6,9 @@ import { App, Button, Layout, Steps, Tag, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import type { EcommerceTaskDetail } from '@/app/api/studio/ecommerce/_shared/task-types';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
+import type { RewriteCardResult } from '@/app/api/studio/ecommerce/_shared/rewrite-card';
 import { ECOMMERCE_PATH } from '@/components/AppLayout/constants';
+import { apiPost } from '@/lib/shared/client/api-client';
 import ModeSwitch from '@/components/ModeSwitch';
 import CompletionPanel from './CompletionPanel';
 import { toggleExportIndexByTheme } from './CompletionPanel/utils';
@@ -895,6 +897,34 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     [analysisText, documents, images, persistAnalysisStep, planCards, selectedThemeIds],
   );
 
+  const handlePlanCardAiAssist = useCallback(
+    async (themeId: string, draft: string) => {
+      if (documents.length === 0) {
+        message.warning(ANALYSIS_UPLOAD_MISSING);
+        return '';
+      }
+      const analysisFromDocs = await readProductDocsAsText(documents);
+      if (!analysisFromDocs.trim()) {
+        message.warning(ANALYSIS_UPLOAD_MISSING);
+        return '';
+      }
+      const data = await apiPost<RewriteCardResult>('/api/studio/ecommerce/rewrite-card', {
+        themeId,
+        draft,
+        otherCards: planCards
+          .filter((card) => card.themeId !== themeId)
+          .map((card) => ({
+            themeId: card.themeId,
+            title: card.title,
+            requirement: card.requirement,
+          })),
+        analysisText: analysisFromDocs,
+      });
+      return data.requirement;
+    },
+    [documents, message, planCards],
+  );
+
   return (
     <Layout className={styles.studio}>
       <Layout.Header className={styles.header}>
@@ -988,6 +1018,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 onAnalysisTextChange={setAnalysisText}
                 onToggleTheme={handleToggleTheme}
                 onPlanCardSave={handlePlanCardSave}
+                onPlanCardAiAssist={handlePlanCardAiAssist}
               />
             </>
           )}

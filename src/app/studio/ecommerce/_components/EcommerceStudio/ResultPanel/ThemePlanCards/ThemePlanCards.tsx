@@ -1,6 +1,8 @@
 import { Button, Card, Input } from 'antd';
 import { useState } from 'react';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
+import { AI_ASSIST_BUTTON, CANCEL_BUTTON, EDIT_BUTTON, SAVE_BUTTON } from './constants';
+import { useThemePlanAiAssist } from './hooks/useThemePlanAiAssist';
 import styles from './ThemePlanCards.module.css';
 
 export type ThemePlanSelectionMode = 'single' | 'multiple';
@@ -14,6 +16,7 @@ type ThemePlanCardsProps = {
   onToggleTheme: (themeId: string) => void;
   onCardSave: (themeId: string, requirement: string) => void;
   onEditingChange?: (editing: boolean) => void;
+  onAiAssist?: (themeId: string, draft: string) => Promise<string>;
 };
 
 /**
@@ -28,18 +31,22 @@ export default function ThemePlanCards({
   onToggleTheme,
   onCardSave,
   onEditingChange,
+  onAiAssist,
 }: ThemePlanCardsProps) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const { assistLoading, runAssist, invalidateAssist } = useThemePlanAiAssist(onAiAssist, setDraft);
   const canInteract = !streaming && !disabled;
 
   const startEdit = (key: string, value: string) => {
+    invalidateAssist();
     setEditingKey(key);
     setDraft(value);
     onEditingChange?.(true);
   };
 
   const cancelEdit = () => {
+    invalidateAssist();
     setEditingKey(null);
     setDraft('');
     onEditingChange?.(false);
@@ -57,11 +64,16 @@ export default function ThemePlanCards({
     if (editingKey === key) {
       return (
         <span onClick={(event) => event.stopPropagation()}>
-          <Button type="link" size="small" onClick={cancelEdit}>
-            取消
+          <Button type="link" size="small" disabled={assistLoading} onClick={cancelEdit}>
+            {CANCEL_BUTTON}
           </Button>
-          <Button type="link" size="small" disabled={!draft.trim()} onClick={() => saveEdit(key)}>
-            保存
+          <Button
+            type="link"
+            size="small"
+            disabled={!draft.trim() || assistLoading}
+            onClick={() => saveEdit(key)}
+          >
+            {SAVE_BUTTON}
           </Button>
         </span>
       );
@@ -76,7 +88,7 @@ export default function ThemePlanCards({
           startEdit(key, value);
         }}
       >
-        编辑
+        {EDIT_BUTTON}
       </Button>
     );
   };
@@ -100,13 +112,28 @@ export default function ThemePlanCards({
             }}
           >
             {editing ? (
-              <Input.TextArea
-                className={styles.editor}
-                value={draft}
-                autoSize={{ minRows: 4, maxRows: 10 }}
-                onClick={(event) => event.stopPropagation()}
-                onChange={(event) => setDraft(event.target.value)}
-              />
+              <div className={styles.editorWrap} onClick={(event) => event.stopPropagation()}>
+                <Input.TextArea
+                  className={styles.editor}
+                  value={draft}
+                  autoSize={{ minRows: 4, maxRows: 10 }}
+                  disabled={assistLoading}
+                  onChange={(event) => setDraft(event.target.value)}
+                />
+                {onAiAssist ? (
+                  <span className={styles.aiAssist}>
+                    <Button
+                      type="link"
+                      size="small"
+                      loading={assistLoading}
+                      disabled={assistLoading}
+                      onClick={() => void runAssist(card.themeId, draft)}
+                    >
+                      {AI_ASSIST_BUTTON}
+                    </Button>
+                  </span>
+                ) : null}
+              </div>
             ) : (
               <p className={styles.body}>{card.requirement}</p>
             )}

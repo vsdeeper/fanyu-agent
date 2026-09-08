@@ -3,27 +3,33 @@ import { parseDetailImagePlan } from './parse-detail-image-plan';
 
 const SAMPLE = `## 品牌认知
 设计目标：建立品牌第一印象。
-展示重点：Logo 与一句定位。
+展示重点：
+- Logo 与一句定位。
 
 ## 核心卖点
 设计目标：说清主主张。
-展示重点：一个卖点视觉化。
+展示重点：
+- 一个卖点视觉化。
 
 ## 产品细节
 设计目标：展示材质与工艺。
-展示重点：近景纹理特写。
+展示重点：
+- 近景纹理特写。
 
 ## 功能展示
 设计目标：看见机制发生。
-展示重点：结构或气流示意。
+展示重点：
+- 结构或气流示意。
 
 ## 使用场景
 设计目标：放进真实生活。
-展示重点：书桌办公现场。
+展示重点：
+- 书桌办公现场。
 
 ## 购买理由
 设计目标：收束购买动机。
-展示重点：体验结果与安心感。
+展示重点：
+- 体验结果与安心感。
 `;
 
 describe('parseDetailImagePlan', () => {
@@ -53,7 +59,7 @@ describe('parseDetailImagePlan', () => {
       {
         themeId: 'sellingPoint',
         title: '核心卖点',
-        requirement: '卖点',
+        requirement: '展示重点：\n- 卖点',
       },
     ]);
   });

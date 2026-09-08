@@ -24,6 +24,27 @@
   color: var(--one-color-text);
 }
 
+.editorWrap {
+  position: relative;
+}
+
 .editor {
   margin-bottom: 0;
+}
+
+.editorWrap :global(.ant-input) {
+  padding-bottom: 32px;
+}
+
+.aiAssist {
+  position: absolute;
+  right: 8px;
+  bottom: 4px;
+  z-index: 1;
+  line-height: 1;
+}
+
+.aiAssist :global(.ant-btn) {
+  padding-inline: 4px;
+  height: auto;
 }

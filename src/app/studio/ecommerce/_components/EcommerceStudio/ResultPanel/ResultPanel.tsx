@@ -62,6 +62,7 @@ type ResultPanelProps = {
   onAnalysisTextChange: (next: string) => void;
   onToggleTheme?: (themeId: string) => void;
   onPlanCardSave?: (themeId: string, requirement: string) => void;
+  onPlanCardAiAssist?: (themeId: string, draft: string) => Promise<string>;
 };
 
 /**
@@ -89,6 +90,7 @@ export default function ResultPanel({
   onAnalysisTextChange,
   onToggleTheme,
   onPlanCardSave,
+  onPlanCardAiAssist,
 }: ResultPanelProps) {
   const { mode, hydrated } = useThemeMode();
   const [editing, setEditing] = useState(false);
@@ -176,6 +178,7 @@ export default function ResultPanel({
               onToggleTheme={onToggleTheme ?? (() => undefined)}
               onCardSave={onPlanCardSave ?? (() => undefined)}
               onEditingChange={setPlanEditing}
+              onAiAssist={detailImage ? onPlanCardAiAssist : undefined}
             />
           </div>
         </div>
