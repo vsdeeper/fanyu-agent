@@ -37,6 +37,8 @@ type ControlPanelProps = {
   designForm: DesignFormState;
   phase: StudioPhase;
   formLocked: boolean;
+  /** 是否已有后台生图作业在跑；生成中允许点上一步，故它不能由相位推导 */
+  jobRunning: boolean;
   canGenerateVisual: boolean;
   canGenerateDesign: boolean;
   selectedCards?: ThemePlanCard[];
@@ -68,6 +70,7 @@ export default function ControlPanel({
   designForm,
   phase,
   formLocked,
+  jobRunning,
   canGenerateVisual,
   canGenerateDesign,
   selectedCards = [],
@@ -88,6 +91,14 @@ export default function ControlPanel({
   const analyzing = phase === 'analyzing';
   const visualGenerating = phase === 'visualGenerating';
   const designGenerating = phase === 'designGenerating';
+  /**
+   * 生成中允许点上一步，退回后相位不再是 *Generating，按钮会重新变可点。
+   * 此时提交会命中服务端幂等（同任务同步骤已有 running 即原样返回），
+   * 客户端却已按「新批次」加了占位槽，状态随之错乱 —— 故只要有作业在跑就禁用本步按钮。
+   * 本步仍在生成时保留 loading 外观，不额外加 disabled。
+   */
+  const visualBlocked = jobRunning && !visualGenerating;
+  const designBlocked = jobRunning && !designGenerating;
   const showAnalyzeForm = isAnalyzePhase(phase);
   const showVisualForm = isVisualPhase(phase);
   const showDesignForm = isDesignPhase(phase);
@@ -192,7 +203,7 @@ export default function ControlPanel({
             size="large"
             icon={<HighlightOutlined />}
             loading={analyzing}
-            disabled={analyzeDisabled}
+            disabled={analyzeDisabled || jobRunning}
             onClick={onAnalyze}
           >
             {ANALYZE_BUTTON}
@@ -208,7 +219,7 @@ export default function ControlPanel({
             size="large"
             icon={<HighlightOutlined />}
             loading={visualGenerating}
-            disabled={!canGenerateVisual}
+            disabled={!canGenerateVisual || visualBlocked}
             onClick={onGenerateVisual}
           >
             {VISUAL_BUTTON}
@@ -224,7 +235,7 @@ export default function ControlPanel({
             size="large"
             icon={<HighlightOutlined />}
             loading={designGenerating}
-            disabled={!canGenerateDesign}
+            disabled={!canGenerateDesign || designBlocked}
             onClick={onGenerateDesign}
           >
             {designButton}

@@ -18,6 +18,7 @@ import type {
   StudioTaskDetail,
   StudioTaskListData,
   StudioTaskListItem,
+  StudioTaskStepRecord,
 } from '../_shared/task-types';
 
 export type StudioTasksTable =
@@ -49,6 +50,11 @@ export type CreateStudioTaskStoreConfig<TStepKey extends string, TExtra extends 
   extraCreateValues?: (extra: TExtra) => Record<string, unknown>;
   mapExtraFields?: (row: TaskRow) => TExtra;
   removeTaskAssetDirectory: (taskId: string) => void;
+  /**
+   * 可选：批量查询这些任务中正在后台生成的步骤，返回 taskId → stepKey。
+   * 不注入时列表行为完全不变，故未接后台作业的产品无需改动。
+   */
+  listRunningJobKeys?: (taskIds: readonly string[]) => Map<string, string>;
 };
 
 /**
@@ -120,19 +126,23 @@ export function createTaskStore<TStepKey extends string, TExtra extends object =
       });
 
     const start = (page - 1) * pageSize;
-    const items: StudioTaskListItem<TStepKey, TExtra>[] = filtered
-      .slice(start, start + pageSize)
-      .map((task) => ({
+    const pageTasks = filtered.slice(start, start + pageSize);
+    const runningByTask = config.listRunningJobKeys?.(pageTasks.map((task) => task.id));
+    const items: StudioTaskListItem<TStepKey, TExtra>[] = pageTasks.map((task) => {
+      const runningStepKey = runningByTask?.get(task.id);
+      return {
         id: task.id,
         name: task.name,
         workflowVersion: task.workflowVersion,
         completedStepKeys: [...(completedByTask.get(task.id) ?? [])].sort(
           (a, b) => config.stepKeys.indexOf(a) - config.stepKeys.indexOf(b),
         ),
+        ...(runningStepKey && isStepKey(runningStepKey) ? { runningStepKey } : {}),
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
         ...extraFields(task),
-      }));
+      };
+    });
     return { items, total: filtered.length, page, pageSize };
   }
 
@@ -143,7 +153,9 @@ export function createTaskStore<TStepKey extends string, TExtra extends object =
       TaskRow | undefined;
     if (!task) return undefined;
     const steps = db.select().from(stepsTable).where(eq(stepsTable.taskId, id)).all();
-    const detailSteps: StudioTaskDetail<TStepKey, TExtra>['steps'] = {};
+    // 局部用干净类型收集，末尾整体断言：StudioTaskDetail 与泛型 TExtra 交叉后，
+    // steps 会被推导为 `TExtra['steps'] & Partial<...>` 的延迟索引，直接赋值必然报错。
+    const detailSteps: Partial<Record<TStepKey, StudioTaskStepRecord<TStepKey>>> = {};
     steps.forEach((step) => {
       if (!isStepKey(step.stepKey)) return;
       detailSteps[step.stepKey] = {
@@ -162,7 +174,7 @@ export function createTaskStore<TStepKey extends string, TExtra extends object =
       updatedAt: task.updatedAt,
       ...extraFields(task),
       steps: detailSteps,
-    };
+    } as StudioTaskDetail<TStepKey, TExtra>;
   }
 
   /** 同产品线内是否已有同名任务；excludeId 用于改名时排除自身。 */

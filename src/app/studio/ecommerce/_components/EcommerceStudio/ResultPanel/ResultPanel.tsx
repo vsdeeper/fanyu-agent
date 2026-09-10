@@ -1,5 +1,5 @@
 import { StarOutlined } from '@ant-design/icons';
-import { Button, Input, Spin, Typography } from 'antd';
+import { Button, Input, Popconfirm, Spin, Typography } from 'antd';
 import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
@@ -10,6 +10,11 @@ import { DETAIL_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/detail-i
 import { MAIN_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import {
+  CANCEL_GENERATE_BUTTON,
+  CANCEL_GENERATE_CONFIRM_BACK,
+  CANCEL_GENERATE_CONFIRM_DESCRIPTION,
+  CANCEL_GENERATE_CONFIRM_OK,
+  CANCEL_GENERATE_CONFIRM_TITLE,
   COMPLETE_BUTTON,
   NEXT_BUTTON,
   PREV_BUTTON,
@@ -51,6 +56,14 @@ type ResultPanelProps = {
   expectedVisualCount: number;
   selectedVisualIndex: number | null;
   nextLoading: boolean;
+  /**
+   * 生成中（分析走 SSE，两步出图走后台作业）：显示取消按钮。
+   * 由作业运行态而非相位决定 —— 生成中允许退回上一步，退回后相位已不是 *Generating，
+   * 若跟着相位走，取消按钮会在作业仍在跑时消失。
+   */
+  running: boolean;
+  cancelling: boolean;
+  onCancel: () => void;
   isPoster?: boolean;
   planCards?: ThemePlanCard[];
   selectedThemeIds?: string[];
@@ -79,6 +92,9 @@ export default function ResultPanel({
   expectedVisualCount,
   selectedVisualIndex,
   nextLoading,
+  running,
+  cancelling,
+  onCancel,
   isPoster = false,
   planCards = [],
   selectedThemeIds = [],
@@ -241,7 +257,24 @@ export default function ResultPanel({
         </div>
       )}
       <div className={styles.footer}>
+        {/* 放在按钮组最左：整组仍靠右排列，footer 布局不变 */}
+        {running ? (
+          <Popconfirm
+            title={CANCEL_GENERATE_CONFIRM_TITLE}
+            description={CANCEL_GENERATE_CONFIRM_DESCRIPTION}
+            okText={CANCEL_GENERATE_CONFIRM_OK}
+            cancelText={CANCEL_GENERATE_CONFIRM_BACK}
+            okButtonProps={{ danger: true }}
+            onConfirm={onCancel}
+          >
+            <Button size="large" danger loading={cancelling}>
+              {CANCEL_GENERATE_BUTTON}
+            </Button>
+          </Popconfirm>
+        ) : null}
         {isPrevVisible(phase, isPoster) ? (
+          // 生成中**不**禁用：出图已是后台作业，退回上一步不会中断它；
+          // 作业完成时若用户已退回，只落库、不把相位推回来
           <Button size="large" disabled={isEditing || planEditing} onClick={onPrev}>
             {PREV_BUTTON}
           </Button>

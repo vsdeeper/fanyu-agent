@@ -1,6 +1,11 @@
 import { Popconfirm, Space, Tag, Typography, type TableColumnsType } from 'antd';
 import type { EcommerceTaskListItem } from '@/app/api/studio/ecommerce/_shared/task-types';
-import { DELETE_CONFIRM_TITLE, DELETE_CONFIRM_DESCRIPTION, stepLabelFor } from './constants';
+import {
+  DELETE_CONFIRM_TITLE,
+  DELETE_CONFIRM_DESCRIPTION,
+  RUNNING_STEP_SUFFIX,
+  stepLabelFor,
+} from './constants';
 import { formatTaskDateTime } from './utils';
 
 /** 创建任务列表列定义，并将行操作回调注入操作列。 */
@@ -29,16 +34,21 @@ export function createTaskColumns({
       title: '已产出步骤',
       dataIndex: 'completedStepKeys',
       render: (_, task) =>
-        task.completedStepKeys.length > 0 ? (
+        task.completedStepKeys.length === 0 && !task.runningStepKey ? (
+          '未开始'
+        ) : (
           <Space size={[4, 4]} wrap>
             {task.completedStepKeys.map((key) => (
               <Tag color="blue" key={key}>
                 {stepLabelFor(task.taskType, key)}
               </Tag>
             ))}
+            {task.runningStepKey ? (
+              <Tag color="processing" key="running">
+                {`${stepLabelFor(task.taskType, task.runningStepKey)}${RUNNING_STEP_SUFFIX}`}
+              </Tag>
+            ) : null}
           </Space>
-        ) : (
-          '未开始'
         ),
     },
     {

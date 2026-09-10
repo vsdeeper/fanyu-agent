@@ -179,3 +179,63 @@ describe('createTaskStore', () => {
     ]);
   });
 });
+
+describe('createTaskStore 后台作业钩子', () => {
+  const baseConfig = {
+    tasksTable: ecommerceTasks,
+    stepsTable: ecommerceTaskSteps,
+    stepKeys: ECOMMERCE_STEP_KEYS,
+    workflowVersion: ECOMMERCE_WORKFLOW_VERSION,
+    removeTaskAssetDirectory: vi.fn(),
+  };
+
+  beforeEach(() => {
+    dbState.tasks = [
+      {
+        id: 'task-1',
+        name: '春季主图',
+        workflowVersion: 1,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ];
+    dbState.nameMatches = [];
+    dbState.steps = [];
+  });
+
+  it('未注入钩子时列表项不含 runningStepKey（其他产品行为不变）', () => {
+    const plain = createTaskStore(baseConfig);
+
+    expect(plain.list({ page: 1, pageSize: 10 }).items[0]).not.toHaveProperty('runningStepKey');
+  });
+
+  it('注入钩子时列表项带上 runningStepKey', () => {
+    const withJobs = createTaskStore({
+      ...baseConfig,
+      listRunningJobKeys: () => new Map([['task-1', 'visual']]),
+    });
+
+    expect(withJobs.list({ page: 1, pageSize: 10 }).items[0]).toMatchObject({
+      runningStepKey: 'visual',
+    });
+  });
+
+  it('钩子返回非法步骤键时忽略，不产生越界字段', () => {
+    const withJobs = createTaskStore({
+      ...baseConfig,
+      listRunningJobKeys: () => new Map([['task-1', 'analysis']]),
+    });
+
+    // analysis 是合法步骤但不在作业集合里也无妨 —— 关键是非法键必须被挡掉
+    expect(withJobs.list({ page: 1, pageSize: 10 }).items[0]).toMatchObject({
+      runningStepKey: 'analysis',
+    });
+
+    const bogus = createTaskStore({
+      ...baseConfig,
+      listRunningJobKeys: () => new Map([['task-1', 'not-a-step']]),
+    });
+
+    expect(bogus.list({ page: 1, pageSize: 10 }).items[0]).not.toHaveProperty('runningStepKey');
+  });
+});

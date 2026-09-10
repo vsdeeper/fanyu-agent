@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { App, Form, type TableColumnsType, type TableProps } from 'antd';
 import { useRouter } from 'next/navigation';
 import { apiDelete } from '@/lib/shared/client/api-client';
+import { TASK_LIST_RUNNING_REFRESH_MS } from '@/app/api/studio/_shared/job-constants';
 import { requestStudioTasks, normalizeSearchName } from '@/app/studio/_utils/task-list';
 import { DEFAULT_PAGE_SIZE } from '@/app/studio/_components/StudioTaskList/constants';
 
@@ -13,7 +14,7 @@ type TaskListQuery = {
   name?: string;
 };
 
-type StudioTaskListItemBase = { id: string };
+type StudioTaskListItemBase = { id: string; runningStepKey?: string };
 
 type UseStudioTaskListOptions<TItem extends StudioTaskListItemBase> = {
   apiBase: string;
@@ -47,9 +48,10 @@ export function useStudioTaskList<
   const [query, setQuery] = useState<TaskListQuery>({ current: 1, pageSize });
 
   const fetchList = useCallback(
-    async (next: TaskListQuery) => {
+    async (next: TaskListQuery, options?: { silent?: boolean }) => {
       setQuery(next);
-      setLoading(true);
+      // 后台轮询刷新走 silent：否则表格每几秒闪一次 loading
+      if (!options?.silent) setLoading(true);
       try {
         const result = await requestStudioTasks<TItem>(apiBase, {
           current: next.current,
@@ -62,7 +64,7 @@ export function useStudioTaskList<
         setItems([]);
         setTotal(0);
       } finally {
-        setLoading(false);
+        if (!options?.silent) setLoading(false);
       }
     },
     [apiBase],
@@ -88,6 +90,30 @@ export function useStudioTaskList<
       cancelled = true;
     };
   }, [apiBase, pageSize]);
+
+  const queryRef = useRef(query);
+  useEffect(() => {
+    queryRef.current = query;
+  }, [query]);
+
+  // 列表里存在后台生成中的任务时定时静默刷新，让它能自动收敛为已完成
+  const hasRunningJob = items.some((item) => Boolean(item.runningStepKey));
+  useEffect(() => {
+    if (!hasRunningJob) return;
+    let disposed = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const tick = async () => {
+      await fetchList(queryRef.current, { silent: true });
+      if (!disposed) timer = setTimeout(() => void tick(), TASK_LIST_RUNNING_REFRESH_MS);
+    };
+
+    timer = setTimeout(() => void tick(), TASK_LIST_RUNNING_REFRESH_MS);
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+    };
+  }, [fetchList, hasRunningJob]);
 
   const onSearch = (values: SearchFormValues) => {
     void fetchList({

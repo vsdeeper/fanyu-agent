@@ -170,6 +170,7 @@ export function createTaskAssets(config: CreateStudioTaskAssetsConfig) {
 
   return {
     buildTaskAssetUrl,
+    saveTaskAsset,
     persistSnapshotAssets,
     getTaskAsset,
     findAssetTaskId,

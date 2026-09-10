@@ -1,0 +1,106 @@
+import 'server-only';
+
+import type { StudioGenerateRequest } from '../_shared/generate-types';
+import {
+  buildDesignPrompt,
+  buildDetailImagePrompt,
+  buildMainImagePrompt,
+  buildProductModelPrompt,
+  buildProductMultiviewPrompt,
+  buildProductRefinePrompt,
+  buildProductViewPrompt,
+  buildVisualPrompt,
+} from './generate-instructions';
+
+/** 单张出图任务：已算好的 prompt 与参考图。 */
+export type StudioGeneratePlanItem = {
+  index: number;
+  prompt: string;
+  referenceImageDataUrls: string[];
+};
+
+/**
+ * 把各 kind 的分组/数量语义摊平成**有序的单张出图清单**。
+ *
+ * 三条展开规则：产品精修按上传原图一对一（忽略表单数量）；主图/详情图按「主题 × 数量」；
+ * 其余 kind 单一 prompt 按表单数量重复。NDJSON 流式路由与后台作业共用这一份展开，
+ * 避免两处各写一遍导致顺序或 index 对不上。
+ */
+export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePlanItem[] {
+  if (body.kind === 'productRefine') {
+    const prompt = buildProductRefinePrompt(body.refineRequirement, body.images.length);
+    return body.images.map((image, index) => ({
+      index,
+      prompt,
+      referenceImageDataUrls: [image.dataUrl],
+    }));
+  }
+
+  if (body.kind === 'mainImage' || body.kind === 'detailImage') {
+    const count = body.count;
+    const productImageCount = body.productViewImages.length;
+    const hasPreviousScreen =
+      body.kind === 'detailImage' ? Boolean(body.previousScreenDataUrl) : false;
+    const referenceImageDataUrls =
+      body.kind === 'detailImage'
+        ? [
+            ...body.productViewImages.map((image) => image.dataUrl),
+            ...(body.previousScreenDataUrl ? [body.previousScreenDataUrl] : []),
+          ]
+        : body.productViewImages.map((image) => image.dataUrl);
+
+    const plan: StudioGeneratePlanItem[] = [];
+    for (const item of body.requirements) {
+      const prompt =
+        body.kind === 'detailImage'
+          ? buildDetailImagePrompt(
+              item.requirement,
+              body.analysisText,
+              productImageCount,
+              hasPreviousScreen,
+              body.productDocumentsText,
+            )
+          : buildMainImagePrompt(item.requirement, body.analysisText, body.productDocumentsText);
+      for (let i = 0; i < count; i++) {
+        plan.push({ index: plan.length, prompt, referenceImageDataUrls });
+      }
+    }
+    return plan;
+  }
+
+  let prompt: string;
+  let referenceImageDataUrls: string[];
+  if (body.kind === 'productMultiview') {
+    prompt = buildProductMultiviewPrompt(body.multiviewRequirement);
+    referenceImageDataUrls = body.refinedImageDataUrls;
+  } else if (body.kind === 'productView') {
+    prompt = buildProductViewPrompt();
+    referenceImageDataUrls = body.images.map((image) => image.dataUrl);
+  } else if (body.kind === 'productModel') {
+    prompt = buildProductModelPrompt(
+      body.viewRequirement,
+      body.images.length,
+      (body.modelImages?.length ?? 0) > 0,
+    );
+    referenceImageDataUrls = [
+      ...body.images.map((image) => image.dataUrl),
+      ...(body.modelImages?.map((image) => image.dataUrl) ?? []),
+    ];
+  } else if (body.kind === 'visual') {
+    prompt = buildVisualPrompt(body.analysisText);
+    referenceImageDataUrls = body.productViewImages.map((image) => image.dataUrl);
+  } else {
+    prompt = buildDesignPrompt(body.taskType, body.analysisText, body.includeModel);
+    referenceImageDataUrls = [
+      ...body.productViewImages.map((image) => image.dataUrl),
+      body.visualDataUrl,
+      ...(body.modelImages?.map((image) => image.dataUrl) ?? []),
+    ];
+  }
+
+  return Array.from({ length: body.count }, (_, index) => ({
+    index,
+    prompt,
+    referenceImageDataUrls,
+  }));
+}

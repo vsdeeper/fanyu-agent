@@ -41,6 +41,15 @@ export const POSTER_BUTTON = '生成营销海报';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
 export const COMPLETE_BUTTON = '完成';
+export const CANCEL_GENERATE_BUTTON = '取消生成';
+export const CANCEL_GENERATE_CONFIRM_TITLE = '取消生成';
+export const CANCEL_GENERATE_CONFIRM_DESCRIPTION =
+  '已生成的图片会保留，未生成的将停止。确定取消吗？';
+export const CANCEL_GENERATE_CONFIRM_OK = '取消生成';
+export const CANCEL_GENERATE_CONFIRM_BACK = '继续生成';
+
+/** 电商任务与其后台生图作业的 API 基址 */
+export const ECOMMERCE_API_BASE = '/api/studio/ecommerce';
 export const ANALYZE_FAILED = '产品分析失败，请稍后重试';
 export const GENERATE_FAILED = '生图失败，请稍后重试';
 

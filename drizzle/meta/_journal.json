@@ -43,6 +43,13 @@
       "when": 1788775936506,
       "tag": "0005_nifty_naoko",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789036857612,
+      "tag": "0006_flawless_quicksilver",
+      "breakpoints": true
     }
   ]
 }

@@ -4,9 +4,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { App, Button, Layout, Steps, Tag, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
-import type { EcommerceTaskDetail } from '@/app/api/studio/ecommerce/_shared/task-types';
+import type {
+  EcommerceStepKey,
+  EcommerceTaskDetail,
+  EcommerceTaskType,
+} from '@/app/api/studio/ecommerce/_shared/task-types';
+import type { StudioJobSnapshot } from '@/app/api/studio/_shared/job-types';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { RewriteCardResult } from '@/app/api/studio/ecommerce/_shared/rewrite-card';
+import { useStudioJob } from '@/app/studio/_hooks/useStudioJob';
 import { ECOMMERCE_PATH } from '@/components/AppLayout/constants';
 import { apiPost } from '@/lib/shared/client/api-client';
 import ModeSwitch from '@/components/ModeSwitch';
@@ -20,6 +26,7 @@ import {
   DESIGN_RESULT_MISSING,
   DEFAULT_FORM_STATE,
   DETAIL_IMAGE_RESULT_MISSING,
+  ECOMMERCE_API_BASE,
   GENERATE_FAILED,
   MAIN_IMAGE_RESULT_MISSING,
   MAX_MODEL_IMAGES,
@@ -50,7 +57,6 @@ import {
   applyGenerateEvent,
   assertOkOrJsonFail,
   consumeAnalyzeSse,
-  consumeGenerateNdjson,
   createAnalysisStepSnapshot,
   createDefaultDesignForm,
   createDesignStepSnapshot,
@@ -85,6 +91,13 @@ import {
 import { parseDetailImagePlan } from './_utils/parse-detail-image-plan';
 import { parseMainImagePlan } from './_utils/parse-main-image-plan';
 import {
+  jobGeneratingPhase,
+  mergeBatchGroups,
+  mergeBatchImages,
+  restoreBatchImages,
+  shouldAdvancePhase,
+} from './_utils/job-restore';
+import {
   getWorkflowStepIndex,
   isDetailImageTask,
   isMainImageTask,
@@ -95,13 +108,16 @@ import {
 import styles from './EcommerceStudio.module.css';
 
 /**
- * 电商设计工作台：左侧参数，右侧流式规划与出图。
+ * 电商设计工作台：左侧参数，右侧规划与出图。
+ * 分析走 SSE（离开页面会中断），两步出图走后台作业（离开页面照常跑完）。
  */
 type EcommerceStudioProps = {
   task: EcommerceTaskDetail;
+  /** 首屏已存在的后台生图作业，用于重新进入任务时接上进度 */
+  initialJob?: StudioJobSnapshot | null;
 };
 
-export default function EcommerceStudio({ task }: EcommerceStudioProps) {
+export default function EcommerceStudio({ task, initialJob = null }: EcommerceStudioProps) {
   const { message } = App.useApp();
   const router = useRouter();
   const poster = isPosterTask(task.taskType);
@@ -111,6 +127,29 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const initialAnalysis = readAnalysisStepSnapshot(task.steps.analysis?.data);
   const initialVisual = themePlan ? undefined : readVisualStepSnapshot(task.steps.visual?.data);
   const initialDesign = readDesignStepSnapshot(task.steps.design?.data);
+
+  // 首屏带回的作业有两种：仍在跑（接着看进度），或离开期间已结束（补一次结算落库）。
+  // 两者都要把结果并进初始 state，且必须在 useState 初始化时完成 —— 否则会先渲染旧状态再跳一次，出现闪烁。
+  const restoredJob = initialJob;
+  const restoredBatch = restoredJob ? restoreBatchImages(restoredJob) : [];
+  /** 挂载时该作业已终态：只补结算，不把相位推到结果步（保持「再次进入停在第一步」的既有行为） */
+  const settledAtMountJobId =
+    restoredJob && restoredJob.status !== 'running' ? restoredJob.id : null;
+  const restoredDesignTaskType = (restoredJob?.data.pending.taskType ??
+    task.taskType) as EcommerceTaskType;
+  // 作业回显的表单即该步生成时使用的表单，恢复与结算都以它为准
+  const restoredVisualForm =
+    restoredJob?.stepKey === 'visual' ? (restoredJob.data.pending.form as StudioFormState) : null;
+  const restoredDesignForm =
+    restoredJob?.stepKey === 'design' ? (restoredJob.data.pending.form as DesignFormState) : null;
+  const {
+    job,
+    running: jobRunning,
+    cancelling: jobCancelling,
+    start: startJob,
+    cancel: cancelJob,
+    release: releaseJob,
+  } = useStudioJob({ apiBase: ECOMMERCE_API_BASE, taskId: task.id, initialJob });
   const [images, setImages] = useState<ProductImageItem[]>(
     themePlan
       ? (initialDesign?.images ?? [])
@@ -129,9 +168,12 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const [productDocs, setProductDocs] = useState<ProductDocItem[]>(
     initialAnalysis?.productDocs ?? [],
   );
-  const [form, setForm] = useState<StudioFormState>(initialVisual?.form ?? DEFAULT_FORM_STATE);
+  const [form, setForm] = useState<StudioFormState>(
+    restoredVisualForm ?? initialVisual?.form ?? DEFAULT_FORM_STATE,
+  );
   const [designForm, setDesignForm] = useState<DesignFormState>(() => {
-    const base = initialDesign?.form ?? createDefaultDesignForm(task.taskType);
+    const base =
+      restoredDesignForm ?? initialDesign?.form ?? createDefaultDesignForm(task.taskType);
     if (mainImage) return { ...base, taskType: '主图' };
     if (detailImage) return { ...base, taskType: '详情图', aspectRatio: base.aspectRatio || '3:4' };
     return poster ? { ...base, taskType: '营销海报' } : base;
@@ -139,9 +181,14 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const [modelImages, setModelImages] = useState<ProductImageItem[]>(
     initialDesign?.modelImages ?? [],
   );
-  const [phase, setPhase] = useState<StudioPhase>(
-    resolveInitialStudioPhase(initialAnalysis, poster, themePlan, Boolean(initialDesign)),
-  );
+  const [phase, setPhase] = useState<StudioPhase>(() => {
+    const restoredPhase =
+      restoredJob?.status === 'running' ? jobGeneratingPhase(restoredJob.stepKey) : null;
+    return (
+      restoredPhase ??
+      resolveInitialStudioPhase(initialAnalysis, poster, themePlan, Boolean(initialDesign))
+    );
+  });
   const [analysisText, setAnalysisText] = useState(
     themePlan
       ? (initialAnalysis?.analysisText ?? '')
@@ -158,12 +205,18 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>(
     initialAnalysis?.selectedThemeIds ?? [],
   );
-  const [visualImages, setVisualImages] = useState<StudioResultImage[]>(
-    themePlan ? [] : (initialVisual?.visualImages ?? []),
-  );
-  const [designResultGroups, setDesignResultGroups] = useState<DesignResultGroups>(
-    initialDesign?.designResultGroups ?? {},
-  );
+  const [visualImages, setVisualImages] = useState<StudioResultImage[]>(() => {
+    const base = themePlan ? [] : (initialVisual?.visualImages ?? []);
+    return restoredJob?.stepKey === 'visual' && restoredBatch.length > 0
+      ? mergeBatchImages(base, restoredBatch)
+      : base;
+  });
+  const [designResultGroups, setDesignResultGroups] = useState<DesignResultGroups>(() => {
+    const base = initialDesign?.designResultGroups ?? {};
+    return restoredJob?.stepKey === 'design' && restoredBatch.length > 0
+      ? mergeBatchGroups(base, restoredDesignTaskType, restoredBatch)
+      : base;
+  });
   const [selectedVisualIndex, setSelectedVisualIndex] = useState<number | null>(
     themePlan ? null : (initialVisual?.selectedVisualIndex ?? null),
   );
@@ -180,6 +233,14 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const productDocsRef = useRef(productDocs);
   const modelImagesRef = useRef(modelImages);
   const abortRef = useRef<AbortController | null>(null);
+  /** 当前作业所属的流程步骤；null 表示本会话没在追踪作业 */
+  const trackedStepRef = useRef<EcommerceStepKey | null>(
+    (restoredJob?.stepKey as EcommerceStepKey | undefined) ?? null,
+  );
+  /** 已套用到界面的事件条数，用于增量消费作业进度 */
+  const appliedEventCountRef = useRef(restoredJob?.data.events.length ?? 0);
+  /** 已结算的作业 id，避免同一个终态作业被重复落库 */
+  const settledJobIdRef = useRef<string | null>(null);
   const lastSnapshotsRef = useRef<{
     analysis: AnalysisStepSnapshot | undefined;
     visual: VisualStepSnapshot | undefined;
@@ -208,6 +269,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
 
   useEffect(() => {
     return () => {
+      // 只中断分析流（它仍是绑定请求的 SSE）。两步出图已是后台作业，
+      // 离开页面必须让它继续在服务端跑完，勿在此取消作业。
       abortRef.current?.abort();
       analysisBuffer.dispose();
       revokeProductImageUrls(imagesRef.current);
@@ -219,6 +282,12 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
 
   const formLocked =
     phase === 'analyzing' || phase === 'visualGenerating' || phase === 'designGenerating';
+  /**
+   * 右栏是否处于「生成中」：相位（分析 SSE）或作业运行态二者取或。
+   * 不能只看相位 —— 生成中允许退回上一步，退回后相位已离开 *Generating，
+   * 若跟着相位走，取消按钮会在作业仍在后台跑时消失。
+   */
+  const generating = formLocked || jobRunning;
   const analysisStreaming = phase === 'analyzing';
   const expectedVisualCount = Number.parseInt(form.count, 10) || 1;
   const expectedDesignCount = Number.parseInt(designForm.count, 10) || 1;
@@ -347,6 +416,104 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     ],
   );
 
+  const jobSnapshot = job;
+
+  // 增量套用新到达的出图事件，保住「边出边显示」。
+  // 必须带上 batchStartIndex：作业事件的 index 是批次内相对下标，槽位是结果集内的绝对下标。
+  useEffect(() => {
+    if (!jobSnapshot || trackedStepRef.current !== jobSnapshot.stepKey) return;
+    const events = jobSnapshot.data.events;
+    if (events.length <= appliedEventCountRef.current) return;
+    const fresh = events.slice(appliedEventCountRef.current);
+    appliedEventCountRef.current = events.length;
+    const batchStartIndex = jobSnapshot.data.pending.batchStartIndex;
+
+    if (jobSnapshot.stepKey === 'visual') {
+      setVisualImages((current) =>
+        fresh.reduce((acc, event) => applyGenerateEvent(acc, event, batchStartIndex), current),
+      );
+      return;
+    }
+    const taskType = (jobSnapshot.data.pending.taskType ?? task.taskType) as EcommerceTaskType;
+    setDesignResultGroups((current) =>
+      fresh.reduce(
+        (acc, event) => applyDesignGenerateEvent(acc, taskType, event, batchStartIndex),
+        current,
+      ),
+    );
+  }, [jobSnapshot, task.taskType]);
+
+  /**
+   * 作业终态结算：把本批结果并入该步快照落库。
+   * 结果由作业快照重算而非读 state —— 增量 effect 的 setState 要到下一帧才生效，
+   * 同一帧里读 state 会漏掉最后到达的那批事件。
+   */
+  const settleJob = useCallback(
+    async (snap: StudioJobSnapshot) => {
+      const succeeded = snap.status === 'succeeded';
+      const batch = restoreBatchImages(snap);
+      // 生成中可以点上一步：用户若已退回其它步骤，只落库、不把相位推回去把他拽回来
+      const applyPhase = shouldAdvancePhase({
+        jobStepKey: snap.stepKey,
+        currentPhase: phase,
+        settledAtMount: settledAtMountJobId === snap.id,
+      });
+      try {
+        if (snap.stepKey === 'visual') {
+          const jobForm = snap.data.pending.form as StudioFormState;
+          const merged = mergeBatchImages(visualImages, batch);
+          const images = succeeded ? merged : getGeneratedImages(merged);
+          setForm(jobForm);
+          setVisualImages(images);
+          if (applyPhase) setPhase('visual');
+          if (images.length > 0) await persistVisualStep(jobForm, images, selectedVisualIndex);
+          return;
+        }
+        if (snap.stepKey === 'design') {
+          const jobForm = snap.data.pending.form as DesignFormState;
+          const taskType = (snap.data.pending.taskType ?? task.taskType) as EcommerceTaskType;
+          const merged = mergeBatchGroups(designResultGroups, taskType, batch);
+          const groups = succeeded ? merged : getGeneratedDesignGroups(merged);
+          setDesignForm(jobForm);
+          setDesignResultGroups(groups);
+          if (applyPhase) setPhase('design');
+          if (Object.values(groups).some((group) => Boolean(group?.length))) {
+            await persistDesignStep(jobForm, groups, modelImages);
+          }
+        }
+      } catch (err) {
+        console.error('[ecommerce-studio] settle job', err);
+      } finally {
+        if (snap.status === 'failed') message.error(snap.error ?? GENERATE_FAILED);
+        trackedStepRef.current = null;
+        releaseJob();
+      }
+    },
+    [
+      designResultGroups,
+      message,
+      modelImages,
+      persistDesignStep,
+      persistVisualStep,
+      phase,
+      releaseJob,
+      selectedVisualIndex,
+      setPhase,
+      settledAtMountJobId,
+      task.taskType,
+      visualImages,
+    ],
+  );
+
+  useEffect(() => {
+    const snap = jobSnapshot;
+    if (!snap || snap.status === 'running') return;
+    if (settledJobIdRef.current === snap.id) return;
+    if (trackedStepRef.current !== snap.stepKey) return;
+    settledJobIdRef.current = snap.id;
+    void settleJob(snap);
+  }, [jobSnapshot, settleJob]);
+
   const streamedPlan =
     themePlan && phase === 'analyzing'
       ? (detailImage ? parseDetailImagePlan : parseMainImagePlan)(analysisText)
@@ -445,78 +612,28 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       message.warning(ANALYSIS_MISSING);
       return;
     }
-    abortCurrent();
-    const controller = new AbortController();
-    abortRef.current = controller;
     const count = Number.parseInt(form.count, 10) || 1;
     const batchStartIndex = visualImages.length;
-    let nextVisualImages = [
-      ...visualImages,
-      ...pendingImagesFromCount(count, batchStartIndex, form.aspectRatio),
-    ];
+    const slots = pendingImagesFromCount(count, batchStartIndex, form.aspectRatio);
     setPhase('visualGenerating');
-    setVisualImages(nextVisualImages);
+    setVisualImages([...visualImages, ...slots]);
+    trackedStepRef.current = 'visual';
+    appliedEventCountRef.current = 0;
     try {
-      const res = await fetch('/api/studio/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(await toVisualGeneratePayload(form, analysisText, images)),
-        signal: controller.signal,
+      // 此处只建作业；进度由轮询 effect 增量套用，终态由 settleJob 落库
+      await startJob({
+        stepKey: 'visual',
+        kind: 'generate',
+        pending: { stepKey: 'visual', batchStartIndex, slots, form },
+        body: await toVisualGeneratePayload(form, analysisText, images),
       });
-      await assertOkOrJsonFail(res);
-      await consumeGenerateNdjson(res, (event) => {
-        nextVisualImages = applyGenerateEvent(nextVisualImages, event, batchStartIndex);
-        setVisualImages(nextVisualImages);
-      });
-      if (controller.signal.aborted) {
-        const kept = getGeneratedImages(nextVisualImages);
-        setVisualImages(kept);
-        if (kept.length > 0) {
-          try {
-            await persistVisualStep(form, kept, selectedVisualIndex);
-          } catch (err) {
-            console.error('[ecommerce-studio] persist visual', err);
-          }
-        }
-        return;
-      }
-      // 生成产出右侧栏结果；生成完成即落库（与下一步/完成同一动作）
-      setPhase('visual');
-      try {
-        await persistVisualStep(form, nextVisualImages, selectedVisualIndex);
-      } catch (err) {
-        console.error('[ecommerce-studio] persist visual', err);
-      }
     } catch (err) {
-      if (isAbortError(err) || controller.signal.aborted) {
-        const kept = getGeneratedImages(nextVisualImages);
-        setVisualImages(kept);
-        if (kept.length > 0) {
-          try {
-            await persistVisualStep(form, kept, selectedVisualIndex);
-          } catch (persistErr) {
-            console.error('[ecommerce-studio] persist visual', persistErr);
-          }
-        }
-        return;
-      }
-      console.error('[ecommerce-studio] generate visual', err);
-      message.error(err instanceof Error && err.message ? err.message : GENERATE_FAILED);
+      console.error('[ecommerce-studio] start visual job', err);
+      // 建作业失败（api-client 已 Toast）：撤回占位并退回稳定相位
+      setVisualImages(visualImages);
       setPhase('visual');
-    } finally {
-      if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [
-    abortCurrent,
-    analysisText,
-    form,
-    images,
-    message,
-    persistVisualStep,
-    selectedVisualIndex,
-    setPhase,
-    visualImages,
-  ]);
+  }, [analysisText, form, images, message, setPhase, startJob, visualImages]);
 
   const handleGenerateDesign = useCallback(async () => {
     if (images.length === 0) {
@@ -565,13 +682,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       );
       if (selected) previousScreenDataUrl = await readUrlAsDataUrl(selected);
     }
-    abortCurrent();
-    const controller = new AbortController();
-    abortRef.current = controller;
     const taskType = nextDesignForm.taskType;
     const batchStartIndex = designResultGroups[taskType]?.length ?? 0;
     const perCardCount = Number.parseInt(nextDesignForm.count, 10) || 1;
-    let nextDesignResultGroups = themePlan
+    const nextDesignResultGroups = themePlan
       ? appendPendingThemeImages(
           designResultGroups,
           taskType,
@@ -585,8 +699,11 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
           expectedDesignCount,
           nextDesignForm.aspectRatio,
         );
+    const slots = (nextDesignResultGroups[taskType] ?? []).slice(batchStartIndex);
     setPhase('designGenerating');
     setDesignResultGroups(nextDesignResultGroups);
+    trackedStepRef.current = 'design';
+    appliedEventCountRef.current = 0;
     try {
       const body = themePlan
         ? detailImage
@@ -612,62 +729,19 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
             await readUrlAsDataUrl(visualDataUrl),
             await toAnalyzeImages(modelImages),
           );
-      const res = await fetch('/api/studio/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: controller.signal,
+      await startJob({
+        stepKey: 'design',
+        kind: 'generate',
+        pending: { stepKey: 'design', taskType, batchStartIndex, slots, form: nextDesignForm },
+        body,
       });
-      await assertOkOrJsonFail(res);
-      await consumeGenerateNdjson(res, (event) => {
-        nextDesignResultGroups = applyDesignGenerateEvent(
-          nextDesignResultGroups,
-          taskType,
-          event,
-          batchStartIndex,
-        );
-        setDesignResultGroups(nextDesignResultGroups);
-      });
-      if (controller.signal.aborted) {
-        const kept = getGeneratedDesignGroups(nextDesignResultGroups);
-        setDesignResultGroups(kept);
-        if (Object.values(kept).some((group) => Boolean(group?.length))) {
-          try {
-            await persistDesignStep(nextDesignForm, kept, modelImages);
-          } catch (err) {
-            console.error('[ecommerce-studio] persist design', err);
-          }
-        }
-        return;
-      }
-      setDesignForm(nextDesignForm);
-      setPhase('design');
-      try {
-        await persistDesignStep(nextDesignForm, nextDesignResultGroups, modelImages);
-      } catch (err) {
-        console.error('[ecommerce-studio] persist design', err);
-      }
     } catch (err) {
-      if (isAbortError(err) || controller.signal.aborted) {
-        const kept = getGeneratedDesignGroups(nextDesignResultGroups);
-        setDesignResultGroups(kept);
-        if (Object.values(kept).some((group) => Boolean(group?.length))) {
-          try {
-            await persistDesignStep(nextDesignForm, kept, modelImages);
-          } catch (persistErr) {
-            console.error('[ecommerce-studio] persist design', persistErr);
-          }
-        }
-        return;
-      }
-      console.error('[ecommerce-studio] generate design', err);
-      message.error(err instanceof Error && err.message ? err.message : GENERATE_FAILED);
+      console.error('[ecommerce-studio] start design job', err);
+      // 建作业失败（api-client 已 Toast）：撤回占位并退回稳定相位
+      setDesignResultGroups(designResultGroups);
       setPhase('design');
-    } finally {
-      if (abortRef.current === controller) abortRef.current = null;
     }
   }, [
-    abortCurrent,
     analysisText,
     designForm,
     designResultGroups,
@@ -678,15 +752,14 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     mainImage,
     message,
     modelImages,
-    persistDesignStep,
     planCards,
     poster,
     productDocs,
     referenceImageIndex,
     selectedThemeIds,
     selectedVisualIndex,
-    setDesignForm,
     setPhase,
+    startJob,
     themePlan,
     visualImages,
   ]);
@@ -780,8 +853,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   }, [designForm, designResultGroups, modelImages, persistDesignStep]);
 
   const handlePrev = useCallback(async () => {
-    // 以进行中请求为准中止，避免相位与 abortRef 短暂不一致时漏 abort
-    if (abortRef.current) abortCurrent();
+    // 生图已后台化：返回上一步不再中断生成（要中断请用右栏按钮）。
+    // 生成中该按钮本身被禁用，相位不会与运行中的作业错配。
     if (detailImage && phase === 'complete') {
       try {
         await persistDesignStep(designForm, designResultGroups, modelImages);
@@ -791,7 +864,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     }
     setPhase((current) => phaseAfterPrev(current, poster, themePlan));
   }, [
-    abortCurrent,
     designForm,
     designResultGroups,
     detailImage,
@@ -802,6 +874,16 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setPhase,
     themePlan,
   ]);
+
+  /** 用户主动中断：分析步中断 SSE，出图步取消后台作业（已出图保留）。 */
+  const handleCancelGenerate = useCallback(() => {
+    if (phase === 'analyzing') {
+      abortCurrent();
+      setPhase('input');
+      return;
+    }
+    void cancelJob();
+  }, [abortCurrent, cancelJob, phase, setPhase]);
 
   const handleNext = useCallback(async () => {
     if (phase === 'visual' && selectedVisualIndex === null) {
@@ -979,6 +1061,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 designForm={designForm}
                 phase={phase}
                 formLocked={formLocked}
+                jobRunning={jobRunning}
                 canGenerateVisual={images.length > 0 && Boolean(analysisText.trim())}
                 canGenerateDesign={
                   themePlan
@@ -1014,6 +1097,9 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 planCards={displayPlanCards}
                 selectedThemeIds={selectedThemeIds}
                 referenceImageIndex={referenceImageIndex}
+                running={generating}
+                cancelling={jobCancelling}
+                onCancel={handleCancelGenerate}
                 onSelectVisual={handleSelectVisual}
                 onSelectReference={handleSelectReference}
                 onPrev={() => void handlePrev()}

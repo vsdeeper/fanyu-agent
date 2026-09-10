@@ -53,7 +53,7 @@ describe('工作室任务名称冲突', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     deps.parseCreateTaskRequest.mockImplementation((value: unknown) => value);
-    deps.parseUpdateTaskRequest.mockImplementation((value: unknown) => value);
+    deps.parseUpdateTaskRequest.mockImplementation((value: unknown) => value as { name: string });
   });
 
   it('同名创建返回 409', async () => {

@@ -6,6 +6,10 @@ import { createTaskAssets } from '@/app/api/studio/_server/create-task-assets';
 import { createTaskHandlers } from '@/app/api/studio/_server/create-task-handlers';
 import { createTaskParseRequest } from '@/app/api/studio/_server/create-task-parse-request';
 import { createTaskStore } from '@/app/api/studio/_server/create-task-store';
+import {
+  deleteJobsByTask,
+  listRunningJobKeys as findRunningJobKeys,
+} from '@/app/api/studio/_server/job-store';
 import { serveTaskAsset } from '@/app/api/studio/_server/serve-task-asset';
 import {
   ECOMMERCE_STEP_KEYS,
@@ -32,6 +36,8 @@ const store = createTaskStore<EcommerceStepKey, { taskType: EcommerceTaskType }>
   extraCreateValues: (extra) => ({ taskType: extra.taskType }),
   mapExtraFields: (row) => ({ taskType: row.taskType as EcommerceTaskType }),
   removeTaskAssetDirectory: assets.removeTaskAssetDirectory,
+  // 列表据此展示「生成中」
+  listRunningJobKeys: findRunningJobKeys,
 });
 
 const parse = createTaskParseRequest<EcommerceStepKey, CreateEcommerceTaskRequest>({
@@ -55,12 +61,17 @@ const handlers = createTaskHandlers({
   updateName: store.updateName,
   saveStep: store.saveStep,
   deleteStep: store.deleteStep,
-  remove: store.remove,
+  // studio_jobs 不建外键（多态引用四张任务表），须显式清掉该任务的作业行，否则留下孤儿
+  remove: (id) => {
+    deleteJobsByTask(id);
+    return store.remove(id);
+  },
   persistSnapshotAssets: assets.persistSnapshotAssets,
 });
 
 export const {
   persistSnapshotAssets,
+  saveTaskAsset,
   getTaskAsset,
   findAssetTaskId,
   readTaskAsset,

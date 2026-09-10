@@ -1,4 +1,4 @@
-import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const chats = sqliteTable('chats', {
   id: text('id').primaryKey(),
@@ -177,3 +177,30 @@ export const businessAnalysisTaskAssets = sqliteTable('business_analysis_task_as
   mimeType: text('mime_type').notNull(),
   createdAt: text('created_at').notNull(),
 });
+
+/**
+ * 工作室后台生图作业。四个产品共用一张表，故 task_id 是跨四张产品任务表的多态引用，
+ * 外键表达不了这种指向，故不建 FK —— 删除任务时由各产品 task-runtime 显式删作业行。
+ */
+export const studioJobs = sqliteTable(
+  'studio_jobs',
+  {
+    id: text('id').primaryKey(),
+    /** 与资产磁盘段一致：ecommerce / product-model / product-retouch / business-analysis */
+    product: text('product').notNull(),
+    taskId: text('task_id').notNull(),
+    stepKey: text('step_key').notNull(),
+    kind: text('kind').notNull(),
+    status: text('status').notNull(),
+    /** JSON：{ events, pending }，见 api/studio/_shared/job-types.ts */
+    data: text('data').notNull(),
+    error: text('error'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+    finishedAt: text('finished_at'),
+  },
+  (table) => [
+    index('studio_jobs_task_created_idx').on(table.taskId, table.createdAt),
+    index('studio_jobs_status_idx').on(table.status),
+  ],
+);

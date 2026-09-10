@@ -13,6 +13,9 @@ export const DELETE_CONFIRM_TITLE = '删除电商设计任务';
 
 export const DELETE_CONFIRM_DESCRIPTION = '任务数据和生成物料将一并删除，确定继续吗？';
 
+/** 列表「已产出步骤」中标注后台生成中的后缀 */
+export const RUNNING_STEP_SUFFIX = '生成中';
+
 export const STEP_LABELS = {
   analysis: '商业分析',
   visual: '营销主视觉',
