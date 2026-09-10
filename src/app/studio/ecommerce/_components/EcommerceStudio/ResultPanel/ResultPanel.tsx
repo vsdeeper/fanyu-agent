@@ -112,8 +112,7 @@ export default function ResultPanel({
   );
   const nextDisabled =
     isEditing ||
-    isNextDisabled(phase, analysisText, selectedVisualIndex, hasDesignResults, {
-      isThemePlan: themePlan,
+    isNextDisabled(phase, selectedVisualIndex, hasDesignResults, {
       selectedThemeCount: selectedThemeIds.length,
       isEditing: planEditing,
     });
@@ -242,7 +241,7 @@ export default function ResultPanel({
         </div>
       )}
       <div className={styles.footer}>
-        {isPrevVisible(phase, isPoster, themePlan) ? (
+        {isPrevVisible(phase, isPoster) ? (
           <Button size="large" disabled={isEditing || planEditing} onClick={onPrev}>
             {PREV_BUTTON}
           </Button>

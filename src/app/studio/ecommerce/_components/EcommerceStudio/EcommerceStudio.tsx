@@ -55,7 +55,6 @@ import {
   createDefaultDesignForm,
   createDesignStepSnapshot,
   createVisualStepSnapshot,
-  deleteStudioStep,
   createRafTextBuffer,
   isAbortError,
   isSameStepSnapshot,
@@ -76,7 +75,6 @@ import {
   revokeProductDocUrls,
   revokeProductImageUrls,
   saveStudioStep,
-  toAnalyzePayload,
   toAnalyzeImages,
   toDesignGeneratePayload,
   toDetailImageGeneratePayload,
@@ -182,8 +180,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const productDocsRef = useRef(productDocs);
   const modelImagesRef = useRef(modelImages);
   const abortRef = useRef<AbortController | null>(null);
-  // 标记本会话是否重跑过分析：仅此时提交才使旧下游视觉/设计失效，避免「打开已有任务直接下一步」误删
-  const analysisDirtyRef = useRef(false);
   const lastSnapshotsRef = useRef<{
     analysis: AnalysisStepSnapshot | undefined;
     visual: VisualStepSnapshot | undefined;
@@ -235,7 +231,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   }, [analysisBuffer]);
 
   // 落盘与下一步/完成共用同一份动作：把当前步左栏 + 右栏整体快照入库（data: URL 由服务端转资产 URL）
-  // 主题规划类分析变更后保留已出图；非主题规划任务在 handleNext 时删除下游 visual/design。生成完成即落库不误删已提交结果
+  // 分析变更后保留已出图；生成完成即落库不误删已提交结果
   const persistAnalysisStep = useCallback(
     async (
       imgs: ProductImageItem[],
@@ -358,13 +354,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const displayPlanCards = streamedPlan ? streamedPlan.cards : planCards;
 
   const handleAnalyze = useCallback(async () => {
-    if (themePlan) {
-      if (documents.length === 0) {
-        message.warning(ANALYSIS_UPLOAD_MISSING);
-        return;
-      }
-    } else if (images.length === 0) {
-      message.warning(NO_IMAGE_WARNING);
+    if (documents.length === 0) {
+      message.warning(ANALYSIS_UPLOAD_MISSING);
       return;
     }
     abortCurrent();
@@ -372,34 +363,23 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     abortRef.current = controller;
     setPhase('analyzing');
     analysisBuffer.reset();
-    if (themePlan) {
-      setPlanCards([]);
-      setSelectedThemeIds([]);
-    } else {
-      setVisualImages([]);
-      setDesignResultGroups({});
-      setSelectedVisualIndex(null);
-    }
+    setPlanCards([]);
+    setSelectedThemeIds([]);
     try {
-      const payload = themePlan
-        ? await toThemeAnalyzePayload(
-            documents,
-            detailImage ? 'detailImage' : 'mainImage',
-            productDocs,
-          )
-        : await toAnalyzePayload(images, documents);
-      const res = await fetch(
-        themePlan ? '/api/studio/ecommerce/analyze' : '/api/studio/business-analysis/analyze',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'text/event-stream',
-          },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        },
+      const payload = await toThemeAnalyzePayload(
+        documents,
+        detailImage ? 'detailImage' : 'mainImage',
+        productDocs,
       );
+      const res = await fetch('/api/studio/ecommerce/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
       await assertOkOrJsonFail(res);
       let receivedDone = false;
       await consumeAnalyzeSse(res, {
@@ -420,27 +400,14 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       }
       if (receivedDone) {
         const text = analysisBuffer.getText();
-        if (themePlan) {
-          const parsed = (detailImage ? parseDetailImagePlan : parseMainImagePlan)(text);
-          setPlanCards(parsed.cards);
-          analysisDirtyRef.current = true;
-          setPhase('analyzed');
-          try {
-            await persistAnalysisStep(images, documents, text, {
-              planCards: parsed.cards,
-              selectedThemeIds: [],
-            });
-          } catch (err) {
-            console.error('[ecommerce-studio] persist analysis', err);
-          }
-          return;
-        }
-        revokeProductImageUrls(modelImagesRef.current);
-        setModelImages([]);
-        analysisDirtyRef.current = true;
+        const parsed = (detailImage ? parseDetailImagePlan : parseMainImagePlan)(text);
+        setPlanCards(parsed.cards);
         setPhase('analyzed');
         try {
-          await persistAnalysisStep(images, documents, text);
+          await persistAnalysisStep(images, documents, text, {
+            planCards: parsed.cards,
+            selectedThemeIds: [],
+          });
         } catch (err) {
           console.error('[ecommerce-studio] persist analysis', err);
         }
@@ -466,9 +433,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     message,
     persistAnalysisStep,
     productDocs,
-    setModelImages,
     setPhase,
-    themePlan,
   ]);
 
   const handleGenerateVisual = useCallback(async () => {
@@ -864,23 +829,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     setNextLoading(true);
     try {
       if (phase === 'analyzed') {
-        await persistAnalysisStep(
-          images,
-          documents,
-          analysisText,
-          themePlan ? { selectedThemeIds } : undefined,
-        );
-        if (analysisDirtyRef.current) {
-          if (!themePlan) {
-            await Promise.all([
-              deleteStudioStep(task.id, 'visual'),
-              deleteStudioStep(task.id, 'design'),
-            ]);
-            lastSnapshotsRef.current.visual = undefined;
-            lastSnapshotsRef.current.design = undefined;
-          }
-          analysisDirtyRef.current = false;
-        }
+        await persistAnalysisStep(images, documents, analysisText, { selectedThemeIds });
       } else if (phase === 'visual') {
         await persistVisualStep(form, visualImages, selectedVisualIndex);
       } else if (phase === 'design') {
@@ -909,7 +858,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     selectedVisualIndex,
     setNextLoading,
     setPhase,
-    task.id,
     task.taskType,
     themePlan,
     visualImages,

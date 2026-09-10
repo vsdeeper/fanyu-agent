@@ -1,7 +1,7 @@
 import { patchModel } from '../model-options';
 import type { StudioPhase } from '../types';
 
-/** 商业分析步骤（输入、分析中、分析完成同属一步） */
+/** 分析步骤（输入、分析中、分析完成同属一步）；电商仅主题规划类任务（主图 / 详情图）会进入该步骤 */
 export function isAnalyzePhase(phase: StudioPhase): boolean {
   return phase === 'input' || phase === 'analyzing' || phase === 'analyzed';
 }

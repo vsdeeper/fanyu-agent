@@ -582,15 +582,7 @@ describe('步骤快照水合', () => {
     expect(design?.selectedExportIndexes).toEqual([0]);
   });
 
-  it('再次进入流程时默认停在第一步', () => {
-    expect(resolveInitialStudioPhase(undefined)).toBe('input');
-    expect(
-      resolveInitialStudioPhase({
-        images: [],
-        documents: [],
-        analysisText: '已完成分析',
-      }),
-    ).toBe('analyzed');
+  it('再次进入流程时按任务类型停在对应的第一步', () => {
     expect(resolveInitialStudioPhase(undefined, true)).toBe('visual');
     expect(resolveInitialStudioPhase(undefined, false, true)).toBe('input');
     expect(resolveInitialStudioPhase(undefined, false, true, true)).toBe('design');
@@ -613,6 +605,13 @@ describe('步骤快照水合', () => {
       ),
     ).toBe('analyzed');
   });
+
+  it('任务类型既非主题规划类也非海报时抛错，不返回兜底步骤', () => {
+    expect(() => resolveInitialStudioPhase(undefined)).toThrow();
+    expect(() =>
+      resolveInitialStudioPhase({ images: [], documents: [], analysisText: '已完成分析' }),
+    ).toThrow();
+  });
 });
 
 describe('流程导航', () => {
@@ -632,28 +631,23 @@ describe('流程导航', () => {
 
   it('上一步按钮：详情图在分析步隐藏，海报在主视觉步隐藏，主图在分析步隐藏', () => {
     expect(isPrevVisible('analyzed')).toBe(false);
+    expect(isPrevVisible('design')).toBe(true);
+    expect(isPrevVisible('designGenerating')).toBe(true);
+    expect(isPrevVisible('complete')).toBe(true);
     expect(isPrevVisible('visual')).toBe(true);
     expect(isPrevVisible('visual', true)).toBe(false);
     expect(isPrevVisible('visualGenerating', true)).toBe(false);
     expect(isPrevVisible('design', true)).toBe(true);
-    expect(isPrevVisible('analyzed', false, true)).toBe(false);
-    expect(isPrevVisible('design', false, true)).toBe(true);
-    expect(isPrevVisible('designGenerating', false, true)).toBe(true);
-    expect(isPrevVisible('complete', false, true)).toBe(true);
   });
 
   it('视觉设计至少有一张成果时才能进入完成', () => {
-    expect(isNextDisabled('design', '分析', 0, false)).toBe(true);
-    expect(isNextDisabled('design', '分析', 0, true)).toBe(false);
+    expect(isNextDisabled('design', 0, false)).toBe(true);
+    expect(isNextDisabled('design', 0, true)).toBe(false);
   });
 
   it('主图分析未点选主题时不能进入设计', () => {
-    expect(
-      isNextDisabled('analyzed', '分析', null, false, { isThemePlan: true, selectedThemeCount: 0 }),
-    ).toBe(true);
-    expect(
-      isNextDisabled('analyzed', '分析', null, false, { isThemePlan: true, selectedThemeCount: 2 }),
-    ).toBe(false);
+    expect(isNextDisabled('analyzed', null, false, { selectedThemeCount: 0 })).toBe(true);
+    expect(isNextDisabled('analyzed', null, false, { selectedThemeCount: 2 })).toBe(false);
   });
 
   it('主图设计步标题与空态不走视觉设计文案', () => {

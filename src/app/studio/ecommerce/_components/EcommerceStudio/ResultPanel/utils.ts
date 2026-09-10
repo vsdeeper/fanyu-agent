@@ -1,6 +1,5 @@
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import {
-  EMPTY_DESIGN_HINT,
   EMPTY_DETAIL_IMAGE_HINT,
   EMPTY_DETAIL_IMAGE_PLAN_HINT,
   EMPTY_MAIN_IMAGE_HINT,
@@ -49,10 +48,8 @@ export function isDesignResultPhase(phase: StudioPhase): boolean {
 }
 
 /** 第一步不展示上一步：主题规划类为分析，海报为主视觉。 */
-export function isPrevVisible(phase: StudioPhase, isPoster = false, isThemePlan = false): boolean {
-  if (isThemePlan) {
-    return phase !== 'input' && phase !== 'analyzing' && phase !== 'analyzed';
-  }
+export function isPrevVisible(phase: StudioPhase, isPoster = false): boolean {
+  // 任务类型只有主题规划类与营销海报两类，非海报即主题规划类，故无需再传 isThemePlan
   if (isPoster) return phase !== 'visual' && phase !== 'visualGenerating';
   return phase !== 'input' && phase !== 'analyzing' && phase !== 'analyzed';
 }
@@ -103,16 +100,13 @@ export function reconcilePlanScrollPin(
  */
 export function isNextDisabled(
   phase: StudioPhase,
-  analysisText: string,
   selectedVisualIndex: number | null,
   hasDesignResults: boolean,
-  options?: { isThemePlan?: boolean; selectedThemeCount?: number; isEditing?: boolean },
+  options?: { selectedThemeCount?: number; isEditing?: boolean },
 ): boolean {
   if (options?.isEditing) return true;
-  if (phase === 'analyzed') {
-    if (options?.isThemePlan) return (options.selectedThemeCount ?? 0) < 1;
-    return !analysisText.trim();
-  }
+  // analyzed 相位只可能是主图 / 详情图（主题规划类），判据即「是否已点选主题」
+  if (phase === 'analyzed') return (options?.selectedThemeCount ?? 0) < 1;
   if (phase === 'visual') return selectedVisualIndex === null;
   if (phase === 'design') return !hasDesignResults;
   return true;
@@ -123,7 +117,8 @@ export function toEmptyHint(phase: StudioPhase, taskType: EcommerceTaskType): st
   if (isDesignResultPhase(phase)) {
     if (isMainImageTask(taskType)) return EMPTY_MAIN_IMAGE_HINT;
     if (isDetailImageTask(taskType)) return EMPTY_DETAIL_IMAGE_HINT;
-    return isPosterTask(taskType) ? EMPTY_POSTER_HINT : EMPTY_DESIGN_HINT;
+    // 主图 / 详情图已被上面两个分支拦下，此处只剩营销海报
+    return EMPTY_POSTER_HINT;
   }
   if (isVisualResultPhase(phase)) return EMPTY_VISUAL_HINT;
   if (isMainImageTask(taskType)) return EMPTY_MAIN_IMAGE_PLAN_HINT;

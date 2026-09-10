@@ -82,7 +82,8 @@ src/
       _components/         # 对话页私有 UI：ChatShell / ChatSidebar / Chat / AuxiliaryPanel
     studio/                # 工作室产品面（前端）
       _utils/ / _hooks/ / _components/  # 工作室共用：流式生图、任务列表壳、规格表单等
-      ecommerce/ / business-analysis/ / product-model/ / product-retouch/
+      ecommerce/            # 电商设计：主图 / 详情图（主题规划）与营销海报；不跑商业分析
+      business-analysis/ / product-model/ / product-retouch/
     api/
       chat/                # POST /api/chat
         route.ts           # HTTP 薄壳
@@ -95,7 +96,9 @@ src/
       studio/              # 工作室 API：共用 generate + 各产品 tasks
         generate/route.ts  # POST /api/studio/generate
         _shared/ / _server/  # 任务工厂、生图；禁止与子域混合 barrel
-        ecommerce/ / business-analysis/ / product-model/ / product-retouch/  # 产品差异（tasks、商业分析 analyze）
+        ecommerce/            # 主图 / 详情图（主题规划）与营销海报；另有 analyze / rewrite-card，不跑商业分析
+        business-analysis/    # 商业分析工作室；另有 analyze
+        product-model/ / product-retouch/  # 产品差异 tasks
       geo/regeo/route.ts + _server/ + _shared/types.ts
       images/[assetId]/route.ts + _server/   # assets / router / vision / providers / registry
       docs/[chatId]/[assetId]/route.ts + _server/ + _shared/
@@ -156,14 +159,14 @@ src/hooks           →  禁止依赖 app/ 与任何产品实现
 
 允许的跨域服务端调用（应用层编排）：`api/chat/_server/stream-chat` → images / docs / geo；`api/images/_server/vision` 可共用 `api/chat/_server/providers/ark/client`；`api/studio/_server` 生图可调用 `api/images/_server`。
 
-| API Route                               | 实现目录                  | 说明                                                                                                                                       |
-| --------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `app/api/chat/`                         | `app/api/chat/_server/`   | 流式对话、会话提交、tools                                                                                                                  |
-| `app/api/chats/`、`app/api/chats/[id]/` | `app/api/chats/_server/`  | 会话列表 / 新建 / 读取 / 删除                                                                                                              |
-| `app/api/studio/`                       | `app/api/studio/_server/` | 工作室共用生图与任务引擎；子路由 `generate`、`{ecommerce,business-analysis,product-model,product-retouch}/tasks`（商业分析另有 `analyze`） |
-| `app/api/geo/`                          | `app/api/geo/_server/`    | 逆地理、UserLocation                                                                                                                       |
-| `app/api/images/`                       | `app/api/images/_server/` | 生图资源、Provider                                                                                                                         |
-| `app/api/docs/`                         | `app/api/docs/_server/`   | DESIGN.md 等会话文档下载                                                                                                                   |
+| API Route                               | 实现目录                  | 说明                                                                                                                                                                                                                  |
+| --------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/api/chat/`                         | `app/api/chat/_server/`   | 流式对话、会话提交、tools                                                                                                                                                                                             |
+| `app/api/chats/`、`app/api/chats/[id]/` | `app/api/chats/_server/`  | 会话列表 / 新建 / 读取 / 删除                                                                                                                                                                                         |
+| `app/api/studio/`                       | `app/api/studio/_server/` | 工作室共用生图与任务引擎；子路由 `generate`、`{ecommerce,business-analysis,product-model,product-retouch}/tasks`；商业分析工作室另有 `analyze`，电商另有 `analyze` / `rewrite-card`（主题规划），**电商不跑商业分析** |
+| `app/api/geo/`                          | `app/api/geo/_server/`    | 逆地理、UserLocation                                                                                                                                                                                                  |
+| `app/api/images/`                       | `app/api/images/_server/` | 生图资源、Provider                                                                                                                                                                                                    |
+| `app/api/docs/`                         | `app/api/docs/_server/`   | DESIGN.md 等会话文档下载                                                                                                                                                                                              |
 
 **Route Handler（`route.ts`）职责上限：**
 

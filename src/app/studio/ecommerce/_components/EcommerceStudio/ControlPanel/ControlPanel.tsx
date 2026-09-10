@@ -2,7 +2,6 @@ import { HighlightOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
-import AnalyzeForm from '@/app/studio/_components/AnalyzeForm';
 import ProductDocsUpload from '@/business-components/ProductDocsUpload';
 import StudioImageUpload from '@/business-components/StudioImageUpload';
 import {
@@ -57,7 +56,7 @@ type ControlPanelProps = {
 };
 
 /**
- * 电商工作台左侧栏：分析资料、主视觉规格、主题设计或视觉设计 / 营销海报表单。
+ * 电商工作台左侧栏：主题规划分析资料、主视觉规格、主题设计或视觉设计 / 营销海报表单。
  */
 export default function ControlPanel({
   taskType,
@@ -95,7 +94,7 @@ export default function ControlPanel({
   const poster = isPosterTask(taskType);
   const themePlan = isThemePlanTask(taskType);
   const mainImage = isMainImageTask(taskType);
-  const analyzeDisabled = themePlan ? documents.length === 0 : images.length === 0;
+  const analyzeDisabled = documents.length === 0;
 
   const handleVisualSpecChange = (next: StudioSpecFields) => {
     onFormChange({ ...form, ...next });
@@ -112,7 +111,7 @@ export default function ControlPanel({
   return (
     <aside className={styles.panel}>
       <div className={styles.scroll}>
-        {showAnalyzeForm && themePlan ? (
+        {showAnalyzeForm ? (
           <>
             <ProductDocsUpload
               documents={productDocs}
@@ -131,16 +130,6 @@ export default function ControlPanel({
               onRemove={onDocRemove}
             />
           </>
-        ) : showAnalyzeForm ? (
-          <AnalyzeForm
-            images={images}
-            documents={documents}
-            disabled={formLocked}
-            onImagesAppend={onImagesAppend}
-            onImageRemove={onImageRemove}
-            onDocsAppend={onDocsAppend}
-            onDocRemove={onDocRemove}
-          />
         ) : showVisualForm ? (
           <>
             {poster ? (

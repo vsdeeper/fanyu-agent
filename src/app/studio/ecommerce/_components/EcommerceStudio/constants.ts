@@ -46,7 +46,6 @@ export const GENERATE_FAILED = '生图失败，请稍后重试';
 
 export const EMPTY_RESULT_HINT = '上传产品资料和产品图，点击「分析产品」开始';
 export const EMPTY_VISUAL_HINT = '设置参数后点击「生成主视觉」';
-export const EMPTY_DESIGN_HINT = '设置视觉设计参数后点击「生成视觉设计」';
 export const EMPTY_MAIN_IMAGE_PLAN_HINT = '上传商业分析，点击「开始分析」';
 export const EMPTY_DETAIL_IMAGE_PLAN_HINT = '上传商业分析，点击「开始分析」';
 export const EMPTY_MAIN_IMAGE_HINT = '设置参数后点击「生成主图」';

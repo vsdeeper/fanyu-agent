@@ -1,5 +1,4 @@
 import type {
-  BusinessAnalysisAnalyzeRequest,
   BusinessAnalysisDocumentInput,
   BusinessAnalysisImageInput,
 } from '@/app/api/studio/business-analysis/_shared/types';
@@ -19,7 +18,7 @@ import type {
 } from '@/app/api/studio/ecommerce/_shared/task-types';
 import { MAX_PRODUCT_DOCS } from '@/business-components/ProductDocsUpload/constants';
 import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
-import { apiDelete, apiPut } from '@/lib/shared/client/api-client';
+import { apiPut } from '@/lib/shared/client/api-client';
 import {
   applyGenerateEvent,
   pendingImages as pendingImagesFromCount,
@@ -273,17 +272,6 @@ export async function toAnalyzeDocuments(
   );
 }
 
-/** 组装详情图分析请求体：产品图与资料 */
-export async function toAnalyzePayload(
-  images: ProductImageItem[],
-  documents: ProductDocItem[],
-): Promise<BusinessAnalysisAnalyzeRequest> {
-  return {
-    images: await toAnalyzeImages(images),
-    ...(documents.length > 0 ? { documents: await toAnalyzeDocuments(documents) } : {}),
-  };
-}
-
 /** 组装主题规划分析请求体：商业分析文档 + 可选补充产品资料（主图） */
 export async function toThemeAnalyzePayload(
   documents: ProductDocItem[],
@@ -426,12 +414,11 @@ export async function saveStudioStep<T>(
   return record.data as T;
 }
 
-/** 删除已失效的下游步骤快照。 */
-export async function deleteStudioStep(taskId: string, stepKey: EcommerceStepKey): Promise<void> {
-  await apiDelete(`/api/studio/ecommerce/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`);
-}
-
-/** 再次进入流程时停在第一步：主题规划类有分析则停分析完成，仅有旧设计快照则停设计；海报停主视觉。 */
+/**
+ * 再次进入流程时停在第一步：主题规划类有分析则停分析完成，仅有旧设计快照则停设计；海报停主视觉。
+ *
+ * 两类任务必居其一（见 `isThemePlanTask` / `isPosterTask`），都不匹配说明 taskType 非法，直接抛错而不是猜一个步骤。
+ */
 export function resolveInitialStudioPhase(
   analysis: AnalysisStepSnapshot | undefined,
   isPoster = false,
@@ -446,7 +433,7 @@ export function resolveInitialStudioPhase(
     return 'input';
   }
   if (isPoster) return 'visual';
-  return analysis?.analysisText.trim() ? 'analyzed' : 'input';
+  throw new Error('电商任务类型既非主题规划类也非营销海报，无法确定初始步骤');
 }
 
 /** 从未知 JSON 中读取商业分析快照。 */
