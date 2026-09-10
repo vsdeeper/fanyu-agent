@@ -55,7 +55,7 @@ const handlers = createTaskHandlers({
   persistSnapshotAssets: assets.persistSnapshotAssets,
 });
 
-export const { persistSnapshotAssets, getTaskAsset, readTaskAsset } = assets;
+export const { persistSnapshotAssets, getTaskAsset, findAssetTaskId, readTaskAsset } = assets;
 
 export const loadProductRetouchTask = store.load;
 export const createProductRetouchTask = store.create;
@@ -90,6 +90,7 @@ export function serveProductRetouchTaskAsset(taskId: string, assetId: string): R
     taskId,
     assetId,
     getTaskAsset,
+    findAssetTaskId,
     readTaskAsset,
     logTag: 'product-retouch-assets',
   });

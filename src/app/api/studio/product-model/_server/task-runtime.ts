@@ -48,7 +48,7 @@ const handlers = createTaskHandlers({
   persistSnapshotAssets: assets.persistSnapshotAssets,
 });
 
-export const { persistSnapshotAssets, getTaskAsset, readTaskAsset } = assets;
+export const { persistSnapshotAssets, getTaskAsset, findAssetTaskId, readTaskAsset } = assets;
 
 export const loadProductModelTask = store.load;
 export const createProductModelTask = store.create;
@@ -83,6 +83,7 @@ export function serveProductModelTaskAsset(taskId: string, assetId: string): Res
     taskId,
     assetId,
     getTaskAsset,
+    findAssetTaskId,
     readTaskAsset,
     logTag: 'product-model-assets',
   });

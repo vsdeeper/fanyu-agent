@@ -147,6 +147,15 @@ export function createTaskAssets(config: CreateStudioTaskAssetsConfig) {
       .get();
   }
 
+  /** 仅按资产 id 反查归属任务，供读取失败时区分「任务不匹配」与「记录不存在」。 */
+  function findAssetTaskId(assetId: string): string | undefined {
+    return getDb()
+      .select({ taskId: assetsTable.taskId })
+      .from(assetsTable)
+      .where(eq(assetsTable.id, assetId))
+      .get()?.taskId;
+  }
+
   /** 读取任务资产文件字节。 */
   function readTaskAsset(asset: StudioTaskAssetRecord): Uint8Array {
     return new Uint8Array(
@@ -163,6 +172,7 @@ export function createTaskAssets(config: CreateStudioTaskAssetsConfig) {
     buildTaskAssetUrl,
     persistSnapshotAssets,
     getTaskAsset,
+    findAssetTaskId,
     readTaskAsset,
     removeTaskAssetDirectory,
   };

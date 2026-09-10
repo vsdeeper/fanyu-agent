@@ -58,7 +58,7 @@ const handlers = createTaskHandlers({
   persistSnapshotAssets: assets.persistSnapshotAssets,
 });
 
-export const { persistSnapshotAssets, getTaskAsset, readTaskAsset } = assets;
+export const { persistSnapshotAssets, getTaskAsset, findAssetTaskId, readTaskAsset } = assets;
 
 export const loadBusinessAnalysisTask = store.load;
 export const createBusinessAnalysisTask = store.create;
@@ -93,6 +93,7 @@ export function serveBusinessAnalysisTaskAsset(taskId: string, assetId: string):
     taskId,
     assetId,
     getTaskAsset,
+    findAssetTaskId,
     readTaskAsset,
     logTag: 'business-analysis-assets',
   });

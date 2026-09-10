@@ -59,8 +59,13 @@ const handlers = createTaskHandlers({
   persistSnapshotAssets: assets.persistSnapshotAssets,
 });
 
-export const { persistSnapshotAssets, getTaskAsset, readTaskAsset, removeTaskAssetDirectory } =
-  assets;
+export const {
+  persistSnapshotAssets,
+  getTaskAsset,
+  findAssetTaskId,
+  readTaskAsset,
+  removeTaskAssetDirectory,
+} = assets;
 
 export const loadEcommerceTask = store.load;
 export const createEcommerceTask = store.create;
@@ -95,6 +100,7 @@ export function serveEcommerceTaskAsset(taskId: string, assetId: string): Respon
     taskId,
     assetId,
     getTaskAsset,
+    findAssetTaskId,
     readTaskAsset,
     logTag: 'ecommerce-assets',
   });
