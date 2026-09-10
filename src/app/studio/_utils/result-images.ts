@@ -1,5 +1,6 @@
 export type StudioResultImage = {
-  index: number;
+  /** 稳定身份：槽位创建时生成、随快照持久化；选中与事件对齐一律按它匹配，不用数组下标 */
+  id: string;
   aspectRatio: string;
   status: 'pending' | 'ready' | 'failed';
   url?: string;
@@ -9,6 +10,65 @@ export type StudioResultImage = {
   /** 主图按主题分组时的主题标题 */
   themeTitle?: string;
 };
+
+/** 旧快照的结果图只有 index 没有 id，用它派生确定性身份。 */
+export function legacyResultImageId(index: number): string {
+  return `legacy-${index}`;
+}
+
+/**
+ * 读取快照里的结果图数组：保留全部可用图片，只补齐缺失的身份与形状。
+ *
+ * 旧数据没有 id，必须补一个**确定性**派生值——若用随机值，`restoreBatchImages` 的两次调用
+ * （渲染函数体与结算各一次）会产出不同身份，`mergeBatchImages` 按 id 合并时把整批图重复追加一份。
+ * 派生值取旧的 `index` 字段值而非数组位置：取消生成会让数组收缩留洞，位置不等于 index。
+ * 本函数只保证旧图能被渲染与合并，不恢复旧的选中态。
+ */
+export function normalizeResultImages(value: unknown): StudioResultImage[] {
+  if (!Array.isArray(value)) return [];
+  const images: StudioResultImage[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const raw = item as Partial<StudioResultImage> & { index?: unknown };
+    const id =
+      typeof raw.id === 'string' && raw.id
+        ? raw.id
+        : typeof raw.index === 'number'
+          ? legacyResultImageId(raw.index)
+          : '';
+    if (!id) continue;
+    images.push({
+      id,
+      aspectRatio: typeof raw.aspectRatio === 'string' ? raw.aspectRatio : '',
+      status: raw.status === 'ready' || raw.status === 'failed' ? raw.status : 'pending',
+      ...(typeof raw.url === 'string' ? { url: raw.url } : {}),
+      ...(typeof raw.error === 'string' ? { error: raw.error } : {}),
+      ...(typeof raw.themeId === 'string' ? { themeId: raw.themeId } : {}),
+      ...(typeof raw.themeTitle === 'string' ? { themeTitle: raw.themeTitle } : {}),
+    });
+  }
+  return images;
+}
+
+/**
+ * 校验单个选中 id：必须是非空字符串且仍在该结果集里，否则视为未选中。
+ * 入参取 unknown 是因为读快照时拿到的是未校验的 JSON（旧数据此处是数字下标）。
+ */
+export function pickExistingImageId(
+  images: readonly StudioResultImage[],
+  id: unknown,
+): string | null {
+  return typeof id === 'string' && id && images.some((image) => image.id === id) ? id : null;
+}
+
+/** 过滤掉结果集里已不存在的选中 id（取消生成会丢图，避免快照里越积越多的死 id）。 */
+export function keepExistingImageIds(
+  images: readonly StudioResultImage[],
+  ids: readonly string[],
+): string[] {
+  const existing = new Set(images.map((image) => image.id));
+  return ids.filter((id) => existing.has(id));
+}
 
 /** 将宽高比换算为固定宽度下的展示尺寸。 */
 export function aspectRatioToSize(
@@ -93,20 +153,20 @@ export function getGeneratedImages<T extends StudioResultImage>(
 /** 返回点选且已就绪的结果图 URL。 */
 export function getSelectedImageUrl(
   images: readonly StudioResultImage[],
-  selectedIndex: number | null,
+  selectedId: string | null,
 ): string | null {
-  const [url] = getSelectedImageUrls(images, selectedIndex === null ? [] : [selectedIndex]);
+  const [url] = getSelectedImageUrls(images, selectedId === null ? [] : [selectedId]);
   return url ?? null;
 }
 
 /** 按点选顺序返回已就绪的结果图 URL。 */
 export function getSelectedImageUrls(
   images: readonly StudioResultImage[],
-  selectedIndexes: readonly number[],
+  selectedIds: readonly string[],
 ): string[] {
   const urls: string[] = [];
-  for (const selectedIndex of selectedIndexes) {
-    const image = images.find((item) => item.index === selectedIndex);
+  for (const selectedId of selectedIds) {
+    const image = images.find((item) => item.id === selectedId);
     if (image?.status === 'ready' && image.url) urls.push(image.url);
   }
   return urls;

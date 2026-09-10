@@ -35,3 +35,4 @@ export const JOB_INTERRUPTED_MESSAGE = '服务重启导致生成中断';
 export const JOB_DEADLINE_EXCEEDED_MESSAGE = '生成超出时间预算已停止';
 export const JOB_TASK_MISSING_MESSAGE = '任务已删除，生成停止';
 export const JOB_GENERATE_FAILED_MESSAGE = '生成失败，请稍后重试';
+export const JOB_SLOT_MISMATCH_MESSAGE = '生成任务与占位槽不一致，请重试';

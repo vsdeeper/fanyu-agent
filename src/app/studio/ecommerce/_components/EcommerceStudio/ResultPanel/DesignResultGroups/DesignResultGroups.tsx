@@ -15,10 +15,10 @@ type DesignResultGroupsProps = {
   groupByTheme?: boolean;
   themes?: readonly ThemeDefinition[];
   selectable?: boolean;
-  selectedIndex?: number | null;
-  selectedIndexes?: readonly number[];
+  selectedId?: string | null;
+  selectedIds?: readonly string[];
   selectedBadge?: string;
-  onSelect?: (index: number) => void;
+  onSelect?: (id: string) => void;
 };
 
 /**
@@ -30,8 +30,8 @@ export default function DesignResultGroups({
   groupByTheme = false,
   themes = MAIN_IMAGE_THEMES,
   selectable = false,
-  selectedIndex = null,
-  selectedIndexes,
+  selectedId = null,
+  selectedIds,
   selectedBadge,
   onSelect,
 }: DesignResultGroupsProps) {
@@ -65,8 +65,8 @@ export default function DesignResultGroups({
                             expectedCount={ratioImages.length}
                             aspectRatio={aspectRatio}
                             selectable={selectable}
-                            selectedIndex={selectedIndex}
-                            selectedIndexes={selectedIndexes}
+                            selectedId={selectedId}
+                            selectedIds={selectedIds}
                             selectedBadge={selectedBadge}
                             onSelect={onSelect}
                           />
@@ -83,8 +83,8 @@ export default function DesignResultGroups({
                       expectedCount={ratioImages.length}
                       aspectRatio={aspectRatio}
                       selectable={selectable}
-                      selectedIndex={selectedIndex}
-                      selectedIndexes={selectedIndexes}
+                      selectedId={selectedId}
+                      selectedIds={selectedIds}
                       selectedBadge={selectedBadge}
                       onSelect={onSelect}
                     />

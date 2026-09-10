@@ -59,6 +59,12 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
   }
 
   const plan = buildGeneratePlan(body);
+  const slotIds = body.slotIds ?? [];
+  // 槽位数与出图清单不一致时事件将无处投递（图会静默丢失），直接拒绝而不是照常出图
+  if (slotIds.length !== plan.length) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
+  }
+  const slotIdAt = (index: number) => slotIds[index] ?? '';
 
   return createPushStreamResponse(NDJSON_STREAM_HEADERS, async (write) => {
     const send = (event: StudioGenerateImageEvent) => write(encodeNdjsonLine(event));
@@ -76,16 +82,16 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
         });
         if (req.signal.aborted) return;
         if (result.ok) {
-          await send({ index: item.index, url: result.url });
+          await send({ slotId: slotIdAt(item.index), url: result.url });
         } else {
-          await send({ index: item.index, error: result.error });
+          await send({ slotId: slotIdAt(item.index), error: result.error });
         }
       }
     } catch (err) {
       if (req.signal.aborted) return;
       console.error('[studio/generate]', err);
       try {
-        await send({ index: 0, error: GENERATE_FAILED });
+        await send({ slotId: slotIdAt(0), error: GENERATE_FAILED });
       } catch {
         /* 流已关闭 */
       }

@@ -8,7 +8,7 @@ import {
   JOB_INVALID_MESSAGE,
   JOB_NOT_FOUND_MESSAGE,
 } from '../_shared/job-constants';
-import type { StudioJobSnapshot } from '../_shared/job-types';
+import type { StudioJobPendingPlan, StudioJobSnapshot } from '../_shared/job-types';
 import { abortJobController, isJobRegistered } from './job-registry';
 import { beginStudioJob, runStudioJob, type StudioJobProducer } from './job-runner';
 import {
@@ -26,6 +26,8 @@ export type StudioJobProducerFactory = (input: {
   taskId: string;
   stepKey: string;
   body: StudioGenerateRequest;
+  /** 本批占位槽，顺序即出图清单顺序；生产者据此把每张图回传给对应槽位 */
+  pending: StudioJobPendingPlan;
 }) => StudioJobProducer;
 
 export type StudioJobHandlersContext = {
@@ -60,7 +62,12 @@ export function createStudioJobHandlers(ctx: StudioJobHandlersContext) {
       runStudioJob({
         jobId: job.id,
         pending: job.data.pending,
-        producer: ctx.producer({ taskId, stepKey: job.stepKey, body }),
+        producer: ctx.producer({
+          taskId,
+          stepKey: job.stepKey,
+          body,
+          pending: job.data.pending,
+        }),
         controller,
       }),
     );

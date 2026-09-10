@@ -21,7 +21,7 @@ export default function PhoneConcatPreview({ images }: PhoneConcatPreviewProps) 
         if (!src) return null;
         return (
           <img
-            key={`concat-${image.index}`}
+            key={`concat-${image.id}`}
             className={styles.frame}
             src={src}
             alt={image.themeTitle || '详情图'}

@@ -42,7 +42,7 @@ export default function ResultPanel({
                   const size = aspectRatioToSize(image.aspectRatio, 280);
                   return (
                     <ResultImageItem
-                      key={`${ratio}-${image.index}`}
+                      key={`${ratio}-${image.id}`}
                       image={image}
                       width={size.width}
                       height={size.height}

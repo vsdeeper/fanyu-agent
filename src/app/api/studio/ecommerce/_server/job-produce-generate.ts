@@ -1,7 +1,11 @@
 import 'server-only';
 
 import type { StudioGenerateRequest } from '@/app/api/studio/_shared/generate-types';
-import { JOB_TASK_MISSING_MESSAGE } from '@/app/api/studio/_shared/job-constants';
+import {
+  JOB_SLOT_MISMATCH_MESSAGE,
+  JOB_TASK_MISSING_MESSAGE,
+} from '@/app/api/studio/_shared/job-constants';
+import type { StudioJobPendingPlan } from '@/app/api/studio/_shared/job-types';
 import { buildGeneratePlan } from '@/app/api/studio/_server/generate-plan';
 import { generateStudioImage } from '@/app/api/studio/_server/generate-one';
 import {
@@ -23,10 +27,22 @@ export type EcommerceJobProducerConfig = {
  */
 export function createEcommerceJobProducer(
   config: EcommerceJobProducerConfig,
-): (input: { taskId: string; stepKey: string; body: StudioGenerateRequest }) => StudioJobProducer {
-  return ({ taskId, stepKey, body }) =>
+): (input: {
+  taskId: string;
+  stepKey: string;
+  body: StudioGenerateRequest;
+  pending: StudioJobPendingPlan;
+}) => StudioJobProducer {
+  return ({ taskId, stepKey, body, pending }) =>
     async ({ signal, emit }: StudioJobProducerContext) => {
       const plan = buildGeneratePlan(body);
+      // 事件按槽位 id 回传，槽位与出图清单必须逐位对应；数量不等说明客户端建作业时的
+      // 展开与 buildGeneratePlan 不一致，此时回传会挂错槽位或丢图，直接失败更好查
+      if (plan.length !== pending.slots.length) {
+        throw new StudioJobFailureError(JOB_SLOT_MISMATCH_MESSAGE);
+      }
+      const slotIdAt = (index: number) => pending.slots[index]?.id ?? '';
+
       for (const item of plan) {
         if (signal.aborted) return;
 
@@ -48,9 +64,12 @@ export function createEcommerceJobProducer(
         if (signal.aborted) return;
 
         if (result.ok) {
-          emit({ index: item.index, url: config.saveAsset(taskId, stepKey, result.url) });
+          emit({
+            slotId: slotIdAt(item.index),
+            url: config.saveAsset(taskId, stepKey, result.url),
+          });
         } else {
-          emit({ index: item.index, error: result.error });
+          emit({ slotId: slotIdAt(item.index), error: result.error });
         }
       }
     };

@@ -7,28 +7,22 @@ export function dropPendingImages<T extends StudioResultImage>(images: readonly 
   return images.filter((item) => item.status !== 'pending');
 }
 
-/** 为一批待生成图片建立占位状态。 */
-export function pendingImages(
-  count: number,
-  startIndex: number,
-  aspectRatio: string,
-): StudioResultImage[] {
-  return Array.from({ length: Math.max(1, count) }, (_, offset) => ({
-    index: startIndex + offset,
+/** 为一批待生成图片建立占位状态；id 在这里生成，此后身份不再变化。 */
+export function pendingImages(count: number, aspectRatio: string): StudioResultImage[] {
+  return Array.from({ length: Math.max(1, count) }, () => ({
+    id: crypto.randomUUID(),
     aspectRatio,
     status: 'pending',
   }));
 }
 
-/** 将单条流事件合并到对应批次图片状态。 */
+/** 将单条流事件合并到对应槽位；事件按槽位 id 寻址，不做任何下标偏移。 */
 export function applyGenerateEvent<T extends StudioResultImage>(
   current: T[],
   event: StudioGenerateImageEvent,
-  batchStartIndex = 0,
 ): T[] {
-  const targetIndex = batchStartIndex + event.index;
   return current.map((item) =>
-    item.index !== targetIndex
+    item.id !== event.slotId
       ? item
       : event.error
         ? { ...item, status: 'failed', error: event.error }

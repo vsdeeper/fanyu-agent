@@ -18,8 +18,7 @@ import type { StudioJobData } from '../_shared/job-types';
 
 const PENDING: StudioJobData['pending'] = {
   stepKey: 'visual',
-  batchStartIndex: 0,
-  slots: [{ index: 0, aspectRatio: '1:1', status: 'pending' }],
+  slots: [{ id: 'slot-0', aspectRatio: '1:1', status: 'pending' }],
   form: { model: 'seedream', aspectRatio: '1:1', quality: 'high', clarity: '2K', count: '2' },
 };
 
@@ -90,14 +89,14 @@ describe('runStudioJob', () => {
     const { deps, calls } = makeDeps();
 
     await start(deps, async ({ emit }) => {
-      emit({ index: 0, url: '/api/studio/ecommerce/tasks/t/assets/a' });
-      emit({ index: 1, error: '生图服务暂不可用' });
+      emit({ slotId: 'slot-0', url: '/api/studio/ecommerce/tasks/t/assets/a' });
+      emit({ slotId: 'slot-1', error: '生图服务暂不可用' });
     }).promise;
 
     expect(calls.finished).toHaveLength(1);
     expect(calls.finished[0]?.events).toEqual([
-      { index: 0, url: '/api/studio/ecommerce/tasks/t/assets/a' },
-      { index: 1, error: '生图服务暂不可用' },
+      { slotId: 'slot-0', url: '/api/studio/ecommerce/tasks/t/assets/a' },
+      { slotId: 'slot-1', error: '生图服务暂不可用' },
     ]);
     // 每 emit 一次落一次进度
     expect(calls.updates).toHaveLength(2);
@@ -109,14 +108,14 @@ describe('runStudioJob', () => {
     const { deps, calls } = makeDeps();
 
     await start(deps, async ({ emit }) => {
-      emit({ index: 0, url: '/assets/a' });
+      emit({ slotId: 'slot-0', url: '/assets/a' });
       throw new Error('upstream exploded');
     }).promise;
 
     expect(calls.finished).toEqual([]);
     expect(calls.failed).toHaveLength(1);
     expect(calls.failed[0]?.error).toBe(JOB_GENERATE_FAILED_MESSAGE);
-    expect(calls.failed[0]?.data?.events).toEqual([{ index: 0, url: '/assets/a' }]);
+    expect(calls.failed[0]?.data?.events).toEqual([{ slotId: 'slot-0', url: '/assets/a' }]);
     expect(calls.released).toEqual(['job-1']);
   });
 
@@ -140,7 +139,7 @@ describe('runStudioJob', () => {
     let aborted = false;
 
     await start(deps, async ({ signal, emit }) => {
-      emit({ index: 0, url: '/assets/a' });
+      emit({ slotId: 'slot-0', url: '/assets/a' });
       aborted = signal.aborted;
     }).promise;
 
@@ -155,7 +154,7 @@ describe('runStudioJob', () => {
       deps,
       ({ signal, emit }) =>
         new Promise<void>((resolve) => {
-          emit({ index: 0, url: '/assets/a' });
+          emit({ slotId: 'slot-0', url: '/assets/a' });
           if (signal.aborted) resolve();
           else signal.addEventListener('abort', () => resolve(), { once: true });
         }),
@@ -170,6 +169,6 @@ describe('runStudioJob', () => {
     expect(calls.finished).toEqual([]);
     expect(calls.failed).toHaveLength(1);
     expect(calls.failed[0]?.error).toBe(JOB_DEADLINE_EXCEEDED_MESSAGE);
-    expect(calls.failed[0]?.data?.events).toEqual([{ index: 0, url: '/assets/a' }]);
+    expect(calls.failed[0]?.data?.events).toEqual([{ slotId: 'slot-0', url: '/assets/a' }]);
   });
 });

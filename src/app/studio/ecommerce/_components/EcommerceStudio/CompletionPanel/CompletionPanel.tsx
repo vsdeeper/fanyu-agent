@@ -31,8 +31,8 @@ type CompletionPanelProps = {
   showDesignTitles?: boolean;
   groupByTheme?: boolean;
   detailPreview?: boolean;
-  selectedExportIndexes?: number[];
-  onSelectExport?: (index: number) => void;
+  selectedExportIds?: string[];
+  onSelectExport?: (id: string) => void;
   onPrev: () => void;
   onExportPersist?: () => void | Promise<void>;
 };
@@ -46,7 +46,7 @@ export default function CompletionPanel({
   showDesignTitles = true,
   groupByTheme = false,
   detailPreview = false,
-  selectedExportIndexes = [],
+  selectedExportIds = [],
   onSelectExport,
   onPrev,
   onExportPersist,
@@ -59,7 +59,7 @@ export default function CompletionPanel({
   const detailImages = designResults['详情图'] ?? [];
   const selectedDetailImages = orderSelectedImagesByTheme(
     detailImages,
-    selectedExportIndexes,
+    selectedExportIds,
     DETAIL_IMAGE_THEMES,
   );
   const { exporting, handleExport } = useExportResultImages(
@@ -106,7 +106,7 @@ export default function CompletionPanel({
                   groupByTheme
                   themes={DETAIL_IMAGE_THEMES}
                   selectable
-                  selectedIndexes={selectedExportIndexes}
+                  selectedIds={selectedExportIds}
                   onSelect={onSelectExport}
                 />
               ) : (

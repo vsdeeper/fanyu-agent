@@ -12,7 +12,7 @@ type ResultImageItemProps = {
   selected?: boolean;
   selectedBadge?: string;
   pickLabel?: string;
-  onSelect?: (index: number) => void;
+  onSelect?: (id: string) => void;
   getSrc?: (image: StudioResultImage) => string;
   failedFallbackSrc?: string;
   imageClassNames?: object;
@@ -88,7 +88,7 @@ export default function ResultImageItem({
           className={selected ? `${styles.badge} ${styles.badgeButton}` : styles.pick}
           onClick={(event) => {
             event.stopPropagation();
-            onSelect?.(image.index);
+            onSelect?.(image.id);
           }}
         >
           {selected ? selectedBadge : pickLabel}

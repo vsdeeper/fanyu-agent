@@ -8,11 +8,11 @@ import {
   getGeneratedImages,
   orderSelectedImagesByTheme,
   toExportArchiveName,
-  toggleExportIndexByTheme,
+  toggleExportSelectedIdByTheme,
 } from './utils';
 
 const READY_IMAGE: StudioResultImage = {
-  index: 0,
+  id: 'img-0',
   aspectRatio: '1:1',
   status: 'ready',
   url: 'data:image/png;base64,aGVsbG8=',
@@ -23,8 +23,8 @@ describe('电商成果整理', () => {
     expect(
       getGeneratedImages([
         READY_IMAGE,
-        { index: 1, aspectRatio: '1:1', status: 'pending' },
-        { index: 2, aspectRatio: '1:1', status: 'failed', error: '失败' },
+        { id: 'p1', aspectRatio: '1:1', status: 'pending' },
+        { id: 'p2', aspectRatio: '1:1', status: 'failed', error: '失败' },
       ]),
     ).toEqual([READY_IMAGE]);
   });
@@ -32,7 +32,7 @@ describe('电商成果整理', () => {
   it('按设计类型过滤空分组', () => {
     const groups: DesignResultGroups = {
       主图: [READY_IMAGE],
-      营销海报: [{ index: 0, aspectRatio: '3:4', status: 'failed' }],
+      营销海报: [{ id: 'p3', aspectRatio: '3:4', status: 'failed' }],
     };
 
     expect(getGeneratedDesignGroups(groups)).toEqual({ 主图: [READY_IMAGE] });
@@ -74,21 +74,21 @@ describe('电商成果整理', () => {
         主图: [
           {
             ...READY_IMAGE,
-            index: 0,
+            id: 'img-0',
             aspectRatio: '1:1',
             themeId: 'product',
             themeTitle: '产品展示',
           },
           {
             ...READY_IMAGE,
-            index: 1,
+            id: 'img-1',
             aspectRatio: '1:1',
             themeId: 'product',
             themeTitle: '产品展示',
           },
           {
             ...READY_IMAGE,
-            index: 2,
+            id: 'img-2',
             aspectRatio: '3:4',
             themeId: 'scene',
             themeTitle: '使用场景',
@@ -109,43 +109,43 @@ describe('电商成果整理', () => {
     const images: StudioResultImage[] = [
       {
         ...READY_IMAGE,
-        index: 0,
+        id: 'img-0',
         themeId: 'brand',
         themeTitle: '品牌认知',
       },
       {
         ...READY_IMAGE,
-        index: 1,
+        id: 'img-1',
         themeId: 'brand',
         themeTitle: '品牌认知',
       },
       {
         ...READY_IMAGE,
-        index: 2,
+        id: 'img-2',
         themeId: 'scene',
         themeTitle: '使用场景',
       },
     ];
 
-    const first = toggleExportIndexByTheme([], 0, images);
-    expect(first).toEqual([0]);
-    expect(toggleExportIndexByTheme(first, 1, images)).toEqual([1]);
-    expect(toggleExportIndexByTheme([1], 2, images)).toEqual([1, 2]);
-    expect(toggleExportIndexByTheme([1, 2], 1, images)).toEqual([2]);
+    const first = toggleExportSelectedIdByTheme([], 'img-0', images);
+    expect(first).toEqual(['img-0']);
+    expect(toggleExportSelectedIdByTheme(first, 'img-1', images)).toEqual(['img-1']);
+    expect(toggleExportSelectedIdByTheme(['img-1'], 'img-2', images)).toEqual(['img-1', 'img-2']);
+    expect(toggleExportSelectedIdByTheme(['img-1', 'img-2'], 'img-1', images)).toEqual(['img-2']);
   });
 
   it('点选导出只含所选图，按主题-比例-编号命名且不附商业分析', async () => {
     const images: StudioResultImage[] = [
       {
         ...READY_IMAGE,
-        index: 0,
+        id: 'img-0',
         aspectRatio: '3:4',
         themeId: 'brand',
         themeTitle: '品牌认知',
       },
       {
         ...READY_IMAGE,
-        index: 1,
+        id: 'img-1',
         aspectRatio: '3:4',
         themeId: 'scene',
         themeTitle: '使用场景',
@@ -153,7 +153,7 @@ describe('电商成果整理', () => {
     ];
     const selected = orderSelectedImagesByTheme(
       images,
-      [1],
+      ['img-1'],
       [
         { id: 'brand', title: '品牌认知' },
         { id: 'scene', title: '使用场景' },

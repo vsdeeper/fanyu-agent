@@ -100,14 +100,14 @@ export function reconcilePlanScrollPin(
  */
 export function isNextDisabled(
   phase: StudioPhase,
-  selectedVisualIndex: number | null,
+  selectedVisualId: string | null,
   hasDesignResults: boolean,
   options?: { selectedThemeCount?: number; isEditing?: boolean },
 ): boolean {
   if (options?.isEditing) return true;
   // analyzed 相位只可能是主图 / 详情图（主题规划类），判据即「是否已点选主题」
   if (phase === 'analyzed') return (options?.selectedThemeCount ?? 0) < 1;
-  if (phase === 'visual') return selectedVisualIndex === null;
+  if (phase === 'visual') return selectedVisualId === null;
   if (phase === 'design') return !hasDesignResults;
   return true;
 }

@@ -55,7 +55,7 @@ type ResultPanelProps = {
   visualImages: readonly StudioResultImage[];
   designResultGroups: DesignResultGroups;
   expectedVisualCount: number;
-  selectedVisualIndex: number | null;
+  selectedVisualId: string | null;
   nextLoading: boolean;
   /**
    * 生成中（分析走 SSE，两步出图走后台作业）：显示取消按钮。
@@ -68,9 +68,9 @@ type ResultPanelProps = {
   isPoster?: boolean;
   planCards?: ThemePlanCard[];
   selectedThemeIds?: string[];
-  referenceImageIndex?: number | null;
-  onSelectVisual: (index: number) => void;
-  onSelectReference?: (index: number) => void;
+  referenceImageId?: string | null;
+  onSelectVisual: (id: string) => void;
+  onSelectReference?: (id: string) => void;
   onPrev: () => void;
   onNext: () => void;
   onAnalysisTextChange: (next: string) => void;
@@ -91,7 +91,7 @@ export default function ResultPanel({
   visualImages,
   designResultGroups,
   expectedVisualCount,
-  selectedVisualIndex,
+  selectedVisualId,
   nextLoading,
   running,
   cancelling,
@@ -99,7 +99,7 @@ export default function ResultPanel({
   isPoster = false,
   planCards = [],
   selectedThemeIds = [],
-  referenceImageIndex = null,
+  referenceImageId = null,
   onSelectVisual,
   onSelectReference,
   onPrev,
@@ -129,7 +129,7 @@ export default function ResultPanel({
   );
   const nextDisabled =
     isEditing ||
-    isNextDisabled(phase, selectedVisualIndex, hasDesignResults, {
+    isNextDisabled(phase, selectedVisualId, hasDesignResults, {
       selectedThemeCount: selectedThemeIds.length,
       isEditing: planEditing,
     });
@@ -230,7 +230,7 @@ export default function ResultPanel({
                   expectedCount={expectedVisualCount}
                   aspectRatio={aspectRatio}
                   selectable={phase === 'visual'}
-                  selectedIndex={selectedVisualIndex}
+                  selectedId={selectedVisualId}
                   selectedBadge={VISUAL_STANDARD_BADGE}
                   onSelect={onSelectVisual}
                 />
@@ -246,7 +246,7 @@ export default function ResultPanel({
             groupByTheme={themePlan}
             themes={detailImage ? DETAIL_IMAGE_THEMES : MAIN_IMAGE_THEMES}
             selectable={themePlan && phase === 'design'}
-            selectedIndex={themePlan ? referenceImageIndex : null}
+            selectedId={themePlan ? referenceImageId : null}
             selectedBadge={detailImage ? PREVIOUS_SCREEN_BADGE : COPY_STANDARD_BADGE}
             onSelect={themePlan ? onSelectReference : undefined}
           />

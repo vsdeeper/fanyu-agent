@@ -15,7 +15,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 const PNG_DATA_URL = 'data:image/png;base64,AQID';
 const READY_PNG: ResultImage = {
-  index: 0,
+  id: 'png-0',
   aspectRatio: '16:9',
   status: 'ready',
   url: PNG_DATA_URL,
@@ -41,20 +41,23 @@ describe('上传项 uid', () => {
 });
 
 describe('产品模特结果工具', () => {
-  it('建立批次占位并按批次索引合并流事件', () => {
-    const pending = pendingImages(2, 3, '16:9');
-    const completed = applyGenerateEvent(pending, { index: 1, url: PNG_DATA_URL }, 3);
+  it('建立批次占位并按槽位 id 合并流事件', () => {
+    const pending = pendingImages(2, '16:9');
+    const completed = applyGenerateEvent(pending, {
+      slotId: pending[1]!.id,
+      url: PNG_DATA_URL,
+    });
 
-    expect(pending.map((item) => item.index)).toEqual([3, 4]);
-    expect(completed[0].status).toBe('pending');
-    expect(completed[1]).toMatchObject({ index: 4, status: 'ready', url: PNG_DATA_URL });
+    expect(new Set(pending.map((item) => item.id)).size).toBe(2);
+    expect(completed[0]?.status).toBe('pending');
+    expect(completed[1]).toMatchObject({ id: pending[1]!.id, status: 'ready', url: PNG_DATA_URL });
   });
 
   it('只保留成功且含 URL 的图片', () => {
     const images: ResultImage[] = [
       READY_PNG,
-      { index: 1, aspectRatio: '16:9', status: 'pending' },
-      { index: 2, aspectRatio: '16:9', status: 'failed', error: 'failed' },
+      { id: 'p1', aspectRatio: '16:9', status: 'pending' },
+      { id: 'p2', aspectRatio: '16:9', status: 'failed', error: 'failed' },
     ];
 
     expect(getGeneratedImages(images)).toEqual([READY_PNG]);

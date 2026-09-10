@@ -23,11 +23,11 @@ function appendAnalysisFile(files: Record<string, Uint8Array>, analysisText: str
 /** 按主题顺序取出点选图片，同主题内保持点选先后。 */
 export function orderSelectedImagesByTheme(
   images: readonly StudioResultImage[],
-  selectedIndexes: readonly number[],
+  selectedIds: readonly string[],
   themes: readonly ThemeDefinition[],
 ): Array<StudioResultImage & { url: string }> {
-  const selected = new Set(selectedIndexes);
-  const picked = getGeneratedImages(images).filter((image) => selected.has(image.index));
+  const selected = new Set(selectedIds);
+  const picked = getGeneratedImages(images).filter((image) => selected.has(image.id));
   const grouped = groupResultImagesByTheme(picked, themes);
   return grouped.flatMap((group) => group.images);
 }
@@ -35,22 +35,22 @@ export function orderSelectedImagesByTheme(
 /**
  * 每主题最多保留一张：再点同主题则替换；再点已选则取消。
  */
-export function toggleExportIndexByTheme(
-  current: readonly number[],
-  index: number,
+export function toggleExportSelectedIdByTheme(
+  current: readonly string[],
+  id: string,
   images: readonly StudioResultImage[],
-): number[] {
-  const image = images.find((item) => item.index === index);
+): string[] {
+  const image = images.find((item) => item.id === id);
   if (!image || image.status !== 'ready' || !image.url) return [...current];
   const themeKey = image.themeId || image.themeTitle || '';
-  if (current.includes(index)) return current.filter((id) => id !== index);
+  if (current.includes(id)) return current.filter((selectedId) => selectedId !== id);
   return [
-    ...current.filter((id) => {
-      const other = images.find((item) => item.index === id);
+    ...current.filter((selectedId) => {
+      const other = images.find((item) => item.id === selectedId);
       const otherKey = other?.themeId || other?.themeTitle || '';
       return otherKey !== themeKey;
     }),
-    index,
+    id,
   ];
 }
 

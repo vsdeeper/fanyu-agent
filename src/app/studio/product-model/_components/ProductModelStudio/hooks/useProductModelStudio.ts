@@ -126,8 +126,8 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
     const controller = new AbortController();
     abortRef.current = controller;
     const count = Number.parseInt(form.count, 10) || 1;
-    const batchStartIndex = results.length;
-    let nextResults = [...results, ...pendingImages(count, batchStartIndex, form.aspectRatio)];
+    const slots = pendingImages(count, form.aspectRatio);
+    let nextResults = [...results, ...slots];
     setPhase('modelGenerating');
     setResults(nextResults);
 
@@ -135,12 +135,19 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
       const response = await fetch('/api/studio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(await toProductModelPayload(form, productImages, modelImages)),
+        body: JSON.stringify(
+          await toProductModelPayload(
+            form,
+            productImages,
+            modelImages,
+            slots.map((slot) => slot.id),
+          ),
+        ),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(response);
       await consumeGenerateNdjson(response, (event) => {
-        nextResults = applyGenerateEvent(nextResults, event, batchStartIndex);
+        nextResults = applyGenerateEvent(nextResults, event);
         setResults(nextResults);
       });
       if (controller.signal.aborted) return;

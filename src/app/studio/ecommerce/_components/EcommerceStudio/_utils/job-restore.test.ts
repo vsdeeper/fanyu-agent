@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { StudioGenerateImageEvent } from '@/app/api/studio/_shared/generate-types';
-import type { StudioJobSnapshot } from '@/app/api/studio/_shared/job-types';
+import type { StudioJobPendingSlot, StudioJobSnapshot } from '@/app/api/studio/_shared/job-types';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
 import {
   applyJobEvents,
@@ -10,20 +10,19 @@ import {
   mergeBatchImages,
   restoreBatchImages,
   shouldAdvancePhase,
+  syncJobSlots,
 } from './job-restore';
 
-const slot = (index: number, themeId?: string): StudioResultImage => ({
-  index,
+const slot = (id: string, themeId?: string): StudioResultImage => ({
+  id,
   aspectRatio: '1:1',
   status: 'pending',
   ...(themeId ? { themeId, themeTitle: `主题${themeId}` } : {}),
 });
 
-/** 作业事件的 index 是**批次内相对下标**；这里模拟第二批（batchStartIndex = 5）。 */
 function jobOf(
   events: StudioGenerateImageEvent[],
-  slots: StudioResultImage[],
-  batchStartIndex: number,
+  slots: StudioJobPendingSlot[],
 ): StudioJobSnapshot {
   return {
     id: 'job-1',
@@ -36,7 +35,6 @@ function jobOf(
       events,
       pending: {
         stepKey: 'visual',
-        batchStartIndex,
         slots,
         form: { model: 'm', aspectRatio: '1:1', quality: 'high', clarity: '2K', count: '2' },
       },
@@ -46,94 +44,68 @@ function jobOf(
   };
 }
 
-describe('applyJobEvents 的批次偏移', () => {
-  it('事件 index 是批次内相对下标，需按 batchStartIndex 换算成绝对下标', () => {
-    // 第二批：绝对下标从 5 起，而事件的 index 从 0 起
+describe('applyJobEvents', () => {
+  it('按槽位 id 命中，成功与失败分别写状态', () => {
     const result = applyJobEvents(
-      [slot(5), slot(6)],
+      [slot('a'), slot('b')],
       [
-        { index: 0, url: '/assets/a' },
-        { index: 1, error: '生图服务暂不可用' },
+        { slotId: 'a', url: '/assets/a' },
+        { slotId: 'b', error: '生图服务暂不可用' },
       ],
-      5,
     );
 
     expect(result).toEqual([
-      { index: 5, aspectRatio: '1:1', status: 'ready', url: '/assets/a' },
-      { index: 6, aspectRatio: '1:1', status: 'failed', error: '生图服务暂不可用' },
+      { id: 'a', aspectRatio: '1:1', status: 'ready', url: '/assets/a' },
+      { id: 'b', aspectRatio: '1:1', status: 'failed', error: '生图服务暂不可用' },
     ]);
   });
 
-  it('后续批次既不漏绑自己，也不覆盖早先批次的同相对下标结果', () => {
-    const priorBatch: StudioResultImage[] = [
-      { index: 0, aspectRatio: '1:1', status: 'ready', url: '/assets/first' },
-    ];
-    // 第二批：相对 index 同为 0，但绝对下标是 13
-    const newBatch = applyJobEvents([slot(13)], [{ index: 0, url: '/assets/second' }], 13);
+  it('事件指向不存在的槽位时原样返回，不误伤别的槽', () => {
+    const result = applyJobEvents([slot('a')], [{ slotId: 'ghost', url: '/assets/x' }]);
 
-    const merged = mergeBatchImages(priorBatch, newBatch);
-
-    // mergeBatchImages 返回「按下标排序的数组」，故按 index 查找而非按位置取
-    // 漏掉偏移时，第二批会绑不上（index 13 仍是 pending），这里正是曾经的漏图成因
-    expect(merged.find((item) => item.index === 0)).toEqual({
-      index: 0,
-      aspectRatio: '1:1',
-      status: 'ready',
-      url: '/assets/first',
-    });
-    expect(merged.find((item) => item.index === 13)).toMatchObject({
-      status: 'ready',
-      url: '/assets/second',
-    });
-  });
-
-  it('首批 batchStartIndex 为 0 时行为与旧流式路径一致', () => {
-    const result = applyJobEvents([slot(0), slot(1)], [{ index: 1, url: '/assets/b' }], 0);
-
-    expect(result[0]?.status).toBe('pending');
-    expect(result[1]).toMatchObject({ status: 'ready', url: '/assets/b' });
+    expect(result).toEqual([slot('a')]);
   });
 
   it('from 只消费增量，跳过已套用的事件', () => {
     const events: StudioGenerateImageEvent[] = [
-      { index: 0, url: '/assets/a' },
-      { index: 1, url: '/assets/b' },
+      { slotId: 'a', url: '/assets/a' },
+      { slotId: 'b', url: '/assets/b' },
     ];
 
-    const result = applyJobEvents([slot(0), slot(1)], events, 0, 1);
+    const result = applyJobEvents([slot('a'), slot('b')], events, 1);
 
     expect(result[0]?.status).toBe('pending');
     expect(result[1]?.url).toBe('/assets/b');
   });
 
   it('保留主题分组信息', () => {
-    const result = applyJobEvents([slot(0, 't1')], [{ index: 0, url: '/assets/a' }], 0);
+    const result = applyJobEvents([slot('a', 't1')], [{ slotId: 'a', url: '/assets/a' }]);
 
     expect(result[0]).toMatchObject({ themeId: 't1', themeTitle: '主题t1', url: '/assets/a' });
   });
 });
 
 describe('mergeBatchImages', () => {
-  it('按 index 合并，不要求既有长度恰好等于批次起始下标', () => {
-    const prior = [slot(0), slot(1)];
-    const batch = applyJobEvents([slot(2)], [{ index: 0, url: '/assets/c' }], 2);
+  it('异 id 一律追加，不要求既有长度恰好等于批次起始位置', () => {
+    const prior = [slot('a'), slot('b')];
+    const batch = applyJobEvents([slot('c')], [{ slotId: 'c', url: '/assets/c' }]);
 
     const merged = mergeBatchImages(prior, batch);
 
-    expect(merged.map((item) => item.index)).toEqual([0, 1, 2]);
+    expect(merged.map((item) => item.id)).toEqual(['a', 'b', 'c']);
     expect(merged[2]).toMatchObject({ status: 'ready', url: '/assets/c' });
   });
 
-  it('同 index 以新批次为准，且结果按下标升序', () => {
-    const prior: StudioResultImage[] = [{ index: 1, aspectRatio: '1:1', status: 'pending' }];
+  it('同 id 以新批次为准，且既有元素位置不动', () => {
+    const prior: StudioResultImage[] = [{ id: 'a', aspectRatio: '1:1', status: 'pending' }];
     const batch: StudioResultImage[] = [
-      { index: 1, aspectRatio: '1:1', status: 'ready', url: '/assets/new' },
-      { index: 0, aspectRatio: '1:1', status: 'ready', url: '/assets/zero' },
+      { id: 'b', aspectRatio: '1:1', status: 'ready', url: '/assets/b' },
+      { id: 'a', aspectRatio: '1:1', status: 'ready', url: '/assets/new' },
     ];
 
     expect(mergeBatchImages(prior, batch)).toEqual([
-      { index: 0, aspectRatio: '1:1', status: 'ready', url: '/assets/zero' },
-      { index: 1, aspectRatio: '1:1', status: 'ready', url: '/assets/new' },
+      { id: 'a', aspectRatio: '1:1', status: 'ready', url: '/assets/new' },
+      { id: 'b', aspectRatio: '1:1', status: 'ready', url: '/assets/b' },
     ]);
   });
 });
@@ -141,30 +113,55 @@ describe('mergeBatchImages', () => {
 describe('mergeBatchGroups', () => {
   it('只并入指定任务类型，其他分组原样保留', () => {
     const prior = {
-      主图: [slot(0)],
-      营销海报: [{ index: 9, aspectRatio: '1:1' as const, status: 'ready' as const, url: '/x' }],
+      主图: [slot('a')],
+      营销海报: [{ id: 'p', aspectRatio: '1:1' as const, status: 'ready' as const, url: '/x' }],
     };
     const merged = mergeBatchGroups(prior, '主图', [
-      { index: 1, aspectRatio: '1:1', status: 'ready', url: '/assets/b' },
+      { id: 'b', aspectRatio: '1:1', status: 'ready', url: '/assets/b' },
     ]);
 
-    expect(merged['主图']?.map((item) => item.index)).toEqual([0, 1]);
+    expect(merged['主图']?.map((item) => item.id)).toEqual(['a', 'b']);
     expect(merged['营销海报']).toEqual(prior['营销海报']);
   });
 
   it('目标分组此前不存在时直接建立', () => {
-    expect(mergeBatchGroups({}, '详情图', [slot(0)])['详情图']).toHaveLength(1);
+    expect(mergeBatchGroups({}, '详情图', [slot('a')])['详情图']).toHaveLength(1);
   });
 });
 
 describe('restoreBatchImages', () => {
-  it('用作业自带的 batchStartIndex 重建带结果的批次', () => {
-    const job = jobOf([{ index: 0, url: '/assets/a' }], [slot(13), slot(14)], 13);
+  it('按作业回显的槽位 id 重建带结果的批次', () => {
+    const job = jobOf([{ slotId: 's13', url: '/assets/a' }], [slot('s13'), slot('s14')]);
 
     expect(restoreBatchImages(job)).toEqual([
-      { index: 13, aspectRatio: '1:1', status: 'ready', url: '/assets/a' },
-      { index: 14, aspectRatio: '1:1', status: 'pending' },
+      { id: 's13', aspectRatio: '1:1', status: 'ready', url: '/assets/a' },
+      { id: 's14', aspectRatio: '1:1', status: 'pending' },
     ]);
+  });
+});
+
+describe('syncJobSlots', () => {
+  it('丢弃服务端不认得的本地 pending 槽位，并并入服务端槽位', () => {
+    // 建作业幂等命中旧作业时，服务端认的是 slot-server，本地新建的 slot-local 收不到任何事件
+    const current: StudioResultImage[] = [
+      { id: 'old', aspectRatio: '1:1', status: 'ready', url: '/assets/old' },
+      slot('slot-local'),
+    ];
+
+    const synced = syncJobSlots(current, [slot('slot-server')]);
+
+    expect(synced).toEqual([
+      { id: 'old', aspectRatio: '1:1', status: 'ready', url: '/assets/old' },
+      { id: 'slot-server', aspectRatio: '1:1', status: 'pending' },
+    ]);
+  });
+
+  it('服务端认得的槽位同 id 覆盖，已就绪结果不受影响', () => {
+    const current: StudioResultImage[] = [slot('slot-a')];
+
+    const synced = syncJobSlots(current, [{ ...slot('slot-a'), status: 'ready', url: '/n' }]);
+
+    expect(synced).toEqual([{ id: 'slot-a', aspectRatio: '1:1', status: 'ready', url: '/n' }]);
   });
 });
 

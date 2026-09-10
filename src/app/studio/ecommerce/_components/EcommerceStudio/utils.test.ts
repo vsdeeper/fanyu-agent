@@ -74,48 +74,56 @@ describe('上传项 uid', () => {
 });
 
 describe('pendingImagesFromCount', () => {
-  it('连续批次使用不冲突的索引并保留各自尺寸比例', () => {
-    const firstBatch = pendingImagesFromCount(2, 0, '1:1');
-    const secondBatch = pendingImagesFromCount(2, firstBatch.length, '16:9');
+  it('每批槽位各自生成唯一 id 并保留各自尺寸比例', () => {
+    const firstBatch = pendingImagesFromCount(2, '1:1');
+    const secondBatch = pendingImagesFromCount(2, '16:9');
 
-    expect([...firstBatch, ...secondBatch]).toEqual([
-      { index: 0, aspectRatio: '1:1', status: 'pending' },
-      { index: 1, aspectRatio: '1:1', status: 'pending' },
-      { index: 2, aspectRatio: '16:9', status: 'pending' },
-      { index: 3, aspectRatio: '16:9', status: 'pending' },
+    expect([...firstBatch, ...secondBatch].map((slot) => slot.aspectRatio)).toEqual([
+      '1:1',
+      '1:1',
+      '16:9',
+      '16:9',
     ]);
+    const ids = [...firstBatch, ...secondBatch].map((slot) => slot.id);
+    expect(new Set(ids).size).toBe(4);
   });
 });
 
 describe('applyGenerateEvent', () => {
-  it('只按批次偏移更新新追加的槽位', () => {
+  it('只更新事件指向的槽位，其余原样保留', () => {
     const current: StudioResultImage[] = [
-      { index: 0, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,old' },
-      { index: 1, aspectRatio: '1:1', status: 'failed', error: '旧批次失败' },
-      ...pendingImagesFromCount(2, 2, '16:9'),
+      { id: 'old', aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,old' },
+      { id: 'failed', aspectRatio: '1:1', status: 'failed', error: '旧批次失败' },
+      ...pendingImagesFromCount(2, '16:9').map((slot, offset) => ({
+        ...slot,
+        id: `new-${offset}`,
+      })),
     ];
 
-    const next = applyGenerateEvent(current, { index: 0, url: 'data:image/png;base64,new' }, 2);
+    const next = applyGenerateEvent(current, {
+      slotId: 'new-0',
+      url: 'data:image/png;base64,new',
+    });
 
     expect(next).toEqual([
       current[0],
       current[1],
-      { index: 2, aspectRatio: '16:9', status: 'ready', url: 'data:image/png;base64,new' },
+      { id: 'new-0', aspectRatio: '16:9', status: 'ready', url: 'data:image/png;base64,new' },
       current[3],
     ]);
   });
 
-  it('新批次失败事件不改写旧批次状态', () => {
+  it('事件指向别的槽位时不改写既有状态', () => {
     const current: StudioResultImage[] = [
-      { index: 0, aspectRatio: '4:3', status: 'ready', url: 'data:image/png;base64,old' },
-      ...pendingImagesFromCount(1, 1, '3:4'),
+      { id: 'old', aspectRatio: '4:3', status: 'ready', url: 'data:image/png;base64,old' },
+      { id: 'new', aspectRatio: '3:4', status: 'pending' },
     ];
 
-    const next = applyGenerateEvent(current, { index: 0, error: '生成失败' }, 1);
+    const next = applyGenerateEvent(current, { slotId: 'new', error: '生成失败' });
 
     expect(next[0]).toBe(current[0]);
     expect(next[1]).toEqual({
-      index: 1,
+      id: 'new',
       aspectRatio: '3:4',
       status: 'failed',
       error: '生成失败',
@@ -311,9 +319,9 @@ describe('营销主视觉请求体', () => {
 describe('按比例二级分组', () => {
   it('按出现顺序稳定拆组', () => {
     const images: StudioResultImage[] = [
-      { index: 0, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,a' },
-      { index: 1, aspectRatio: '3:4', status: 'ready', url: 'data:image/png;base64,b' },
-      { index: 2, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,c' },
+      { id: 'a', aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,a' },
+      { id: 'b', aspectRatio: '3:4', status: 'ready', url: 'data:image/png;base64,b' },
+      { id: 'c', aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,c' },
     ];
 
     expect(groupResultImagesByRatio(images)).toEqual([
@@ -325,24 +333,27 @@ describe('按比例二级分组', () => {
 
 describe('视觉设计结果分组', () => {
   it('同类型连续生成追加，切换类型后互不覆盖', () => {
-    let groups = appendPendingDesignImages({}, '主图', 1, '1:1');
-    groups = applyDesignGenerateEvent(
-      groups,
-      '主图',
-      { index: 0, url: 'data:image/png;base64,main' },
-      0,
-    );
-    groups = appendPendingDesignImages(groups, '主图', 1, '16:9');
-    groups = appendPendingDesignImages(groups, '营销海报', 1, '3:4');
+    const first = appendPendingDesignImages({}, '主图', 1, '1:1');
+    const ready = applyDesignGenerateEvent(first.groups, '主图', {
+      slotId: first.slots[0]!.id,
+      url: 'data:image/png;base64,main',
+    });
+    const second = appendPendingDesignImages(ready, '主图', 1, '16:9');
+    const poster = appendPendingDesignImages(second.groups, '营销海报', 1, '3:4');
 
-    expect(groups['主图']).toHaveLength(2);
-    expect(groups['主图']?.[0].status).toBe('ready');
-    expect(groups['主图']?.[1]).toMatchObject({ index: 1, aspectRatio: '16:9' });
-    expect(groups['营销海报']).toEqual([{ index: 0, aspectRatio: '3:4', status: 'pending' }]);
+    expect(poster.groups['主图']).toHaveLength(2);
+    expect(poster.groups['主图']?.[0]?.status).toBe('ready');
+    expect(poster.groups['主图']?.[1]).toMatchObject({
+      id: second.slots[0]!.id,
+      aspectRatio: '16:9',
+    });
+    expect(poster.groups['营销海报']).toEqual([
+      { id: poster.slots[0]!.id, aspectRatio: '3:4', status: 'pending' },
+    ]);
   });
 
   it('主图 pending 按主题×数量展开并带 themeId', () => {
-    const groups = appendPendingMainImageImages(
+    const { groups, slots } = appendPendingMainImageImages(
       {},
       [
         { themeId: 'product', title: '产品展示' },
@@ -351,28 +362,41 @@ describe('视觉设计结果分组', () => {
       2,
       '1:1',
     );
+    expect(slots).toHaveLength(4);
     expect(groups['主图']).toEqual([
       {
-        index: 0,
+        id: slots[0]!.id,
         aspectRatio: '1:1',
         status: 'pending',
         themeId: 'product',
         themeTitle: '产品展示',
       },
       {
-        index: 1,
+        id: slots[1]!.id,
         aspectRatio: '1:1',
         status: 'pending',
         themeId: 'product',
         themeTitle: '产品展示',
       },
-      { index: 2, aspectRatio: '1:1', status: 'pending', themeId: 'scene', themeTitle: '使用场景' },
-      { index: 3, aspectRatio: '1:1', status: 'pending', themeId: 'scene', themeTitle: '使用场景' },
+      {
+        id: slots[2]!.id,
+        aspectRatio: '1:1',
+        status: 'pending',
+        themeId: 'scene',
+        themeTitle: '使用场景',
+      },
+      {
+        id: slots[3]!.id,
+        aspectRatio: '1:1',
+        status: 'pending',
+        themeId: 'scene',
+        themeTitle: '使用场景',
+      },
     ]);
   });
 
   it('详情图 pending 写入详情图分组', () => {
-    const groups = appendPendingThemeImages(
+    const { groups, slots } = appendPendingThemeImages(
       {},
       '详情图',
       [{ themeId: 'brand', title: '品牌认知' }],
@@ -381,7 +405,7 @@ describe('视觉设计结果分组', () => {
     );
     expect(groups['详情图']).toEqual([
       {
-        index: 0,
+        id: slots[0]!.id,
         aspectRatio: '3:4',
         status: 'pending',
         themeId: 'brand',
@@ -393,14 +417,14 @@ describe('视觉设计结果分组', () => {
   it('中止时只保留生成成功的图，丢掉 pending 与失败', () => {
     const groups = getGeneratedDesignGroups({
       主图: [
-        { index: 0, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,ok' },
-        { index: 1, aspectRatio: '1:1', status: 'pending' },
-        { index: 2, aspectRatio: '1:1', status: 'failed', error: '失败' },
+        { id: 'a', aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,ok' },
+        { id: 'b', aspectRatio: '1:1', status: 'pending' },
+        { id: 'c', aspectRatio: '1:1', status: 'failed', error: '失败' },
       ],
-      营销海报: [{ index: 0, aspectRatio: '3:4', status: 'pending' }],
+      营销海报: [{ id: 'd', aspectRatio: '3:4', status: 'pending' }],
     });
     expect(groups).toEqual({
-      主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,ok' }],
+      主图: [{ id: 'a', aspectRatio: '1:1', status: 'ready', url: 'data:image/png;base64,ok' }],
     });
   });
 });
@@ -409,7 +433,7 @@ describe('按主题一级分组', () => {
   it('按固定主题顺序分组，组内再按比例', () => {
     const images: StudioResultImage[] = [
       {
-        index: 0,
+        id: 'img-0',
         aspectRatio: '1:1',
         status: 'ready',
         themeId: 'scene',
@@ -417,7 +441,7 @@ describe('按主题一级分组', () => {
         url: 'a',
       },
       {
-        index: 1,
+        id: 'img-1',
         aspectRatio: '1:1',
         status: 'ready',
         themeId: 'product',
@@ -425,7 +449,7 @@ describe('按主题一级分组', () => {
         url: 'b',
       },
       {
-        index: 2,
+        id: 'img-2',
         aspectRatio: '16:9',
         status: 'ready',
         themeId: 'product',
@@ -466,24 +490,24 @@ describe('步骤快照水合', () => {
       },
       visualImages: [
         {
-          index: 0,
+          id: 'v-1',
           aspectRatio: '1:1',
           status: 'ready',
           url: '/api/studio/ecommerce/tasks/t1/assets/v1',
         },
       ],
-      selectedVisualIndex: 0,
+      selectedVisualId: 'v-1',
     });
     const design = readDesignStepSnapshot({
       form: DEFAULT_DESIGN_FORM_STATE,
       designResultGroups: {
-        主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/a' }],
+        主图: [{ id: 'm-1', aspectRatio: '1:1', status: 'ready', url: '/api/a' }],
       },
     });
 
     expect(analysis?.analysisText).toBe('商业分析正文');
     expect(analysis?.images[0]?.file).toBeUndefined();
-    expect(visual?.selectedVisualIndex).toBe(0);
+    expect(visual?.selectedVisualId).toBe('v-1');
     expect(visual?.images).toBeUndefined();
     expect(visual?.analysisText).toBeUndefined();
     expect(design?.designResultGroups['主图']).toHaveLength(1);
@@ -566,13 +590,13 @@ describe('步骤快照水合', () => {
       form: DEFAULT_FORM_STATE,
       visualImages: [
         {
-          index: 0,
+          id: 'img-0',
           aspectRatio: '1:1',
           status: 'ready',
           url: '/api/studio/ecommerce/tasks/t1/assets/v1',
         },
       ],
-      selectedVisualIndex: 0,
+      selectedVisualId: 'img-0',
       images: [
         { uid: 'img-1', previewUrl: '/api/studio/ecommerce/tasks/t1/assets/p1', name: 'p.png' },
       ],
@@ -604,26 +628,47 @@ describe('步骤快照水合', () => {
     const design = readDesignStepSnapshot({
       form: { ...DEFAULT_DESIGN_FORM_STATE, taskType: '详情图' },
       designResultGroups: {
-        详情图: [{ index: 0, aspectRatio: '3:4', status: 'ready', url: '/api/img/1' }],
+        详情图: [
+          { id: 'd-1', aspectRatio: '3:4', status: 'ready', url: '/api/img/1' },
+          { id: 'd-2', aspectRatio: '3:4', status: 'ready', url: '/api/img/2' },
+        ],
       },
-      referenceImageIndex: 0,
-      selectedExportIndexes: [0],
+      referenceImageId: 'd-2',
+      selectedExportIds: ['d-1', 'ghost'],
     });
-    expect(design?.referenceImageIndex).toBe(0);
-    expect(design?.selectedExportIndexes).toEqual([0]);
+    expect(design?.referenceImageId).toBe('d-2');
+    // 既不在结果集里的死 id 被过滤掉
+    expect(design?.selectedExportIds).toEqual(['d-1']);
+  });
+
+  it('旧快照的数字下标读不出 id：图片仍保留，选中态按未选中处理', () => {
+    const design = readDesignStepSnapshot({
+      form: { ...DEFAULT_DESIGN_FORM_STATE, taskType: '详情图' },
+      designResultGroups: {
+        详情图: [{ index: 3, aspectRatio: '3:4', status: 'ready', url: '/api/img/1' }],
+      },
+      referenceImageIndex: 3,
+      selectedExportIndexes: [3],
+    });
+
+    expect(design?.designResultGroups['详情图']).toEqual([
+      { id: 'legacy-3', aspectRatio: '3:4', status: 'ready', url: '/api/img/1' },
+    ]);
+    expect(design?.referenceImageId).toBeNull();
+    expect(design?.selectedExportIds).toBeUndefined();
   });
 
   it('主图设计快照同样读写文案标准参考图点选，且不落导出勾选', async () => {
     const snapshot = await createDesignStepSnapshot(
       { ...DEFAULT_DESIGN_FORM_STATE, taskType: '主图' },
-      { 主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }] },
+      { 主图: [{ id: 'm-1', aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }] },
       [],
-      { referenceImageIndex: 2 },
+      { referenceImageId: 'm-1' },
     );
     const design = readDesignStepSnapshot(snapshot);
 
-    expect(design?.referenceImageIndex).toBe(2);
-    expect(design?.selectedExportIndexes).toBeUndefined();
+    expect(design?.referenceImageId).toBe('m-1');
+    expect(design?.selectedExportIds).toBeUndefined();
   });
 
   it('键序不同的同一份快照判为相同，数组顺序仍参与比较', () => {
@@ -636,9 +681,9 @@ describe('步骤快照水合', () => {
   it('设计快照经落库往返后判为未变化，首次进入点下一步不触发保存', async () => {
     const created = await createDesignStepSnapshot(
       { ...DEFAULT_DESIGN_FORM_STATE, taskType: '主图' },
-      { 主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }] },
+      { 主图: [{ id: 'm-1', aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }] },
       [],
-      { images: [IMAGE_ITEM('p-1', 'product.png')], referenceImageIndex: null },
+      { images: [IMAGE_ITEM('p-1', 'product.png')], referenceImageId: null },
     );
     const roundTrip = readDesignStepSnapshot(JSON.parse(JSON.stringify(created)));
 
@@ -722,8 +767,8 @@ describe('流程导航', () => {
   });
 
   it('视觉设计至少有一张成果时才能进入完成', () => {
-    expect(isNextDisabled('design', 0, false)).toBe(true);
-    expect(isNextDisabled('design', 0, true)).toBe(false);
+    expect(isNextDisabled('design', null, false)).toBe(true);
+    expect(isNextDisabled('design', null, true)).toBe(false);
   });
 
   it('主图分析未点选主题时不能进入设计', () => {
@@ -754,13 +799,13 @@ describe('isSameStepSnapshot', () => {
     expect(isSameStepSnapshot(baseline, baseline)).toBe(true);
   });
 
-  it('选中下标变化则不相等', () => {
+  it('选中 id 变化则不相等', () => {
     const baseline = {
       form: DEFAULT_FORM_STATE,
-      visualImages: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }],
-      selectedVisualIndex: 0,
+      visualImages: [{ id: 'v-1', aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }],
+      selectedVisualId: 'v-1',
     };
-    expect(isSameStepSnapshot({ ...baseline, selectedVisualIndex: 1 }, baseline)).toBe(false);
+    expect(isSameStepSnapshot({ ...baseline, selectedVisualId: 'v-2' }, baseline)).toBe(false);
     expect(isSameStepSnapshot(baseline, baseline)).toBe(true);
   });
 

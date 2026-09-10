@@ -23,8 +23,8 @@ type ResultPanelProps = {
   multiviewExpectedCount: number;
   refineAspectRatio: string;
   multiviewAspectRatio: string;
-  selectedRefineIndexes: number[];
-  onSelectRefine: (index: number) => void;
+  selectedRefineIds: string[];
+  onSelectRefine: (id: string) => void;
   onPrev: () => void;
   onNext: () => void;
   onComplete: () => void;
@@ -41,7 +41,7 @@ export default function ResultPanel({
   multiviewExpectedCount,
   refineAspectRatio,
   multiviewAspectRatio,
-  selectedRefineIndexes,
+  selectedRefineIds,
   onSelectRefine,
   onPrev,
   onNext,
@@ -70,13 +70,13 @@ export default function ResultPanel({
                   const size = aspectRatioToSize(image.aspectRatio, 280);
                   return (
                     <ResultImageItem
-                      key={`${ratio}-${image.index}`}
+                      key={`${ratio}-${image.id}`}
                       image={image}
                       width={size.width}
                       height={size.height}
                       selectable={showRefine && phase === 'refine' && needsMultiview}
                       selected={
-                        showRefine && needsMultiview && selectedRefineIndexes.includes(image.index)
+                        showRefine && needsMultiview && selectedRefineIds.includes(image.id)
                       }
                       selectedBadge={REFINE_STANDARD_BADGE}
                       onSelect={onSelectRefine}
@@ -135,7 +135,7 @@ export default function ResultPanel({
               generating ||
               persisting ||
               !hasReadyImage(refineImages) ||
-              (needsMultiview && selectedRefineIndexes.length === 0)
+              (needsMultiview && selectedRefineIds.length === 0)
             }
             onClick={onNext}
           >

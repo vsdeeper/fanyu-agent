@@ -10,6 +10,7 @@ import type {
 import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import { apiPut } from '@/lib/shared/client/api-client';
 import { patchModel } from '@/app/studio/_utils/model-options';
+import { normalizeResultImages } from '@/app/studio/_utils/result-images';
 import {
   appendGroupFiles,
   decodeImageDataUrl,
@@ -87,11 +88,12 @@ export async function toImageInputs(items: ProductImageItem[]): Promise<StudioIm
   );
 }
 
-/** 组装产品模特生成请求体。 */
+/** 组装产品模特生成请求体；slotIds 按本批槽位顺序，服务端据此回传每张图。 */
 export async function toProductModelPayload(
   form: ProductModelFormState,
   productImages: ProductImageItem[],
   modelImages: ProductImageItem[],
+  slotIds: readonly string[],
 ): Promise<StudioGenerateRequest> {
   return {
     kind: 'productModel',
@@ -103,6 +105,7 @@ export async function toProductModelPayload(
     viewRequirement: form.viewRequirement.trim(),
     images: await toImageInputs(productImages),
     modelImages: modelImages.length > 0 ? await toImageInputs(modelImages) : undefined,
+    slotIds: [...slotIds],
   };
 }
 
@@ -133,7 +136,7 @@ export async function createModelStepSnapshot(
   form: ProductModelFormState,
   productImages: ProductImageItem[],
   modelImages: ProductImageItem[],
-  results: ResultImage[],
+  results: readonly ResultImage[],
 ): Promise<ProductModelStepSnapshot> {
   return {
     form,
@@ -141,7 +144,7 @@ export async function createModelStepSnapshot(
       productImages.map(serializeUploadItem),
     )) as ProductImageItem[],
     modelImages: (await Promise.all(modelImages.map(serializeUploadItem))) as ProductImageItem[],
-    results,
+    results: [...results],
   };
 }
 
@@ -161,7 +164,7 @@ export function readModelStepSnapshot(value: unknown): ProductModelStepSnapshot 
     form: snapshot.form,
     productImages: snapshot.productImages,
     modelImages: snapshot.modelImages,
-    results: snapshot.results,
+    results: normalizeResultImages(snapshot.results),
   };
 }
 

@@ -19,6 +19,11 @@ type StudioGenerateBase = {
   aspectRatio: string;
   quality: string;
   clarity: string;
+  /**
+   * 本次批次各占位槽的 id，顺序与 `buildGeneratePlan` 的展开顺序逐位对应；
+   * 服务端据此把每张图回传给对应槽位（事件按槽位 id 寻址）。客户端出图必传。
+   */
+  slotIds?: string[];
 };
 
 /** 产品精修：表单规格、精修要求与原始产品图 */
@@ -119,8 +124,9 @@ export type StudioGenerateRequest =
   | StudioMainImageGenerateRequest
   | StudioDetailImageGenerateRequest;
 
+/** 单张出图结果事件：以占位槽 id 寻址，客户端无需知道批次内位置。 */
 export type StudioGenerateImageEvent = {
-  index: number;
+  slotId: string;
   url?: string;
   error?: string;
 };

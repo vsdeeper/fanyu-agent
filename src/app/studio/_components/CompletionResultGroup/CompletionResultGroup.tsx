@@ -35,7 +35,7 @@ export default function CompletionResultGroup({
               const size = aspectRatioToSize(image.aspectRatio, 280);
               return (
                 <ResultImageItem
-                  key={`${keyPrefix}-${aspectRatio}-${image.index}`}
+                  key={`${keyPrefix}-${aspectRatio}-${image.id}`}
                   image={image}
                   width={size.width}
                   height={size.height}

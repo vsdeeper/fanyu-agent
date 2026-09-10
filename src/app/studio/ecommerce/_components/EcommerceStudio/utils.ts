@@ -31,7 +31,12 @@ import {
   revokeUploadItemUrls,
   serializeUploadItem,
 } from '@/app/studio/_utils/upload-items';
-import { getGeneratedImages } from '@/app/studio/_utils/result-images';
+import {
+  getGeneratedImages,
+  keepExistingImageIds,
+  normalizeResultImages,
+  pickExistingImageId,
+} from '@/app/studio/_utils/result-images';
 import type {
   AnalysisStepSnapshot,
   DesignStepSnapshot,
@@ -296,33 +301,31 @@ export async function toThemeAnalyzePayload(
   };
 }
 
-/** 向主题出图结果追加「主题 × 数量」的 pending 槽位，带上 themeId / themeTitle。 */
+/**
+ * 向主题出图结果追加「主题 × 数量」的 pending 槽位，带上 themeId / themeTitle。
+ *
+ * 槽位顺序即 `buildGeneratePlan` 的位置序（`generate-plan.ts` 同样按「先主题、后数量」两层展开），
+ * 服务端作业按这个顺序把每张图回传给对应槽位；改动展开顺序必须两处同步，否则图会挂到别的主题上。
+ * 返回本批槽位，调用方直接拿它建作业，不再靠起始下标反推。
+ */
 export function appendPendingThemeImages(
   current: DesignResultGroups,
   taskType: EcommerceTaskType,
   requirements: readonly { themeId: string; title: string }[],
   count: number,
   aspectRatio: string,
-): DesignResultGroups {
+): { groups: DesignResultGroups; slots: StudioResultImage[] } {
   const images = current[taskType] ?? [];
-  let index = images.length;
-  const pending = requirements.flatMap((item) =>
-    Array.from({ length: Math.max(1, count) }, () => {
-      const next = {
-        index,
-        aspectRatio,
-        status: 'pending' as const,
-        themeId: item.themeId,
-        themeTitle: item.title,
-      };
-      index += 1;
-      return next;
-    }),
+  const slots: StudioResultImage[] = requirements.flatMap((item) =>
+    Array.from({ length: Math.max(1, count) }, () => ({
+      id: crypto.randomUUID(),
+      aspectRatio,
+      status: 'pending' as const,
+      themeId: item.themeId,
+      themeTitle: item.title,
+    })),
   );
-  return {
-    ...current,
-    [taskType]: [...images, ...pending],
-  };
+  return { groups: { ...current, [taskType]: [...images, ...slots] }, slots };
 }
 
 /** 向主图结果追加「主题 × 数量」的 pending 槽位，带上 themeId / themeTitle。 */
@@ -331,7 +334,7 @@ export function appendPendingMainImageImages(
   requirements: readonly { themeId: string; title: string }[],
   count: number,
   aspectRatio: string,
-): DesignResultGroups {
+): { groups: DesignResultGroups; slots: StudioResultImage[] } {
   return appendPendingThemeImages(current, '主图', requirements, count, aspectRatio);
 }
 
@@ -341,24 +344,21 @@ export function appendPendingDesignImages(
   taskType: EcommerceTaskType,
   count: number,
   aspectRatio: string,
-): DesignResultGroups {
+): { groups: DesignResultGroups; slots: StudioResultImage[] } {
   const images = current[taskType] ?? [];
-  return {
-    ...current,
-    [taskType]: [...images, ...pendingImagesFromCount(count, images.length, aspectRatio)],
-  };
+  const slots = pendingImagesFromCount(count, aspectRatio);
+  return { groups: { ...current, [taskType]: [...images, ...slots] }, slots };
 }
 
-/** 将一条流式生图事件写入指定任务类型的当前批次 */
+/** 将一条生图事件写入指定任务类型中对应的槽位 */
 export function applyDesignGenerateEvent(
   current: DesignResultGroups,
   taskType: EcommerceTaskType,
   event: StudioGenerateImageEvent,
-  batchStartIndex: number,
 ): DesignResultGroups {
   return {
     ...current,
-    [taskType]: applyGenerateEvent(current[taskType] ?? [], event, batchStartIndex),
+    [taskType]: applyGenerateEvent(current[taskType] ?? [], event),
   };
 }
 
@@ -403,7 +403,7 @@ export async function createAnalysisStepSnapshot(
  * 比较两份可序列化步骤快照是否相同；无基线视为已变化。
  *
  * 不可直接用 JSON.stringify 比较：read*StepSnapshot 与 create*StepSnapshot 输出同一批键但顺序不同
- * （如 design 的 referenceImageIndex 在 create 里排在 images 之前、在 read 里排在之后），
+ * （如 design 的 referenceImageId 在 create 里排在 images 之前、在 read 里排在之后），
  * 顺序敏感的字符串比较会把「首次进入、什么都没改」也判成已变化，白白打一次保存。
  */
 export function isSameStepSnapshot(next: unknown, baseline: unknown): boolean {
@@ -479,16 +479,16 @@ export function readAnalysisStepSnapshot(value: unknown): AnalysisStepSnapshot |
   };
 }
 
-/** 从未知 JSON 中读取营销主视觉快照。 */
+/** 从未知 JSON 中读取营销主视觉快照；选中态只认 id，旧快照的数字下标读不出即视为未选中。 */
 export function readVisualStepSnapshot(value: unknown): VisualStepSnapshot | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const snapshot = value as Partial<VisualStepSnapshot>;
   if (!snapshot.form || !Array.isArray(snapshot.visualImages)) return undefined;
+  const visualImages = normalizeResultImages(snapshot.visualImages);
   return {
     form: snapshot.form,
-    visualImages: snapshot.visualImages,
-    selectedVisualIndex:
-      typeof snapshot.selectedVisualIndex === 'number' ? snapshot.selectedVisualIndex : null,
+    visualImages,
+    selectedVisualId: pickExistingImageId(visualImages, snapshot.selectedVisualId),
     images: Array.isArray(snapshot.images) ? snapshot.images : undefined,
     documents: Array.isArray(snapshot.documents) ? snapshot.documents : undefined,
     analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : undefined,
@@ -499,7 +499,7 @@ export function readVisualStepSnapshot(value: unknown): VisualStepSnapshot | und
 export async function createVisualStepSnapshot(
   form: StudioFormState,
   visualImages: StudioResultImage[],
-  selectedVisualIndex: number | null,
+  selectedVisualId: string | null,
   images: ProductImageItem[],
   documents: ProductDocItem[],
   analysisText: string,
@@ -507,7 +507,7 @@ export async function createVisualStepSnapshot(
   return {
     form,
     visualImages,
-    selectedVisualIndex,
+    selectedVisualId,
     images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
     documents: (await Promise.all(documents.map(serializeUploadItem))) as ProductDocItem[],
     analysisText,
@@ -524,20 +524,31 @@ export function readDesignStepSnapshot(value: unknown): DesignStepSnapshot | und
   const { designType, ...formRest } = snapshot.form;
   delete (formRest as { referenceVisual?: boolean }).referenceVisual;
   delete (formRest as { requirement?: string }).requirement;
+  const form: DesignFormState = {
+    ...formRest,
+    taskType: snapshot.form.taskType ?? designType ?? '主图',
+  };
+  const designResultGroups: DesignResultGroups = {};
+  for (const taskType of ECOMMERCE_TASK_TYPES) {
+    const images = snapshot.designResultGroups[taskType];
+    if (images) designResultGroups[taskType] = normalizeResultImages(images);
+  }
+  // 两个选中态分属不同分组：参考图在本任务类型的分组里，导出点选恒在详情图分组里
+  const referenceGroup = designResultGroups[form.taskType] ?? [];
+  const exportGroup = designResultGroups['详情图'] ?? [];
   return {
-    form: {
-      ...formRest,
-      taskType: snapshot.form.taskType ?? designType ?? '主图',
-    },
-    designResultGroups: snapshot.designResultGroups,
+    form,
+    designResultGroups,
     modelImages: Array.isArray(snapshot.modelImages) ? snapshot.modelImages : [],
     images: Array.isArray(snapshot.images) ? snapshot.images : undefined,
     documents: Array.isArray(snapshot.documents) ? snapshot.documents : undefined,
     analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : undefined,
-    referenceImageIndex:
-      typeof snapshot.referenceImageIndex === 'number' ? snapshot.referenceImageIndex : null,
-    selectedExportIndexes: Array.isArray(snapshot.selectedExportIndexes)
-      ? snapshot.selectedExportIndexes.filter((id): id is number => typeof id === 'number')
+    referenceImageId: pickExistingImageId(referenceGroup, snapshot.referenceImageId),
+    selectedExportIds: Array.isArray(snapshot.selectedExportIds)
+      ? keepExistingImageIds(
+          exportGroup,
+          snapshot.selectedExportIds.filter((id): id is string => typeof id === 'string'),
+        )
       : undefined,
   };
 }
@@ -551,19 +562,19 @@ export async function createDesignStepSnapshot(
     images?: ProductImageItem[];
     documents?: ProductDocItem[];
     analysisText?: string;
-    referenceImageIndex?: number | null;
-    selectedExportIndexes?: number[];
+    referenceImageId?: string | null;
+    selectedExportIds?: string[];
   },
 ): Promise<DesignStepSnapshot> {
   return {
     form,
     designResultGroups,
     modelImages: (await Promise.all(modelImages.map(serializeUploadItem))) as ProductImageItem[],
-    ...(typeof extras?.referenceImageIndex === 'number' || extras?.referenceImageIndex === null
-      ? { referenceImageIndex: extras.referenceImageIndex }
+    ...(typeof extras?.referenceImageId === 'string' || extras?.referenceImageId === null
+      ? { referenceImageId: extras.referenceImageId }
       : {}),
-    ...(Array.isArray(extras?.selectedExportIndexes)
-      ? { selectedExportIndexes: extras.selectedExportIndexes }
+    ...(Array.isArray(extras?.selectedExportIds)
+      ? { selectedExportIds: extras.selectedExportIds }
       : {}),
     ...(extras?.images
       ? {

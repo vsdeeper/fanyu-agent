@@ -63,7 +63,7 @@ export type AnalysisStepSnapshot = {
 export type VisualStepSnapshot = {
   form: StudioFormState;
   visualImages: StudioResultImage[];
-  selectedVisualIndex: number | null;
+  selectedVisualId: string | null;
   images?: ProductImageItem[];
   documents?: ProductDocItem[];
   analysisText?: string;
@@ -77,11 +77,12 @@ export type DesignStepSnapshot = {
   documents?: ProductDocItem[];
   analysisText?: string;
   /**
-   * 右栏结果网格里点选的参考图在**本任务类型对应分组**中的绝对下标，至多一张：
+   * 右栏结果网格里点选的参考图**在本任务类型对应分组**中的图片 id，至多一张：
    * 详情图 = designResultGroups['详情图'] 的上一屏；主图 = designResultGroups['主图'] 的文案标准参考图。
    * 同一任务只会是其中一种（designForm.taskType 被强制覆写为 task.taskType），故共用一个字段。
-   * 若将来主图步需同时持有两种角色的参考图、或需多选，必须拆字段并把本字段改名为 previousScreenIndex。
+   * 若将来主图步需同时持有两种角色的参考图、或需多选，必须拆字段并把本字段改名为 previousScreenId。
    */
-  referenceImageIndex?: number | null;
-  selectedExportIndexes?: number[];
+  referenceImageId?: string | null;
+  /** 完成页点选待导出的详情图 id；每主题至多一张，顺序即导出顺序 */
+  selectedExportIds?: string[];
 };

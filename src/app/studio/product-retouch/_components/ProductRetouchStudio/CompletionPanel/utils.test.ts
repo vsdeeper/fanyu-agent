@@ -5,7 +5,7 @@ import { createResultArchive, decodeImageDataUrl, getGeneratedImages } from './u
 
 const PNG_DATA_URL = 'data:image/png;base64,AQID';
 const READY_PNG: ResultImage = {
-  index: 0,
+  id: 'png-0',
   aspectRatio: '1:1',
   status: 'ready',
   url: PNG_DATA_URL,
@@ -15,8 +15,8 @@ describe('产品精修成果导出', () => {
   it('只保留已生成且含 URL 的图片', () => {
     const images: ResultImage[] = [
       READY_PNG,
-      { index: 1, aspectRatio: '1:1', status: 'pending' },
-      { index: 2, aspectRatio: '1:1', status: 'failed', error: 'failed' },
+      { id: 'png-1', aspectRatio: '1:1', status: 'pending' },
+      { id: 'png-2', aspectRatio: '1:1', status: 'failed', error: 'failed' },
     ];
 
     expect(getGeneratedImages(images)).toEqual([READY_PNG]);

@@ -17,7 +17,7 @@ import { ECOMMERCE_PATH } from '@/components/AppLayout/constants';
 import { apiPost } from '@/lib/shared/client/api-client';
 import ModeSwitch from '@/components/ModeSwitch';
 import CompletionPanel from './CompletionPanel';
-import { toggleExportIndexByTheme } from './CompletionPanel/utils';
+import { toggleExportSelectedIdByTheme } from './CompletionPanel/utils';
 import ControlPanel from './ControlPanel';
 import {
   ANALYZE_FAILED,
@@ -96,6 +96,8 @@ import {
   mergeBatchImages,
   restoreBatchImages,
   shouldAdvancePhase,
+  syncJobGroupSlots,
+  syncJobSlots,
 } from './_utils/job-restore';
 import {
   getWorkflowStepIndex,
@@ -217,14 +219,14 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       ? mergeBatchGroups(base, restoredDesignTaskType, restoredBatch)
       : base;
   });
-  const [selectedVisualIndex, setSelectedVisualIndex] = useState<number | null>(
-    themePlan ? null : (initialVisual?.selectedVisualIndex ?? null),
+  const [selectedVisualId, setSelectedVisualId] = useState<string | null>(
+    themePlan ? null : (initialVisual?.selectedVisualId ?? null),
   );
-  const [referenceImageIndex, setReferenceImageIndex] = useState<number | null>(
-    initialDesign?.referenceImageIndex ?? null,
+  const [referenceImageId, setReferenceImageId] = useState<string | null>(
+    initialDesign?.referenceImageId ?? null,
   );
-  const [selectedExportIndexes, setSelectedExportIndexes] = useState<number[]>(
-    initialDesign?.selectedExportIndexes ?? [],
+  const [selectedExportIds, setSelectedExportIds] = useState<string[]>(
+    initialDesign?.selectedExportIds ?? [],
   );
   const [nextLoading, setNextLoading] = useState(false);
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
@@ -346,11 +348,11 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   );
 
   const persistVisualStep = useCallback(
-    async (f: StudioFormState, imgs: StudioResultImage[], idx: number | null) => {
+    async (f: StudioFormState, imgs: StudioResultImage[], selectedId: string | null) => {
       const next = await createVisualStepSnapshot(
         f,
         imgs,
-        idx,
+        selectedId,
         imagesRef.current,
         documentsRef.current,
         analysisText,
@@ -377,8 +379,8 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
           ? {
               images: imagesRef.current,
               // 主图 = 文案标准参考图，详情图 = 上一屏，共用同一字段（至多一张）
-              referenceImageIndex,
-              ...(detailImage ? { selectedExportIndexes } : {}),
+              referenceImageId,
+              ...(detailImage ? { selectedExportIds } : {}),
             }
           : undefined,
       );
@@ -391,17 +393,17 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       if (saved.images) setImages(saved.images);
       if (saved.documents) setDocuments(saved.documents);
       if (typeof saved.analysisText === 'string' && !themePlan) setAnalysisText(saved.analysisText);
-      if (typeof saved.referenceImageIndex === 'number' || saved.referenceImageIndex === null) {
-        setReferenceImageIndex(saved.referenceImageIndex);
+      if (typeof saved.referenceImageId === 'string' || saved.referenceImageId === null) {
+        setReferenceImageId(saved.referenceImageId);
       }
-      if (Array.isArray(saved.selectedExportIndexes)) {
-        setSelectedExportIndexes(saved.selectedExportIndexes);
+      if (Array.isArray(saved.selectedExportIds)) {
+        setSelectedExportIds(saved.selectedExportIds);
       }
     },
     [
       detailImage,
-      referenceImageIndex,
-      selectedExportIndexes,
+      referenceImageId,
+      selectedExportIds,
       themePlan,
       task.id,
       setDesignForm,
@@ -415,28 +417,23 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
 
   const jobSnapshot = job;
 
-  // 增量套用新到达的出图事件，保住「边出边显示」。
-  // 必须带上 batchStartIndex：作业事件的 index 是批次内相对下标，槽位是结果集内的绝对下标。
+  // 增量套用新到达的出图事件，保住「边出边显示」。事件按槽位 id 寻址，无需下标偏移。
   useEffect(() => {
     if (!jobSnapshot || trackedStepRef.current !== jobSnapshot.stepKey) return;
     const events = jobSnapshot.data.events;
     if (events.length <= appliedEventCountRef.current) return;
     const fresh = events.slice(appliedEventCountRef.current);
     appliedEventCountRef.current = events.length;
-    const batchStartIndex = jobSnapshot.data.pending.batchStartIndex;
 
     if (jobSnapshot.stepKey === 'visual') {
       setVisualImages((current) =>
-        fresh.reduce((acc, event) => applyGenerateEvent(acc, event, batchStartIndex), current),
+        fresh.reduce((acc, event) => applyGenerateEvent(acc, event), current),
       );
       return;
     }
     const taskType = (jobSnapshot.data.pending.taskType ?? task.taskType) as EcommerceTaskType;
     setDesignResultGroups((current) =>
-      fresh.reduce(
-        (acc, event) => applyDesignGenerateEvent(acc, taskType, event, batchStartIndex),
-        current,
-      ),
+      fresh.reduce((acc, event) => applyDesignGenerateEvent(acc, taskType, event), current),
     );
   }, [jobSnapshot, task.taskType]);
 
@@ -463,7 +460,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
           setForm(jobForm);
           setVisualImages(images);
           if (applyPhase) setPhase('visual');
-          if (images.length > 0) await persistVisualStep(jobForm, images, selectedVisualIndex);
+          if (images.length > 0) await persistVisualStep(jobForm, images, selectedVisualId);
           return;
         }
         if (snap.stepKey === 'design') {
@@ -494,7 +491,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       persistVisualStep,
       phase,
       releaseJob,
-      selectedVisualIndex,
+      selectedVisualId,
       setPhase,
       settledAtMountJobId,
       task.taskType,
@@ -610,20 +607,24 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       return;
     }
     const count = Number.parseInt(form.count, 10) || 1;
-    const batchStartIndex = visualImages.length;
-    const slots = pendingImagesFromCount(count, batchStartIndex, form.aspectRatio);
+    const slots = pendingImagesFromCount(count, form.aspectRatio);
     setPhase('visualGenerating');
     setVisualImages([...visualImages, ...slots]);
     trackedStepRef.current = 'visual';
     appliedEventCountRef.current = 0;
     try {
       // 此处只建作业；进度由轮询 effect 增量套用，终态由 settleJob 落库
-      await startJob({
+      const snapshot = await startJob({
         stepKey: 'visual',
         kind: 'generate',
-        pending: { stepKey: 'visual', batchStartIndex, slots, form },
+        pending: { stepKey: 'visual', slots, form },
         body: await toVisualGeneratePayload(form, analysisText, images),
       });
+      // 建作业幂等：服务端可能返回既有的运行中作业（本次 pending 被忽略），
+      // 此时上面新建的槽位收不到任何事件，须按服务端槽位校准，否则图会重复或永远停在骨架
+      if (snapshot) {
+        setVisualImages((current) => syncJobSlots(current, snapshot.data.pending.slots));
+      }
     } catch (err) {
       console.error('[ecommerce-studio] start visual job', err);
       // 建作业失败（api-client 已 Toast）：撤回占位并退回稳定相位
@@ -664,7 +665,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
           : designForm;
     let visualDataUrl = '';
     if (!themePlan) {
-      const selected = getSelectedResultImageUrl(visualImages, selectedVisualIndex);
+      const selected = getSelectedResultImageUrl(visualImages, selectedVisualId);
       if (!selected) {
         message.warning(VISUAL_SELECT_MISSING);
         return;
@@ -672,18 +673,18 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       visualDataUrl = selected;
     }
     let previousScreenDataUrl: string | undefined;
-    if (detailImage && referenceImageIndex !== null) {
+    if (detailImage && referenceImageId !== null) {
       const selected = getSelectedResultImageUrl(
         designResultGroups['详情图'] ?? [],
-        referenceImageIndex,
+        referenceImageId,
       );
       if (selected) previousScreenDataUrl = await readUrlAsDataUrl(selected);
     }
     let copyStyleReferenceDataUrl: string | undefined;
-    if (mainImage && referenceImageIndex !== null) {
+    if (mainImage && referenceImageId !== null) {
       const selected = getSelectedResultImageUrl(
         designResultGroups['主图'] ?? [],
-        referenceImageIndex,
+        referenceImageId,
       );
       if (selected) {
         try {
@@ -695,9 +696,8 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       }
     }
     const taskType = nextDesignForm.taskType;
-    const batchStartIndex = designResultGroups[taskType]?.length ?? 0;
     const perCardCount = Number.parseInt(nextDesignForm.count, 10) || 1;
-    const nextDesignResultGroups = themePlan
+    const { groups: nextDesignResultGroups, slots } = themePlan
       ? appendPendingThemeImages(
           designResultGroups,
           taskType,
@@ -711,7 +711,6 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
           expectedDesignCount,
           nextDesignForm.aspectRatio,
         );
-    const slots = (nextDesignResultGroups[taskType] ?? []).slice(batchStartIndex);
     setPhase('designGenerating');
     setDesignResultGroups(nextDesignResultGroups);
     trackedStepRef.current = 'design';
@@ -742,12 +741,18 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
             await readUrlAsDataUrl(visualDataUrl),
             await toAnalyzeImages(modelImages),
           );
-      await startJob({
+      const snapshot = await startJob({
         stepKey: 'design',
         kind: 'generate',
-        pending: { stepKey: 'design', taskType, batchStartIndex, slots, form: nextDesignForm },
+        pending: { stepKey: 'design', taskType, slots, form: nextDesignForm },
         body,
       });
+      // 同 handleGenerateVisual：幂等命中旧作业时按服务端槽位校准，避免图重复或永远骨架
+      if (snapshot) {
+        setDesignResultGroups((current) =>
+          syncJobGroupSlots(current, taskType, snapshot.data.pending.slots),
+        );
+      }
     } catch (err) {
       console.error('[ecommerce-studio] start design job', err);
       // 建作业失败（api-client 已 Toast）：撤回占位并退回稳定相位
@@ -768,9 +773,9 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     planCards,
     poster,
     productDocs,
-    referenceImageIndex,
+    referenceImageId,
     selectedThemeIds,
-    selectedVisualIndex,
+    selectedVisualId,
     setPhase,
     startJob,
     themePlan,
@@ -839,19 +844,19 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     [setModelImages],
   );
 
-  const handleSelectVisual = useCallback((index: number) => {
+  const handleSelectVisual = useCallback((id: string) => {
     // 点选视觉图仅更新交互态，落库收敛到下一步/完成
-    setSelectedVisualIndex(index);
+    setSelectedVisualId(id);
   }, []);
 
-  const handleSelectReference = useCallback((index: number) => {
-    setReferenceImageIndex((current) => (current === index ? null : index));
+  const handleSelectReference = useCallback((id: string) => {
+    setReferenceImageId((current) => (current === id ? null : id));
   }, []);
 
   const handleSelectExport = useCallback(
-    (index: number) => {
-      setSelectedExportIndexes((current) =>
-        toggleExportIndexByTheme(current, index, designResultGroups['详情图'] ?? []),
+    (id: string) => {
+      setSelectedExportIds((current) =>
+        toggleExportSelectedIdByTheme(current, id, designResultGroups['详情图'] ?? []),
       );
     },
     [designResultGroups],
@@ -899,7 +904,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   }, [abortCurrent, cancelJob, phase, setPhase]);
 
   const handleNext = useCallback(async () => {
-    if (phase === 'visual' && selectedVisualIndex === null) {
+    if (phase === 'visual' && selectedVisualId === null) {
       message.warning(VISUAL_SELECT_MISSING);
       return;
     }
@@ -926,7 +931,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       if (phase === 'analyzed') {
         await persistAnalysisStep(images, documents, analysisText, { selectedThemeIds });
       } else if (phase === 'visual') {
-        await persistVisualStep(form, visualImages, selectedVisualIndex);
+        await persistVisualStep(form, visualImages, selectedVisualId);
       } else if (phase === 'design') {
         await persistDesignStep(designForm, designResultGroups, modelImages);
       }
@@ -950,7 +955,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     persistVisualStep,
     phase,
     selectedThemeIds,
-    selectedVisualIndex,
+    selectedVisualId,
     setNextLoading,
     setPhase,
     task.taskType,
@@ -1057,7 +1062,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
               showDesignTitles={!themePlan}
               groupByTheme={themePlan}
               detailPreview={detailImage}
-              selectedExportIndexes={selectedExportIndexes}
+              selectedExportIds={selectedExportIds}
               onSelectExport={handleSelectExport}
               onPrev={() => void handlePrev()}
               onExportPersist={handleExportPersist}
@@ -1104,12 +1109,12 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
                 visualImages={visualImages}
                 designResultGroups={designResultGroups}
                 expectedVisualCount={expectedVisualCount}
-                selectedVisualIndex={selectedVisualIndex}
+                selectedVisualId={selectedVisualId}
                 nextLoading={nextLoading}
                 isPoster={poster}
                 planCards={displayPlanCards}
                 selectedThemeIds={selectedThemeIds}
-                referenceImageIndex={referenceImageIndex}
+                referenceImageId={referenceImageId}
                 running={generating}
                 cancelling={jobCancelling}
                 onCancel={handleCancelGenerate}

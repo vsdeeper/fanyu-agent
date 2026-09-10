@@ -6,7 +6,7 @@ import type { CreateStudioJobRequest } from '../_shared/job-types';
 import { parseGenerateBody } from './parse-generate-request';
 
 const slotSchema = z.object({
-  index: z.number().int().nonnegative(),
+  id: z.string().min(1),
   aspectRatio: z.string().min(1),
   status: z.enum(['pending', 'ready', 'failed']),
   url: z.string().optional(),
@@ -18,7 +18,6 @@ const slotSchema = z.object({
 const pendingSchema = z.object({
   stepKey: z.string().min(1),
   taskType: z.string().optional(),
-  batchStartIndex: z.number().int().nonnegative(),
   slots: z.array(slotSchema),
   form: z.object({
     model: z.string().min(1),

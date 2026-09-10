@@ -17,10 +17,10 @@ type ResultImageGridProps = {
   /** 表单「尺寸比例」（如 3:4），用于对齐预览/骨架显示比例 */
   aspectRatio: string;
   selectable?: boolean;
-  selectedIndex?: number | null;
-  selectedIndexes?: readonly number[];
+  selectedId?: string | null;
+  selectedIds?: readonly string[];
   selectedBadge?: string;
-  onSelect?: (index: number) => void;
+  onSelect?: (id: string) => void;
 };
 
 /**
@@ -32,8 +32,8 @@ export default function ResultImageGrid({
   expectedCount,
   aspectRatio,
   selectable = false,
-  selectedIndex = null,
-  selectedIndexes,
+  selectedId = null,
+  selectedIds,
   selectedBadge,
   onSelect,
 }: ResultImageGridProps) {
@@ -68,14 +68,12 @@ export default function ResultImageGrid({
           const { width, height } = aspectRatioToSize(item.aspectRatio, RESULT_IMAGE_SIZE);
           return (
             <ResultImageItem
-              key={`result-${item.index}`}
+              key={`result-${item.id}`}
               image={item}
               width={width}
               height={height}
               selectable={selectable}
-              selected={
-                selectedIndex === item.index || Boolean(selectedIndexes?.includes(item.index))
-              }
+              selected={selectedId === item.id || Boolean(selectedIds?.includes(item.id))}
               selectedBadge={selectedBadge}
               onSelect={onSelect}
               getSrc={getImageSrc}

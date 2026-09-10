@@ -66,7 +66,7 @@ export default function ProductRetouchStudio({ task }: ProductRetouchStudioProps
               multiviewForm={studio.multiviewForm}
               selectedStandardUrls={getSelectedImageUrls(
                 studio.refineImages,
-                studio.selectedRefineIndexes,
+                studio.selectedRefineIds,
               )}
               locked={studio.locked}
               onImagesAppend={studio.handleImagesAppend}
@@ -87,7 +87,7 @@ export default function ProductRetouchStudio({ task }: ProductRetouchStudioProps
               multiviewExpectedCount={1}
               refineAspectRatio={studio.refineForm.aspectRatio}
               multiviewAspectRatio={studio.multiviewForm.aspectRatio}
-              selectedRefineIndexes={studio.selectedRefineIndexes}
+              selectedRefineIds={studio.selectedRefineIds}
               onSelectRefine={studio.handleSelectRefine}
               onPrev={studio.handlePrev}
               onNext={studio.handleNext}

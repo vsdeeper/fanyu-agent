@@ -11,6 +11,11 @@ import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import { apiPut } from '@/lib/shared/client/api-client';
 import { patchModel } from '@/app/studio/_utils/model-options';
 import {
+  keepExistingImageIds,
+  normalizeResultImages,
+  type StudioResultImage,
+} from '@/app/studio/_utils/result-images';
+import {
   appendUploadItems,
   readUploadItemAsDataUrl,
   removeUploadItem,
@@ -85,6 +90,7 @@ export async function toImageInputs(items: ProductImageItem[]): Promise<StudioIm
 export async function toRefinePayload(
   form: RefineFormState,
   images: ProductImageItem[],
+  slotIds: readonly string[],
 ): Promise<StudioGenerateRequest> {
   return {
     kind: 'productRefine',
@@ -95,6 +101,7 @@ export async function toRefinePayload(
     count: 1,
     refineRequirement: form.requirement.trim(),
     images: await toImageInputs(images),
+    slotIds: [...slotIds],
   };
 }
 
@@ -102,6 +109,7 @@ export async function toRefinePayload(
 export function toMultiviewPayload(
   form: MultiviewFormState,
   refinedImageDataUrls: string[],
+  slotIds: readonly string[],
 ): StudioGenerateRequest {
   return {
     kind: 'productMultiview',
@@ -112,36 +120,37 @@ export function toMultiviewPayload(
     count: 1,
     multiviewRequirement: form.requirement.trim(),
     refinedImageDataUrls,
+    slotIds: [...slotIds],
   };
 }
 
 /**
  * 切换精修标准选中项。已选则取消；未选且未达上限则追加；达上限返回 atLimit。
  */
-export function toggleSelectedIndex(
-  current: readonly number[],
-  index: number,
+export function toggleSelectedId(
+  current: readonly string[],
+  id: string,
   maxCount: number,
-): { indexes: number[]; atLimit: boolean } {
-  if (current.includes(index)) {
-    return { indexes: current.filter((item) => item !== index), atLimit: false };
+): { ids: string[]; atLimit: boolean } {
+  if (current.includes(id)) {
+    return { ids: current.filter((item) => item !== id), atLimit: false };
   }
   if (current.length >= maxCount) {
-    return { indexes: [...current], atLimit: true };
+    return { ids: [...current], atLimit: true };
   }
-  return { indexes: [...current, index], atLimit: false };
+  return { ids: [...current, id], atLimit: false };
 }
 
-/** 读取快照中的精修标准下标；兼容旧字段 selectedIndex。 */
-export function readSelectedIndexes(snapshot: {
-  selectedIndexes?: unknown;
-  selectedIndex?: unknown;
-}): number[] {
-  if (Array.isArray(snapshot.selectedIndexes)) {
-    return snapshot.selectedIndexes.filter((value): value is number => typeof value === 'number');
-  }
-  if (typeof snapshot.selectedIndex === 'number') return [snapshot.selectedIndex];
-  return [];
+/** 读取快照中的精修标准图 id；旧快照存的是数字下标，对不到 id，按未选中处理。 */
+export function readSelectedIds(
+  snapshot: { selectedIds?: unknown },
+  results: readonly StudioResultImage[],
+): string[] {
+  if (!Array.isArray(snapshot.selectedIds)) return [];
+  return keepExistingImageIds(
+    results,
+    snapshot.selectedIds.filter((id): id is string => typeof id === 'string'),
+  );
 }
 
 /** 根据多视角选项返回精修步骤的后续阶段。 */
@@ -166,15 +175,15 @@ export function phaseAfterPrev(
 export async function createRefineStepSnapshot(
   form: RefineFormState,
   images: ProductImageItem[],
-  results: import('./types').ResultImage[],
-  selectedIndexes: number[],
+  results: readonly StudioResultImage[],
+  selectedIds: readonly string[],
   needsMultiview: boolean,
 ): Promise<ProductRetouchRefineStepSnapshot> {
   return {
     form,
     images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
-    results,
-    selectedIndexes,
+    results: [...results],
+    selectedIds: [...selectedIds],
     needsMultiview,
   };
 }
@@ -182,9 +191,9 @@ export async function createRefineStepSnapshot(
 /** 构造产品多视角步骤的完整持久化快照。 */
 export function createMultiviewStepSnapshot(
   form: MultiviewFormState,
-  results: import('./types').ResultImage[],
+  results: readonly StudioResultImage[],
 ): ProductRetouchMultiviewStepSnapshot {
-  return { form, results };
+  return { form, results: [...results] };
 }
 
 /** 从未知 JSON 中读取产品精修快照。 */
@@ -195,11 +204,12 @@ export function readRefineStepSnapshot(
   const snapshot = value as Partial<ProductRetouchRefineStepSnapshot>;
   if (!snapshot.form || !Array.isArray(snapshot.images) || !Array.isArray(snapshot.results))
     return undefined;
+  const results = normalizeResultImages(snapshot.results);
   return {
     form: snapshot.form,
     images: snapshot.images,
-    results: snapshot.results,
-    selectedIndexes: readSelectedIndexes(snapshot),
+    results,
+    selectedIds: readSelectedIds(snapshot, results),
     needsMultiview: typeof snapshot.needsMultiview === 'boolean' ? snapshot.needsMultiview : true,
   };
 }
@@ -211,7 +221,7 @@ export function readMultiviewStepSnapshot(
   if (!value || typeof value !== 'object') return undefined;
   const snapshot = value as Partial<ProductRetouchMultiviewStepSnapshot>;
   if (!snapshot.form || !Array.isArray(snapshot.results)) return undefined;
-  return { form: snapshot.form, results: snapshot.results };
+  return { form: snapshot.form, results: normalizeResultImages(snapshot.results) };
 }
 
 /** 比较两份可序列化步骤快照是否相同；无基线视为已变化。 */

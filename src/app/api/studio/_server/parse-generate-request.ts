@@ -13,6 +13,9 @@ const specFieldsSchema = z.object({
   aspectRatio: z.string().min(1),
   quality: z.string().min(1),
   clarity: z.string().min(1),
+  // 不是生成规格，而是本批占位槽 id（按出图清单顺序）；此处声明后各 kind 的 schema 才会保留它，
+  // 否则 zod 会静默剥键。长度是否与出图清单一致由 handler 校验。
+  slotIds: z.array(z.string().min(1)).optional(),
 });
 
 const imageInputSchema = z.object({

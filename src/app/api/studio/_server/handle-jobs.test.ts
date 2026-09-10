@@ -53,8 +53,7 @@ const BODY: StudioGenerateRequest = {
 
 const PENDING = {
   stepKey: 'visual',
-  batchStartIndex: 0,
-  slots: [{ index: 0, aspectRatio: '1:1', status: 'pending' as const }],
+  slots: [{ id: 'slot-0', aspectRatio: '1:1', status: 'pending' as const }],
   form: { model: 'seedream', aspectRatio: '1:1', quality: 'high', clarity: '2K', count: '1' },
 };
 
