@@ -16,6 +16,7 @@ import {
 } from '@/app/api/studio/business-analysis/_server/extract-documents';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 import { INVALID_FORM, INVALID_JSON } from '@/app/api/studio/_server/constants';
+import { buildAnalyzePrompt } from './analyze-prompt';
 import { ANALYZE_FAILED, EMPTY_ANALYSIS_DOC } from './constants';
 import {
   DETAIL_IMAGE_ANALYZE_INSTRUCTIONS,
@@ -31,22 +32,6 @@ import {
 
 type SseSend = (event: string, data: unknown) => Promise<void>;
 
-/**
- * 把商业分析资料拼成 streamText 的用户 prompt。
- */
-function buildAnalyzePrompt(kind: EcommerceAnalyzeKind, documentsText: string): string {
-  if (kind === 'detailImage') {
-    return [
-      '【详情图结构规划】请按指令输出六个互斥主题卡，每张含设计目标与展示重点。本轮不要出图。',
-      `- 商业分析：${documentsText}`,
-    ].join('\n');
-  }
-  return [
-    '【主图分析】请按指令输出五个互斥主题卡，每张含设计目标与展示重点，五张互斥。本轮不要出图。',
-    `- 商业分析：${documentsText}`,
-  ].join('\n');
-}
-
 function analyzeInstructions(kind: EcommerceAnalyzeKind): string {
   return kind === 'detailImage'
     ? DETAIL_IMAGE_ANALYZE_INSTRUCTIONS
@@ -54,11 +39,12 @@ function analyzeInstructions(kind: EcommerceAnalyzeKind): string {
 }
 
 /**
- * 抽取商业分析并流式输出策划 Markdown。
+ * 抽取商业分析与可选产品资料，流式输出策划 Markdown。
  */
 async function pipeAnalyzeEvents(
   kind: EcommerceAnalyzeKind,
   documents: { filename: string; mediaType: string; dataUrl: string }[],
+  productDocuments: { filename: string; mediaType: string; dataUrl: string }[] | undefined,
   signal: AbortSignal,
   send: SseSend,
 ): Promise<void> {
@@ -67,6 +53,14 @@ async function pipeAnalyzeEvents(
   if (!extracted.texts.length) {
     await send(ANALYZE_SSE_EVENT.error, { message: EMPTY_ANALYSIS_DOC });
     return;
+  }
+
+  let productDocsText: string | undefined;
+  if (productDocuments?.length) {
+    const extractedProduct = await extractStudioDocuments(productDocuments);
+    if (extractedProduct.texts.length > 0) {
+      productDocsText = formatDocumentsPrompt(extractedProduct);
+    }
   }
 
   const provider = getChatProvider();
@@ -81,7 +75,7 @@ async function pipeAnalyzeEvents(
   const result = streamText({
     model: runtime.getMainModel(getModelId(provider, 'pro')),
     instructions: analyzeInstructions(kind),
-    prompt: buildAnalyzePrompt(kind, documentsText),
+    prompt: buildAnalyzePrompt(kind, documentsText, productDocsText),
     abortSignal: signal,
     providerOptions: { openai: openaiOptions },
   });
@@ -105,7 +99,7 @@ async function pipeAnalyzeEvents(
 }
 
 /**
- * POST /api/studio/ecommerce/analyze：仅商业分析文档，按 kind 规划主图或详情图主题卡。
+ * POST /api/studio/ecommerce/analyze：商业分析文档 + 可选补充产品资料（主图），按 kind 规划主图或详情图主题卡。
  */
 export async function handleEcommerceAnalyze(req: Request): Promise<Response> {
   let json: unknown;
@@ -125,7 +119,7 @@ export async function handleEcommerceAnalyze(req: Request): Promise<Response> {
     async (write) => {
       const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
       try {
-        await pipeAnalyzeEvents(body.kind, body.documents, req.signal, send);
+        await pipeAnalyzeEvents(body.kind, body.documents, body.productDocuments, req.signal, send);
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[ecommerce/analyze]', err);

@@ -8,7 +8,7 @@ import {
   toEmptyHint,
   toResultHeadTitle,
 } from './ResultPanel/utils';
-import type { ProductImageItem, StudioResultImage } from './types';
+import type { ProductDocItem, ProductImageItem, StudioResultImage } from './types';
 import {
   appendPendingDesignImages,
   appendPendingMainImageImages,
@@ -30,6 +30,7 @@ import {
   toDesignGeneratePayload,
   toDetailImageGeneratePayload,
   toMainImageGeneratePayload,
+  toThemeAnalyzePayload,
   toVisualGeneratePayload,
 } from './utils';
 
@@ -423,6 +424,64 @@ describe('步骤快照水合', () => {
     expect(design?.designResultGroups['主图']).toHaveLength(1);
     expect(design?.modelImages).toEqual([]);
     expect(readAnalysisStepSnapshot({ images: [] })).toBeUndefined();
+  });
+
+  it('分析快照水合产品资料：有则透传，无则为 undefined', () => {
+    const withProductDocs = readAnalysisStepSnapshot({
+      images: [],
+      documents: [{ uid: 'doc-1', previewUrl: '/api/a2', name: 's.md' }],
+      productDocs: [{ uid: 'pdoc-1', previewUrl: '/api/a3', name: '说明书.md' }],
+      analysisText: '',
+    });
+    expect(withProductDocs?.productDocs).toEqual([
+      { uid: 'pdoc-1', previewUrl: '/api/a3', name: '说明书.md' },
+    ]);
+
+    const withoutProductDocs = readAnalysisStepSnapshot({
+      images: [],
+      documents: [],
+      analysisText: '',
+    });
+    expect(withoutProductDocs?.productDocs).toBeUndefined();
+  });
+
+  it('toThemeAnalyzePayload：产品资料仅在非空时携带', async () => {
+    const DOC_ITEM = (uid: string, name: string): ProductDocItem => ({
+      uid,
+      previewUrl: 'data:text/plain;base64,5YWl5Y+y',
+      name,
+      mimeType: 'text/plain',
+      size: 0,
+    });
+
+    const withoutProductDocs = await toThemeAnalyzePayload(
+      [DOC_ITEM('a', '商业分析.md')],
+      'mainImage',
+    );
+    expect(withoutProductDocs.kind).toBe('mainImage');
+    expect(withoutProductDocs.documents).toHaveLength(1);
+    expect(withoutProductDocs.productDocuments).toBeUndefined();
+
+    const emptyProductDocs = await toThemeAnalyzePayload(
+      [DOC_ITEM('a', '商业分析.md')],
+      'detailImage',
+      [],
+    );
+    expect(emptyProductDocs.kind).toBe('detailImage');
+    expect(emptyProductDocs.productDocuments).toBeUndefined();
+
+    const withProductDocs = await toThemeAnalyzePayload(
+      [DOC_ITEM('a', '商业分析.md')],
+      'mainImage',
+      [DOC_ITEM('b', '产品资料.txt')],
+    );
+    expect(withProductDocs.productDocuments).toEqual([
+      {
+        filename: '产品资料.txt',
+        mediaType: 'text/plain',
+        dataUrl: 'data:text/plain;base64,5YWl5Y+y',
+      },
+    ]);
   });
 
   it('历史 designType 与 referenceVisual 读入时丢弃旧字段', () => {

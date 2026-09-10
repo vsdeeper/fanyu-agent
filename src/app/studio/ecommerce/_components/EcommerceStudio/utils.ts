@@ -184,12 +184,13 @@ export async function readProductDocsAsText(documents: ProductDocItem[]): Promis
     .join('\n\n');
 }
 
-/** 主图请求体：规格 + 商业分析 + 选中主题文案 + 产品精修图 */
+/** 主图请求体：规格 + 商业分析 + 可选产品资料正文 + 选中主题文案 + 产品精修图 */
 export async function toMainImageGeneratePayload(
   form: DesignFormState,
   analysisText: string,
   requirements: ThemePlanCard[],
   productImages: ProductImageItem[],
+  productDocumentsText?: string,
 ): Promise<StudioGenerateRequest> {
   return {
     kind: 'mainImage',
@@ -205,6 +206,7 @@ export async function toMainImageGeneratePayload(
       requirement: card.requirement.trim(),
     })),
     productViewImages: await toAnalyzeImages(productImages),
+    ...(productDocumentsText?.trim() ? { productDocumentsText: productDocumentsText.trim() } : {}),
   };
 }
 
@@ -280,22 +282,21 @@ export async function toAnalyzePayload(
   };
 }
 
-/** 组装主题规划分析请求体：仅商业分析文档 */
+/** 组装主题规划分析请求体：商业分析文档 + 可选补充产品资料（主图） */
 export async function toThemeAnalyzePayload(
   documents: ProductDocItem[],
   kind: 'mainImage' | 'detailImage' = 'mainImage',
-): Promise<{ kind: 'mainImage' | 'detailImage'; documents: BusinessAnalysisDocumentInput[] }> {
+  productDocs: ProductDocItem[] = [],
+): Promise<{
+  kind: 'mainImage' | 'detailImage';
+  documents: BusinessAnalysisDocumentInput[];
+  productDocuments?: BusinessAnalysisDocumentInput[];
+}> {
   return {
     kind,
     documents: await toAnalyzeDocuments(documents),
+    ...(productDocs.length > 0 ? { productDocuments: await toAnalyzeDocuments(productDocs) } : {}),
   };
-}
-
-/** 组装主图分析请求体：仅商业分析文档 */
-export async function toMainImageAnalyzePayload(
-  documents: ProductDocItem[],
-): Promise<{ kind: 'mainImage' | 'detailImage'; documents: BusinessAnalysisDocumentInput[] }> {
-  return toThemeAnalyzePayload(documents, 'mainImage');
 }
 
 /** 向主题出图结果追加「主题 × 数量」的 pending 槽位，带上 themeId / themeTitle。 */
@@ -382,6 +383,7 @@ export async function createAnalysisStepSnapshot(
   extras?: {
     planCards?: ThemePlanCard[];
     selectedThemeIds?: string[];
+    productDocs?: ProductDocItem[];
   },
 ): Promise<AnalysisStepSnapshot> {
   return {
@@ -390,6 +392,13 @@ export async function createAnalysisStepSnapshot(
     analysisText,
     ...(extras?.planCards ? { planCards: extras.planCards } : {}),
     ...(extras?.selectedThemeIds ? { selectedThemeIds: extras.selectedThemeIds } : {}),
+    ...(extras?.productDocs
+      ? {
+          productDocs: (await Promise.all(
+            extras.productDocs.map(serializeUploadItem),
+          )) as ProductDocItem[],
+        }
+      : {}),
   };
 }
 
@@ -446,6 +455,7 @@ export function readAnalysisStepSnapshot(value: unknown): AnalysisStepSnapshot |
   return {
     images: snapshot.images,
     documents: snapshot.documents,
+    productDocs: Array.isArray(snapshot.productDocs) ? snapshot.productDocs : undefined,
     analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : '',
     planCards: Array.isArray(snapshot.planCards) ? snapshot.planCards : undefined,
     selectedThemeIds: Array.isArray(snapshot.selectedThemeIds)

@@ -146,7 +146,11 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
                   productImageCount,
                   hasPreviousScreen,
                 )
-              : buildMainImagePrompt(item.requirement, body.analysisText);
+              : buildMainImagePrompt(
+                  item.requirement,
+                  body.analysisText,
+                  body.productDocumentsText,
+                );
           for (let i = 0; i < count; i++) {
             if (req.signal.aborted) return;
             const result = await generateStudioImage({

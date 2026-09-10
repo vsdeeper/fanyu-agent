@@ -18,6 +18,8 @@ export type MainImageRewriteCardRequest = {
   draft: string;
   otherCards: RewriteCardPeer[];
   analysisText: string;
+  /** 补充产品资料正文（第一手产品事实，优先于商业分析）；未上传时省略 */
+  productDocumentsText?: string;
 };
 
 /** POST /api/studio/ecommerce/rewrite-card 请求体（详情图分支） */

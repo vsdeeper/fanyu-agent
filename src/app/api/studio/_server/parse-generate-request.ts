@@ -70,6 +70,7 @@ const mainImageGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('mainImage'),
   count: countSchema,
   analysisText: z.string().trim().min(1),
+  productDocumentsText: z.string().optional(),
   requirements: z
     .array(
       z.object({

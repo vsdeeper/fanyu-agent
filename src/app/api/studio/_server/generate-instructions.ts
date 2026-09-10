@@ -58,9 +58,14 @@ export function buildProductViewPrompt(): string {
 }
 
 /**
- * 电商主图出站 prompt：商业分析定整套气质，本张主题卡定文案与拍法；精修图为产品事实。
+ * 电商主图出站 prompt：商业分析定整套气质，可选产品资料定第一手产品事实，本张主题卡定文案与拍法；精修图为产品事实。
  */
-export function buildMainImagePrompt(requirement: string, analysisText: string): string {
+export function buildMainImagePrompt(
+  requirement: string,
+  analysisText: string,
+  productDocumentsText?: string,
+): string {
+  const productDocsText = productDocumentsText?.trim();
   return [
     '生成恰好一张电商主图，不要输出说明、草图或多方案拼图。',
     '第1个参考图=用户上传的产品精修图，定义产品本体；其余参考图仅补充同一产品的可见角度与细节，不得混合不同 SKU。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。',
@@ -70,6 +75,13 @@ export function buildMainImagePrompt(requirement: string, analysisText: string):
     '禁止把空洞白底棚拍或同一套通用生活方式模板当作所有主题的默认背景；套图之间构图与场景须按各自展示重点区分。',
     '【商业分析】',
     analysisText.trim(),
+    ...(productDocsText
+      ? [
+          '【产品资料】',
+          productDocsText,
+          '品牌、产品名与规格数值等第一手产品事实以【产品资料】为准，缺失时以【商业分析】为准。',
+        ]
+      : []),
     '【本张主题卡】',
     requirement.trim(),
     MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,

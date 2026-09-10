@@ -17,6 +17,7 @@ const mainImageBodySchema = z.object({
   draft: z.string(),
   otherCards: z.array(peerSchema).max(5),
   analysisText: z.string(),
+  productDocumentsText: z.string().optional(),
 });
 
 const detailImageBodySchema = z.object({

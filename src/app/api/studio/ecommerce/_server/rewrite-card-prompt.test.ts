@@ -129,6 +129,33 @@ describe('buildRewriteCardPrompt（主图）', () => {
     expect(prompt).toContain('为本张职责换一个新的信息切片');
     expect(prompt).toContain('（暂无其它张）');
   });
+
+  it('带产品资料时在商业分析后插入【产品资料】段', () => {
+    const prompt = buildRewriteCardPrompt({
+      kind: 'mainImage',
+      themeId: 'product',
+      draft: '突出哑光质感',
+      otherCards: [],
+      analysisText: '保温杯，主打便携。',
+      productDocumentsText: '容量 500ml，品牌 凡域。',
+    });
+
+    expect(prompt).toContain('【商业分析】\n保温杯，主打便携。');
+    expect(prompt).toContain('【产品资料】\n容量 500ml，品牌 凡域。');
+    expect(prompt.indexOf('【商业分析】')).toBeLessThan(prompt.indexOf('【产品资料】'));
+  });
+
+  it('无产品资料时不出现【产品资料】段', () => {
+    const prompt = buildRewriteCardPrompt({
+      kind: 'mainImage',
+      themeId: 'product',
+      draft: '',
+      otherCards: [],
+      analysisText: '保温杯，主打便携。',
+    });
+
+    expect(prompt).not.toContain('【产品资料】');
+  });
 });
 
 describe('buildRewriteCardInstructions', () => {

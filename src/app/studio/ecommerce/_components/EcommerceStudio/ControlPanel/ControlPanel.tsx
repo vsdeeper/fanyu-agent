@@ -32,6 +32,7 @@ type ControlPanelProps = {
   taskType: EcommerceTaskType;
   images: ProductImageItem[];
   documents: ProductDocItem[];
+  productDocs: ProductDocItem[];
   modelImages: ProductImageItem[];
   form: StudioFormState;
   designForm: DesignFormState;
@@ -44,6 +45,8 @@ type ControlPanelProps = {
   onImageRemove: (uid: string) => void;
   onDocsAppend: (files: File[]) => void;
   onDocRemove: (uid: string) => void;
+  onProductDocsAppend: (files: File[]) => void;
+  onProductDocRemove: (uid: string) => void;
   onModelImagesAppend: (files: File[]) => void;
   onModelImageRemove: (uid: string) => void;
   onFormChange: (next: StudioFormState) => void;
@@ -60,6 +63,7 @@ export default function ControlPanel({
   taskType,
   images,
   documents,
+  productDocs,
   modelImages,
   form,
   designForm,
@@ -72,6 +76,8 @@ export default function ControlPanel({
   onImageRemove,
   onDocsAppend,
   onDocRemove,
+  onProductDocsAppend,
+  onProductDocRemove,
   onModelImagesAppend,
   onModelImageRemove,
   onFormChange,
@@ -88,6 +94,7 @@ export default function ControlPanel({
   const showDesignForm = isDesignPhase(phase);
   const poster = isPosterTask(taskType);
   const themePlan = isThemePlanTask(taskType);
+  const mainImage = isMainImageTask(taskType);
   const analyzeDisabled = themePlan ? documents.length === 0 : images.length === 0;
 
   const handleVisualSpecChange = (next: StudioSpecFields) => {
@@ -96,7 +103,7 @@ export default function ControlPanel({
 
   const designButton = isDetailImageTask(taskType)
     ? DETAIL_IMAGE_BUTTON
-    : isMainImageTask(taskType)
+    : mainImage
       ? MAIN_IMAGE_BUTTON
       : poster
         ? POSTER_BUTTON
@@ -106,16 +113,26 @@ export default function ControlPanel({
     <aside className={styles.panel}>
       <div className={styles.scroll}>
         {showAnalyzeForm && themePlan ? (
-          <ProductDocsUpload
-            documents={documents}
-            disabled={formLocked}
-            max={1}
-            label="商业分析"
-            hint="上传商业分析 TXT / MD"
-            ariaLabel="上传商业分析"
-            onAppend={onDocsAppend}
-            onRemove={onDocRemove}
-          />
+          <>
+            {mainImage ? (
+              <ProductDocsUpload
+                documents={productDocs}
+                disabled={formLocked}
+                onAppend={onProductDocsAppend}
+                onRemove={onProductDocRemove}
+              />
+            ) : null}
+            <ProductDocsUpload
+              documents={documents}
+              disabled={formLocked}
+              max={1}
+              label="商业分析"
+              hint="上传商业分析 TXT / MD"
+              ariaLabel="上传商业分析"
+              onAppend={onDocsAppend}
+              onRemove={onDocRemove}
+            />
+          </>
         ) : showAnalyzeForm ? (
           <AnalyzeForm
             images={images}

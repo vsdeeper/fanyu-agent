@@ -60,7 +60,7 @@ export function rewriteCardTemperature(draft: string): number {
 }
 
 /**
- * 组装帮写用户 prompt：本卡/本屏职责、商业分析、其它卡互斥、草稿或随机指令。
+ * 组装帮写用户 prompt：本卡/本屏职责、商业分析、可选产品资料、其它卡互斥、草稿或随机指令。
  */
 export function buildRewriteCardPrompt(input: {
   kind: RewriteCardKind;
@@ -68,6 +68,7 @@ export function buildRewriteCardPrompt(input: {
   draft: string;
   otherCards: RewriteCardPeer[];
   analysisText: string;
+  productDocumentsText?: string;
 }): string {
   const { kind } = input;
   const wording = PROMPT_BY_KIND[kind];
@@ -92,10 +93,12 @@ export function buildRewriteCardPrompt(input: {
     ? ['【用户草稿】请据此扩写或润色成统一格式，保留用户意图，不要另起无关主题。', draft].join('\n')
     : wording.randomLabel;
 
+  const productDocsText = input.productDocumentsText?.trim();
   return [
     `${wording.currentLabel}${title}`,
     `${wording.dutyLabel}${duty}`,
     `【商业分析】\n${input.analysisText.trim()}`,
+    ...(productDocsText ? [`【产品资料】\n${productDocsText}`] : []),
     `${wording.peersLabel}\n${peerBlock}`,
     draftBlock,
     wording.formatSample,

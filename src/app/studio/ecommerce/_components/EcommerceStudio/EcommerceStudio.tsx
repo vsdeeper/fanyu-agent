@@ -127,6 +127,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         ? (initialVisual?.documents ?? [])
         : (initialAnalysis?.documents ?? []),
   );
+  // 主图任务专用的补充产品资料；documents 恒为商业分析，两组不可混用
+  const [productDocs, setProductDocs] = useState<ProductDocItem[]>(
+    initialAnalysis?.productDocs ?? [],
+  );
   const [form, setForm] = useState<StudioFormState>(initialVisual?.form ?? DEFAULT_FORM_STATE);
   const [designForm, setDesignForm] = useState<DesignFormState>(() => {
     const base = initialDesign?.form ?? createDefaultDesignForm(task.taskType);
@@ -175,6 +179,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
   const imagesRef = useRef(images);
   const documentsRef = useRef(documents);
+  const productDocsRef = useRef(productDocs);
   const modelImagesRef = useRef(modelImages);
   const abortRef = useRef<AbortController | null>(null);
   // 标记本会话是否重跑过分析：仅此时提交才使旧下游视觉/设计失效，避免「打开已有任务直接下一步」误删
@@ -198,6 +203,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
   }, [documents]);
 
   useEffect(() => {
+    productDocsRef.current = productDocs;
+  }, [productDocs]);
+
+  useEffect(() => {
     modelImagesRef.current = modelImages;
   }, [modelImages]);
 
@@ -208,6 +217,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       revokeProductImageUrls(imagesRef.current);
       revokeProductImageUrls(modelImagesRef.current);
       revokeProductDocUrls(documentsRef.current);
+      revokeProductDocUrls(productDocsRef.current);
     };
   }, [analysisBuffer]);
 
@@ -244,6 +254,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
           ? {
               planCards: extras?.planCards ?? planCards,
               selectedThemeIds: extras?.selectedThemeIds ?? selectedThemeIds,
+              ...(mainImage ? { productDocs: productDocsRef.current } : {}),
             }
           : undefined,
       );
@@ -252,11 +263,22 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       lastSnapshotsRef.current.analysis = saved;
       if (!themePlan) setImages(saved.images);
       setDocuments(saved.documents);
+      if (saved.productDocs) setProductDocs(saved.productDocs);
       setAnalysisText(saved.analysisText);
       if (saved.planCards) setPlanCards(saved.planCards);
       if (saved.selectedThemeIds) setSelectedThemeIds(saved.selectedThemeIds);
     },
-    [themePlan, planCards, selectedThemeIds, task.id, setImages, setDocuments, setAnalysisText],
+    [
+      themePlan,
+      mainImage,
+      planCards,
+      selectedThemeIds,
+      task.id,
+      setImages,
+      setDocuments,
+      setProductDocs,
+      setAnalysisText,
+    ],
   );
 
   const persistVisualStep = useCallback(
@@ -361,7 +383,11 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     }
     try {
       const payload = themePlan
-        ? await toThemeAnalyzePayload(documents, detailImage ? 'detailImage' : 'mainImage')
+        ? await toThemeAnalyzePayload(
+            documents,
+            detailImage ? 'detailImage' : 'mainImage',
+            mainImage ? productDocs : [],
+          )
         : await toAnalyzePayload(images, documents);
       const res = await fetch(
         themePlan ? '/api/studio/ecommerce/analyze' : '/api/studio/business-analysis/analyze',
@@ -438,8 +464,10 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     detailImage,
     documents,
     images,
+    mainImage,
     message,
     persistAnalysisStep,
+    productDocs,
     setModelImages,
     setPhase,
     themePlan,
@@ -534,6 +562,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     }
     const selectedCards = planCards.filter((card) => selectedThemeIds.includes(card.themeId));
     let analysisFromDocs = '';
+    let productDocsText = '';
     if (themePlan) {
       if (selectedCards.length === 0) {
         message.warning(THEME_SELECT_MISSING);
@@ -544,6 +573,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         message.warning(ANALYSIS_UPLOAD_MISSING);
         return;
       }
+      productDocsText =
+        mainImage && productDocs.length > 0 ? await readProductDocsAsText(productDocs) : '';
     } else if (!analysisText.trim()) {
       message.warning(ANALYSIS_MISSING);
       return;
@@ -609,6 +640,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
               analysisFromDocs,
               selectedCards,
               images,
+              productDocsText,
             )
         : await toDesignGeneratePayload(
             nextDesignForm,
@@ -686,6 +718,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     persistDesignStep,
     planCards,
     poster,
+    productDocs,
     referenceImageIndex,
     selectedThemeIds,
     selectedVisualIndex,
@@ -726,6 +759,21 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       if (poster) setAnalysisText('');
     },
     [poster, setDocuments, setAnalysisText],
+  );
+
+  // 主图专用补充资料：不受 singleDoc 限制，用组件默认上限
+  const handleProductDocsAppend = useCallback(
+    (files: File[]) => {
+      setProductDocs((current) => appendProductDocs(current, files));
+    },
+    [setProductDocs],
+  );
+
+  const handleProductDocRemove = useCallback(
+    (uid: string) => {
+      setProductDocs((current) => removeProductDoc(current, uid));
+    },
+    [setProductDocs],
   );
 
   const handleModelImagesAppend = useCallback(
@@ -908,6 +956,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         message.warning(ANALYSIS_UPLOAD_MISSING);
         return '';
       }
+      const productDocumentsText =
+        mainImage && productDocs.length > 0 ? await readProductDocsAsText(productDocs) : '';
       const data = await apiPost<RewriteCardResult>('/api/studio/ecommerce/rewrite-card', {
         kind: detailImage ? 'detailImage' : 'mainImage',
         themeId,
@@ -920,10 +970,13 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
             requirement: card.requirement,
           })),
         analysisText: analysisFromDocs,
+        ...(productDocumentsText.trim()
+          ? { productDocumentsText: productDocumentsText.trim() }
+          : {}),
       });
       return data.requirement;
     },
-    [detailImage, documents, message, planCards],
+    [detailImage, documents, mainImage, message, planCards, productDocs],
   );
 
   return (
@@ -974,6 +1027,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 taskType={task.taskType}
                 images={images}
                 documents={documents}
+                productDocs={productDocs}
                 modelImages={modelImages}
                 form={form}
                 designForm={designForm}
@@ -990,6 +1044,8 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
                 onImageRemove={handleImageRemove}
                 onDocsAppend={handleDocsAppend}
                 onDocRemove={handleDocRemove}
+                onProductDocsAppend={handleProductDocsAppend}
+                onProductDocRemove={handleProductDocRemove}
                 onModelImagesAppend={handleModelImagesAppend}
                 onModelImageRemove={handleModelImageRemove}
                 onFormChange={setForm}

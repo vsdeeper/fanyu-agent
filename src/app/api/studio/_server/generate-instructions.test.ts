@@ -139,6 +139,29 @@ describe('电商生图指令', () => {
     expect(prompt).not.toContain('主标题：');
   });
 
+  it('主图带产品资料时叠加【产品资料】段与事实优先级', () => {
+    const prompt = buildMainImagePrompt(
+      '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
+      '目标人群偏好冷白',
+      '容量 500ml，品牌 凡域',
+    );
+
+    expect(prompt).toContain('【商业分析】\n目标人群偏好冷白');
+    expect(prompt).toContain('【产品资料】\n容量 500ml，品牌 凡域');
+    expect(prompt).toContain('第一手产品事实以【产品资料】为准，缺失时以【商业分析】为准');
+    expect(prompt.indexOf('【商业分析】')).toBeLessThan(prompt.indexOf('【产品资料】'));
+    expect(prompt.indexOf('【产品资料】')).toBeLessThan(prompt.indexOf('\n【本张主题卡】\n'));
+  });
+
+  it('主图无产品资料时不出现【产品资料】段', () => {
+    const prompt = buildMainImagePrompt(
+      '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
+      '目标人群偏好冷白',
+    );
+
+    expect(prompt).not.toContain('【产品资料】');
+  });
+
   it('详情图有上一屏时标明参考图角色、当前屏主题卡与连贯句', () => {
     const prompt = buildDetailImagePrompt(
       '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
@@ -504,6 +527,19 @@ describe('电商主图请求契约', () => {
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, productViewImages: [] })).toBeNull();
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: ' ' })).toBeNull();
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, requirements: [] })).toBeNull();
+  });
+
+  it('可附带产品资料正文，缺省为 undefined', () => {
+    const withDocs = { ...BASE_MAIN_IMAGE_REQUEST, productDocumentsText: '容量 500ml' };
+    const parsed = parseGenerateBody(withDocs);
+    expect(parsed && parsed.kind === 'mainImage' ? parsed.productDocumentsText : '').toBe(
+      '容量 500ml',
+    );
+
+    const withoutDocs = parseGenerateBody(BASE_MAIN_IMAGE_REQUEST);
+    expect(
+      withoutDocs && withoutDocs.kind === 'mainImage' ? withoutDocs.productDocumentsText : '',
+    ).toBeUndefined();
   });
 });
 
