@@ -178,7 +178,7 @@ export default function ResultPanel({
               onToggleTheme={onToggleTheme ?? (() => undefined)}
               onCardSave={onPlanCardSave ?? (() => undefined)}
               onEditingChange={setPlanEditing}
-              onAiAssist={detailImage ? onPlanCardAiAssist : undefined}
+              onAiAssist={themePlan ? onPlanCardAiAssist : undefined}
             />
           </div>
         </div>

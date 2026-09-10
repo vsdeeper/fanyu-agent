@@ -909,6 +909,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         return '';
       }
       const data = await apiPost<RewriteCardResult>('/api/studio/ecommerce/rewrite-card', {
+        kind: detailImage ? 'detailImage' : 'mainImage',
         themeId,
         draft,
         otherCards: planCards
@@ -922,7 +923,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       });
       return data.requirement;
     },
-    [documents, message, planCards],
+    [detailImage, documents, message, planCards],
   );
 
   return (

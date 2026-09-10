@@ -113,19 +113,20 @@ describe('电商生图指令', () => {
     expect(prompt).not.toContain('显著小于画面主视觉');
   });
 
-  it('电商主图以商业分析定气质、本张主题卡定文案与拍摄场景', () => {
+  it('电商主图以商业分析定气质、本张主题卡定文案与拍法', () => {
     const prompt = buildMainImagePrompt(
-      '主标题：午后书桌清凉\n拍摄场景：真实书房全景，午后窗光。',
+      '设计目标：一眼记住哑光金属机身与轻巧体量。\n展示重点：\n- 正视特写整机轮廓，突出冷白金属壳\n- 书房书桌近景，午后窗光侧打，留白构图',
       '目标人群偏好冷白，Logo 克制',
     );
 
     expect(prompt).toContain(
-      '【本张主题卡】\n主标题：午后书桌清凉\n拍摄场景：真实书房全景，午后窗光。',
+      '【本张主题卡】\n设计目标：一眼记住哑光金属机身与轻巧体量。\n展示重点：\n- 正视特写整机轮廓，突出冷白金属壳\n- 书房书桌近景，午后窗光侧打，留白构图',
     );
     expect(prompt).toContain('【商业分析】\n目标人群偏好冷白，Logo 克制');
     expect(prompt).not.toContain('【套图视觉规范】');
-    expect(prompt).toContain('以【本张主题卡】中的拍摄场景为准');
-    expect(prompt).toContain('禁止把拍摄场景说明写进画面文字');
+    expect(prompt).toContain('以【本张主题卡】的展示重点为准');
+    expect(prompt).toContain('画面文案只来自【本张主题卡】设计目标可转化的短句与展示重点');
+    expect(prompt).toContain('禁止把拍摄写法说明当文字写进画面');
     expect(prompt).toContain('电影感定向光');
     expect(prompt).toContain('简洁、清晰、易读');
     expect(prompt).not.toContain('必要时辅以 3～5 条卖点要点');
@@ -134,7 +135,8 @@ describe('电商生图指令', () => {
     expect(prompt).toContain('产品必须稳定放置在场景中的支撑面');
     expect(prompt).toContain('主图不允许悬浮创意');
     expect(prompt).toContain('字体家族、文案配色必须整套遵守【商业分析】');
-    expect(prompt).toContain('构图、光影、场景与道具以本张拍摄场景为准');
+    expect(prompt).toContain('构图、光影、场景与道具以本张展示重点为准');
+    expect(prompt).not.toContain('主标题：');
   });
 
   it('详情图有上一屏时标明参考图角色、当前屏主题卡与连贯句', () => {

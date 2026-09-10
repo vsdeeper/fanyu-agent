@@ -42,7 +42,7 @@ function buildAnalyzePrompt(kind: EcommerceAnalyzeKind, documentsText: string): 
     ].join('\n');
   }
   return [
-    '【主图分析】请按指令输出五个互斥主题卡，每张含文案与互斥拍摄场景。本轮不要出图。',
+    '【主图分析】请按指令输出五个互斥主题卡，每张含设计目标与展示重点，五张互斥。本轮不要出图。',
     `- 商业分析：${documentsText}`,
   ].join('\n');
 }

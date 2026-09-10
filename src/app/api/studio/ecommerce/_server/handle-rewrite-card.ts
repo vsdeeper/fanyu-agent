@@ -20,7 +20,7 @@ import {
 } from './rewrite-card-prompt';
 
 /**
- * POST /api/studio/ecommerce/rewrite-card：按草稿润色或按商业分析随机生成一屏主题卡正文。
+ * POST /api/studio/ecommerce/rewrite-card：按草稿润色或按商业分析随机生成一卡（主图）或一屏（详情图）主题卡正文。
  */
 export async function handleRewriteCard(req: Request): Promise<Response> {
   let json: unknown;
@@ -54,8 +54,9 @@ export async function handleRewriteCard(req: Request): Promise<Response> {
 
     const result = await generateText({
       model: runtime.getMainModel(getModelId(provider, 'lite')),
-      instructions: buildRewriteCardInstructions(body.themeId),
+      instructions: buildRewriteCardInstructions(body.kind, body.themeId),
       prompt: buildRewriteCardPrompt({
+        kind: body.kind,
         themeId: body.themeId,
         draft: body.draft,
         otherCards,
