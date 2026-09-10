@@ -22,8 +22,8 @@ export const JOB_STALE_MS = 15 * 60 * 1000;
 /** 单任务保留的作业行上限，超出按创建时间删除最旧的 */
 export const JOB_HISTORY_LIMIT = 20;
 
-/** 轮询间隔：出图事件数十秒才变一次，1s 足够 */
-export const JOB_POLL_INTERVAL_MS = 1000;
+/** 轮询间隔：出图事件数十秒才变一次，3s 足够 */
+export const JOB_POLL_INTERVAL_MS = 3000;
 
 /** 列表页存在运行中作业时的自动刷新间隔 */
 export const TASK_LIST_RUNNING_REFRESH_MS = 5000;
