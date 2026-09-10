@@ -3,8 +3,9 @@
  * 手动镜像同步本地数据目录（会话 chats + 工作室 studio，本地 ↔ 云盘）。
  * push：CHAT_STORE_DIR 与同级 studio → CHAT_SYNC_REMOTE_DIR 与同级 studio
  * pull：CHAT_SYNC_REMOTE_DIR 与同级 studio → 本地
+ * --yes：跳过 pull 确认与风险中止（风险清单仍会打印）
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { spawnSync } from 'child_process';
 import { createInterface } from 'readline';
@@ -49,13 +50,44 @@ function siblingStudioDir(chatsDir) {
   return join(dirname(chatsDir), 'studio');
 }
 
-/** 若存在 WAL 文件则提示先关闭应用 */
-function warnWal(dir) {
-  const wal = join(dir, 'chats.db-wal');
-  const shm = join(dir, 'chats.db-shm');
-  if (existsSync(wal) || existsSync(shm)) {
-    console.warn(`⚠ 检测到 ${dir} 下有 chats.db-wal/shm，建议先关闭应用再同步。`);
+/** 应用在跑时会话库带 WAL 副档；此时镜像等于在连接底下换库 */
+function hasWal(dir) {
+  return existsSync(join(dir, 'chats.db-wal')) || existsSync(join(dir, 'chats.db-shm'));
+}
+
+/** 会话库摘要（路径、修改时间、大小），供 pull 覆盖前核对两侧差异 */
+function describeDb(dir) {
+  const dbPath = join(dir, 'chats.db');
+  if (!existsSync(dbPath)) return `${dbPath}（不存在）`;
+  const stat = statSync(dbPath);
+  return `${dbPath}（${stat.mtime.toLocaleString()}，${(stat.size / 1024 / 1024).toFixed(1)}MB）`;
+}
+
+/**
+ * 收集本次同步的风险：DB 是会话与资产的引用方，库正在写入或资产目录缺失时同步，
+ * 只会得到「有记录、无文件」的资产 404，且要到之后访问任务时才暴露。
+ */
+function collectSyncRisks({ direction, localChats, remoteChats, localStudio, remoteStudio }) {
+  const risks = [];
+  if (hasWal(localChats)) {
+    risks.push(`本地会话库存在 chats.db-wal/shm（应用可能正在运行）: ${localChats}`);
   }
+  if (direction === 'pull') {
+    if (hasWal(remoteChats)) {
+      risks.push(`云盘会话库存在 chats.db-wal/shm（上次未关闭应用就同步）: ${remoteChats}`);
+    }
+    if (!existsSync(remoteStudio)) {
+      risks.push(
+        `云盘缺少工作室资产目录 ${remoteStudio}：pull 会把本地 DB 换成远端版本，资产文件不会跟着回来，之后任务资产会 404`,
+      );
+    }
+  }
+  if (direction === 'push' && !existsSync(localStudio)) {
+    risks.push(
+      `本地缺少工作室资产目录 ${localStudio}：只备份 DB 会让对端出现「有记录、无文件」的资产 404`,
+    );
+  }
+  return risks;
 }
 
 /** pull 前交互确认（--yes 跳过） */
@@ -131,8 +163,6 @@ function mirror(src, dest, { required, label }) {
     return;
   }
   console.log(`镜像同步 ${label}: ${src} → ${dest}`);
-  warnWal(src);
-  warnWal(dest);
   if (process.platform === 'win32') {
     mirrorWithRobocopy(src, dest);
   } else {
@@ -148,6 +178,7 @@ async function main() {
     console.error('用法: node scripts/sync-data.mjs <push|pull> [--yes]');
     console.error('  push  本地 → 云盘（chats 与同级 studio）');
     console.error('  pull  云盘 → 本地（chats 与同级 studio）');
+    console.error('  --yes 跳过确认与风险中止（检测到 WAL 或资产目录缺失时会默认中止）');
     process.exit(1);
   }
 
@@ -155,6 +186,23 @@ async function main() {
   const remoteChats = getRemoteChatsDir();
   const localStudio = siblingStudioDir(localChats);
   const remoteStudio = siblingStudioDir(remoteChats);
+
+  const risks = collectSyncRisks({
+    direction,
+    localChats,
+    remoteChats,
+    localStudio,
+    remoteStudio,
+  });
+  if (risks.length > 0) {
+    console.warn('⚠ 检测到同步风险：');
+    for (const risk of risks) console.warn(`  - ${risk}`);
+    if (!process.argv.includes('--yes')) {
+      console.error('已中止，未改动任何数据。建议先关闭应用、确认资产目录齐备后重跑。');
+      process.exit(1);
+    }
+    console.warn('已指定 --yes，按上述风险继续同步。');
+  }
 
   if (direction === 'push') {
     mirror(localChats, remoteChats, { required: true, label: 'chats' });
@@ -166,6 +214,8 @@ async function main() {
   console.log(
     `即将从云盘拉取并覆盖本地: ${remoteChats} → ${localChats}，以及 ${remoteStudio} → ${localStudio}`,
   );
+  console.log(`  云盘侧: ${describeDb(remoteChats)}`);
+  console.log(`  本地侧: ${describeDb(localChats)}`);
   const ok = await confirmPull(localChats, localStudio);
   if (!ok) {
     console.log('已取消。');
