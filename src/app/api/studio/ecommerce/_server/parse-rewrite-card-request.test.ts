@@ -49,6 +49,15 @@ describe('parseRewriteCardBody', () => {
     ).toBeUndefined();
   });
 
+  it('详情图接受 productDocumentsText，缺省为 undefined', () => {
+    const withDocs = { ...VALID, productDocumentsText: '容量 500ml，品牌 凡域。' };
+    expect(parseRewriteCardBody(withDocs)).toEqual(withDocs);
+    const parsed = parseRewriteCardBody(VALID);
+    expect(
+      parsed && parsed.kind === 'detailImage' ? parsed.productDocumentsText : 'x',
+    ).toBeUndefined();
+  });
+
   it('缺 kind 被拒', () => {
     expect(
       parseRewriteCardBody({

@@ -145,6 +145,7 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
                   body.analysisText,
                   productImageCount,
                   hasPreviousScreen,
+                  body.productDocumentsText,
                 )
               : buildMainImagePrompt(
                   item.requirement,

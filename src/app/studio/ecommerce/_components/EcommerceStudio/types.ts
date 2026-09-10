@@ -53,7 +53,7 @@ export type DesignResultGroups = Partial<Record<EcommerceTaskType, StudioResultI
 export type AnalysisStepSnapshot = {
   images: ProductImageItem[];
   documents: ProductDocItem[];
-  /** 主图任务的补充产品资料（TXT / MD）；documents 恒为商业分析文档，两组不可混用 */
+  /** 主图 / 详情图任务的补充产品资料（TXT / MD）；documents 恒为商业分析文档，两组不可混用 */
   productDocs?: ProductDocItem[];
   analysisText: string;
   planCards?: ThemePlanCard[];

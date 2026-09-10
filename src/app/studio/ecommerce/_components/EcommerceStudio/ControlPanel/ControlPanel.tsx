@@ -114,14 +114,12 @@ export default function ControlPanel({
       <div className={styles.scroll}>
         {showAnalyzeForm && themePlan ? (
           <>
-            {mainImage ? (
-              <ProductDocsUpload
-                documents={productDocs}
-                disabled={formLocked}
-                onAppend={onProductDocsAppend}
-                onRemove={onProductDocRemove}
-              />
-            ) : null}
+            <ProductDocsUpload
+              documents={productDocs}
+              disabled={formLocked}
+              onAppend={onProductDocsAppend}
+              onRemove={onProductDocRemove}
+            />
             <ProductDocsUpload
               documents={documents}
               disabled={formLocked}

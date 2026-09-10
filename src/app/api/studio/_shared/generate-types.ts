@@ -88,11 +88,13 @@ export type StudioMainImageGenerateRequest = StudioGenerateBase & {
   productViewImages: StudioImageInput[];
 };
 
-/** 电商详情图：规格 + 商业分析 + 当前屏主题卡 + 产品精修图 + 可选上一屏 */
+/** 电商详情图：规格 + 商业分析 + 可选产品资料正文 + 当前屏主题卡 + 产品精修图 + 可选上一屏 */
 export type StudioDetailImageGenerateRequest = StudioGenerateBase & {
   kind: 'detailImage';
   count: number;
   analysisText: string;
+  /** 补充产品资料正文（第一手产品事实，优先于商业分析）；未上传时省略 */
+  productDocumentsText?: string;
   requirements: Array<{
     themeId: string;
     title: string;

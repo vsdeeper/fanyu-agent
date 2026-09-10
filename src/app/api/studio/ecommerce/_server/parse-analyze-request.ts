@@ -18,7 +18,7 @@ const analyzeKindSchema = z.enum(['mainImage', 'detailImage']);
 const analyzeBodySchema = z.object({
   kind: analyzeKindSchema.optional().default('mainImage'),
   documents: z.array(documentInputSchema).min(1).max(MAX_STUDIO_PRODUCT_DOCS),
-  // 主图任务的补充产品资料；documents 恒为商业分析文档，两组不可混用
+  // 主图 / 详情图任务的补充产品资料；documents 恒为商业分析文档，两组不可混用
   productDocuments: z.array(documentInputSchema).max(MAX_STUDIO_PRODUCT_DOCS).optional(),
 });
 

@@ -3,7 +3,7 @@ import 'server-only';
 import type { EcommerceAnalyzeKind } from './parse-analyze-request';
 
 /**
- * 把商业分析与可选产品资料拼成 streamText 的用户 prompt；产品资料段仅在非空时追加（当前仅主图任务会传）。
+ * 把商业分析与可选产品资料拼成 streamText 的用户 prompt；产品资料段仅在非空时追加。
  */
 export function buildAnalyzePrompt(
   kind: EcommerceAnalyzeKind,

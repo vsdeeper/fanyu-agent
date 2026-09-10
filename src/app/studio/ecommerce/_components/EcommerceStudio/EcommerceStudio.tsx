@@ -127,7 +127,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         ? (initialVisual?.documents ?? [])
         : (initialAnalysis?.documents ?? []),
   );
-  // 主图任务专用的补充产品资料；documents 恒为商业分析，两组不可混用
+  // 主图 / 详情图任务共用的补充产品资料；documents 恒为商业分析，两组不可混用
   const [productDocs, setProductDocs] = useState<ProductDocItem[]>(
     initialAnalysis?.productDocs ?? [],
   );
@@ -254,7 +254,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
           ? {
               planCards: extras?.planCards ?? planCards,
               selectedThemeIds: extras?.selectedThemeIds ?? selectedThemeIds,
-              ...(mainImage ? { productDocs: productDocsRef.current } : {}),
+              productDocs: productDocsRef.current,
             }
           : undefined,
       );
@@ -270,7 +270,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     },
     [
       themePlan,
-      mainImage,
       planCards,
       selectedThemeIds,
       task.id,
@@ -386,7 +385,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         ? await toThemeAnalyzePayload(
             documents,
             detailImage ? 'detailImage' : 'mainImage',
-            mainImage ? productDocs : [],
+            productDocs,
           )
         : await toAnalyzePayload(images, documents);
       const res = await fetch(
@@ -464,7 +463,6 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     detailImage,
     documents,
     images,
-    mainImage,
     message,
     persistAnalysisStep,
     productDocs,
@@ -573,8 +571,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         message.warning(ANALYSIS_UPLOAD_MISSING);
         return;
       }
-      productDocsText =
-        mainImage && productDocs.length > 0 ? await readProductDocsAsText(productDocs) : '';
+      productDocsText = productDocs.length > 0 ? await readProductDocsAsText(productDocs) : '';
     } else if (!analysisText.trim()) {
       message.warning(ANALYSIS_MISSING);
       return;
@@ -634,6 +631,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
               selectedCards,
               images,
               previousScreenDataUrl,
+              productDocsText,
             )
           : await toMainImageGeneratePayload(
               nextDesignForm,
@@ -761,7 +759,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
     [poster, setDocuments, setAnalysisText],
   );
 
-  // 主图专用补充资料：不受 singleDoc 限制，用组件默认上限
+  // 主图 / 详情图共用补充资料：不受 singleDoc 限制，用组件默认上限
   const handleProductDocsAppend = useCallback(
     (files: File[]) => {
       setProductDocs((current) => appendProductDocs(current, files));
@@ -957,7 +955,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
         return '';
       }
       const productDocumentsText =
-        mainImage && productDocs.length > 0 ? await readProductDocsAsText(productDocs) : '';
+        productDocs.length > 0 ? await readProductDocsAsText(productDocs) : '';
       const data = await apiPost<RewriteCardResult>('/api/studio/ecommerce/rewrite-card', {
         kind: detailImage ? 'detailImage' : 'mainImage',
         themeId,
@@ -976,7 +974,7 @@ export default function EcommerceStudio({ task }: EcommerceStudioProps) {
       });
       return data.requirement;
     },
-    [detailImage, documents, mainImage, message, planCards, productDocs],
+    [detailImage, documents, message, planCards, productDocs],
   );
 
   return (

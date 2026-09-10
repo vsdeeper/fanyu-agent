@@ -61,7 +61,7 @@ export async function handleRewriteCard(req: Request): Promise<Response> {
         draft: body.draft,
         otherCards,
         analysisText,
-        ...(body.kind === 'mainImage' ? { productDocumentsText: body.productDocumentsText } : {}),
+        productDocumentsText: body.productDocumentsText,
       }),
       temperature: rewriteCardTemperature(body.draft),
       maxOutputTokens: 1024,

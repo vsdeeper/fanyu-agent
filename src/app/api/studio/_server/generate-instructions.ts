@@ -93,14 +93,16 @@ export function buildMainImagePrompt(
 }
 
 /**
- * 电商详情图出站 prompt：商业分析定整套气质，当前屏主题卡定本张内容；精修图为产品事实。
+ * 电商详情图出站 prompt：商业分析定整套气质，可选产品资料定第一手产品事实，当前屏主题卡定本张内容；精修图为产品事实。
  */
 export function buildDetailImagePrompt(
   requirement: string,
   analysisText: string,
   productImageCount: number,
   hasPreviousScreen: boolean,
+  productDocumentsText?: string,
 ): string {
+  const productDocsText = productDocumentsText?.trim();
   const productRange =
     productImageCount <= 1 ? '第1个参考图' : `第1至第${productImageCount}个参考图`;
   const previousIndex = Math.max(1, productImageCount) + 1;
@@ -122,6 +124,13 @@ export function buildDetailImagePrompt(
     '本张画面信息、文案、产品机位（角度/远近/占比）与构图切片只来自【当前屏主题卡】的设计目标与展示重点。',
     '【商业分析】',
     analysisText.trim(),
+    ...(productDocsText
+      ? [
+          '【产品资料】',
+          productDocsText,
+          '品牌、产品名与规格数值等第一手产品事实以【产品资料】为准，缺失时以【商业分析】为准。',
+        ]
+      : []),
     '【当前屏主题卡】',
     requirement.trim(),
     DETAIL_IMAGE_FRAMING_PROMPT,

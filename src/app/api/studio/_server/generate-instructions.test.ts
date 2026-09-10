@@ -199,6 +199,33 @@ describe('电商生图指令', () => {
     );
   });
 
+  it('详情图带产品资料时叠加【产品资料】段与事实优先级', () => {
+    const prompt = buildDetailImagePrompt(
+      '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
+      '目标人群偏好冷白',
+      1,
+      false,
+      '容量 500ml，品牌 凡域',
+    );
+
+    expect(prompt).toContain('【商业分析】\n目标人群偏好冷白');
+    expect(prompt).toContain('【产品资料】\n容量 500ml，品牌 凡域');
+    expect(prompt).toContain('第一手产品事实以【产品资料】为准，缺失时以【商业分析】为准');
+    expect(prompt.indexOf('【商业分析】')).toBeLessThan(prompt.indexOf('【产品资料】'));
+    expect(prompt.indexOf('【产品资料】')).toBeLessThan(prompt.indexOf('\n【当前屏主题卡】\n'));
+  });
+
+  it('详情图无产品资料时不出现【产品资料】段', () => {
+    const prompt = buildDetailImagePrompt(
+      '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
+      '目标人群偏好冷白',
+      1,
+      false,
+    );
+
+    expect(prompt).not.toContain('【产品资料】');
+  });
+
   it.each(ECOMMERCE_TASK_TYPES)('视觉设计为“%s”时包含类型要求与商业分析', (taskType) => {
     const prompt = buildDesignPrompt(taskType, '目标人群偏好暖色', true);
 

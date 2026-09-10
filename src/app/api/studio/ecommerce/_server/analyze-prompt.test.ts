@@ -29,4 +29,11 @@ describe('buildAnalyzePrompt', () => {
     expect(prompt).toContain('- 商业分析：商业分析正文');
     expect(prompt).not.toContain('- 产品资料：');
   });
+
+  it('详情图带产品资料时追加产品资料段', () => {
+    const prompt = buildAnalyzePrompt('detailImage', '商业分析正文', '产品资料正文');
+    expect(prompt).toContain('【详情图结构规划】');
+    expect(prompt).toContain('- 商业分析：商业分析正文');
+    expect(prompt).toContain('- 产品资料：产品资料正文');
+  });
 });

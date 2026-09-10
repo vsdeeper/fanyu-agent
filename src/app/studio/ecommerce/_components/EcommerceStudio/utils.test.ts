@@ -199,6 +199,40 @@ describe('视觉设计请求体', () => {
     expect(payload).not.toHaveProperty('taskType');
   });
 
+  it('详情图请求体带产品资料正文，无资料或空白串不携带', async () => {
+    const form = { ...DEFAULT_DESIGN_FORM_STATE, taskType: '详情图' as const, aspectRatio: '3:4' };
+    const requirements = [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }];
+    const productImages = [IMAGE_ITEM('p-1', 'product.png')];
+
+    const withoutProductDocs = await toDetailImageGeneratePayload(
+      form,
+      '气质冷白',
+      requirements,
+      productImages,
+    );
+    expect(withoutProductDocs).not.toHaveProperty('productDocumentsText');
+
+    const blankProductDocs = await toDetailImageGeneratePayload(
+      form,
+      '气质冷白',
+      requirements,
+      productImages,
+      undefined,
+      '   ',
+    );
+    expect(blankProductDocs).not.toHaveProperty('productDocumentsText');
+
+    const withProductDocs = await toDetailImageGeneratePayload(
+      form,
+      '气质冷白',
+      requirements,
+      productImages,
+      undefined,
+      ' 容量 500ml ',
+    );
+    expect(withProductDocs).toMatchObject({ productDocumentsText: '容量 500ml' });
+  });
+
   it('营销海报同样带入主视觉，并可附带可选模特形象', async () => {
     const payload = await toDesignGeneratePayload(
       { ...DEFAULT_DESIGN_FORM_STATE, taskType: '营销海报' },

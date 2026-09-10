@@ -12,7 +12,7 @@ export const DETAIL_IMAGE_REQUIREMENT_FORMAT = `每屏正文必须严格如下�
 export const DETAIL_IMAGE_REQUIREMENT_SAMPLE = `设计目标：建立蓝白小台扇清新亲和的品类第一印象。
 展示重点：
 - 中景展示整机全貌，正视略抬角度，完整呈现圆润轮廓与蓝白撞色
-- 风扇摆放在浅色桌面上，拍出机身的轻巧体量感和留白呼吸感
+- 风扇置于清新居家的品牌场景中，背景以质感墙面与浅色陈设铺陈，交代品牌气质与体量感
 - 观察重点在机身圆角曲线与网罩圆弧的呼应关系，不做细节切入`;
 
 export { formatThemePlanRequirement as formatDetailImageRequirement };

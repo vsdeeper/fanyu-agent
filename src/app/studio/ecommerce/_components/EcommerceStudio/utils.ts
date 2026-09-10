@@ -210,13 +210,14 @@ export async function toMainImageGeneratePayload(
   };
 }
 
-/** 详情图请求体：规格 + 商业分析 + 当前屏主题卡 + 产品精修图 + 可选上一屏 */
+/** 详情图请求体：规格 + 商业分析 + 可选产品资料正文 + 当前屏主题卡 + 产品精修图 + 可选上一屏 */
 export async function toDetailImageGeneratePayload(
   form: DesignFormState,
   analysisText: string,
   requirements: ThemePlanCard[],
   productImages: ProductImageItem[],
   previousScreenDataUrl?: string,
+  productDocumentsText?: string,
 ): Promise<StudioGenerateRequest> {
   return {
     kind: 'detailImage',
@@ -233,6 +234,7 @@ export async function toDetailImageGeneratePayload(
     })),
     productViewImages: await toAnalyzeImages(productImages),
     ...(previousScreenDataUrl ? { previousScreenDataUrl } : {}),
+    ...(productDocumentsText?.trim() ? { productDocumentsText: productDocumentsText.trim() } : {}),
   };
 }
 
