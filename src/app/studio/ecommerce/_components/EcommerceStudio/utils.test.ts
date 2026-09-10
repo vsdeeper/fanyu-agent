@@ -17,6 +17,7 @@ import {
   appendProductImages,
   applyDesignGenerateEvent,
   applyGenerateEvent,
+  createAnalysisStepSnapshot,
   createDefaultDesignForm,
   createDesignStepSnapshot,
   getGeneratedDesignGroups,
@@ -623,6 +624,43 @@ describe('步骤快照水合', () => {
 
     expect(design?.referenceImageIndex).toBe(2);
     expect(design?.selectedExportIndexes).toBeUndefined();
+  });
+
+  it('键序不同的同一份快照判为相同，数组顺序仍参与比较', () => {
+    expect(isSameStepSnapshot({ a: 1, b: 2 }, { b: 2, a: 1 })).toBe(true);
+    expect(isSameStepSnapshot({ a: [1, 2] }, { a: [2, 1] })).toBe(false);
+    expect(isSameStepSnapshot({ a: 1 }, { a: 2 })).toBe(false);
+    expect(isSameStepSnapshot({ a: 1 }, undefined)).toBe(false);
+  });
+
+  it('设计快照经落库往返后判为未变化，首次进入点下一步不触发保存', async () => {
+    const created = await createDesignStepSnapshot(
+      { ...DEFAULT_DESIGN_FORM_STATE, taskType: '主图' },
+      { 主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }] },
+      [],
+      { images: [IMAGE_ITEM('p-1', 'product.png')], referenceImageIndex: null },
+    );
+    const roundTrip = readDesignStepSnapshot(JSON.parse(JSON.stringify(created)));
+
+    expect(roundTrip).toBeDefined();
+    expect(isSameStepSnapshot(created, roundTrip)).toBe(true);
+  });
+
+  it('分析快照经落库往返后判为未变化，首次进入点下一步不触发保存', async () => {
+    const created = await createAnalysisStepSnapshot(
+      [IMAGE_ITEM('p-1', 'product.png')],
+      [],
+      '分析正文',
+      {
+        planCards: [{ themeId: 'product', title: '产品展示', requirement: '特写' }],
+        selectedThemeIds: ['product'],
+        productDocs: [],
+      },
+    );
+    const roundTrip = readAnalysisStepSnapshot(JSON.parse(JSON.stringify(created)));
+
+    expect(roundTrip).toBeDefined();
+    expect(isSameStepSnapshot(created, roundTrip)).toBe(true);
   });
 
   it('再次进入流程时按任务类型停在对应的第一步', () => {

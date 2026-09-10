@@ -399,10 +399,29 @@ export async function createAnalysisStepSnapshot(
   };
 }
 
-/** 比较两份可序列化步骤快照是否相同；无基线视为已变化。 */
+/**
+ * 比较两份可序列化步骤快照是否相同；无基线视为已变化。
+ *
+ * 不可直接用 JSON.stringify 比较：read*StepSnapshot 与 create*StepSnapshot 输出同一批键但顺序不同
+ * （如 design 的 referenceImageIndex 在 create 里排在 images 之前、在 read 里排在之后），
+ * 顺序敏感的字符串比较会把「首次进入、什么都没改」也判成已变化，白白打一次保存。
+ */
 export function isSameStepSnapshot(next: unknown, baseline: unknown): boolean {
   if (baseline === undefined) return false;
-  return JSON.stringify(next) === JSON.stringify(baseline);
+  return stableStringify(next) === stableStringify(baseline);
+}
+
+/** 与 JSON.stringify 同语义，但对象键先排序再序列化；数组保持原序（结果图的先后是有意义的）。 */
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) =>
+    item && typeof item === 'object' && !Array.isArray(item)
+      ? Object.fromEntries(
+          Object.keys(item)
+            .sort()
+            .map((key) => [key, (item as Record<string, unknown>)[key]]),
+        )
+      : item,
+  );
 }
 
 /** 保存步骤快照，并返回服务端替换资产 URL 后的数据。 */
