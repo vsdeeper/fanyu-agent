@@ -123,10 +123,32 @@ describe('buildGeneratePlan 批次展开', () => {
 
     expect(plan.map((item) => item.index)).toEqual([0, 1, 2, 3]);
     expect(plan.every((item) => item.referenceImageDataUrls.length === 1)).toBe(true);
+    expect(plan[0]?.referenceImageDataUrls).toEqual([img('a').dataUrl]);
+    expect(plan[0]?.prompt).not.toContain('【文案标准参考图】');
     // 同主题内 prompt 相同，跨主题不同
     expect(plan[0]?.prompt).toBe(plan[1]?.prompt);
     expect(plan[2]?.prompt).toBe(plan[3]?.prompt);
     expect(plan[0]?.prompt).not.toBe(plan[2]?.prompt);
+  });
+
+  it('主图带文案标准参考图时追加为参考图末位并点名序号', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'mainImage',
+      count: 1,
+      analysisText: '分析',
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [img('a'), img('b')],
+      copyStyleReferenceDataUrl: img('r').dataUrl,
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([
+      img('a').dataUrl,
+      img('b').dataUrl,
+      img('r').dataUrl,
+    ]);
+    expect(plan[0]?.prompt).toContain('第1至第2个参考图=用户上传的产品精修图');
+    expect(plan[0]?.prompt).toContain('第3个参考图（即【文案标准参考图】）');
   });
 
   it('详情图按「主题 × 数量」展开，参考图为产品图 + 上一屏', () => {

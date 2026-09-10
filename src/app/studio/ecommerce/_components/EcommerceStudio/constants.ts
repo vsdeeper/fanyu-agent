@@ -71,6 +71,8 @@ export const RESULT_TITLE_DETAIL_IMAGE = '详情图设计';
 export const RESULT_TITLE_POSTER = '营销海报';
 export const VISUAL_STANDARD_BADGE = '视觉标准';
 export const PREVIOUS_SCREEN_BADGE = '上一屏';
+/** 主图步点选成品作参考后的徽标：只锁画面文案的字体与配色，与主视觉步的「视觉标准」（整体风格）区分 */
+export const COPY_STANDARD_BADGE = '文案标准';
 export const DETAIL_IMAGE_RESULT_MISSING = '请先生成至少一张详情图';
 export const EXPORT_SELECT_MISSING = '请先点选要导出的详情图';
 export const MAX_MODEL_IMAGES = 1;

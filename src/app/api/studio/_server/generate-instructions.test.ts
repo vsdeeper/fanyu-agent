@@ -3,7 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 
 import { ECOMMERCE_TASK_TYPES } from '@/app/api/studio/ecommerce/_shared/task-constants';
-import { DETAIL_IMAGE_CONTINUITY_PROMPT } from './constants';
+import {
+  DETAIL_IMAGE_CONTINUITY_PROMPT,
+  MAIN_IMAGE_COPY_REFERENCE_PROMPT,
+  MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
+  MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT,
+} from './constants';
 import {
   buildDesignPrompt,
   buildDetailImagePrompt,
@@ -117,6 +122,8 @@ describe('电商生图指令', () => {
     const prompt = buildMainImagePrompt(
       '设计目标：一眼记住哑光金属机身与轻巧体量。\n展示重点：\n- 正视特写整机轮廓，突出冷白金属壳\n- 书房书桌近景，午后窗光侧打，留白构图',
       '目标人群偏好冷白，Logo 克制',
+      1,
+      false,
     );
 
     expect(prompt).toContain(
@@ -134,7 +141,9 @@ describe('电商生图指令', () => {
     expect(prompt).not.toContain('已选营销主视觉');
     expect(prompt).toContain('产品必须稳定放置在场景中的支撑面');
     expect(prompt).toContain('主图不允许悬浮创意');
-    expect(prompt).toContain('字体家族、文案配色必须整套遵守【商业分析】');
+    expect(prompt).toContain('字体家族、文案配色必须整套统一');
+    expect(prompt).not.toContain('【商业分析】里的字体与文案配色');
+    expect(prompt).not.toContain('【文案标准参考图】');
     expect(prompt).toContain('构图、光影、场景与道具以本张展示重点为准');
     expect(prompt).not.toContain('主标题：');
   });
@@ -143,6 +152,8 @@ describe('电商生图指令', () => {
     const prompt = buildMainImagePrompt(
       '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
       '目标人群偏好冷白',
+      1,
+      false,
       '容量 500ml，品牌 凡域',
     );
 
@@ -157,9 +168,66 @@ describe('电商生图指令', () => {
     const prompt = buildMainImagePrompt(
       '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
       '目标人群偏好冷白',
+      1,
+      false,
     );
 
     expect(prompt).not.toContain('【产品资料】');
+  });
+
+  it('主图点选文案标准参考图后按序号点名，且只锁文案字体与配色', () => {
+    const prompt = buildMainImagePrompt(
+      '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
+      '目标人群偏好冷白',
+      2,
+      true,
+    );
+
+    expect(prompt).toContain('第1至第2个参考图=用户上传的产品精修图');
+    expect(prompt).toContain('第3个参考图（即【文案标准参考图】）');
+    expect(prompt).toContain(MAIN_IMAGE_COPY_REFERENCE_PROMPT);
+    expect(prompt).toContain(MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT);
+    expect(prompt).not.toContain(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT);
+    expect(prompt).toContain('禁止复制其产品主体呈现');
+    expect(prompt).toContain('画面整体配色仍以【商业分析】为准');
+    // 防与详情图的「上一屏」机制串味
+    expect(prompt).not.toContain(DETAIL_IMAGE_CONTINUITY_PROMPT);
+  });
+
+  it('主图仅一张精修图时文案标准参考图序号为 2', () => {
+    const prompt = buildMainImagePrompt(
+      '设计目标：一眼记住哑光金属机身。',
+      '目标人群偏好冷白',
+      1,
+      true,
+    );
+
+    expect(prompt).toContain('第1个参考图=用户上传的产品精修图');
+    expect(prompt).toContain('第2个参考图（即【文案标准参考图】）');
+  });
+
+  it('主图未点选参考图时不含文案标准参考图的角色说明与锁定语', () => {
+    const prompt = buildMainImagePrompt(
+      '设计目标：一眼记住哑光金属机身。',
+      '目标人群偏好冷白',
+      2,
+      false,
+    );
+
+    expect(prompt).toContain('第1个参考图=用户上传的产品精修图');
+    expect(prompt).toContain('其余参考图仅补充同一产品的可见角度与细节');
+    expect(prompt).toContain(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT);
+    expect(prompt).not.toContain('【文案标准参考图】');
+    expect(prompt).not.toContain(MAIN_IMAGE_COPY_REFERENCE_PROMPT);
+  });
+
+  it('主图排版常量保留套图内部一致性规则，且不再指向商业分析', () => {
+    expect(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT).toContain('字体家族、文案配色必须整套统一');
+    expect(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT).toContain('禁止一张衬线一张无衬线');
+    expect(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT).toContain('禁止各张自选字色');
+    expect(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT).not.toContain('【商业分析】');
+    expect(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT).not.toContain('【文案标准参考图】');
+    expect(MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT).toContain('【文案标准参考图】');
   });
 
   it('详情图有上一屏时标明参考图角色、当前屏主题卡与连贯句', () => {
@@ -567,6 +635,28 @@ describe('电商主图请求契约', () => {
     expect(
       withoutDocs && withoutDocs.kind === 'mainImage' ? withoutDocs.productDocumentsText : '',
     ).toBeUndefined();
+  });
+
+  it('可附带文案标准参考图，缺省为 undefined，且必须是 data URL', () => {
+    const parsed = parseGenerateBody({
+      ...BASE_MAIN_IMAGE_REQUEST,
+      copyStyleReferenceDataUrl: 'data:image/png;base64,REF',
+    });
+    expect(parsed && parsed.kind === 'mainImage' ? parsed.copyStyleReferenceDataUrl : '').toBe(
+      'data:image/png;base64,REF',
+    );
+
+    const withoutRef = parseGenerateBody(BASE_MAIN_IMAGE_REQUEST);
+    expect(
+      withoutRef && withoutRef.kind === 'mainImage' ? withoutRef.copyStyleReferenceDataUrl : '',
+    ).toBeUndefined();
+
+    expect(
+      parseGenerateBody({
+        ...BASE_MAIN_IMAGE_REQUEST,
+        copyStyleReferenceDataUrl: 'https://x/y.png',
+      }),
+    ).toBeNull();
   });
 });
 

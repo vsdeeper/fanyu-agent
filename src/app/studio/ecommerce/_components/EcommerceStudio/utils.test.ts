@@ -18,6 +18,7 @@ import {
   applyDesignGenerateEvent,
   applyGenerateEvent,
   createDefaultDesignForm,
+  createDesignStepSnapshot,
   getGeneratedDesignGroups,
   isSameStepSnapshot,
   pendingImagesFromCount,
@@ -177,6 +178,35 @@ describe('视觉设计请求体', () => {
     expect(payload).not.toHaveProperty('modelImages');
     expect(payload).not.toHaveProperty('taskType');
     expect(payload).not.toHaveProperty('visualLock');
+    expect(payload).not.toHaveProperty('copyStyleReferenceDataUrl');
+  });
+
+  it('主图请求体可附带文案标准参考图，未点选时两个可选字段都不携带', async () => {
+    const requirements = [{ themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' }];
+    const images = [IMAGE_ITEM('p-1', 'product.png')];
+
+    const withRef = await toMainImageGeneratePayload(
+      DEFAULT_DESIGN_FORM_STATE,
+      '目标人群偏好冷白',
+      requirements,
+      images,
+      ' 容量 500ml ',
+      'data:image/png;base64,ref',
+    );
+    expect(withRef).toMatchObject({
+      copyStyleReferenceDataUrl: 'data:image/png;base64,ref',
+      // 第 5 参仍是产品资料：两个可选 string 的类型相同，顺序不得调换
+      productDocumentsText: '容量 500ml',
+    });
+
+    const withoutRef = await toMainImageGeneratePayload(
+      DEFAULT_DESIGN_FORM_STATE,
+      '目标人群偏好冷白',
+      requirements,
+      images,
+    );
+    expect(withoutRef).not.toHaveProperty('copyStyleReferenceDataUrl');
+    expect(withoutRef).not.toHaveProperty('productDocumentsText');
   });
 
   it('详情图请求体含当前屏主题卡，可选上一屏参考图', async () => {
@@ -580,6 +610,19 @@ describe('步骤快照水合', () => {
     });
     expect(design?.referenceImageIndex).toBe(0);
     expect(design?.selectedExportIndexes).toEqual([0]);
+  });
+
+  it('主图设计快照同样读写文案标准参考图点选，且不落导出勾选', async () => {
+    const snapshot = await createDesignStepSnapshot(
+      { ...DEFAULT_DESIGN_FORM_STATE, taskType: '主图' },
+      { 主图: [{ index: 0, aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }] },
+      [],
+      { referenceImageIndex: 2 },
+    );
+    const design = readDesignStepSnapshot(snapshot);
+
+    expect(design?.referenceImageIndex).toBe(2);
+    expect(design?.selectedExportIndexes).toBeUndefined();
   });
 
   it('再次进入流程时按任务类型停在对应的第一步', () => {

@@ -73,7 +73,7 @@ export type StudioDesignGenerateRequest = StudioGenerateBase & {
   modelImages?: StudioImageInput[];
 };
 
-/** 电商主图：规格 + 商业分析 + 可选产品资料正文 + 多张主题文案 + 产品精修图 */
+/** 电商主图：规格 + 商业分析 + 可选产品资料正文 + 多张主题文案 + 产品精修图 + 可选文案标准参考图 */
 export type StudioMainImageGenerateRequest = StudioGenerateBase & {
   kind: 'mainImage';
   count: number;
@@ -86,6 +86,11 @@ export type StudioMainImageGenerateRequest = StudioGenerateBase & {
     requirement: string;
   }>;
   productViewImages: StudioImageInput[];
+  /**
+   * 用户点选的主图成品，只作画面文案的字体与配色标准，作参考图数组末位；未点选时省略。
+   * 单值而非数组：文案标准参考图至多一张，与 productViewImages 的多图形态刻意区分。
+   */
+  copyStyleReferenceDataUrl?: string;
 };
 
 /** 电商详情图：规格 + 商业分析 + 可选产品资料正文 + 当前屏主题卡 + 产品精修图 + 可选上一屏 */

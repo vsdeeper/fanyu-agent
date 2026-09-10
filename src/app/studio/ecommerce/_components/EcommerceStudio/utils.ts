@@ -183,13 +183,19 @@ export async function readProductDocsAsText(documents: ProductDocItem[]): Promis
     .join('\n\n');
 }
 
-/** 主图请求体：规格 + 商业分析 + 可选产品资料正文 + 选中主题文案 + 产品精修图 */
+/**
+ * 主图请求体：规格 + 商业分析 + 可选产品资料正文 + 选中主题文案 + 产品精修图 + 可选文案标准参考图。
+ *
+ * 与 toDetailImageGeneratePayload 的参数顺序不同：这里把两个可选 string 都排在最后，且参考图排在产品资料之后。
+ * 两个可选参数类型相同，插入中间不会报类型错、只会静默传错值，故一律追加在末尾。
+ */
 export async function toMainImageGeneratePayload(
   form: DesignFormState,
   analysisText: string,
   requirements: ThemePlanCard[],
   productImages: ProductImageItem[],
   productDocumentsText?: string,
+  copyStyleReferenceDataUrl?: string,
 ): Promise<StudioGenerateRequest> {
   return {
     kind: 'mainImage',
@@ -206,6 +212,7 @@ export async function toMainImageGeneratePayload(
     })),
     productViewImages: await toAnalyzeImages(productImages),
     ...(productDocumentsText?.trim() ? { productDocumentsText: productDocumentsText.trim() } : {}),
+    ...(copyStyleReferenceDataUrl ? { copyStyleReferenceDataUrl } : {}),
   };
 }
 

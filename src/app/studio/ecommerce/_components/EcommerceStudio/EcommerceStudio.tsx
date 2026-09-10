@@ -376,12 +376,9 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         themePlan
           ? {
               images: imagesRef.current,
-              ...(detailImage
-                ? {
-                    referenceImageIndex,
-                    selectedExportIndexes,
-                  }
-                : {}),
+              // 主图 = 文案标准参考图，详情图 = 上一屏，共用同一字段（至多一张）
+              referenceImageIndex,
+              ...(detailImage ? { selectedExportIndexes } : {}),
             }
           : undefined,
       );
@@ -682,6 +679,21 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       );
       if (selected) previousScreenDataUrl = await readUrlAsDataUrl(selected);
     }
+    let copyStyleReferenceDataUrl: string | undefined;
+    if (mainImage && referenceImageIndex !== null) {
+      const selected = getSelectedResultImageUrl(
+        designResultGroups['主图'] ?? [],
+        referenceImageIndex,
+      );
+      if (selected) {
+        try {
+          copyStyleReferenceDataUrl = await readUrlAsDataUrl(selected);
+        } catch (err) {
+          // 参考图资产读不到时降级为「不带参考图」继续出图，不把整批卡死
+          console.error('[ecommerce-studio] read copy reference', err);
+        }
+      }
+    }
     const taskType = nextDesignForm.taskType;
     const batchStartIndex = designResultGroups[taskType]?.length ?? 0;
     const perCardCount = Number.parseInt(nextDesignForm.count, 10) || 1;
@@ -721,6 +733,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
               selectedCards,
               images,
               productDocsText,
+              copyStyleReferenceDataUrl,
             )
         : await toDesignGeneratePayload(
             nextDesignForm,

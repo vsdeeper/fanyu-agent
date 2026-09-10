@@ -39,6 +39,10 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
   if (body.kind === 'mainImage' || body.kind === 'detailImage') {
     const count = body.count;
     const productImageCount = body.productViewImages.length;
+    // 点选的参考图（主图=文案标准参考图，详情图=上一屏）恒为参考图数组末位，故 prompt 可按张数点名序号
+    const copyStyleReferenceDataUrl =
+      body.kind === 'mainImage' ? body.copyStyleReferenceDataUrl : undefined;
+    const hasCopyReference = Boolean(copyStyleReferenceDataUrl);
     const hasPreviousScreen =
       body.kind === 'detailImage' ? Boolean(body.previousScreenDataUrl) : false;
     const referenceImageDataUrls =
@@ -47,7 +51,10 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
             ...body.productViewImages.map((image) => image.dataUrl),
             ...(body.previousScreenDataUrl ? [body.previousScreenDataUrl] : []),
           ]
-        : body.productViewImages.map((image) => image.dataUrl);
+        : [
+            ...body.productViewImages.map((image) => image.dataUrl),
+            ...(copyStyleReferenceDataUrl ? [copyStyleReferenceDataUrl] : []),
+          ];
 
     const plan: StudioGeneratePlanItem[] = [];
     for (const item of body.requirements) {
@@ -60,7 +67,13 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
               hasPreviousScreen,
               body.productDocumentsText,
             )
-          : buildMainImagePrompt(item.requirement, body.analysisText, body.productDocumentsText);
+          : buildMainImagePrompt(
+              item.requirement,
+              body.analysisText,
+              productImageCount,
+              hasCopyReference,
+              body.productDocumentsText,
+            );
       for (let i = 0; i < count; i++) {
         plan.push({ index: plan.length, prompt, referenceImageDataUrls });
       }

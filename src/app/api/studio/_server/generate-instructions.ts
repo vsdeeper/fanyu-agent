@@ -5,7 +5,9 @@ import {
   DETAIL_IMAGE_COPY_TYPOGRAPHY_PROMPT,
   DETAIL_IMAGE_FRAMING_PROMPT,
   TASK_TYPE_PROMPT_BY_TYPE,
+  MAIN_IMAGE_COPY_REFERENCE_PROMPT,
   MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
+  MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT,
   MARKETING_COPY_TYPOGRAPHY_PROMPT,
   PRODUCT_FIDELITY_PROMPT_GUARD,
   PRODUCT_PLACEMENT_PROMPT_GUARD,
@@ -59,18 +61,41 @@ export function buildProductViewPrompt(): string {
 
 /**
  * 电商主图出站 prompt：商业分析定整套气质，可选产品资料定第一手产品事实，本张主题卡定文案与拍法；精修图为产品事实。
+ *
+ * `productImageCount` 与 `hasCopyReference` 必填：参考图数组会因「是否点选文案标准参考图」而多出末位一张，
+ * 必须按真实张数点名序号，否则默认那句「其余参考图仅补充同一产品的可见角度」会把参考图误当成产品另一角度。
  */
 export function buildMainImagePrompt(
   requirement: string,
   analysisText: string,
+  productImageCount: number,
+  hasCopyReference: boolean,
   productDocumentsText?: string,
 ): string {
   const productDocsText = productDocumentsText?.trim();
+  const productRange =
+    productImageCount <= 1 ? '第1个参考图' : `第1至第${productImageCount}个参考图`;
+  const copyReferenceIndex = Math.max(1, productImageCount) + 1;
+  // 无参考图时复用原文，避免误伤「多张精修图」既有措辞
+  const productRule = hasCopyReference
+    ? productImageCount <= 1
+      ? '第1个参考图=用户上传的产品精修图，定义产品本体；本张只有这一张产品图，没有其它产品角度参考。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。'
+      : `${productRange}=用户上传的产品精修图，定义产品本体；该范围内的图都属于同一产品，仅补充其可见角度与细节，不得混合不同 SKU。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。`
+    : '第1个参考图=用户上传的产品精修图，定义产品本体；其余参考图仅补充同一产品的可见角度与细节，不得混合不同 SKU。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。';
+  const referenceRules = [
+    productRule,
+    ...(hasCopyReference
+      ? [
+          `第${copyReferenceIndex}个参考图（即【文案标准参考图】）=已生成并被用户点选的主图成品，只作画面文案的字体与文案配色标准，不作任何画面内容依据。`,
+          MAIN_IMAGE_COPY_REFERENCE_PROMPT,
+        ]
+      : []),
+  ];
   return [
     '生成恰好一张电商主图，不要输出说明、草图或多方案拼图。',
-    '第1个参考图=用户上传的产品精修图，定义产品本体；其余参考图仅补充同一产品的可见角度与细节，不得混合不同 SKU。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。',
+    ...referenceRules,
     '产品底座必须贴实支撑面：四边接触、接触阴影贴边连续，禁止腾空、半边离地或阴影与底座分离；主图不允许悬浮创意。',
-    '根据【商业分析】确定整套配色、光影气质、材质、品牌氛围与文案字体/配色；本张空间、道具、机位与构图切片以【本张主题卡】的展示重点为准。',
+    '根据【商业分析】确定整套配色、光影气质、材质与品牌氛围；本张空间、道具、机位与构图切片以【本张主题卡】的展示重点为准。',
     '本张出现的画面文案只来自【本张主题卡】设计目标可转化的短句与展示重点，禁止把拍摄写法说明当文字写进画面。',
     '禁止把空洞白底棚拍或同一套通用生活方式模板当作所有主题的默认背景；套图之间构图与场景须按各自展示重点区分。',
     '【商业分析】',
@@ -84,7 +109,9 @@ export function buildMainImagePrompt(
       : []),
     '【本张主题卡】',
     requirement.trim(),
-    MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
+    hasCopyReference
+      ? MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT
+      : MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
     VISUAL_AD_PROMPT_GUARD,
     PRODUCT_SCALE_PROMPT_GUARD,
     PRODUCT_PLACEMENT_PROMPT_GUARD,
@@ -120,7 +147,7 @@ export function buildDetailImagePrompt(
   return [
     '生成恰好一张电商详情页当前屏，不要输出说明、草图或多方案拼图。',
     ...referenceRules,
-    '根据【商业分析】确定整套配色、光影气质、材质、品牌氛围与文案字体/配色。',
+    '根据【商业分析】确定整套配色、光影气质、材质与品牌氛围。',
     '本张画面信息、文案、产品机位（角度/远近/占比）与构图切片只来自【当前屏主题卡】的设计目标与展示重点。',
     '【商业分析】',
     analysisText.trim(),

@@ -16,6 +16,7 @@ import {
   CANCEL_GENERATE_CONFIRM_OK,
   CANCEL_GENERATE_CONFIRM_TITLE,
   COMPLETE_BUTTON,
+  COPY_STANDARD_BADGE,
   NEXT_BUTTON,
   PREV_BUTTON,
   PREVIOUS_SCREEN_BADGE,
@@ -244,10 +245,10 @@ export default function ResultPanel({
             showTitles={!isPosterTask(taskType) && !themePlan}
             groupByTheme={themePlan}
             themes={detailImage ? DETAIL_IMAGE_THEMES : MAIN_IMAGE_THEMES}
-            selectable={detailImage && phase === 'design'}
-            selectedIndex={detailImage ? referenceImageIndex : null}
-            selectedBadge={detailImage ? PREVIOUS_SCREEN_BADGE : undefined}
-            onSelect={detailImage ? onSelectReference : undefined}
+            selectable={themePlan && phase === 'design'}
+            selectedIndex={themePlan ? referenceImageIndex : null}
+            selectedBadge={detailImage ? PREVIOUS_SCREEN_BADGE : COPY_STANDARD_BADGE}
+            onSelect={themePlan ? onSelectReference : undefined}
           />
         </div>
       ) : (
