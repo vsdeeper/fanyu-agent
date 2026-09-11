@@ -9,7 +9,7 @@ import { getArkClient } from '@/app/api/chat/_server/providers/ark/client';
  */
 
 /** 当前识图模型；换接入点改此处（识图仍写死，生图已改走 env IMAGE_MODEL_ID） */
-export const CURRENT_VISION_MODEL_ID = 'doubao-seed-2-0-lite-260428';
+export const CURRENT_VISION_MODEL_ID = 'doubao-seed-2-0-pro-260215';
 
 /** 当前识图模型 ID */
 export function getVisionModelId(): string {
