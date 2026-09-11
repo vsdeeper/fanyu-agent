@@ -156,6 +156,36 @@ describe('buildRewriteCardPrompt（主图）', () => {
 
     expect(prompt).not.toContain('【产品资料】');
   });
+
+  it('带主图说明时在商业分析后插入【主图说明】段', () => {
+    const prompt = buildRewriteCardPrompt({
+      kind: 'mainImage',
+      themeId: 'product',
+      draft: '',
+      otherCards: [],
+      analysisText: '保温杯，主打便携。',
+      mainImageDescription: '底色走冷白',
+      productDocumentsText: '容量 500ml，品牌 凡域。',
+    });
+
+    expect(prompt).toContain('【主图说明】\n底色走冷白');
+    expect(prompt.indexOf('【商业分析】')).toBeLessThan(prompt.indexOf('【主图说明】'));
+    expect(prompt.indexOf('【主图说明】')).toBeLessThan(prompt.indexOf('【产品资料】'));
+  });
+
+  it('商业分析为空时不出现空的【商业分析】段', () => {
+    const prompt = buildRewriteCardPrompt({
+      kind: 'mainImage',
+      themeId: 'product',
+      draft: '',
+      otherCards: [],
+      analysisText: '   ',
+      mainImageDescription: '底色走冷白',
+    });
+
+    expect(prompt).not.toContain('【商业分析】');
+    expect(prompt).toContain('【主图说明】\n底色走冷白');
+  });
 });
 
 describe('buildRewriteCardInstructions', () => {

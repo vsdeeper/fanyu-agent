@@ -77,7 +77,68 @@ describe('parseEcommerceAnalyzeBody', () => {
     ).toBeNull();
   });
 
-  it('缺 documents 拒绝（产品资料不能替代商业分析）', () => {
+  it('主图缺 documents 且无主图说明拒绝（产品资料不能替代商业分析）', () => {
     expect(parseEcommerceAnalyzeBody({ productDocuments: [PRODUCT_DOC] })).toBeNull();
+    expect(parseEcommerceAnalyzeBody({ kind: 'mainImage', documents: [] })).toBeNull();
+  });
+
+  it('主图商业分析非必填：无 documents 但有主图说明通过', () => {
+    expect(
+      parseEcommerceAnalyzeBody({
+        kind: 'mainImage',
+        documents: [],
+        mainImageDescription: '底色走冷白',
+      }),
+    ).toEqual({
+      kind: 'mainImage',
+      documents: [],
+      mainImageDescription: '底色走冷白',
+    });
+  });
+
+  it('主图仅空白主图说明等同未填，仍拒绝', () => {
+    expect(
+      parseEcommerceAnalyzeBody({ kind: 'mainImage', documents: [], mainImageDescription: '   ' }),
+    ).toBeNull();
+  });
+
+  it('详情图不受主图说明豁免：无 documents 一律拒绝', () => {
+    expect(
+      parseEcommerceAnalyzeBody({
+        kind: 'detailImage',
+        documents: [],
+        mainImageDescription: '底色走冷白',
+      }),
+    ).toBeNull();
+  });
+
+  it('brandLogoDataUrl 透传，缺省为 undefined', () => {
+    const parsed = parseEcommerceAnalyzeBody({
+      kind: 'mainImage',
+      documents: [],
+      mainImageDescription: '底色走冷白',
+      brandLogoDataUrl: 'data:image/png;base64,LOGO',
+    });
+    expect(parsed?.brandLogoDataUrl).toBe('data:image/png;base64,LOGO');
+
+    const withoutLogo = parseEcommerceAnalyzeBody({ kind: 'mainImage', documents: [DOC] });
+    expect(withoutLogo?.brandLogoDataUrl).toBeUndefined();
+  });
+
+  it('brandLogoDataUrl 必须是图片 data URL', () => {
+    expect(
+      parseEcommerceAnalyzeBody({
+        kind: 'mainImage',
+        documents: [DOC],
+        brandLogoDataUrl: 'https://x/logo.png',
+      }),
+    ).toBeNull();
+    expect(
+      parseEcommerceAnalyzeBody({
+        kind: 'mainImage',
+        documents: [DOC],
+        brandLogoDataUrl: 'data:text/plain;base64,TA==',
+      }),
+    ).toBeNull();
   });
 });

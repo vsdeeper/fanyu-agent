@@ -5,9 +5,12 @@ vi.mock('server-only', () => ({}));
 import { ECOMMERCE_TASK_TYPES } from '@/app/api/studio/ecommerce/_shared/task-constants';
 import {
   DETAIL_IMAGE_CONTINUITY_PROMPT,
+  MAIN_IMAGE_BRAND_LOGO_PROMPT,
   MAIN_IMAGE_COPY_REFERENCE_PROMPT,
   MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
   MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT,
+  PRODUCT_FIDELITY_NO_REFERENCE_PROMPT,
+  PRODUCT_FIDELITY_PROMPT_GUARD,
 } from './constants';
 import {
   buildDesignPrompt,
@@ -119,12 +122,14 @@ describe('电商生图指令', () => {
   });
 
   it('电商主图以商业分析定气质、本张主题卡定文案与拍法', () => {
-    const prompt = buildMainImagePrompt(
-      '设计目标：一眼记住哑光金属机身与轻巧体量。\n展示重点：\n- 正视特写整机轮廓，突出冷白金属壳\n- 书房书桌近景，午后窗光侧打，留白构图',
-      '目标人群偏好冷白，Logo 克制',
-      1,
-      false,
-    );
+    const prompt = buildMainImagePrompt({
+      requirement:
+        '设计目标：一眼记住哑光金属机身与轻巧体量。\n展示重点：\n- 正视特写整机轮廓，突出冷白金属壳\n- 书房书桌近景，午后窗光侧打，留白构图',
+      analysisText: '目标人群偏好冷白，Logo 克制',
+      productImageCount: 1,
+      hasCopyReference: false,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).toContain(
       '【本张主题卡】\n设计目标：一眼记住哑光金属机身与轻巧体量。\n展示重点：\n- 正视特写整机轮廓，突出冷白金属壳\n- 书房书桌近景，午后窗光侧打，留白构图',
@@ -149,13 +154,14 @@ describe('电商生图指令', () => {
   });
 
   it('主图带产品资料时叠加【产品资料】段与事实优先级', () => {
-    const prompt = buildMainImagePrompt(
-      '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
-      '目标人群偏好冷白',
-      1,
-      false,
-      '容量 500ml，品牌 凡域',
-    );
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 1,
+      hasCopyReference: false,
+      hasBrandLogo: false,
+      productDocumentsText: '容量 500ml，品牌 凡域',
+    });
 
     expect(prompt).toContain('【商业分析】\n目标人群偏好冷白');
     expect(prompt).toContain('【产品资料】\n容量 500ml，品牌 凡域');
@@ -165,23 +171,85 @@ describe('电商生图指令', () => {
   });
 
   it('主图无产品资料时不出现【产品资料】段', () => {
-    const prompt = buildMainImagePrompt(
-      '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
-      '目标人群偏好冷白',
-      1,
-      false,
-    );
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 1,
+      hasCopyReference: false,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).not.toContain('【产品资料】');
   });
 
+  it('主图无商业分析但有主图说明时以主图说明定气质，不留空锚点', () => {
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '   ',
+      mainImageDescription: '底色走冷白，画面不要促销大字',
+      productImageCount: 1,
+      hasCopyReference: false,
+      hasBrandLogo: false,
+    });
+
+    expect(prompt).toContain('【主图说明】\n底色走冷白，画面不要促销大字');
+    expect(prompt).not.toContain('【商业分析】');
+    expect(prompt).not.toContain('根据【商业分析】确定整套配色');
+    expect(prompt).toContain('根据【主图说明】确定整套配色、光影气质、材质与品牌氛围');
+  });
+
+  it('主图有商业分析又有主图说明时以主图说明为最终口径', () => {
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '目标人群偏好冷白',
+      mainImageDescription: '底色走冷白',
+      productImageCount: 1,
+      hasCopyReference: false,
+      hasBrandLogo: false,
+    });
+
+    expect(prompt).toContain('【商业分析】\n目标人群偏好冷白');
+    expect(prompt).toContain('以【主图说明】为最终口径（两者冲突时以【主图说明】为准）');
+    expect(prompt.indexOf('【商业分析】')).toBeLessThan(prompt.indexOf('【主图说明】'));
+  });
+
+  it('主图既无商业分析也无主图说明时交由主题卡与产品本体收束', () => {
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '',
+      productImageCount: 1,
+      hasCopyReference: false,
+      hasBrandLogo: false,
+    });
+
+    expect(prompt).toContain('配色、光影气质、材质与品牌氛围按【本张主题卡】与产品本体自行收束');
+    expect(prompt).not.toContain('【商业分析】');
+    expect(prompt).not.toContain('【主图说明】');
+  });
+
+  it('主图无商业分析但有产品资料时不追加指向商业分析的兜底句', () => {
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '',
+      mainImageDescription: '底色走冷白',
+      productImageCount: 1,
+      hasCopyReference: false,
+      hasBrandLogo: false,
+      productDocumentsText: '容量 500ml，品牌 凡域',
+    });
+
+    expect(prompt).toContain('第一手产品事实以【产品资料】为准。');
+    expect(prompt).not.toContain('缺失时以【商业分析】为准');
+  });
+
   it('主图点选文案标准参考图后按序号点名，且只锁文案字体与配色', () => {
-    const prompt = buildMainImagePrompt(
-      '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
-      '目标人群偏好冷白',
-      2,
-      true,
-    );
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 2,
+      hasCopyReference: true,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).toContain('第1至第2个参考图=用户上传的产品精修图');
     expect(prompt).toContain('第3个参考图（即【文案标准参考图】）');
@@ -189,36 +257,142 @@ describe('电商生图指令', () => {
     expect(prompt).toContain(MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT);
     expect(prompt).not.toContain(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT);
     expect(prompt).toContain('禁止复制其产品主体呈现');
-    expect(prompt).toContain('画面整体配色仍以【商业分析】为准');
+    expect(prompt).toContain('也禁止因它改变本张的主色板');
+    // 商业分析已非必填，配色来源不得指向可能缺席的【商业分析】
+    expect(prompt).not.toContain('画面整体配色仍以【商业分析】为准');
     // 防与详情图的「上一屏」机制串味
     expect(prompt).not.toContain(DETAIL_IMAGE_CONTINUITY_PROMPT);
   });
 
   it('主图仅一张精修图时文案标准参考图序号为 2', () => {
-    const prompt = buildMainImagePrompt(
-      '设计目标：一眼记住哑光金属机身。',
-      '目标人群偏好冷白',
-      1,
-      true,
-    );
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 1,
+      hasCopyReference: true,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).toContain('第1个参考图=用户上传的产品精修图');
     expect(prompt).toContain('第2个参考图（即【文案标准参考图】）');
   });
 
   it('主图未点选参考图时不含文案标准参考图的角色说明与锁定语', () => {
-    const prompt = buildMainImagePrompt(
-      '设计目标：一眼记住哑光金属机身。',
-      '目标人群偏好冷白',
-      2,
-      false,
-    );
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 2,
+      hasCopyReference: false,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).toContain('第1个参考图=用户上传的产品精修图');
     expect(prompt).toContain('其余参考图仅补充同一产品的可见角度与细节');
     expect(prompt).toContain(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT);
     expect(prompt).not.toContain('【文案标准参考图】');
     expect(prompt).not.toContain(MAIN_IMAGE_COPY_REFERENCE_PROMPT);
+  });
+
+  it('主图上传品牌 Logo 时按序号点名，并限定产品图范围不把 Logo 当成产品角度', () => {
+    // 无文案标准参考图时 Logo 紧随产品图，此时产品图那句不得再用「其余参考图」泛指
+    const withoutCopyRef = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 2,
+      hasCopyReference: false,
+      hasBrandLogo: true,
+    });
+
+    // 产品图那条规则必须限定范围，否则 Logo 会被当成产品的另一个角度
+    expect(withoutCopyRef).toContain(
+      '第1至第2个参考图=用户上传的产品精修图，定义产品本体；该范围内的图都属于同一产品',
+    );
+    expect(withoutCopyRef).toContain('第3个参考图（即【品牌 Logo】）');
+    expect(withoutCopyRef).toContain(MAIN_IMAGE_BRAND_LOGO_PROMPT);
+
+    // 两者都有时 Logo 顺延到第 4，文案标准参考图序号不变
+    const withBoth = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 2,
+      hasCopyReference: true,
+      hasBrandLogo: true,
+    });
+
+    expect(withBoth).toContain('第3个参考图（即【文案标准参考图】）');
+    expect(withBoth).toContain('第4个参考图（即【品牌 Logo】）');
+    expect(withBoth.indexOf('【文案标准参考图】')).toBeLessThan(
+      withBoth.indexOf('第4个参考图（即【品牌 Logo】）'),
+    );
+  });
+
+  it('主图仅一张精修图且有 Logo 时 Logo 序号为 2', () => {
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 1,
+      hasCopyReference: false,
+      hasBrandLogo: true,
+    });
+
+    expect(prompt).toContain('第1个参考图=用户上传的产品精修图');
+    expect(prompt).toContain('本张只有这一张产品图，没有其它产品角度参考');
+    expect(prompt).toContain('第2个参考图（即【品牌 Logo】）');
+  });
+
+  it('主图未上传 Logo 时不含 Logo 角色说明与 Logo 注入语', () => {
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 1,
+      hasCopyReference: false,
+      hasBrandLogo: false,
+    });
+
+    expect(prompt).not.toContain('【品牌 Logo】');
+    expect(prompt).not.toContain(MAIN_IMAGE_BRAND_LOGO_PROMPT);
+  });
+
+  it('主图无产品精修图时不点名产品参考图，保真底线换成按描述呈现', () => {
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 0,
+      hasCopyReference: false,
+      hasBrandLogo: false,
+    });
+
+    expect(prompt).toContain('本张没有产品精修图参考');
+    expect(prompt).not.toContain('第1个参考图=用户上传的产品精修图');
+    expect(prompt).not.toContain('其余参考图仅补充同一产品的可见角度与细节');
+    // 「第1个参考图定义产品本体」无从对位，必须换成无参考图的那条底线
+    expect(prompt).not.toContain(PRODUCT_FIDELITY_PROMPT_GUARD);
+    expect(prompt).toContain(PRODUCT_FIDELITY_NO_REFERENCE_PROMPT);
+    expect(prompt).toContain('整套主图必须是同一个产品');
+  });
+
+  it('主图无产品精修图时文案标准参考图序号为 1、Logo 顺延', () => {
+    // 参考图数组此时只剩文案标准参考图 → 它是第 1 张（用 max(1, P)+1 会错算成第 2 张）
+    const onlyCopyRef = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 0,
+      hasCopyReference: true,
+      hasBrandLogo: true,
+    });
+
+    expect(onlyCopyRef).toContain('第1个参考图（即【文案标准参考图】）');
+    expect(onlyCopyRef).toContain('第2个参考图（即【品牌 Logo】）');
+
+    const onlyLogo = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 0,
+      hasCopyReference: false,
+      hasBrandLogo: true,
+    });
+
+    expect(onlyLogo).toContain('第1个参考图（即【品牌 Logo】）');
   });
 
   it('主图排版常量保留套图内部一致性规则，且不再指向商业分析', () => {
@@ -618,10 +792,80 @@ describe('电商主图请求契约', () => {
     ]);
   });
 
-  it('缺少产品图、商业分析或主题要求时拒绝', () => {
-    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, productViewImages: [] })).toBeNull();
-    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: ' ' })).toBeNull();
+  it('接受空产品精修图（非必填），但缺主题要求时拒绝', () => {
+    const withoutProductImages = parseGenerateBody({
+      ...BASE_MAIN_IMAGE_REQUEST,
+      productViewImages: [],
+    });
+    expect(withoutProductImages?.kind).toBe('mainImage');
+    expect(
+      withoutProductImages && withoutProductImages.kind === 'mainImage'
+        ? withoutProductImages.productViewImages
+        : null,
+    ).toEqual([]);
+
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, requirements: [] })).toBeNull();
+  });
+
+  it('详情图仍必须有产品精修图', () => {
+    expect(
+      parseGenerateBody({
+        kind: 'detailImage',
+        ...SPEC_FIELDS,
+        count: 1,
+        analysisText: '商业分析',
+        requirements: [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }],
+        productViewImages: [],
+      }),
+    ).toBeNull();
+  });
+
+  it('商业分析非必填，但与主图说明至少一项非空', () => {
+    // 商业分析为空但填了主图说明 → 通过
+    const withDescription = parseGenerateBody({
+      ...BASE_MAIN_IMAGE_REQUEST,
+      analysisText: '',
+      mainImageDescription: '底色走冷白',
+    });
+    expect(withDescription?.kind).toBe('mainImage');
+    expect(
+      withDescription && withDescription.kind === 'mainImage'
+        ? withDescription.mainImageDescription
+        : '',
+    ).toBe('底色走冷白');
+
+    // 两者皆空（含全空白）→ 拒绝
+    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: '' })).toBeNull();
+    expect(
+      parseGenerateBody({
+        ...BASE_MAIN_IMAGE_REQUEST,
+        analysisText: ' ',
+        mainImageDescription: '   ',
+      }),
+    ).toBeNull();
+  });
+
+  it('可附带品牌 Logo data URL，缺省为 undefined，且必须是 data URL', () => {
+    const parsed = parseGenerateBody({
+      ...BASE_MAIN_IMAGE_REQUEST,
+      brandLogoDataUrl: 'data:image/png;base64,LOGO',
+    });
+    expect(parsed && parsed.kind === 'mainImage' ? parsed.brandLogoDataUrl : '').toBe(
+      'data:image/png;base64,LOGO',
+    );
+
+    const withoutLogo = parseGenerateBody(BASE_MAIN_IMAGE_REQUEST);
+    expect(
+      withoutLogo && withoutLogo.kind === 'mainImage' ? withoutLogo.brandLogoDataUrl : '',
+    ).toBeUndefined();
+
+    expect(
+      parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, brandLogoDataUrl: 'https://x/y.png' }),
+    ).toBeNull();
+  });
+
+  it('商业分析仍必须是非空字符串字段，不接受非字符串', () => {
+    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: undefined })).toBeNull();
   });
 
   it('可附带产品资料正文，缺省为 undefined', () => {

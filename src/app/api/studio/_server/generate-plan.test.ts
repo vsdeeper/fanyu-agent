@@ -151,6 +151,96 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).toContain('第3个参考图（即【文案标准参考图】）');
   });
 
+  it('主图带品牌 Logo 时追加为参考图最末位并点名序号', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'mainImage',
+      count: 1,
+      analysisText: '分析',
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [img('a'), img('b')],
+      copyStyleReferenceDataUrl: img('r').dataUrl,
+      brandLogoDataUrl: img('logo').dataUrl,
+    });
+
+    // Logo 排在文案标准参考图之后，故后者序号仍是「产品图张数 + 1」
+    expect(plan[0]?.referenceImageDataUrls).toEqual([
+      img('a').dataUrl,
+      img('b').dataUrl,
+      img('r').dataUrl,
+      img('logo').dataUrl,
+    ]);
+    expect(plan[0]?.prompt).toContain('第3个参考图（即【文案标准参考图】）');
+    expect(plan[0]?.prompt).toContain('第4个参考图（即【品牌 Logo】）');
+  });
+
+  it('主图无文案标准参考图但有 Logo 时 Logo 紧随产品图', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'mainImage',
+      count: 1,
+      analysisText: '',
+      mainImageDescription: '底色走冷白',
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [img('a'), img('b')],
+      brandLogoDataUrl: img('logo').dataUrl,
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([
+      img('a').dataUrl,
+      img('b').dataUrl,
+      img('logo').dataUrl,
+    ]);
+    expect(plan[0]?.prompt).toContain('第3个参考图（即【品牌 Logo】）');
+    expect(plan[0]?.prompt).toContain('【主图说明】\n底色走冷白');
+    expect(plan[0]?.prompt).not.toContain('【商业分析】');
+  });
+
+  it('主图无产品精修图时参考图数组只剩末位两张，序号按真实位置重排', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'mainImage',
+      count: 1,
+      analysisText: '分析',
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [],
+      copyStyleReferenceDataUrl: img('r').dataUrl,
+      brandLogoDataUrl: img('logo').dataUrl,
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([img('r').dataUrl, img('logo').dataUrl]);
+    expect(plan[0]?.prompt).toContain('第1个参考图（即【文案标准参考图】）');
+    expect(plan[0]?.prompt).toContain('第2个参考图（即【品牌 Logo】）');
+    expect(plan[0]?.prompt).toContain('本张没有产品精修图参考');
+  });
+
+  it('主图参考图全空时出图清单不带参考图，交给文生图', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'mainImage',
+      count: 1,
+      analysisText: '分析',
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [],
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([]);
+  });
+
+  it('详情图不出现品牌 Logo 与主图说明段', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'detailImage',
+      count: 1,
+      analysisText: '分析',
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [img('a')],
+    });
+
+    expect(plan[0]?.prompt).not.toContain('【品牌 Logo】');
+    expect(plan[0]?.prompt).not.toContain('【主图说明】');
+  });
+
   it('详情图按「主题 × 数量」展开，参考图为产品图 + 上一屏', () => {
     const plan = buildGeneratePlan({
       ...base,

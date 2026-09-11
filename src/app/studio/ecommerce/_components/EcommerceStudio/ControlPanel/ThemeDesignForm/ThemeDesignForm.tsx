@@ -1,8 +1,14 @@
 import StudioImageUpload from '@/business-components/StudioImageUpload';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
+import { isMainImageTask } from '../../workflow';
 import GenerateForm from '../GenerateForm';
 import { patchFormState } from '../utils';
 import type { DesignFormState, ProductImageItem, StudioSpecFields } from '../../types';
+import {
+  PRODUCT_IMAGE_LABEL,
+  PRODUCT_IMAGE_OPTIONAL_HINT,
+  PRODUCT_IMAGE_OPTIONAL_SUBTITLE,
+} from './constants';
 import SelectedPlanCards from './SelectedPlanCards';
 import styles from './ThemeDesignForm.module.css';
 
@@ -18,6 +24,8 @@ type ThemeDesignFormProps = {
 
 /**
  * 主题出图表单：精修图、已选主题卡片与出图规格。主图与详情图共用。
+ *
+ * 主图的产品精修图非必填（可留空，产品按主题卡与资料描述生成）；详情图必须上传。
  */
 export default function ThemeDesignForm({
   form,
@@ -31,11 +39,14 @@ export default function ThemeDesignForm({
   const handleSpecChange = (next: StudioSpecFields) => {
     onFormChange({ ...form, ...next });
   };
+  const productImageOptional = isMainImageTask(form.taskType);
 
   return (
     <>
       <StudioImageUpload
-        label="产品精修图"
+        label={PRODUCT_IMAGE_LABEL}
+        subtitle={productImageOptional ? PRODUCT_IMAGE_OPTIONAL_SUBTITLE : undefined}
+        hint={productImageOptional ? PRODUCT_IMAGE_OPTIONAL_HINT : undefined}
         images={images}
         disabled={disabled}
         onAppend={onImagesAppend}

@@ -22,6 +22,7 @@ import ControlPanel from './ControlPanel';
 import {
   ANALYZE_FAILED,
   ANALYSIS_MISSING,
+  ANALYSIS_SOURCE_MISSING,
   ANALYSIS_UPLOAD_MISSING,
   DESIGN_RESULT_MISSING,
   DEFAULT_FORM_STATE,
@@ -29,6 +30,7 @@ import {
   ECOMMERCE_API_BASE,
   GENERATE_FAILED,
   MAIN_IMAGE_RESULT_MISSING,
+  MAX_BRAND_LOGOS,
   MAX_MODEL_IMAGES,
   NO_IMAGE_WARNING,
   POSTER_RESULT_MISSING,
@@ -56,6 +58,7 @@ import {
   applyDesignGenerateEvent,
   applyGenerateEvent,
   assertOkOrJsonFail,
+  canStartThemePlan,
   consumeAnalyzeSse,
   createAnalysisStepSnapshot,
   createDefaultDesignForm,
@@ -74,6 +77,7 @@ import {
   removeProductDoc,
   removeProductImage,
   readAnalysisStepSnapshot,
+  readBrandLogoDataUrl,
   readDesignStepSnapshot,
   readProductDocsAsText,
   readUrlAsDataUrl,
@@ -170,6 +174,13 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   const [productDocs, setProductDocs] = useState<ProductDocItem[]>(
     initialAnalysis?.productDocs ?? [],
   );
+  // 品牌 Logo 与主图说明都只服务主图任务，且都在分析步录入、出图步复用
+  const [brandLogo, setBrandLogo] = useState<ProductImageItem[]>(
+    initialAnalysis?.brandLogoImages ?? [],
+  );
+  const [mainImageDescription, setMainImageRequirement] = useState(
+    initialAnalysis?.mainImageDescription ?? '',
+  );
   const [form, setForm] = useState<StudioFormState>(
     restoredVisualForm ?? initialVisual?.form ?? DEFAULT_FORM_STATE,
   );
@@ -233,6 +244,8 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   const imagesRef = useRef(images);
   const documentsRef = useRef(documents);
   const productDocsRef = useRef(productDocs);
+  const brandLogoRef = useRef(brandLogo);
+  const mainImageDescriptionRef = useRef(mainImageDescription);
   const modelImagesRef = useRef(modelImages);
   const abortRef = useRef<AbortController | null>(null);
   /** 当前作业所属的流程步骤；null 表示本会话没在追踪作业 */
@@ -266,6 +279,14 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   }, [productDocs]);
 
   useEffect(() => {
+    brandLogoRef.current = brandLogo;
+  }, [brandLogo]);
+
+  useEffect(() => {
+    mainImageDescriptionRef.current = mainImageDescription;
+  }, [mainImageDescription]);
+
+  useEffect(() => {
     modelImagesRef.current = modelImages;
   }, [modelImages]);
 
@@ -277,6 +298,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       analysisBuffer.dispose();
       revokeProductImageUrls(imagesRef.current);
       revokeProductImageUrls(modelImagesRef.current);
+      revokeProductImageUrls(brandLogoRef.current);
       revokeProductDocUrls(documentsRef.current);
       revokeProductDocUrls(productDocsRef.current);
     };
@@ -322,6 +344,12 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
               planCards: extras?.planCards ?? planCards,
               selectedThemeIds: extras?.selectedThemeIds ?? selectedThemeIds,
               productDocs: productDocsRef.current,
+              ...(mainImage
+                ? {
+                    brandLogoImages: brandLogoRef.current,
+                    mainImageDescription: mainImageDescriptionRef.current,
+                  }
+                : {}),
             }
           : undefined,
       );
@@ -331,12 +359,15 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       if (!themePlan) setImages(saved.images);
       setDocuments(saved.documents);
       if (saved.productDocs) setProductDocs(saved.productDocs);
+      if (saved.brandLogoImages) setBrandLogo(saved.brandLogoImages);
       setAnalysisText(saved.analysisText);
+      if (saved.mainImageDescription) setMainImageRequirement(saved.mainImageDescription);
       if (saved.planCards) setPlanCards(saved.planCards);
       if (saved.selectedThemeIds) setSelectedThemeIds(saved.selectedThemeIds);
     },
     [
       themePlan,
+      mainImage,
       planCards,
       selectedThemeIds,
       task.id,
@@ -515,8 +546,14 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   const displayPlanCards = streamedPlan ? streamedPlan.cards : planCards;
 
   const handleAnalyze = useCallback(async () => {
-    if (documents.length === 0) {
-      message.warning(ANALYSIS_UPLOAD_MISSING);
+    if (
+      !canStartThemePlan({
+        taskType: task.taskType,
+        documentCount: documents.length,
+        mainImageDescription,
+      })
+    ) {
+      message.warning(mainImage ? ANALYSIS_SOURCE_MISSING : ANALYSIS_UPLOAD_MISSING);
       return;
     }
     abortCurrent();
@@ -530,7 +567,11 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       const payload = await toThemeAnalyzePayload(
         documents,
         detailImage ? 'detailImage' : 'mainImage',
-        productDocs,
+        {
+          productDocs,
+          mainImageDescription,
+          brandLogo,
+        },
       );
       const res = await fetch('/api/studio/ecommerce/analyze', {
         method: 'POST',
@@ -588,13 +629,17 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   }, [
     abortCurrent,
     analysisBuffer,
+    brandLogo,
     detailImage,
     documents,
     images,
+    mainImage,
+    mainImageDescription,
     message,
     persistAnalysisStep,
     productDocs,
     setPhase,
+    task.taskType,
   ]);
 
   const handleGenerateVisual = useCallback(async () => {
@@ -634,7 +679,8 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   }, [analysisText, form, images, message, setPhase, startJob, visualImages]);
 
   const handleGenerateDesign = useCallback(async () => {
-    if (images.length === 0) {
+    // 主图的产品精修图非必填（无参考图时生图侧降级为文生图）；详情图与营销海报的设计步仍必须上传产品图
+    if (images.length === 0 && !mainImage) {
       message.warning(NO_IMAGE_WARNING);
       return;
     }
@@ -647,8 +693,10 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         return;
       }
       analysisFromDocs = await readProductDocsAsText(documents);
-      if (!analysisFromDocs) {
-        message.warning(ANALYSIS_UPLOAD_MISSING);
+      // 这里判读出的正文而非文件数：上传了却读不出文本时不能放行。
+      // 主图的商业分析非必填，改与主图说明合判；详情图仍必须有商业分析。
+      if (!analysisFromDocs && !(mainImage && mainImageDescription.trim())) {
+        message.warning(mainImage ? ANALYSIS_SOURCE_MISSING : ANALYSIS_UPLOAD_MISSING);
         return;
       }
       productDocsText = productDocs.length > 0 ? await readProductDocsAsText(productDocs) : '';
@@ -695,6 +743,15 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         }
       }
     }
+    let brandLogoDataUrl: string | undefined;
+    if (mainImage) {
+      try {
+        brandLogoDataUrl = await readBrandLogoDataUrl(brandLogo);
+      } catch (err) {
+        // 同文案标准参考图：Logo 读不到时降级为「不带 Logo」继续出图
+        console.error('[ecommerce-studio] read brand logo', err);
+      }
+    }
     const taskType = nextDesignForm.taskType;
     const perCardCount = Number.parseInt(nextDesignForm.count, 10) || 1;
     const { groups: nextDesignResultGroups, slots } = themePlan
@@ -731,8 +788,12 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
               analysisFromDocs,
               selectedCards,
               images,
-              productDocsText,
-              copyStyleReferenceDataUrl,
+              {
+                productDocumentsText: productDocsText,
+                mainImageDescription,
+                copyStyleReferenceDataUrl,
+                brandLogoDataUrl,
+              },
             )
         : await toDesignGeneratePayload(
             nextDesignForm,
@@ -761,6 +822,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     }
   }, [
     analysisText,
+    brandLogo,
     designForm,
     designResultGroups,
     detailImage,
@@ -768,6 +830,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     expectedDesignCount,
     images,
     mainImage,
+    mainImageDescription,
     message,
     modelImages,
     planCards,
@@ -828,6 +891,20 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       setProductDocs((current) => removeProductDoc(current, uid));
     },
     [setProductDocs],
+  );
+
+  const handleBrandLogoAppend = useCallback(
+    (files: File[]) => {
+      setBrandLogo((current) => appendProductImages(current, files, MAX_BRAND_LOGOS));
+    },
+    [setBrandLogo],
+  );
+
+  const handleBrandLogoRemove = useCallback(
+    (uid: string) => {
+      setBrandLogo((current) => removeProductImage(current, uid));
+    },
+    [setBrandLogo],
   );
 
   const handleModelImagesAppend = useCallback(
@@ -993,13 +1070,10 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
 
   const handlePlanCardAiAssist = useCallback(
     async (themeId: string, draft: string) => {
-      if (documents.length === 0) {
-        message.warning(ANALYSIS_UPLOAD_MISSING);
-        return '';
-      }
       const analysisFromDocs = await readProductDocsAsText(documents);
-      if (!analysisFromDocs.trim()) {
-        message.warning(ANALYSIS_UPLOAD_MISSING);
+      // 主图的商业分析非必填，改与主图说明合判；详情图仍必须有商业分析
+      if (!analysisFromDocs && !(mainImage && mainImageDescription.trim())) {
+        message.warning(mainImage ? ANALYSIS_SOURCE_MISSING : ANALYSIS_UPLOAD_MISSING);
         return '';
       }
       const productDocumentsText =
@@ -1016,13 +1090,16 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
             requirement: card.requirement,
           })),
         analysisText: analysisFromDocs,
+        ...(mainImage && mainImageDescription.trim()
+          ? { mainImageDescription: mainImageDescription.trim() }
+          : {}),
         ...(productDocumentsText.trim()
           ? { productDocumentsText: productDocumentsText.trim() }
           : {}),
       });
       return data.requirement;
     },
-    [detailImage, documents, message, planCards, productDocs],
+    [detailImage, documents, mainImage, mainImageDescription, message, planCards, productDocs],
   );
 
   return (
@@ -1074,6 +1151,8 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
                 images={images}
                 documents={documents}
                 productDocs={productDocs}
+                brandLogo={brandLogo}
+                mainImageDescription={mainImageDescription}
                 modelImages={modelImages}
                 form={form}
                 designForm={designForm}
@@ -1083,7 +1162,13 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
                 canGenerateVisual={images.length > 0 && Boolean(analysisText.trim())}
                 canGenerateDesign={
                   themePlan
-                    ? images.length > 0 && selectedCards.length > 0 && documents.length > 0
+                    ? (mainImage || images.length > 0) &&
+                      selectedCards.length > 0 &&
+                      canStartThemePlan({
+                        taskType: task.taskType,
+                        documentCount: documents.length,
+                        mainImageDescription,
+                      })
                     : true
                 }
                 selectedCards={selectedCards}
@@ -1093,6 +1178,9 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
                 onDocRemove={handleDocRemove}
                 onProductDocsAppend={handleProductDocsAppend}
                 onProductDocRemove={handleProductDocRemove}
+                onBrandLogoAppend={handleBrandLogoAppend}
+                onBrandLogoRemove={handleBrandLogoRemove}
+                onMainImageRequirementChange={setMainImageRequirement}
                 onModelImagesAppend={handleModelImagesAppend}
                 onModelImageRemove={handleModelImageRemove}
                 onFormChange={setForm}

@@ -78,11 +78,14 @@ export type StudioDesignGenerateRequest = StudioGenerateBase & {
   modelImages?: StudioImageInput[];
 };
 
-/** 电商主图：规格 + 商业分析 + 可选产品资料正文 + 多张主题文案 + 产品精修图 + 可选文案标准参考图 */
+/** 电商主图：规格 + 商业分析 + 可选主图说明 + 可选产品资料正文 + 多张主题文案 + 产品精修图 + 可选参考图 */
 export type StudioMainImageGenerateRequest = StudioGenerateBase & {
   kind: 'mainImage';
   count: number;
+  /** 商业分析正文；非必填，与 mainImageDescription 至少一项非空（见 parse-generate-request） */
   analysisText: string;
+  /** 主图说明自由文本；非必填，与 analysisText 至少一项非空 */
+  mainImageDescription?: string;
   /** 补充产品资料正文（第一手产品事实，优先于商业分析）；未上传时省略 */
   productDocumentsText?: string;
   requirements: Array<{
@@ -92,10 +95,15 @@ export type StudioMainImageGenerateRequest = StudioGenerateBase & {
   }>;
   productViewImages: StudioImageInput[];
   /**
-   * 用户点选的主图成品，只作画面文案的字体与配色标准，作参考图数组末位；未点选时省略。
+   * 用户点选的主图成品，只作画面文案的字体与配色标准；未点选时省略。
    * 单值而非数组：文案标准参考图至多一张，与 productViewImages 的多图形态刻意区分。
    */
   copyStyleReferenceDataUrl?: string;
+  /**
+   * 用户上传的品牌 Logo 原图，作参考图数组**末位**（排在 copyStyleReferenceDataUrl 之后）；未上传时省略。
+   * 单值而非数组：Logo 至多一张。
+   */
+  brandLogoDataUrl?: string;
 };
 
 /** 电商详情图：规格 + 商业分析 + 可选产品资料正文 + 当前屏主题卡 + 产品精修图 + 可选上一屏 */

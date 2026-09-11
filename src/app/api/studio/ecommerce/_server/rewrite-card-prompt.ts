@@ -37,7 +37,7 @@ const PROMPT_BY_KIND: Record<
     peersLabel: '【其它张（必须互斥，禁止复用其卖点、细节、场景、机位）】',
     noPeersLabel: '（暂无其它张）',
     randomLabel:
-      '【随机生成】用户未提供草稿。请根据商业分析为本张职责换一个新的信息切片；禁止复述其它张，禁止空泛套话。',
+      '【随机生成】用户未提供草稿。请根据本批提供的商业分析 / 主图说明为本张职责换一个新的信息切片；禁止复述其它张，禁止空泛套话。',
     outputLabel: '请只输出当前张正文。',
   },
   detailImage: {
@@ -60,7 +60,9 @@ export function rewriteCardTemperature(draft: string): number {
 }
 
 /**
- * 组装帮写用户 prompt：本卡/本屏职责、商业分析、可选产品资料、其它卡互斥、草稿或随机指令。
+ * 组装帮写用户 prompt：本卡/本屏职责、商业分析、可选主图说明与产品资料、其它卡互斥、草稿或随机指令。
+ *
+ * 商业分析在主图任务里非必填，故资料段一律仅在有内容时追加，不留空的【商业分析】段。
  */
 export function buildRewriteCardPrompt(input: {
   kind: RewriteCardKind;
@@ -68,6 +70,7 @@ export function buildRewriteCardPrompt(input: {
   draft: string;
   otherCards: RewriteCardPeer[];
   analysisText: string;
+  mainImageDescription?: string;
   productDocumentsText?: string;
 }): string {
   const { kind } = input;
@@ -93,11 +96,14 @@ export function buildRewriteCardPrompt(input: {
     ? ['【用户草稿】请据此扩写或润色成统一格式，保留用户意图，不要另起无关主题。', draft].join('\n')
     : wording.randomLabel;
 
+  const analysisText = input.analysisText.trim();
+  const mainDescription = input.mainImageDescription?.trim();
   const productDocsText = input.productDocumentsText?.trim();
   return [
     `${wording.currentLabel}${title}`,
     `${wording.dutyLabel}${duty}`,
-    `【商业分析】\n${input.analysisText.trim()}`,
+    ...(analysisText ? [`【商业分析】\n${analysisText}`] : []),
+    ...(mainDescription ? [`【主图说明】\n${mainDescription}`] : []),
     ...(productDocsText ? [`【产品资料】\n${productDocsText}`] : []),
     `${wording.peersLabel}\n${peerBlock}`,
     draftBlock,

@@ -39,10 +39,13 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
   if (body.kind === 'mainImage' || body.kind === 'detailImage') {
     const count = body.count;
     const productImageCount = body.productViewImages.length;
-    // 点选的参考图（主图=文案标准参考图，详情图=上一屏）恒为参考图数组末位，故 prompt 可按张数点名序号
+    // 参考图数组顺序固定为「产品精修图 → 点选参考图（主图=文案标准参考图，详情图=上一屏）→ 品牌 Logo」，
+    // 主图的两张额外参考图恒为末尾且 Logo 在后，故 prompt 可按张数点名序号
     const copyStyleReferenceDataUrl =
       body.kind === 'mainImage' ? body.copyStyleReferenceDataUrl : undefined;
+    const brandLogoDataUrl = body.kind === 'mainImage' ? body.brandLogoDataUrl : undefined;
     const hasCopyReference = Boolean(copyStyleReferenceDataUrl);
+    const hasBrandLogo = Boolean(brandLogoDataUrl);
     const hasPreviousScreen =
       body.kind === 'detailImage' ? Boolean(body.previousScreenDataUrl) : false;
     const referenceImageDataUrls =
@@ -54,6 +57,7 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
         : [
             ...body.productViewImages.map((image) => image.dataUrl),
             ...(copyStyleReferenceDataUrl ? [copyStyleReferenceDataUrl] : []),
+            ...(brandLogoDataUrl ? [brandLogoDataUrl] : []),
           ];
 
     const plan: StudioGeneratePlanItem[] = [];
@@ -67,13 +71,15 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
               hasPreviousScreen,
               body.productDocumentsText,
             )
-          : buildMainImagePrompt(
-              item.requirement,
-              body.analysisText,
+          : buildMainImagePrompt({
+              requirement: item.requirement,
+              analysisText: body.analysisText,
+              mainImageDescription: body.mainImageDescription,
               productImageCount,
               hasCopyReference,
-              body.productDocumentsText,
-            );
+              hasBrandLogo,
+              productDocumentsText: body.productDocumentsText,
+            });
       for (let i = 0; i < count; i++) {
         plan.push({ index: plan.length, prompt, referenceImageDataUrls });
       }

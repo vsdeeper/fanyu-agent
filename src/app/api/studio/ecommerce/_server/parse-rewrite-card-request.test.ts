@@ -49,6 +49,20 @@ describe('parseRewriteCardBody', () => {
     ).toBeUndefined();
   });
 
+  it('主图接受 mainImageDescription，缺省为 undefined', () => {
+    const withDescription = { ...MAIN_VALID, mainImageDescription: '底色走冷白' };
+    expect(parseRewriteCardBody(withDescription)).toEqual(withDescription);
+    const parsed = parseRewriteCardBody(MAIN_VALID);
+    expect(
+      parsed && parsed.kind === 'mainImage' ? parsed.mainImageDescription : 'x',
+    ).toBeUndefined();
+  });
+
+  it('详情图不声明 mainImageDescription，传入被静默剥掉', () => {
+    const parsed = parseRewriteCardBody({ ...VALID, mainImageDescription: '底色走冷白' });
+    expect(parsed).toEqual(VALID);
+  });
+
   it('详情图接受 productDocumentsText，缺省为 undefined', () => {
     const withDocs = { ...VALID, productDocumentsText: '容量 500ml，品牌 凡域。' };
     expect(parseRewriteCardBody(withDocs)).toEqual(withDocs);

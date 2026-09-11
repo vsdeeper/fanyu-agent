@@ -1,14 +1,22 @@
 import { HighlightOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Input } from 'antd';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import ProductDocsUpload from '@/business-components/ProductDocsUpload';
 import StudioImageUpload from '@/business-components/StudioImageUpload';
 import {
   ANALYZE_BUTTON,
+  BRAND_LOGO_ARIA_LABEL,
+  BRAND_LOGO_HINT,
+  BRAND_LOGO_LABEL,
+  BRAND_LOGO_SUBTITLE,
   DESIGN_BUTTON,
   DETAIL_IMAGE_BUTTON,
   MAIN_IMAGE_BUTTON,
+  MAIN_IMAGE_DESCRIPTION_HINT,
+  MAIN_IMAGE_DESCRIPTION_LABEL,
+  MAIN_IMAGE_DESCRIPTION_PLACEHOLDER,
+  MAX_BRAND_LOGOS,
   POSTER_BUTTON,
   VISUAL_BUTTON,
 } from '../constants';
@@ -20,6 +28,7 @@ import type {
   StudioPhase,
   StudioSpecFields,
 } from '../types';
+import { canStartThemePlan } from '../utils';
 import { isDetailImageTask, isMainImageTask, isPosterTask, isThemePlanTask } from '../workflow';
 import DesignForm from './DesignForm';
 import GenerateForm from './GenerateForm';
@@ -32,6 +41,10 @@ type ControlPanelProps = {
   images: ProductImageItem[];
   documents: ProductDocItem[];
   productDocs: ProductDocItem[];
+  /** 主图品牌 Logo（至多一张）；仅主图任务使用 */
+  brandLogo: ProductImageItem[];
+  /** 主图说明自由文本；仅主图任务使用 */
+  mainImageDescription: string;
   modelImages: ProductImageItem[];
   form: StudioFormState;
   designForm: DesignFormState;
@@ -48,6 +61,9 @@ type ControlPanelProps = {
   onDocRemove: (uid: string) => void;
   onProductDocsAppend: (files: File[]) => void;
   onProductDocRemove: (uid: string) => void;
+  onBrandLogoAppend: (files: File[]) => void;
+  onBrandLogoRemove: (uid: string) => void;
+  onMainImageRequirementChange: (value: string) => void;
   onModelImagesAppend: (files: File[]) => void;
   onModelImageRemove: (uid: string) => void;
   onFormChange: (next: StudioFormState) => void;
@@ -65,6 +81,8 @@ export default function ControlPanel({
   images,
   documents,
   productDocs,
+  brandLogo,
+  mainImageDescription,
   modelImages,
   form,
   designForm,
@@ -80,6 +98,9 @@ export default function ControlPanel({
   onDocRemove,
   onProductDocsAppend,
   onProductDocRemove,
+  onBrandLogoAppend,
+  onBrandLogoRemove,
+  onMainImageRequirementChange,
   onModelImagesAppend,
   onModelImageRemove,
   onFormChange,
@@ -105,7 +126,11 @@ export default function ControlPanel({
   const poster = isPosterTask(taskType);
   const themePlan = isThemePlanTask(taskType);
   const mainImage = isMainImageTask(taskType);
-  const analyzeDisabled = documents.length === 0;
+  const analyzeDisabled = !canStartThemePlan({
+    taskType,
+    documentCount: documents.length,
+    mainImageDescription,
+  });
 
   const handleVisualSpecChange = (next: StudioSpecFields) => {
     onFormChange({ ...form, ...next });
@@ -124,6 +149,19 @@ export default function ControlPanel({
       <div className={styles.scroll}>
         {showAnalyzeForm ? (
           <>
+            {mainImage ? (
+              <StudioImageUpload
+                label={BRAND_LOGO_LABEL}
+                subtitle={BRAND_LOGO_SUBTITLE}
+                hint={BRAND_LOGO_HINT}
+                ariaLabel={BRAND_LOGO_ARIA_LABEL}
+                images={brandLogo}
+                max={MAX_BRAND_LOGOS}
+                disabled={formLocked}
+                onAppend={onBrandLogoAppend}
+                onRemove={onBrandLogoRemove}
+              />
+            ) : null}
             <ProductDocsUpload
               documents={productDocs}
               disabled={formLocked}
@@ -140,6 +178,20 @@ export default function ControlPanel({
               onAppend={onDocsAppend}
               onRemove={onDocRemove}
             />
+            {mainImage ? (
+              <label className={styles.field}>
+                <span className={styles.label}>{MAIN_IMAGE_DESCRIPTION_LABEL}</span>
+                <Input.TextArea
+                  value={mainImageDescription}
+                  disabled={formLocked}
+                  autoSize={{ minRows: 4, maxRows: 8 }}
+                  placeholder={MAIN_IMAGE_DESCRIPTION_PLACEHOLDER}
+                  aria-label={MAIN_IMAGE_DESCRIPTION_LABEL}
+                  onChange={(event) => onMainImageRequirementChange(event.target.value)}
+                />
+                <span className={styles.hint}>{MAIN_IMAGE_DESCRIPTION_HINT}</span>
+              </label>
+            ) : null}
           </>
         ) : showVisualForm ? (
           <>

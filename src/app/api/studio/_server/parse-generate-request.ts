@@ -72,7 +72,10 @@ const visualGenerateSchema = specFieldsSchema.extend({
 const mainImageGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('mainImage'),
   count: countSchema,
-  analysisText: z.string().trim().min(1),
+  // 商业分析非必填：与 mainImageDescription 一起由下方 superRefine 判「至少一项非空」
+  analysisText: z.string(),
+  mainImageDescription: z.string().trim().optional(),
+  brandLogoDataUrl: imageDataUrlSchema.optional(),
   productDocumentsText: z.string().optional(),
   requirements: z
     .array(
@@ -83,7 +86,8 @@ const mainImageGenerateSchema = specFieldsSchema.extend({
       }),
     )
     .min(1),
-  productViewImages: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
+  // 产品精修图非必填（可空数组）：没有参考图时生图侧自动降级为文生图
+  productViewImages: z.array(imageInputSchema).max(MAX_STUDIO_PRODUCT_IMAGES),
   copyStyleReferenceDataUrl: imageDataUrlSchema.optional(),
 });
 
@@ -128,6 +132,13 @@ const generateBodySchema = z
     detailImageGenerateSchema,
   ])
   .superRefine((value, context) => {
+    if (value.kind === 'mainImage' && !value.analysisText.trim() && !value.mainImageDescription) {
+      context.addIssue({
+        code: 'custom',
+        path: ['analysisText'],
+        message: '商业分析与主图说明至少填写一项',
+      });
+    }
     if (value.kind !== 'design') return;
     if (value.includeModel !== Boolean(value.modelImages?.length)) {
       context.addIssue({
