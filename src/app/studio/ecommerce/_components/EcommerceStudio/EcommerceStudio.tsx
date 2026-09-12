@@ -100,6 +100,7 @@ import {
 } from './utils';
 import { parseDetailImagePlan } from './_utils/parse-detail-image-plan';
 import { parseMainImagePlan } from './_utils/parse-main-image-plan';
+import { withMainImageSpecCard } from './_utils/main-image-spec-card';
 import {
   jobGeneratingPhase,
   mergeBatchGroups,
@@ -218,9 +219,13 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   const initialParsedPlan = themePlan
     ? (detailImage ? parseDetailImagePlan : parseMainImagePlan)(initialAnalysis?.analysisText ?? '')
     : { cards: [] };
-  const [planCards, setPlanCards] = useState<ThemePlanCard[]>(
-    initialAnalysis?.planCards?.length ? initialAnalysis.planCards : initialParsedPlan.cards,
-  );
+  const [planCards, setPlanCards] = useState<ThemePlanCard[]>(() => {
+    const restored = initialAnalysis?.planCards?.length
+      ? initialAnalysis.planCards
+      : initialParsedPlan.cards;
+    // 主图的「规格主图」由用户自填，快照里没有就补上（老任务同样适用）
+    return mainImage ? withMainImageSpecCard(restored) : restored;
+  });
   const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>(
     initialAnalysis?.selectedThemeIds ?? [],
   );
@@ -555,6 +560,11 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       ? (detailImage ? parseDetailImagePlan : parseMainImagePlan)(analysisText)
       : null;
   const displayPlanCards = streamedPlan ? streamedPlan.cards : planCards;
+  // 内容为空的卡不能勾选：空要求会直接进 buildMainImagePrompt 出废图（「规格主图」初始即此态）
+  const unselectableThemeIds = useMemo(
+    () => displayPlanCards.filter((card) => !card.requirement.trim()).map((card) => card.themeId),
+    [displayPlanCards],
+  );
 
   const handleAnalyze = useCallback(async () => {
     if (
@@ -614,11 +624,13 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       if (receivedDone) {
         const text = analysisBuffer.getText();
         const parsed = (detailImage ? parseDetailImagePlan : parseMainImagePlan)(text);
-        setPlanCards(parsed.cards);
+        // 分析只产出五张，「规格主图」由客户端补在末位，随后一并落库
+        const cards = mainImage ? withMainImageSpecCard(parsed.cards) : parsed.cards;
+        setPlanCards(cards);
         setPhase('analyzed');
         try {
           await persistAnalysisStep(images, documents, text, {
-            planCards: parsed.cards,
+            planCards: cards,
             selectedThemeIds: [],
           });
         } catch (err) {
@@ -1060,6 +1072,8 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
 
   const handleToggleTheme = useCallback(
     (themeId: string) => {
+      // 纵深防御：卡片已置灰，此处再拦一道，避免别处绕过 UI 勾上空卡
+      if (unselectableThemeIds.includes(themeId)) return;
       setSelectedThemeIds((current) => {
         if (detailImage) return current[0] === themeId ? [] : [themeId];
         return current.includes(themeId)
@@ -1067,7 +1081,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
           : [...current, themeId];
       });
     },
-    [detailImage],
+    [detailImage, unselectableThemeIds],
   );
 
   const handlePlanCardSave = useCallback(
@@ -1221,6 +1235,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
                 isPoster={poster}
                 planCards={displayPlanCards}
                 selectedThemeIds={selectedThemeIds}
+                unselectableThemeIds={unselectableThemeIds}
                 referenceImageId={referenceImageId}
                 running={generating}
                 cancelling={jobCancelling}

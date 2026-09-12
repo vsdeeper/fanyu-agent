@@ -1,7 +1,13 @@
 import { Button, Card, Input } from 'antd';
 import { useState } from 'react';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
-import { AI_ASSIST_BUTTON, CANCEL_BUTTON, EDIT_BUTTON, SAVE_BUTTON } from './constants';
+import {
+  AI_ASSIST_BUTTON,
+  CANCEL_BUTTON,
+  EDIT_BUTTON,
+  EMPTY_CARD_HINT,
+  SAVE_BUTTON,
+} from './constants';
 import { useThemePlanAiAssist } from './hooks/useThemePlanAiAssist';
 import styles from './ThemePlanCards.module.css';
 
@@ -13,6 +19,8 @@ type ThemePlanCardsProps = {
   selectionMode?: ThemePlanSelectionMode;
   streaming?: boolean;
   disabled?: boolean;
+  /** 内容为空、不可勾选的卡：勾了会拿空要求去出图，如用户自填的「规格主图」 */
+  unselectableThemeIds?: readonly string[];
   onToggleTheme: (themeId: string) => void;
   onCardSave: (themeId: string, requirement: string) => void;
   onEditingChange?: (editing: boolean) => void;
@@ -21,6 +29,7 @@ type ThemePlanCardsProps = {
 
 /**
  * 主题规划右栏：可点选、可逐卡编辑的主题 Card；主图多选，详情图单选。
+ * 正文为空的卡不可勾选（但仍可编辑 —— 用户正是靠编辑把内容填上）。
  */
 export default function ThemePlanCards({
   cards,
@@ -28,6 +37,7 @@ export default function ThemePlanCards({
   selectionMode = 'multiple',
   streaming = false,
   disabled = false,
+  unselectableThemeIds = [],
   onToggleTheme,
   onCardSave,
   onEditingChange,
@@ -98,16 +108,18 @@ export default function ThemePlanCards({
       {cards.map((card) => {
         const selected = selectedThemeIds.includes(card.themeId);
         const editing = editingKey === card.themeId;
+        const locked = unselectableThemeIds.includes(card.themeId);
+        const hasBody = Boolean(card.requirement.trim());
         return (
           <Card
             key={card.themeId}
             size="small"
-            hoverable={canInteract && !editingKey}
+            hoverable={canInteract && !editingKey && !locked}
             title={card.title}
             extra={renderExtra(card.themeId, card.requirement)}
-            className={`${styles.card} ${selected ? styles.selected : ''}`}
+            className={`${styles.card} ${selected ? styles.selected : ''} ${locked ? styles.locked : ''}`}
             onClick={() => {
-              if (!canInteract || editingKey) return;
+              if (!canInteract || editingKey || locked) return;
               onToggleTheme(card.themeId);
             }}
           >
@@ -134,8 +146,10 @@ export default function ThemePlanCards({
                   </span>
                 ) : null}
               </div>
-            ) : (
+            ) : hasBody ? (
               <p className={styles.body}>{card.requirement}</p>
+            ) : (
+              <p className={styles.bodyHint}>{EMPTY_CARD_HINT}</p>
             )}
           </Card>
         );

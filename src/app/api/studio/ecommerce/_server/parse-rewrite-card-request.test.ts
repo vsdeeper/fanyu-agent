@@ -91,6 +91,13 @@ describe('parseRewriteCardBody', () => {
     expect(parseRewriteCardBody({ ...MAIN_VALID, themeId: 'brand' })).toBeNull();
   });
 
+  it('主图接受用户自填的规格主图主题', () => {
+    expect(parseRewriteCardBody({ ...MAIN_VALID, themeId: 'spec' })).toEqual({
+      ...MAIN_VALID,
+      themeId: 'spec',
+    });
+  });
+
   it('同名 sellingPoint 在两域各自合法', () => {
     expect(parseRewriteCardBody({ ...VALID, themeId: 'sellingPoint' })).toEqual({
       ...VALID,

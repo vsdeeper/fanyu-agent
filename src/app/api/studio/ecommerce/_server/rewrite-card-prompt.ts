@@ -1,7 +1,11 @@
 import 'server-only';
 
 import type { DetailImageThemeId } from '@/app/api/studio/ecommerce/_shared/detail-image-plan';
-import type { MainImageThemeId } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
+import {
+  MAIN_IMAGE_SPEC_THEME_ID,
+  type MainImageAnalyzeThemeId,
+  type MainImageThemeId,
+} from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import type {
   RewriteCardKind,
   RewriteCardPeer,
@@ -12,6 +16,7 @@ import { formatThemePlanRequirement } from '@/app/api/studio/ecommerce/_shared/t
 import { REWRITE_CARD_POLISH_TEMPERATURE, REWRITE_CARD_RANDOM_TEMPERATURE } from './constants';
 import {
   DETAIL_IMAGE_THEME_DUTIES,
+  MAIN_IMAGE_SPEC_THEME_DUTY,
   MAIN_IMAGE_THEME_DUTIES,
   detailThemeTitle,
   mainImageThemeTitle,
@@ -53,6 +58,13 @@ const PROMPT_BY_KIND: Record<
 };
 
 /**
+ * 「规格主图」无草稿时的随机指令：不复用主图的「换一个信息切片」措辞 ——
+ * 那张卡不参与其余五张的互斥划分，没有「切片」可换。
+ */
+const MAIN_IMAGE_SPEC_RANDOM_LABEL =
+  '【随机生成】用户未提供草稿。请根据商业分析 / 主图说明 / 产品资料，为「规格主图」拟一条自定义规格（分类）主图的展示要求；规格名与数值只取资料原文，禁止编造，禁止空泛套话。';
+
+/**
  * 有用户草稿用较低温度润色，无草稿用较高温度随机生成。
  */
 export function rewriteCardTemperature(draft: string): number {
@@ -75,14 +87,17 @@ export function buildRewriteCardPrompt(input: {
 }): string {
   const { kind } = input;
   const wording = PROMPT_BY_KIND[kind];
+  const isSpec = kind === 'mainImage' && input.themeId === MAIN_IMAGE_SPEC_THEME_ID;
   // kind 与 themeId 的配对由请求 schema（可辨识联合）保证，此处按 kind 取同域职责与标题
   const title =
     kind === 'mainImage'
       ? mainImageThemeTitle(input.themeId as MainImageThemeId)
       : detailThemeTitle(input.themeId as DetailImageThemeId);
-  const duty =
-    kind === 'mainImage'
-      ? MAIN_IMAGE_THEME_DUTIES[input.themeId as MainImageThemeId]
+  const duty = isSpec
+    ? MAIN_IMAGE_SPEC_THEME_DUTY
+    : kind === 'mainImage'
+      ? // 走到这里 themeId 已排除 'spec'，故可按分析主题表取职责
+        MAIN_IMAGE_THEME_DUTIES[input.themeId as MainImageAnalyzeThemeId]
       : DETAIL_IMAGE_THEME_DUTIES[input.themeId as DetailImageThemeId];
 
   const peers = input.otherCards.filter((card) => card.themeId !== input.themeId);
@@ -94,7 +109,9 @@ export function buildRewriteCardPrompt(input: {
   const draft = input.draft.trim();
   const draftBlock = draft
     ? ['【用户草稿】请据此扩写或润色成统一格式，保留用户意图，不要另起无关主题。', draft].join('\n')
-    : wording.randomLabel;
+    : isSpec
+      ? MAIN_IMAGE_SPEC_RANDOM_LABEL
+      : wording.randomLabel;
 
   const analysisText = input.analysisText.trim();
   const mainDescription = input.mainImageDescription?.trim();
@@ -105,7 +122,8 @@ export function buildRewriteCardPrompt(input: {
     ...(analysisText ? [`【商业分析】\n${analysisText}`] : []),
     ...(mainDescription ? [`【主图说明】\n${mainDescription}`] : []),
     ...(productDocsText ? [`【产品资料】\n${productDocsText}`] : []),
-    `${wording.peersLabel}\n${peerBlock}`,
+    // 「规格主图」独立于其余五张，不带互斥段：「必须互斥」的措辞对它是错误引导
+    ...(isSpec ? [] : [`${wording.peersLabel}\n${peerBlock}`]),
     draftBlock,
     wording.formatSample,
     wording.outputLabel,

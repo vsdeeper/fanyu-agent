@@ -11,11 +11,15 @@ const peerSchema = z.object({
   requirement: z.string(),
 });
 
+// 其它卡上限 = 主题数 − 1（本卡自身由 handle 过滤掉），按主题表派生以免加主题后被 400 拒掉
+const MAX_MAIN_IMAGE_PEERS = MAIN_IMAGE_THEME_IDS.length - 1;
+const MAX_DETAIL_IMAGE_PEERS = DETAIL_IMAGE_THEME_IDS.length - 1;
+
 const mainImageBodySchema = z.object({
   kind: z.literal('mainImage'),
   themeId: z.enum(MAIN_IMAGE_THEME_IDS),
   draft: z.string(),
-  otherCards: z.array(peerSchema).max(5),
+  otherCards: z.array(peerSchema).max(MAX_MAIN_IMAGE_PEERS),
   analysisText: z.string(),
   mainImageDescription: z.string().optional(),
   productDocumentsText: z.string().optional(),
@@ -25,7 +29,7 @@ const detailImageBodySchema = z.object({
   kind: z.literal('detailImage'),
   themeId: z.enum(DETAIL_IMAGE_THEME_IDS),
   draft: z.string(),
-  otherCards: z.array(peerSchema).max(5),
+  otherCards: z.array(peerSchema).max(MAX_DETAIL_IMAGE_PEERS),
   analysisText: z.string(),
   productDocumentsText: z.string().optional(),
 });
