@@ -27,6 +27,14 @@
   color: var(--one-color-primary);
 }
 
+/* head 栏右侧操作区：主图导出全选 */
+.headActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .scroll {
   flex: 1;
   min-height: 0;

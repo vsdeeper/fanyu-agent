@@ -3,6 +3,7 @@ import { Button, Empty, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import FileCard from '@/components/FileCard';
 import { DETAIL_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/detail-image-plan';
+import { MAIN_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import AnalysisPreview from './AnalysisPreview';
 import PhoneConcatPreview from './PhoneConcatPreview';
@@ -11,16 +12,26 @@ import type { DesignResultGroups, StudioResultImage } from '../types';
 import DesignResultGroupsView from '../ResultPanel/DesignResultGroups';
 import ResultImageGrid from '../ResultPanel/ResultImageGrid';
 import { groupResultImagesByRatio } from '../ResultPanel/utils';
+import { isPosterTask } from '../workflow';
 import {
   ANALYSIS_FILE_NAME,
   ANALYSIS_GROUP_TITLE,
   ANALYSIS_MEDIA_TYPE,
   COMPLETION_TITLE,
   EXPORT_BUTTON,
+  EXPORT_DESELECT_ALL_BUTTON,
+  EXPORT_PICK_LABEL,
+  EXPORT_SELECT_ALL_BUTTON,
+  EXPORT_SELECTED_BADGE,
   VISUAL_GROUP_TITLE,
 } from './constants';
 import { useExportResultImages } from './hooks/useExportResultImages';
-import { getGeneratedDesignGroups, getGeneratedImages, orderSelectedImagesByTheme } from './utils';
+import {
+  getGeneratedDesignGroups,
+  getGeneratedImages,
+  isAllExportSelected,
+  orderSelectedImagesByTheme,
+} from './utils';
 import styles from './CompletionPanel.module.css';
 
 type CompletionPanelProps = {
@@ -31,8 +42,13 @@ type CompletionPanelProps = {
   showDesignTitles?: boolean;
   groupByTheme?: boolean;
   detailPreview?: boolean;
+  /** 主图完成页：结果网格可自由多选，标题栏出现「全选」 */
+  selectExport?: boolean;
+  /** 「全选」的可选 id，需与结果网格展示同一份已生成图 */
+  selectableExportIds?: readonly string[];
   selectedExportIds?: string[];
   onSelectExport?: (id: string) => void;
+  onSelectAllExport?: () => void;
   onPrev: () => void;
   onExportPersist?: () => void | Promise<void>;
 };
@@ -46,8 +62,11 @@ export default function CompletionPanel({
   showDesignTitles = true,
   groupByTheme = false,
   detailPreview = false,
+  selectExport = false,
+  selectableExportIds = [],
   selectedExportIds = [],
   onSelectExport,
+  onSelectAllExport,
   onPrev,
   onExportPersist,
 }: CompletionPanelProps) {
@@ -62,27 +81,39 @@ export default function CompletionPanel({
     selectedExportIds,
     DETAIL_IMAGE_THEMES,
   );
+  const mainImages = designResults['主图'] ?? [];
+  // 详情图按每主题一张拼长图，主图自由多选；海报两项都不走，传 undefined 即全量导出
+  const selectedExportImages = detailPreview
+    ? selectedDetailImages
+    : selectExport
+      ? orderSelectedImagesByTheme(mainImages, selectedExportIds, MAIN_IMAGE_THEMES)
+      : undefined;
+  const allExportSelected = isAllExportSelected(selectedExportIds, selectableExportIds);
   const { exporting, handleExport } = useExportResultImages(
     visualResults,
     designResults,
     analysisText,
     taskType,
-    detailPreview ? selectedDetailImages : undefined,
+    selectedExportImages,
   );
   const analysisFile = useMemo(() => {
-    if (detailPreview || !analysisText.trim()) return undefined;
+    // 只有营销海报的 analysisText 才是上传的商业分析原文；主图 / 详情图的 analysisText
+    // 是各自主分析结果（主题卡 / 分屏目标），与「商业分析」不是一回事，故不外露
+    if (!isPosterTask(taskType) || !analysisText.trim()) return undefined;
     return {
       href: URL.createObjectURL(new Blob([analysisText], { type: ANALYSIS_MEDIA_TYPE })),
       byteSize: new TextEncoder().encode(analysisText).length,
     };
-  }, [analysisText, detailPreview]);
+  }, [analysisText, taskType]);
   useEffect(() => {
     return () => {
       if (analysisFile) URL.revokeObjectURL(analysisFile.href);
     };
   }, [analysisFile]);
   const visualGroups = groupResultImagesByRatio(visualResults);
-  const exportDisabled = detailPreview ? selectedDetailImages.length === 0 : !hasResults;
+  // 详情图与主图都按点选导出（无选中即不可导出）；海报无选择态，只要有结果即可导出
+  const exportDisabled =
+    detailPreview || selectExport ? !selectedExportImages?.length : !hasResults;
 
   const runExport = async () => {
     await onExportPersist?.();
@@ -94,6 +125,17 @@ export default function CompletionPanel({
       <div className={styles.head}>
         <StarOutlined className={styles.star} />
         {COMPLETION_TITLE}
+        {selectExport ? (
+          <div className={styles.headActions}>
+            <Button
+              size="small"
+              disabled={selectableExportIds.length === 0}
+              onClick={onSelectAllExport}
+            >
+              {allExportSelected ? EXPORT_DESELECT_ALL_BUTTON : EXPORT_SELECT_ALL_BUTTON}
+            </Button>
+          </div>
+        ) : null}
       </div>
       <div className={detailPreview ? styles.splitScroll : styles.scroll}>
         {detailPreview ? (
@@ -163,6 +205,11 @@ export default function CompletionPanel({
                 groups={designResults}
                 showTitles={showDesignTitles}
                 groupByTheme={groupByTheme}
+                selectable={selectExport}
+                selectedIds={selectExport ? selectedExportIds : undefined}
+                selectedBadge={selectExport ? EXPORT_SELECTED_BADGE : undefined}
+                pickLabel={selectExport ? EXPORT_PICK_LABEL : undefined}
+                onSelect={selectExport ? onSelectExport : undefined}
               />
             ) : null}
           </div>

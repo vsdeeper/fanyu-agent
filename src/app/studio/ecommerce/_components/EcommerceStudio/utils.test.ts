@@ -799,7 +799,7 @@ describe('步骤快照水合', () => {
     expect(design?.selectedExportIds).toBeUndefined();
   });
 
-  it('主图设计快照同样读写文案标准参考图点选，且不落导出勾选', async () => {
+  it('主图设计快照同样读写文案标准参考图点选，未传导出勾选时不落库', async () => {
     const snapshot = await createDesignStepSnapshot(
       { ...DEFAULT_DESIGN_FORM_STATE, taskType: '主图' },
       { 主图: [{ id: 'm-1', aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }] },
@@ -810,6 +810,34 @@ describe('步骤快照水合', () => {
 
     expect(design?.referenceImageId).toBe('m-1');
     expect(design?.selectedExportIds).toBeUndefined();
+  });
+
+  it('主图设计快照按主图分组保住导出勾选，并过滤死 id', async () => {
+    const snapshot = await createDesignStepSnapshot(
+      { ...DEFAULT_DESIGN_FORM_STATE, taskType: '主图' },
+      {
+        主图: [
+          { id: 'm-1', aspectRatio: '1:1', status: 'ready', url: '/api/img/1' },
+          { id: 'm-2', aspectRatio: '1:1', status: 'ready', url: '/api/img/2' },
+        ],
+      },
+      [],
+      { selectedExportIds: ['m-2', 'ghost', 'm-1'] },
+    );
+
+    expect(readDesignStepSnapshot(snapshot)?.selectedExportIds).toEqual(['m-2', 'm-1']);
+  });
+
+  it('导出勾选只按本任务类型的分组校验，不认其它分组', () => {
+    const design = readDesignStepSnapshot({
+      form: { ...DEFAULT_DESIGN_FORM_STATE, taskType: '详情图' },
+      designResultGroups: {
+        主图: [{ id: 'm-1', aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }],
+      },
+      selectedExportIds: ['m-1'],
+    });
+
+    expect(design?.selectedExportIds).toEqual([]);
   });
 
   it('键序不同的同一份快照判为相同，数组顺序仍参与比较', () => {

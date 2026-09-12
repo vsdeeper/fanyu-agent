@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { App, Button, Layout, Steps, Tag, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
@@ -12,12 +12,18 @@ import type {
 import type { StudioJobSnapshot } from '@/app/api/studio/_shared/job-types';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { RewriteCardResult } from '@/app/api/studio/ecommerce/_shared/rewrite-card';
+import { MAIN_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import { useStudioJob } from '@/app/studio/_hooks/useStudioJob';
 import { ECOMMERCE_PATH } from '@/components/AppLayout/constants';
 import { apiPost } from '@/lib/shared/client/api-client';
 import ModeSwitch from '@/components/ModeSwitch';
 import CompletionPanel from './CompletionPanel';
-import { toggleExportSelectedIdByTheme } from './CompletionPanel/utils';
+import {
+  getSelectableExportIds,
+  toggleAllExportSelectedIds,
+  toggleExportSelectedId,
+  toggleExportSelectedIdByTheme,
+} from './CompletionPanel/utils';
 import ControlPanel from './ControlPanel';
 import {
   ANALYZE_FAILED,
@@ -316,6 +322,12 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   const expectedVisualCount = Number.parseInt(form.count, 10) || 1;
   const expectedDesignCount = Number.parseInt(designForm.count, 10) || 1;
   const workflow = resolveEcommerceWorkflow(task.taskType);
+  // 「全选」的可选图与结果网格同源：都取主图分组里已生成完成的图
+  const selectableExportIds = useMemo(
+    () =>
+      mainImage ? getSelectableExportIds(designResultGroups['主图'] ?? [], MAIN_IMAGE_THEMES) : [],
+    [designResultGroups, mainImage],
+  );
 
   const abortCurrent = useCallback(() => {
     abortRef.current?.abort();
@@ -411,7 +423,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
               images: imagesRef.current,
               // 主图 = 文案标准参考图，详情图 = 上一屏，共用同一字段（至多一张）
               referenceImageId,
-              ...(detailImage ? { selectedExportIds } : {}),
+              ...(themePlan ? { selectedExportIds } : {}),
             }
           : undefined,
       );
@@ -432,7 +444,6 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       }
     },
     [
-      detailImage,
       referenceImageId,
       selectedExportIds,
       themePlan,
@@ -933,11 +944,17 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   const handleSelectExport = useCallback(
     (id: string) => {
       setSelectedExportIds((current) =>
-        toggleExportSelectedIdByTheme(current, id, designResultGroups['详情图'] ?? []),
+        mainImage
+          ? toggleExportSelectedId(current, id, designResultGroups['主图'] ?? [])
+          : toggleExportSelectedIdByTheme(current, id, designResultGroups['详情图'] ?? []),
       );
     },
-    [designResultGroups],
+    [designResultGroups, mainImage],
   );
+
+  const handleSelectAllExport = useCallback(() => {
+    setSelectedExportIds((current) => toggleAllExportSelectedIds(current, selectableExportIds));
+  }, [selectableExportIds]);
 
   const handleExportPersist = useCallback(async () => {
     try {
@@ -950,7 +967,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   const handlePrev = useCallback(async () => {
     // 生图已后台化：返回上一步不再中断生成（要中断请用右栏按钮）。
     // 生成中该按钮本身被禁用，相位不会与运行中的作业错配。
-    if (detailImage && phase === 'complete') {
+    if (themePlan && phase === 'complete') {
       try {
         await persistDesignStep(designForm, designResultGroups, modelImages);
       } catch (err) {
@@ -961,7 +978,6 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   }, [
     designForm,
     designResultGroups,
-    detailImage,
     modelImages,
     persistDesignStep,
     phase,
@@ -1139,8 +1155,11 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
               showDesignTitles={!themePlan}
               groupByTheme={themePlan}
               detailPreview={detailImage}
+              selectExport={mainImage}
+              selectableExportIds={selectableExportIds}
               selectedExportIds={selectedExportIds}
               onSelectExport={handleSelectExport}
+              onSelectAllExport={handleSelectAllExport}
               onPrev={() => void handlePrev()}
               onExportPersist={handleExportPersist}
             />

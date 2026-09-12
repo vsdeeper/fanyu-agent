@@ -605,9 +605,9 @@ export function readDesignStepSnapshot(value: unknown): DesignStepSnapshot | und
     const images = snapshot.designResultGroups[taskType];
     if (images) designResultGroups[taskType] = normalizeResultImages(images);
   }
-  // 两个选中态分属不同分组：参考图在本任务类型的分组里，导出点选恒在详情图分组里
+  // 两个选中态都只看本任务类型的分组（详情图 -> 详情图组，主图 -> 主图组）
   const referenceGroup = designResultGroups[form.taskType] ?? [];
-  const exportGroup = designResultGroups['详情图'] ?? [];
+  const exportGroup = designResultGroups[form.taskType] ?? [];
   return {
     form,
     designResultGroups,

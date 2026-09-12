@@ -87,6 +87,10 @@ export type DesignStepSnapshot = {
    * 若将来主图步需同时持有两种角色的参考图、或需多选，必须拆字段并把本字段改名为 previousScreenId。
    */
   referenceImageId?: string | null;
-  /** 完成页点选待导出的详情图 id；每主题至多一张，顺序即导出顺序 */
+  /**
+   * 完成页点选待导出的结果图 id，取自本任务类型对应的结果分组。
+   * 详情图每主题至多一张、顺序即长图拼接与导出顺序（toggleExportSelectedIdByTheme）；
+   * 主图自由多选、同主题可多张，导出时按主题序重排（toggleExportSelectedId）。
+   */
   selectedExportIds?: string[];
 };

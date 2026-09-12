@@ -20,6 +20,8 @@ type ResultImageGridProps = {
   selectedId?: string | null;
   selectedIds?: readonly string[];
   selectedBadge?: string;
+  /** 未选中时按钮文案；不传则由 ResultImageItem 取默认「选为标准」 */
+  pickLabel?: string;
   onSelect?: (id: string) => void;
 };
 
@@ -35,6 +37,7 @@ export default function ResultImageGrid({
   selectedId = null,
   selectedIds,
   selectedBadge,
+  pickLabel,
   onSelect,
 }: ResultImageGridProps) {
   const { width: placeholderWidth, height: placeholderHeight } = aspectRatioToSize(
@@ -75,6 +78,7 @@ export default function ResultImageGrid({
               selectable={selectable}
               selected={selectedId === item.id || Boolean(selectedIds?.includes(item.id))}
               selectedBadge={selectedBadge}
+              pickLabel={pickLabel}
               onSelect={onSelect}
               getSrc={getImageSrc}
               failedFallbackSrc={FALLBACK_ICON_SRC}

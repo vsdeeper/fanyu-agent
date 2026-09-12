@@ -18,6 +18,8 @@ type DesignResultGroupsProps = {
   selectedId?: string | null;
   selectedIds?: readonly string[];
   selectedBadge?: string;
+  /** 未选中时按钮文案；不传则由 ResultImageItem 取默认「选为标准」 */
+  pickLabel?: string;
   onSelect?: (id: string) => void;
 };
 
@@ -33,6 +35,7 @@ export default function DesignResultGroups({
   selectedId = null,
   selectedIds,
   selectedBadge,
+  pickLabel,
   onSelect,
 }: DesignResultGroupsProps) {
   return (
@@ -68,6 +71,7 @@ export default function DesignResultGroups({
                             selectedId={selectedId}
                             selectedIds={selectedIds}
                             selectedBadge={selectedBadge}
+                            pickLabel={pickLabel}
                             onSelect={onSelect}
                           />
                         </section>
@@ -86,6 +90,7 @@ export default function DesignResultGroups({
                       selectedId={selectedId}
                       selectedIds={selectedIds}
                       selectedBadge={selectedBadge}
+                      pickLabel={pickLabel}
                       onSelect={onSelect}
                     />
                   </section>
