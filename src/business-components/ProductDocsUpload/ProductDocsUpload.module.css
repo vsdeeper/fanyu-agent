@@ -123,7 +123,9 @@
   display: flex;
 }
 
-.card {
+/* 原现象：卡片只有 220px，撑不满面板。根因：FileCard 自带 .card{max-width:220px}，
+   同为单类选择器时胜负取决于两个 CSS Module 的加载顺序（dev 下并不稳定），故借 .item 提权，勿简化回 .card。 */
+.item .card {
   max-width: none;
   width: 100%;
 }
