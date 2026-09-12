@@ -10,7 +10,13 @@ import ModeSwitch from '@/components/ModeSwitch';
 import CompletionPanel from './CompletionPanel';
 import ControlPanel from './ControlPanel';
 import ResultPanel from './ResultPanel';
-import { ANALYZE_FAILED, NO_IMAGE_WARNING, STUDIO_STEP_INDEX, STUDIO_STEPS } from './constants';
+import {
+  ANALYZE_FAILED,
+  MAX_BRAND_LOGOS,
+  NO_MATERIAL_WARNING,
+  STUDIO_STEP_INDEX,
+  STUDIO_STEPS,
+} from './constants';
 import type { AnalysisStepSnapshot, ProductDocItem, ProductImageItem, StudioPhase } from './types';
 import {
   appendProductDocs,
@@ -19,6 +25,7 @@ import {
   consumeAnalyzeSse,
   createAnalysisStepSnapshot,
   createRafTextBuffer,
+  hasAnalyzeMaterials,
   isAbortError,
   isSameStepSnapshot,
   readAnalysisStepSnapshot,
@@ -43,12 +50,19 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
   const initialAnalysis = readAnalysisStepSnapshot(task.steps.analysis?.data);
   const [images, setImages] = useState<ProductImageItem[]>(initialAnalysis?.images ?? []);
   const [documents, setDocuments] = useState<ProductDocItem[]>(initialAnalysis?.documents ?? []);
+  const [brandLogo, setBrandLogo] = useState<ProductImageItem[]>(
+    initialAnalysis?.brandLogoImages ?? [],
+  );
+  const [productDescription, setProductDescription] = useState(
+    initialAnalysis?.productDescription ?? '',
+  );
   const [phase, setPhase] = useState<StudioPhase>(resolveInitialStudioPhase(initialAnalysis));
   const [analysisText, setAnalysisText] = useState(initialAnalysis?.analysisText ?? '');
   const [nextLoading, setNextLoading] = useState(false);
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
   const imagesRef = useRef(images);
   const documentsRef = useRef(documents);
+  const brandLogoRef = useRef(brandLogo);
   const abortRef = useRef<AbortController | null>(null);
   const lastSnapshotRef = useRef<AnalysisStepSnapshot | undefined>(initialAnalysis);
 
@@ -61,30 +75,52 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
   }, [documents]);
 
   useEffect(() => {
+    brandLogoRef.current = brandLogo;
+  }, [brandLogo]);
+
+  useEffect(() => {
     return () => {
       abortRef.current?.abort();
       analysisBuffer.dispose();
       revokeProductImageUrls(imagesRef.current);
+      revokeProductImageUrls(brandLogoRef.current);
       revokeProductDocUrls(documentsRef.current);
     };
   }, [analysisBuffer]);
 
   const persistAnalysisStep = useCallback(
-    async (imgs: ProductImageItem[], docs: ProductDocItem[], text: string) => {
-      const next = await createAnalysisStepSnapshot(imgs, docs, text);
+    async (
+      imgs: ProductImageItem[],
+      docs: ProductDocItem[],
+      logo: ProductImageItem[],
+      description: string,
+      text: string,
+    ) => {
+      const next = await createAnalysisStepSnapshot(imgs, docs, logo, description, text);
       if (isSameStepSnapshot(next, lastSnapshotRef.current)) return;
       const saved = await saveStudioStep(task.id, 'analysis', next);
       lastSnapshotRef.current = saved;
+      // 新字段必须一并写回：服务端已把 blob URL 换成资产 URL，漏写回会让基线永远对不上，
+      // 每次「下一步」都重传一次 Logo 并多插一行资产
       setImages(saved.images);
       setDocuments(saved.documents);
+      setBrandLogo(saved.brandLogoImages ?? []);
+      setProductDescription(saved.productDescription ?? '');
       setAnalysisText(saved.analysisText);
     },
-    [task.id],
+    // useState 的 setter 恒定，列进来只为满足 react-hooks/preserve-manual-memoization 的依赖推断
+    [task.id, setImages, setDocuments, setBrandLogo, setProductDescription, setAnalysisText],
   );
 
   const handleAnalyze = useCallback(async () => {
-    if (images.length === 0) {
-      message.warning(NO_IMAGE_WARNING);
+    const materials = {
+      images,
+      brandLogo,
+      productDescription,
+      documents,
+    };
+    if (!hasAnalyzeMaterials(materials)) {
+      message.warning(NO_MATERIAL_WARNING);
       return;
     }
     abortRef.current?.abort();
@@ -93,7 +129,10 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
     setPhase('analyzing');
     analysisBuffer.reset();
     try {
-      const payload = await toAnalyzePayload(images, documents);
+      const payload = await toAnalyzePayload(images, documents, {
+        brandLogo,
+        productDescription,
+      });
       const res = await fetch('/api/studio/business-analysis/analyze', {
         method: 'POST',
         headers: {
@@ -121,7 +160,13 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
       if (receivedDone) {
         setPhase('analyzed');
         try {
-          await persistAnalysisStep(images, documents, analysisBuffer.getText());
+          await persistAnalysisStep(
+            images,
+            documents,
+            brandLogo,
+            productDescription,
+            analysisBuffer.getText(),
+          );
         } catch (err) {
           console.error('[business-analysis-studio] persist analysis', err);
         }
@@ -136,19 +181,27 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [analysisBuffer, documents, images, message, persistAnalysisStep]);
+  }, [
+    analysisBuffer,
+    brandLogo,
+    documents,
+    images,
+    message,
+    persistAnalysisStep,
+    productDescription,
+  ]);
 
   const handleNext = useCallback(async () => {
     setNextLoading(true);
     try {
-      await persistAnalysisStep(images, documents, analysisText);
+      await persistAnalysisStep(images, documents, brandLogo, productDescription, analysisText);
       setPhase('complete');
     } catch (err) {
       console.error('[business-analysis-studio] persist step on next', err);
     } finally {
       setNextLoading(false);
     }
-  }, [analysisText, documents, images, persistAnalysisStep]);
+  }, [analysisText, brandLogo, documents, images, persistAnalysisStep, productDescription]);
 
   return (
     <Layout className={styles.studio}>
@@ -184,6 +237,8 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
             <>
               <ControlPanel
                 images={images}
+                brandLogo={brandLogo}
+                productDescription={productDescription}
                 documents={documents}
                 analyzing={phase === 'analyzing'}
                 formLocked={phase === 'analyzing'}
@@ -191,6 +246,13 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
                   setImages((current) => appendProductImages(current, files))
                 }
                 onImageRemove={(uid) => setImages((current) => removeProductImage(current, uid))}
+                onBrandLogoAppend={(files) =>
+                  setBrandLogo((current) => appendProductImages(current, files, MAX_BRAND_LOGOS))
+                }
+                onBrandLogoRemove={(uid) =>
+                  setBrandLogo((current) => removeProductImage(current, uid))
+                }
+                onProductDescriptionChange={setProductDescription}
                 onDocsAppend={(files) =>
                   setDocuments((current) => appendProductDocs(current, files))
                 }

@@ -54,10 +54,12 @@ export async function extractStudioDocuments(
   return { texts };
 }
 
-/** 拼进用户 prompt 的产品资料段落 */
+/**
+ * 拼进用户 prompt 的产品资料段落；无文本时返回空串。
+ *
+ * 不能返回「（未上传产品资料…）」这类占位串：调用方要用返回值是否为空来决定要不要写
+ * 「- 产品资料：」那一行，占位串会被当成一份空文档写进 prompt。判「有没有资料」看 `texts.length`。
+ */
 export function formatDocumentsPrompt(extracted: ExtractedStudioDocuments): string {
-  if (extracted.texts.length === 0) {
-    return '（未上传产品资料，按识图推断）';
-  }
   return extracted.texts.join('\n\n');
 }

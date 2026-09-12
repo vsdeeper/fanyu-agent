@@ -114,31 +114,94 @@ export async function toAnalyzeDocuments(
   );
 }
 
-/** 组装分析请求体：仅产品图与资料 */
+/** 品牌 Logo 参考图（至多一张）的 data URL；未上传返回 undefined。 */
+export async function readBrandLogoDataUrl(
+  images: ProductImageItem[],
+): Promise<string | undefined> {
+  const first = images[0];
+  return first ? readUploadItemAsDataUrl(first) : undefined;
+}
+
+/**
+ * 能否开始分析：四项素材（产品精修图 / 品牌 Logo / 产品说明 / 产品资料）至少一项非空。
+ *
+ * 左栏按钮禁用与 handleAnalyze 的守卫共用本判据，避免同一规则写成两份而出现「按钮可点但点下去被拦」。
+ * 服务端另有宽松校验与运行时判定（产品资料要看实际解析出的文本），三处口径需一致。
+ */
+export function hasAnalyzeMaterials(input: {
+  images: ProductImageItem[];
+  brandLogo: ProductImageItem[];
+  productDescription: string;
+  documents: ProductDocItem[];
+}): boolean {
+  return (
+    input.images.length > 0 ||
+    input.brandLogo.length > 0 ||
+    Boolean(input.productDescription.trim()) ||
+    input.documents.length > 0
+  );
+}
+
+/**
+ * 组装分析请求体；空值一律不写键，由服务端复核「至少一项非空」。
+ *
+ * Logo 的读取要吞错降级：历史资产可能已被删而 404，此时当作「不带 Logo」继续分析，不把整轮卡死。
+ */
 export async function toAnalyzePayload(
   images: ProductImageItem[],
   documents: ProductDocItem[],
+  options: { brandLogo?: ProductImageItem[]; productDescription?: string } = {},
 ): Promise<BusinessAnalysisAnalyzeRequest> {
+  let brandLogoDataUrl: string | undefined;
+  try {
+    brandLogoDataUrl = await readBrandLogoDataUrl(options.brandLogo ?? []);
+  } catch (err) {
+    console.error('[business-analysis-studio] read brand logo', err);
+  }
+  const productDescription = options.productDescription?.trim();
   return {
     images: await toAnalyzeImages(images),
     ...(documents.length > 0 ? { documents: await toAnalyzeDocuments(documents) } : {}),
+    ...(brandLogoDataUrl ? { brandLogoDataUrl } : {}),
+    ...(productDescription ? { productDescription } : {}),
   };
 }
 
-/** 构造商业分析步骤的完整持久化快照。 */
+/**
+ * 构造商业分析步骤的完整持久化快照。
+ *
+ * 键序与空值处理必须与 `readAnalysisStepSnapshot` 对称（原因见 isSameStepSnapshot）；
+ * productDescription 先 trim，纯空白不能落成键。
+ */
 export async function createAnalysisStepSnapshot(
   images: ProductImageItem[],
   documents: ProductDocItem[],
+  brandLogo: ProductImageItem[],
+  productDescription: string,
   analysisText: string,
 ): Promise<AnalysisStepSnapshot> {
+  const description = productDescription.trim();
   return {
     images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
     documents: (await Promise.all(documents.map(serializeUploadItem))) as ProductDocItem[],
+    ...(brandLogo.length > 0
+      ? {
+          brandLogoImages: (await Promise.all(
+            brandLogo.map(serializeUploadItem),
+          )) as ProductImageItem[],
+        }
+      : {}),
+    ...(description ? { productDescription: description } : {}),
     analysisText,
   };
 }
 
-/** 比较两份可序列化步骤快照是否相同；无基线视为已变化。 */
+/**
+ * 比较两份可序列化步骤快照是否相同；无基线视为已变化。
+ *
+ * 这里用朴素 JSON.stringify 而非按键排序的稳定序列化，故 create / read 必须产出完全相同的键序。
+ * 给其中一边加字段或调整字段顺序会让每次「下一步」都判定为已变化，重存快照并重复落盘资产。
+ */
 export function isSameStepSnapshot(next: unknown, baseline: unknown): boolean {
   if (baseline === undefined) return false;
   return JSON.stringify(next) === JSON.stringify(baseline);
@@ -165,14 +228,25 @@ export function resolveInitialStudioPhase(analysis: AnalysisStepSnapshot | undef
   return analysis?.analysisText.trim() ? 'analyzed' : 'input';
 }
 
-/** 从未知 JSON 中读取商业分析快照。 */
+/**
+ * 从未知 JSON 中读取商业分析快照。
+ * 可选字段的键序与空值处理必须与 `createAnalysisStepSnapshot` 对称（原因见 isSameStepSnapshot）。
+ */
 export function readAnalysisStepSnapshot(value: unknown): AnalysisStepSnapshot | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const snapshot = value as Partial<AnalysisStepSnapshot>;
   if (!Array.isArray(snapshot.images) || !Array.isArray(snapshot.documents)) return undefined;
+  const brandLogoImages =
+    Array.isArray(snapshot.brandLogoImages) && snapshot.brandLogoImages.length > 0
+      ? snapshot.brandLogoImages
+      : undefined;
+  const description =
+    typeof snapshot.productDescription === 'string' ? snapshot.productDescription.trim() : '';
   return {
     images: snapshot.images,
     documents: snapshot.documents,
+    ...(brandLogoImages ? { brandLogoImages } : {}),
+    ...(description ? { productDescription: description } : {}),
     analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : '',
   };
 }

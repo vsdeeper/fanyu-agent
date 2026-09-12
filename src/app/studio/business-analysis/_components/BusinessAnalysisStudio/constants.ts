@@ -9,10 +9,14 @@ export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
   complete: 1,
 };
 
-export const NO_IMAGE_WARNING = '请先上传产品图';
+/** 品牌 Logo（至多一张）；BusinessAnalysisStudio 的 append 与 AnalyzeForm 的 max 共用 */
+export const MAX_BRAND_LOGOS = 1;
+
+/** 四项素材全空时的提示；文案与服务端 MISSING_ANALYZE_MATERIAL 一致 */
+export const NO_MATERIAL_WARNING = '请至少上传产品精修图、品牌 Logo，或填写产品说明 / 产品资料';
 export const ANALYZE_BUTTON = '开始分析';
 export const ANALYZE_FAILED = '产品分析失败，请稍后重试';
-export const EMPTY_RESULT_HINT = '上传产品资料和产品图，点击「开始分析」开始';
+export const EMPTY_RESULT_HINT = '上传产品图、品牌 Logo 或填写产品说明，点击「开始分析」开始';
 export const RESULT_TITLE_ANALYSIS = '分析结果';
 export const PREV_BUTTON = '上一步';
 export const COMPLETE_BUTTON = '完成';

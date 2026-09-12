@@ -16,12 +16,9 @@ import type {
 } from '@/app/api/studio/business-analysis/_shared/types';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 import { ANALYZE_INSTRUCTIONS } from './analyze-instructions';
-import { ANALYZE_FAILED } from './constants';
-import {
-  INVALID_FORM,
-  INVALID_JSON,
-  MISSING_PRODUCT_IMAGE,
-} from '@/app/api/studio/_server/constants';
+import { ANALYZE_FAILED, BRAND_LOGO_VISION_QUESTION, MISSING_ANALYZE_MATERIAL } from './constants';
+import { INVALID_FORM, INVALID_JSON } from '@/app/api/studio/_server/constants';
+import { buildAnalyzePrompt } from './analyze-prompt';
 import { extractStudioDocuments, formatDocumentsPrompt } from './extract-documents';
 import { parseAnalyzeBody } from './parse-analyze-request';
 import {
@@ -34,14 +31,19 @@ import {
 type SseSend = (event: string, data: unknown) => Promise<void>;
 
 /**
- * 把识图结果与产品资料拼成 streamText 的用户 prompt。
+ * 品牌 Logo 识图；未提供或识图失败返回 undefined，由 prompt 组装按「无品牌素材」处理。
  */
-function buildAnalyzePrompt(input: { documentsText: string; visionText: string }): string {
-  return [
-    '【工作台商业分析】请按指令输出九段可见 Markdown。本轮不要出图、不要 slots JSON。',
-    `- 产品资料：${input.documentsText}`,
-    input.visionText,
-  ].join('\n');
+async function describeBrandLogo(
+  dataUrl: string | undefined,
+  signal: AbortSignal,
+): Promise<string | undefined> {
+  if (!dataUrl || signal.aborted) return undefined;
+  const vision = await analyzeImage(dataUrl, BRAND_LOGO_VISION_QUESTION, signal);
+  if (!vision.ok) {
+    console.error('[business-analysis/analyze] brand logo vision', vision.error);
+    return undefined;
+  }
+  return formatVisionAnalysisText(vision.analysis);
 }
 
 /**
@@ -52,11 +54,6 @@ async function pipeAnalyzeEvents(
   signal: AbortSignal,
   send: SseSend,
 ): Promise<void> {
-  if (body.images.length === 0) {
-    await send(ANALYZE_SSE_EVENT.error, { message: MISSING_PRODUCT_IMAGE });
-    return;
-  }
-
   const visionChunks: string[] = [];
   for (const image of body.images) {
     if (signal.aborted) return;
@@ -72,15 +69,28 @@ async function pipeAnalyzeEvents(
     }
   }
 
-  if (visionChunks.length === 0) {
-    await send(ANALYZE_SSE_EVENT.error, { message: ANALYZE_FAILED });
+  const extracted = await extractStudioDocuments(body.documents);
+  const productDescription = body.productDescription?.trim();
+  // Logo 的识图结果单独攒，不能混进产品图那段 —— 混进去模型会把 Logo 描述当成产品本体
+  const brandLogoText = await describeBrandLogo(body.brandLogoDataUrl, signal);
+
+  const hasTextMaterial =
+    Boolean(brandLogoText) || Boolean(productDescription) || extracted.texts.length > 0;
+  if (visionChunks.length === 0 && !hasTextMaterial) {
+    await send(ANALYZE_SSE_EVENT.error, {
+      // 传了产品图却全识图失败属上游故障，与「四项素材本来就没填」要分开报
+      message: body.images.length > 0 ? ANALYZE_FAILED : MISSING_ANALYZE_MATERIAL,
+    });
     return;
   }
 
-  const extracted = await extractStudioDocuments(body.documents);
   const prompt = buildAnalyzePrompt({
-    documentsText: formatDocumentsPrompt(extracted),
+    productDescription,
+    // 判「有没有资料」看 texts.length：坏文件会被 extractStudioDocuments 静默跳过，
+    // 只看 body.documents.length 会让一份没解析出文本的资料冒充素材
+    documentsText: extracted.texts.length > 0 ? formatDocumentsPrompt(extracted) : '',
     visionText: visionChunks.join('\n\n'),
+    brandLogoText,
   });
 
   const provider = getChatProvider();

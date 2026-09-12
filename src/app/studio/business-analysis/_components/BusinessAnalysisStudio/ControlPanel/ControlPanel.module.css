@@ -29,3 +29,11 @@
 .analyzeBtn {
   height: 40px !important;
 }
+
+.footerHint {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--one-color-text-tertiary);
+}
