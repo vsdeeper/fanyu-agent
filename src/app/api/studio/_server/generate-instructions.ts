@@ -65,10 +65,8 @@ export function buildProductViewPrompt(): string {
 export type MainImagePromptInput = {
   /** 本张主题卡正文 */
   requirement: string;
-  /** 商业分析正文；可为空（主图任务的商业分析非必填） */
+  /** 商业分析正文 */
   analysisText: string;
-  /** 主图说明自由文本；可为空 */
-  mainImageDescription?: string;
   /** 产品精修图张数（不含文案标准参考图与品牌 Logo） */
   productImageCount: number;
   hasCopyReference: boolean;
@@ -77,7 +75,7 @@ export type MainImagePromptInput = {
 };
 
 /**
- * 电商主图出站 prompt：商业分析或主图说明定整套气质，可选产品资料定第一手产品事实，本张主题卡定文案与拍法；精修图为产品事实。
+ * 电商主图出站 prompt：商业分析定整套气质，可选产品资料定第一手产品事实，本张主题卡定文案与拍法；精修图为产品事实。
  *
  * `productImageCount` / `hasCopyReference` / `hasBrandLogo` 必填：参考图数组顺序为
  * 产品精修图 → 文案标准参考图 → 品牌 Logo，必须按真实张数点名序号，否则默认那句
@@ -87,7 +85,6 @@ export type MainImagePromptInput = {
 export function buildMainImagePrompt(input: MainImagePromptInput): string {
   const { productImageCount, hasCopyReference, hasBrandLogo } = input;
   const analysisText = input.analysisText.trim();
-  const mainDescription = input.mainImageDescription?.trim() ?? '';
   const productDocsText = input.productDocumentsText?.trim();
   const hasProductReference = productImageCount > 0;
   const productRange =
@@ -118,30 +115,20 @@ export function buildMainImagePrompt(input: MainImagePromptInput): string {
         ]
       : []),
   ];
-  // 商业分析非必填，不得留「根据【商业分析】…」的空锚点：按实际提供的资料改写，两者都没有时才交给主题卡与产品本体收束
-  const directionRule = analysisText
-    ? mainDescription
-      ? '根据【商业分析】确定整套配色、光影气质、材质与品牌氛围，并以【主图说明】为最终口径（两者冲突时以【主图说明】为准）；本张空间、道具、机位与构图切片以【本张主题卡】的展示重点为准。'
-      : '根据【商业分析】确定整套配色、光影气质、材质与品牌氛围；本张空间、道具、机位与构图切片以【本张主题卡】的展示重点为准。'
-    : mainDescription
-      ? '根据【主图说明】确定整套配色、光影气质、材质与品牌氛围；本张空间、道具、机位与构图切片以【本张主题卡】的展示重点为准。'
-      : '配色、光影气质、材质与品牌氛围按【本张主题卡】与产品本体自行收束；本张空间、道具、机位与构图切片以【本张主题卡】的展示重点为准。';
   return [
     '生成恰好一张电商主图，不要输出说明、草图或多方案拼图。',
     ...referenceRules,
     '产品底座必须贴实支撑面：四边接触、接触阴影贴边连续，禁止腾空、半边离地或阴影与底座分离；主图不允许悬浮创意。',
-    directionRule,
+    '根据【商业分析】确定整套配色、光影气质、材质与品牌氛围；本张空间、道具、机位与构图切片以【本张主题卡】的展示重点为准。',
     '本张出现的画面文案只来自【本张主题卡】设计目标可转化的短句与展示重点，禁止把拍摄写法说明当文字写进画面。',
     '禁止把空洞白底棚拍或同一套通用生活方式模板当作所有主题的默认背景；套图之间构图与场景须按各自展示重点区分。',
-    ...(analysisText ? ['【商业分析】', analysisText] : []),
-    ...(mainDescription ? ['【主图说明】', mainDescription] : []),
+    '【商业分析】',
+    analysisText,
     ...(productDocsText
       ? [
           '【产品资料】',
           productDocsText,
-          analysisText
-            ? '品牌、产品名与规格数值等第一手产品事实以【产品资料】为准，缺失时以【商业分析】为准。'
-            : '品牌、产品名与规格数值等第一手产品事实以【产品资料】为准。',
+          '品牌、产品名与规格数值等第一手产品事实以【产品资料】为准，缺失时以【商业分析】为准。',
         ]
       : []),
     '【本张主题卡】',

@@ -64,14 +64,13 @@ async function describeBrandLogo(
 }
 
 /**
- * 抽取商业分析、主图说明与可选产品资料，把品牌 Logo 识图结果一并拼进 prompt，流式输出策划 Markdown。
+ * 抽取商业分析与可选产品资料，把品牌 Logo 识图结果一并拼进 prompt，流式输出策划 Markdown。
  */
 async function pipeAnalyzeEvents(
   kind: EcommerceAnalyzeKind,
   documents: { filename: string; mediaType: string; dataUrl: string }[],
   options: {
     productDocuments?: { filename: string; mediaType: string; dataUrl: string }[];
-    mainImageDescription?: string;
     brandLogoDataUrl?: string;
   },
   signal: AbortSignal,
@@ -80,9 +79,7 @@ async function pipeAnalyzeEvents(
   const extracted = await extractStudioDocuments(documents);
   // formatDocumentsPrompt 在无文本时返回占位串，故判空必须看 texts —— 用返回串判空会把占位串当成商业分析写进 prompt
   const documentsText = extracted.texts.length > 0 ? formatDocumentsPrompt(extracted) : '';
-  const descriptionText = options.mainImageDescription?.trim() ?? '';
-  // 主图的商业分析非必填，两者皆空才报错；此处能走到说明主图说明为空，故 EMPTY_ANALYSIS_DOC 对两种 kind 都成立
-  if (!documentsText && !descriptionText) {
+  if (!documentsText) {
     await send(ANALYZE_SSE_EVENT.error, { message: EMPTY_ANALYSIS_DOC });
     return;
   }
@@ -111,11 +108,7 @@ async function pipeAnalyzeEvents(
   const result = streamText({
     model: runtime.getMainModel(getModelId(provider, 'pro')),
     instructions: analyzeInstructions(kind),
-    prompt: buildAnalyzePrompt(kind, documentsText, {
-      productDocsText,
-      mainImageDescription: descriptionText,
-      brandLogoText,
-    }),
+    prompt: buildAnalyzePrompt(kind, documentsText, { productDocsText, brandLogoText }),
     abortSignal: signal,
     providerOptions: { openai: openaiOptions },
   });
@@ -139,7 +132,7 @@ async function pipeAnalyzeEvents(
 }
 
 /**
- * POST /api/studio/ecommerce/analyze：商业分析文档（主图可缺省）+ 主图说明 + 品牌 Logo 原图 + 可选补充产品资料，
+ * POST /api/studio/ecommerce/analyze：商业分析文档 + 品牌 Logo 原图 + 可选补充产品资料，
  * 按 kind 规划主图或详情图主题卡。Logo 原图先经识图转成中文描述再进 prompt。
  */
 export async function handleEcommerceAnalyze(req: Request): Promise<Response> {

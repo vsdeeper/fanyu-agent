@@ -74,7 +74,6 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
           : buildMainImagePrompt({
               requirement: item.requirement,
               analysisText: body.analysisText,
-              mainImageDescription: body.mainImageDescription,
               productImageCount,
               hasCopyReference,
               hasBrandLogo,

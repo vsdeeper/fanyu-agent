@@ -77,46 +77,16 @@ describe('parseEcommerceAnalyzeBody', () => {
     ).toBeNull();
   });
 
-  it('主图缺 documents 且无主图说明拒绝（产品资料不能替代商业分析）', () => {
+  it('缺 documents 一律拒绝（产品资料不能替代商业分析）', () => {
     expect(parseEcommerceAnalyzeBody({ productDocuments: [PRODUCT_DOC] })).toBeNull();
     expect(parseEcommerceAnalyzeBody({ kind: 'mainImage', documents: [] })).toBeNull();
-  });
-
-  it('主图商业分析非必填：无 documents 但有主图说明通过', () => {
-    expect(
-      parseEcommerceAnalyzeBody({
-        kind: 'mainImage',
-        documents: [],
-        mainImageDescription: '底色走冷白',
-      }),
-    ).toEqual({
-      kind: 'mainImage',
-      documents: [],
-      mainImageDescription: '底色走冷白',
-    });
-  });
-
-  it('主图仅空白主图说明等同未填，仍拒绝', () => {
-    expect(
-      parseEcommerceAnalyzeBody({ kind: 'mainImage', documents: [], mainImageDescription: '   ' }),
-    ).toBeNull();
-  });
-
-  it('详情图不受主图说明豁免：无 documents 一律拒绝', () => {
-    expect(
-      parseEcommerceAnalyzeBody({
-        kind: 'detailImage',
-        documents: [],
-        mainImageDescription: '底色走冷白',
-      }),
-    ).toBeNull();
+    expect(parseEcommerceAnalyzeBody({ kind: 'detailImage', documents: [] })).toBeNull();
   });
 
   it('brandLogoDataUrl 透传，缺省为 undefined', () => {
     const parsed = parseEcommerceAnalyzeBody({
       kind: 'mainImage',
-      documents: [],
-      mainImageDescription: '底色走冷白',
+      documents: [DOC],
       brandLogoDataUrl: 'data:image/png;base64,LOGO',
     });
     expect(parsed?.brandLogoDataUrl).toBe('data:image/png;base64,LOGO');

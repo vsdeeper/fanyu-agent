@@ -157,85 +157,17 @@ describe('buildRewriteCardPrompt（主图）', () => {
     expect(prompt).not.toContain('【产品资料】');
   });
 
-  it('带主图说明时在商业分析后插入【主图说明】段', () => {
+  it('带产品资料时排在【商业分析】之后', () => {
     const prompt = buildRewriteCardPrompt({
       kind: 'mainImage',
       themeId: 'product',
       draft: '',
       otherCards: [],
       analysisText: '保温杯，主打便携。',
-      mainImageDescription: '底色走冷白',
       productDocumentsText: '容量 500ml，品牌 凡域。',
     });
 
-    expect(prompt).toContain('【主图说明】\n底色走冷白');
-    expect(prompt.indexOf('【商业分析】')).toBeLessThan(prompt.indexOf('【主图说明】'));
-    expect(prompt.indexOf('【主图说明】')).toBeLessThan(prompt.indexOf('【产品资料】'));
-  });
-
-  it('商业分析为空时不出现空的【商业分析】段', () => {
-    const prompt = buildRewriteCardPrompt({
-      kind: 'mainImage',
-      themeId: 'product',
-      draft: '',
-      otherCards: [],
-      analysisText: '   ',
-      mainImageDescription: '底色走冷白',
-    });
-
-    expect(prompt).not.toContain('【商业分析】');
-    expect(prompt).toContain('【主图说明】\n底色走冷白');
-  });
-});
-
-describe('buildRewriteCardPrompt（规格主图）', () => {
-  it('走润色分支，且不带其它张互斥段', () => {
-    const prompt = buildRewriteCardPrompt({
-      kind: 'mainImage',
-      themeId: 'spec',
-      draft: '白色款，突出可拆洗',
-      otherCards: OTHER_CARDS,
-      analysisText: '保温杯，主打便携。',
-    });
-
-    expect(prompt).toContain('【当前张】规格主图');
-    expect(prompt).toContain('【本张职责】本张用于店铺销售中的自定义规格');
-    expect(prompt).toContain('【用户草稿】');
-    expect(prompt).toContain('白色款，突出可拆洗');
-    // 独立卡不该看到「必须互斥」的措辞，也不该看到「（暂无其它张）」这种伪占位
-    expect(prompt).not.toContain('【其它张');
-    expect(prompt).not.toContain('必须互斥');
-    expect(prompt).not.toContain('（暂无其它张）');
-    expect(prompt).toContain('【商业分析】\n保温杯，主打便携。');
-  });
-
-  it('无草稿走规格主图自己的随机指令，不要求「换信息切片」', () => {
-    const prompt = buildRewriteCardPrompt({
-      kind: 'mainImage',
-      themeId: 'spec',
-      draft: '   ',
-      otherCards: [],
-      analysisText: '保温杯，主打便携。',
-    });
-
-    expect(prompt).toContain('【随机生成】');
-    expect(prompt).toContain('为「规格主图」拟一条自定义规格');
-    expect(prompt).not.toContain('为本张职责换一个新的信息切片');
-  });
-
-  it('主图说明与产品资料段照常注入', () => {
-    const prompt = buildRewriteCardPrompt({
-      kind: 'mainImage',
-      themeId: 'spec',
-      draft: '白色款',
-      otherCards: [],
-      analysisText: '保温杯，主打便携。',
-      mainImageDescription: '底色走冷白',
-      productDocumentsText: '容量 500ml，品牌 凡域。',
-    });
-
-    expect(prompt).toContain('【主图说明】\n底色走冷白');
-    expect(prompt).toContain('【产品资料】\n容量 500ml，品牌 凡域。');
+    expect(prompt.indexOf('【商业分析】')).toBeLessThan(prompt.indexOf('【产品资料】'));
   });
 });
 

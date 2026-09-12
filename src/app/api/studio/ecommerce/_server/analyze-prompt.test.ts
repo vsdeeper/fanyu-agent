@@ -25,15 +25,6 @@ describe('buildAnalyzePrompt', () => {
     expect(prompt).not.toContain('- 产品资料：');
   });
 
-  it('主图无商业分析但有主图说明时不出现空的商业分析行', () => {
-    const prompt = buildAnalyzePrompt('mainImage', '', {
-      mainImageDescription: '底色走冷白，不要促销大字',
-    });
-    expect(prompt).toContain('【主图分析】');
-    expect(prompt).toContain('- 主图说明：底色走冷白，不要促销大字');
-    expect(prompt).not.toContain('- 商业分析：');
-  });
-
   it('主图带品牌 Logo 识图结果时追加 Logo 告知行与识图段', () => {
     const prompt = buildAnalyzePrompt('mainImage', '商业分析正文', {
       brandLogoText: '圆形徽标，主色墨绿。',
@@ -61,7 +52,6 @@ describe('buildAnalyzePrompt', () => {
     expect(prompt).toContain('【详情图结构规划】');
     expect(prompt).toContain('- 商业分析：商业分析正文');
     expect(prompt).not.toContain('- 产品资料：');
-    expect(prompt).not.toContain('- 主图说明：');
   });
 
   it('详情图带产品资料时追加产品资料段', () => {

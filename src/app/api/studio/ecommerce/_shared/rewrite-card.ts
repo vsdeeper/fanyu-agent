@@ -18,8 +18,6 @@ export type MainImageRewriteCardRequest = {
   draft: string;
   otherCards: RewriteCardPeer[];
   analysisText: string;
-  /** 主图说明自由文本；非必填，与 analysisText 至少一项非空 */
-  mainImageDescription?: string;
   /** 补充产品资料正文（第一手产品事实，优先于商业分析）；未上传时省略 */
   productDocumentsText?: string;
 };

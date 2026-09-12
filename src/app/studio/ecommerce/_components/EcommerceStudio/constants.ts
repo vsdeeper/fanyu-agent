@@ -31,8 +31,6 @@ export const DESIGN_RESULT_MISSING = '请先生成至少一张视觉设计';
 export const MAIN_IMAGE_RESULT_MISSING = '请先生成至少一张主图';
 export const POSTER_RESULT_MISSING = '请先生成至少一张营销海报';
 export const ANALYSIS_UPLOAD_MISSING = '请先上传商业分析';
-/** 主图任务的商业分析非必填，两者皆空时才提示 */
-export const ANALYSIS_SOURCE_MISSING = '请上传商业分析或填写主图说明';
 export const THEME_SELECT_MISSING = '请先点选至少一张主题卡片';
 export const ANALYZE_BUTTON = '开始分析';
 export const VISUAL_BUTTON = '生成营销主视觉';
@@ -57,7 +55,7 @@ export const GENERATE_FAILED = '生图失败，请稍后重试';
 
 export const EMPTY_RESULT_HINT = '上传产品资料和产品图，点击「分析产品」开始';
 export const EMPTY_VISUAL_HINT = '设置参数后点击「生成主视觉」';
-export const EMPTY_MAIN_IMAGE_PLAN_HINT = '上传商业分析或填写主图说明，点击「开始分析」';
+export const EMPTY_MAIN_IMAGE_PLAN_HINT = '上传商业分析，点击「开始分析」';
 export const EMPTY_DETAIL_IMAGE_PLAN_HINT = '上传商业分析，点击「开始分析」';
 export const EMPTY_MAIN_IMAGE_HINT = '设置参数后点击「生成主图」';
 export const EMPTY_DETAIL_IMAGE_HINT = '设置参数后点击「生成详情图」';
@@ -79,12 +77,6 @@ export const DETAIL_IMAGE_RESULT_MISSING = '请先生成至少一张详情图';
 export const MAX_MODEL_IMAGES = 1;
 export const MODEL_IMAGE_SUBTITLE = '可选，锁定外貌与服装，姿势可按设计调整';
 export const MODEL_IMAGE_HINT = '上传模特身份参考图（可选）';
-
-/** 主图说明（分析步左栏自由文本，与商业分析至少填一项） */
-export const MAIN_IMAGE_DESCRIPTION_LABEL = '主图说明';
-export const MAIN_IMAGE_DESCRIPTION_PLACEHOLDER =
-  '例如：突出轻量便携，配色走冷白，画面不要促销大字';
-export const MAIN_IMAGE_DESCRIPTION_HINT = '与商业分析至少填写一项；同时用于规划主题卡与生成主图';
 
 /** 品牌 Logo（主图分析步左栏，可选，至多一张，作出图参考图末位） */
 export const MAX_BRAND_LOGOS = 1;

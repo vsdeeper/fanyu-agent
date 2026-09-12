@@ -29,21 +29,3 @@
 .analyzeBtn {
   height: 40px !important;
 }
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--one-color-text);
-}
-
-.hint {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--one-color-text-tertiary);
-}

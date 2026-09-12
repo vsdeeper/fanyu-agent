@@ -58,8 +58,6 @@ export type AnalysisStepSnapshot = {
   /** 主图任务的品牌 Logo（至多一张，作出图参考图末位）；仅主图，未上传时省略 */
   brandLogoImages?: ProductImageItem[];
   analysisText: string;
-  /** 主图说明自由文本；仅主图，与商业分析至少一项非空，为空时省略 */
-  mainImageDescription?: string;
   planCards?: ThemePlanCard[];
   selectedThemeIds?: string[];
 };

@@ -50,7 +50,6 @@ import type {
   VisualStepSnapshot,
 } from './types';
 import { DEFAULT_CLARITY_BY_TASK_TYPE, DEFAULT_DESIGN_FORM_STATE } from './constants';
-import { isMainImageTask } from './workflow';
 
 export {
   applyGenerateEvent,
@@ -192,7 +191,6 @@ export async function readProductDocsAsText(documents: ProductDocItem[]): Promis
 /**
  * 主图请求体：规格 + 商业分析 + 选中主题文案 + 产品精修图；尾部可选值统一走 options。
  *
- * 商业分析非必填：与 mainImageDescription 至少一项非空（服务端 schema 复核）。
  * 尾部几个可选值同型，一律用具名键——按位置传不会报类型错、只会静默串值。
  */
 export async function toMainImageGeneratePayload(
@@ -202,13 +200,11 @@ export async function toMainImageGeneratePayload(
   productImages: ProductImageItem[],
   options: {
     productDocumentsText?: string;
-    mainImageDescription?: string;
     copyStyleReferenceDataUrl?: string;
     brandLogoDataUrl?: string;
   } = {},
 ): Promise<StudioGenerateRequest> {
   const productDocumentsText = options.productDocumentsText?.trim();
-  const mainImageDescription = options.mainImageDescription?.trim();
   return {
     kind: 'mainImage',
     model: form.model,
@@ -223,7 +219,6 @@ export async function toMainImageGeneratePayload(
       requirement: card.requirement.trim(),
     })),
     productViewImages: await toAnalyzeImages(productImages),
-    ...(mainImageDescription ? { mainImageDescription } : {}),
     ...(productDocumentsText ? { productDocumentsText } : {}),
     ...(options.copyStyleReferenceDataUrl
       ? { copyStyleReferenceDataUrl: options.copyStyleReferenceDataUrl }
@@ -296,16 +291,15 @@ export async function toAnalyzeDocuments(
 }
 
 /**
- * 组装主题规划分析请求体：商业分析文档 + 主图说明（仅主图）+ 品牌 Logo 原图 + 可选补充产品资料。
+ * 组装主题规划分析请求体：商业分析文档 + 品牌 Logo 原图 + 可选补充产品资料。
  *
- * 商业分析在主图任务里非必填，故 documents 允许为空数组；空值一律不写键，由服务端按 kind 复核「至少一项非空」。
+ * 空值一律不写键，由服务端按 kind 复核必填项。
  */
 export async function toThemeAnalyzePayload(
   documents: ProductDocItem[],
   kind: 'mainImage' | 'detailImage' = 'mainImage',
   options: {
     productDocs?: ProductDocItem[];
-    mainImageDescription?: string;
     /** 品牌 Logo 上传项（至多一张）；分析侧由服务端先识图再进 prompt，故这里传图而非布尔值 */
     brandLogo?: ProductImageItem[];
   } = {},
@@ -313,34 +307,16 @@ export async function toThemeAnalyzePayload(
   kind: 'mainImage' | 'detailImage';
   documents: BusinessAnalysisDocumentInput[];
   productDocuments?: BusinessAnalysisDocumentInput[];
-  mainImageDescription?: string;
   brandLogoDataUrl?: string;
 }> {
   const productDocs = options.productDocs ?? [];
-  const mainImageDescription = options.mainImageDescription?.trim();
   const brandLogoDataUrl = await readBrandLogoDataUrl(options.brandLogo ?? []);
   return {
     kind,
     documents: await toAnalyzeDocuments(documents),
     ...(productDocs.length > 0 ? { productDocuments: await toAnalyzeDocuments(productDocs) } : {}),
-    ...(mainImageDescription ? { mainImageDescription } : {}),
     ...(brandLogoDataUrl ? { brandLogoDataUrl } : {}),
   };
-}
-
-/**
- * 主题规划类任务能否开始分析 / 出图：主图为「商业分析与主图说明至少一项非空」（商业分析非必填），
- * 详情图仍必须有商业分析。
- *
- * 分析步的按钮禁用与出图步的前置校验共用本判据，避免同一规则写成两份而出现「按钮可点但点下去被拦」。
- */
-export function canStartThemePlan(input: {
-  taskType: EcommerceTaskType;
-  documentCount: number;
-  mainImageDescription: string;
-}): boolean {
-  if (!isMainImageTask(input.taskType)) return input.documentCount > 0;
-  return input.documentCount > 0 || Boolean(input.mainImageDescription.trim());
 }
 
 /** 品牌 Logo 参考图（至多一张）的 data URL；未上传返回 undefined */
@@ -432,11 +408,9 @@ export async function createAnalysisStepSnapshot(
     selectedThemeIds?: string[];
     productDocs?: ProductDocItem[];
     brandLogoImages?: ProductImageItem[];
-    mainImageDescription?: string;
   },
 ): Promise<AnalysisStepSnapshot> {
   const brandLogoImages = extras?.brandLogoImages ?? [];
-  const mainImageDescription = extras?.mainImageDescription?.trim();
   return {
     images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
     documents: (await Promise.all(documents.map(serializeUploadItem))) as ProductDocItem[],
@@ -458,7 +432,6 @@ export async function createAnalysisStepSnapshot(
           )) as ProductImageItem[],
         }
       : {}),
-    ...(mainImageDescription ? { mainImageDescription } : {}),
   };
 }
 
@@ -538,10 +511,6 @@ export function readAnalysisStepSnapshot(value: unknown): AnalysisStepSnapshot |
     brandLogoImages:
       Array.isArray(snapshot.brandLogoImages) && snapshot.brandLogoImages.length > 0
         ? snapshot.brandLogoImages
-        : undefined,
-    mainImageDescription:
-      typeof snapshot.mainImageDescription === 'string' && snapshot.mainImageDescription
-        ? snapshot.mainImageDescription
         : undefined,
     analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : '',
     planCards: Array.isArray(snapshot.planCards) ? snapshot.planCards : undefined,

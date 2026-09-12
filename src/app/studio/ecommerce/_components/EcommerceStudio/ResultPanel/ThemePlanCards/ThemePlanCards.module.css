@@ -24,19 +24,6 @@
   color: var(--one-color-text);
 }
 
-/* 待填卡：虚线描边 + 次要文字色的占位提示 */
-.locked {
-  cursor: default;
-  border-style: dashed;
-}
-
-.bodyHint {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--one-color-text-tertiary);
-}
-
 .editorWrap {
   position: relative;
 }

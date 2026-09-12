@@ -17,7 +17,6 @@ import {
   appendProductImages,
   applyDesignGenerateEvent,
   applyGenerateEvent,
-  canStartThemePlan,
   createAnalysisStepSnapshot,
   createDefaultDesignForm,
   createDesignStepSnapshot,
@@ -191,10 +190,9 @@ describe('视觉设计请求体', () => {
     expect(payload).not.toHaveProperty('visualLock');
     expect(payload).not.toHaveProperty('copyStyleReferenceDataUrl');
     expect(payload).not.toHaveProperty('brandLogoDataUrl');
-    expect(payload).not.toHaveProperty('mainImageDescription');
   });
 
-  it('主图请求体四个可选值各归其位，空值一律不携带', async () => {
+  it('主图请求体三个可选值各归其位，空值一律不携带', async () => {
     const requirements = [{ themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' }];
     const images = [IMAGE_ITEM('p-1', 'product.png')];
 
@@ -205,14 +203,12 @@ describe('视觉设计请求体', () => {
       images,
       {
         productDocumentsText: ' 容量 500ml ',
-        mainImageDescription: ' 底色走冷白 ',
         copyStyleReferenceDataUrl: 'data:image/png;base64,ref',
         brandLogoDataUrl: 'data:image/png;base64,logo',
       },
     );
     expect(withAll).toMatchObject({
       productDocumentsText: '容量 500ml',
-      mainImageDescription: '底色走冷白',
       copyStyleReferenceDataUrl: 'data:image/png;base64,ref',
       brandLogoDataUrl: 'data:image/png;base64,logo',
     });
@@ -226,17 +222,15 @@ describe('视觉设计请求体', () => {
     expect(withNone).not.toHaveProperty('copyStyleReferenceDataUrl');
     expect(withNone).not.toHaveProperty('brandLogoDataUrl');
     expect(withNone).not.toHaveProperty('productDocumentsText');
-    expect(withNone).not.toHaveProperty('mainImageDescription');
 
     const withBlank = await toMainImageGeneratePayload(
       DEFAULT_DESIGN_FORM_STATE,
       '目标人群偏好冷白',
       requirements,
       images,
-      { productDocumentsText: '  ', mainImageDescription: '  ' },
+      { productDocumentsText: '  ' },
     );
     expect(withBlank).not.toHaveProperty('productDocumentsText');
-    expect(withBlank).not.toHaveProperty('mainImageDescription');
   });
 
   it('详情图请求体含当前屏主题卡，可选上一屏参考图', async () => {
@@ -490,46 +484,6 @@ describe('按主题一级分组', () => {
   });
 });
 
-describe('canStartThemePlan', () => {
-  it('主图：商业分析与主图说明至少一项非空才可开始', () => {
-    expect(
-      canStartThemePlan({ taskType: '主图', documentCount: 1, mainImageDescription: '' }),
-    ).toBe(true);
-    expect(
-      canStartThemePlan({ taskType: '主图', documentCount: 0, mainImageDescription: '底色走冷白' }),
-    ).toBe(true);
-    expect(
-      canStartThemePlan({ taskType: '主图', documentCount: 0, mainImageDescription: '   ' }),
-    ).toBe(false);
-    expect(
-      canStartThemePlan({ taskType: '主图', documentCount: 0, mainImageDescription: '' }),
-    ).toBe(false);
-  });
-
-  it('详情图仍必须有商业分析，主图说明不能替代', () => {
-    expect(
-      canStartThemePlan({ taskType: '详情图', documentCount: 1, mainImageDescription: '' }),
-    ).toBe(true);
-    expect(
-      canStartThemePlan({
-        taskType: '详情图',
-        documentCount: 0,
-        mainImageDescription: '底色走冷白',
-      }),
-    ).toBe(false);
-  });
-
-  it('营销海报不受本判据约束', () => {
-    expect(
-      canStartThemePlan({
-        taskType: '营销海报',
-        documentCount: 0,
-        mainImageDescription: '底色走冷白',
-      }),
-    ).toBe(false);
-  });
-});
-
 describe('readBrandLogoDataUrl', () => {
   it('取首张 Logo 的 data URL，未上传返回 undefined', async () => {
     expect(await readBrandLogoDataUrl([IMAGE_ITEM('logo-1', 'logo.png')])).toBe(
@@ -604,52 +558,38 @@ describe('步骤快照水合', () => {
     expect(withoutProductDocs?.productDocs).toBeUndefined();
   });
 
-  it('分析快照水合品牌 Logo 与主图说明：有则透传，无或空白则为 undefined', () => {
-    const withBoth = readAnalysisStepSnapshot({
+  it('分析快照水合品牌 Logo：有则透传，无或空数组则为 undefined', () => {
+    const withLogo = readAnalysisStepSnapshot({
       images: [],
       documents: [],
       analysisText: '',
       brandLogoImages: [{ uid: 'logo-1', previewUrl: '/api/a4', name: 'logo.png' }],
-      mainImageDescription: '底色走冷白',
     });
-    expect(withBoth?.brandLogoImages).toEqual([
+    expect(withLogo?.brandLogoImages).toEqual([
       { uid: 'logo-1', previewUrl: '/api/a4', name: 'logo.png' },
     ]);
-    expect(withBoth?.mainImageDescription).toBe('底色走冷白');
 
     const blank = readAnalysisStepSnapshot({
       images: [],
       documents: [],
       analysisText: '',
       brandLogoImages: [],
-      mainImageDescription: '',
     });
     expect(blank?.brandLogoImages).toBeUndefined();
-    expect(blank?.mainImageDescription).toBeUndefined();
-    // 与设计快照上历史遗留的 form.requirement 划界：新字段挂在 analysis 快照顶层
-    expect(blank?.mainImageDescription).not.toBe('');
   });
 
-  it('品牌 Logo 与主图说明快照往返后判等，空值不写键', async () => {
+  it('品牌 Logo 快照往返后判等，空值不写键', async () => {
     const logo = IMAGE_ITEM('logo-1', 'logo.png');
-    const withBoth = await createAnalysisStepSnapshot([], [], '', {
-      brandLogoImages: [logo],
-      mainImageDescription: ' 底色走冷白 ',
-    });
-    expect(withBoth.brandLogoImages).toHaveLength(1);
-    expect(withBoth.brandLogoImages?.[0]?.file).toBeUndefined();
-    expect(withBoth.mainImageDescription).toBe('底色走冷白');
+    const withLogo = await createAnalysisStepSnapshot([], [], '', { brandLogoImages: [logo] });
+    expect(withLogo.brandLogoImages).toHaveLength(1);
+    expect(withLogo.brandLogoImages?.[0]?.file).toBeUndefined();
 
-    const hydrated = readAnalysisStepSnapshot(JSON.parse(JSON.stringify(withBoth)));
-    expect(isSameStepSnapshot(hydrated, withBoth)).toBe(true);
+    const hydrated = readAnalysisStepSnapshot(JSON.parse(JSON.stringify(withLogo)));
+    expect(isSameStepSnapshot(hydrated, withLogo)).toBe(true);
 
-    // 空数组 / 全空白一律不写键，否则首次进入点「下一步」会白打一次保存
-    const blank = await createAnalysisStepSnapshot([], [], '', {
-      brandLogoImages: [],
-      mainImageDescription: '   ',
-    });
+    // 空数组一律不写键，否则首次进入点「下一步」会白打一次保存
+    const blank = await createAnalysisStepSnapshot([], [], '', { brandLogoImages: [] });
     expect(blank).not.toHaveProperty('brandLogoImages');
-    expect(blank).not.toHaveProperty('mainImageDescription');
     expect(
       isSameStepSnapshot(blank, readAnalysisStepSnapshot(JSON.parse(JSON.stringify(blank)))),
     ).toBe(true);
@@ -671,7 +611,6 @@ describe('步骤快照水合', () => {
     expect(withoutProductDocs.kind).toBe('mainImage');
     expect(withoutProductDocs.documents).toHaveLength(1);
     expect(withoutProductDocs.productDocuments).toBeUndefined();
-    expect(withoutProductDocs.mainImageDescription).toBeUndefined();
     expect(withoutProductDocs.brandLogoDataUrl).toBeUndefined();
 
     const emptyProductDocs = await toThemeAnalyzePayload(
@@ -696,22 +635,16 @@ describe('步骤快照水合', () => {
     ]);
   });
 
-  it('toThemeAnalyzePayload：主图可无商业分析，主图说明与 Logo 原图按需携带', async () => {
-    const withDescription = await toThemeAnalyzePayload([], 'mainImage', {
-      mainImageDescription: ' 底色走冷白 ',
+  it('toThemeAnalyzePayload：Logo 原图按需携带', async () => {
+    const withLogo = await toThemeAnalyzePayload([], 'mainImage', {
       brandLogo: [IMAGE_ITEM('logo-1', 'logo.png')],
     });
-    expect(withDescription.documents).toEqual([]);
-    expect(withDescription.mainImageDescription).toBe('底色走冷白');
+    expect(withLogo.documents).toEqual([]);
     // Logo 传的是原图 data URL（服务端先识图再进分析），不是布尔值
-    expect(withDescription.brandLogoDataUrl).toBe('data:image/png;base64,product');
+    expect(withLogo.brandLogoDataUrl).toBe('data:image/png;base64,product');
 
-    const blankRequirement = await toThemeAnalyzePayload([], 'mainImage', {
-      mainImageDescription: '   ',
-      brandLogo: [],
-    });
-    expect(blankRequirement.mainImageDescription).toBeUndefined();
-    expect(blankRequirement.brandLogoDataUrl).toBeUndefined();
+    const withoutLogo = await toThemeAnalyzePayload([], 'mainImage', { brandLogo: [] });
+    expect(withoutLogo.brandLogoDataUrl).toBeUndefined();
   });
 
   it('历史 designType 与 referenceVisual 读入时丢弃旧字段', () => {
@@ -949,7 +882,7 @@ describe('流程导航', () => {
     expect(toResultHeadTitle('design', '主图')).toBe('主图设计');
     expect(toEmptyHint('design', '主图')).toBe('设置参数后点击「生成主图」');
     expect(toResultHeadTitle('analyzed', '主图')).toBe('主图分析');
-    expect(toEmptyHint('input', '主图')).toBe('上传商业分析或填写主图说明，点击「开始分析」');
+    expect(toEmptyHint('input', '主图')).toBe('上传商业分析，点击「开始分析」');
     expect(toResultHeadTitle('design', '详情图')).toBe('详情图设计');
     expect(toResultHeadTitle('analyzed', '详情图')).toBe('详情图分析');
     expect(toEmptyHint('input', '详情图')).toBe('上传商业分析，点击「开始分析」');

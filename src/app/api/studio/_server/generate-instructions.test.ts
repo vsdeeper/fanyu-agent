@@ -182,66 +182,6 @@ describe('电商生图指令', () => {
     expect(prompt).not.toContain('【产品资料】');
   });
 
-  it('主图无商业分析但有主图说明时以主图说明定气质，不留空锚点', () => {
-    const prompt = buildMainImagePrompt({
-      requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '   ',
-      mainImageDescription: '底色走冷白，画面不要促销大字',
-      productImageCount: 1,
-      hasCopyReference: false,
-      hasBrandLogo: false,
-    });
-
-    expect(prompt).toContain('【主图说明】\n底色走冷白，画面不要促销大字');
-    expect(prompt).not.toContain('【商业分析】');
-    expect(prompt).not.toContain('根据【商业分析】确定整套配色');
-    expect(prompt).toContain('根据【主图说明】确定整套配色、光影气质、材质与品牌氛围');
-  });
-
-  it('主图有商业分析又有主图说明时以主图说明为最终口径', () => {
-    const prompt = buildMainImagePrompt({
-      requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '目标人群偏好冷白',
-      mainImageDescription: '底色走冷白',
-      productImageCount: 1,
-      hasCopyReference: false,
-      hasBrandLogo: false,
-    });
-
-    expect(prompt).toContain('【商业分析】\n目标人群偏好冷白');
-    expect(prompt).toContain('以【主图说明】为最终口径（两者冲突时以【主图说明】为准）');
-    expect(prompt.indexOf('【商业分析】')).toBeLessThan(prompt.indexOf('【主图说明】'));
-  });
-
-  it('主图既无商业分析也无主图说明时交由主题卡与产品本体收束', () => {
-    const prompt = buildMainImagePrompt({
-      requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '',
-      productImageCount: 1,
-      hasCopyReference: false,
-      hasBrandLogo: false,
-    });
-
-    expect(prompt).toContain('配色、光影气质、材质与品牌氛围按【本张主题卡】与产品本体自行收束');
-    expect(prompt).not.toContain('【商业分析】');
-    expect(prompt).not.toContain('【主图说明】');
-  });
-
-  it('主图无商业分析但有产品资料时不追加指向商业分析的兜底句', () => {
-    const prompt = buildMainImagePrompt({
-      requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '',
-      mainImageDescription: '底色走冷白',
-      productImageCount: 1,
-      hasCopyReference: false,
-      hasBrandLogo: false,
-      productDocumentsText: '容量 500ml，品牌 凡域',
-    });
-
-    expect(prompt).toContain('第一手产品事实以【产品资料】为准。');
-    expect(prompt).not.toContain('缺失时以【商业分析】为准');
-  });
-
   it('主图点选文案标准参考图后按序号点名，且只锁文案字体与配色', () => {
     const prompt = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
@@ -258,8 +198,8 @@ describe('电商生图指令', () => {
     expect(prompt).not.toContain(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT);
     expect(prompt).toContain('禁止复制其产品主体呈现');
     expect(prompt).toContain('也禁止因它改变本张的主色板');
-    // 商业分析已非必填，配色来源不得指向可能缺席的【商业分析】
-    expect(prompt).not.toContain('画面整体配色仍以【商业分析】为准');
+    // 配色来源恒为必填的【商业分析】
+    expect(prompt).toContain('画面整体配色仍以【商业分析】为准');
     // 防与详情图的「上一屏」机制串味
     expect(prompt).not.toContain(DETAIL_IMAGE_CONTINUITY_PROMPT);
   });
@@ -820,29 +760,9 @@ describe('电商主图请求契约', () => {
     ).toBeNull();
   });
 
-  it('商业分析非必填，但与主图说明至少一项非空', () => {
-    // 商业分析为空但填了主图说明 → 通过
-    const withDescription = parseGenerateBody({
-      ...BASE_MAIN_IMAGE_REQUEST,
-      analysisText: '',
-      mainImageDescription: '底色走冷白',
-    });
-    expect(withDescription?.kind).toBe('mainImage');
-    expect(
-      withDescription && withDescription.kind === 'mainImage'
-        ? withDescription.mainImageDescription
-        : '',
-    ).toBe('底色走冷白');
-
-    // 两者皆空（含全空白）→ 拒绝
+  it('主图必须有商业分析（含全空白一律拒绝）', () => {
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: '' })).toBeNull();
-    expect(
-      parseGenerateBody({
-        ...BASE_MAIN_IMAGE_REQUEST,
-        analysisText: ' ',
-        mainImageDescription: '   ',
-      }),
-    ).toBeNull();
+    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: '  ' })).toBeNull();
   });
 
   it('可附带品牌 Logo data URL，缺省为 undefined，且必须是 data URL', () => {

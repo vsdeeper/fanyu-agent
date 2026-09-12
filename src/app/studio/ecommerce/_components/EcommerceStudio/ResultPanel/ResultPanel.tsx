@@ -68,8 +68,6 @@ type ResultPanelProps = {
   isPoster?: boolean;
   planCards?: ThemePlanCard[];
   selectedThemeIds?: string[];
-  /** 内容为空、不可勾选的主题卡 id（如用户自填的「规格主图」） */
-  unselectableThemeIds?: readonly string[];
   referenceImageId?: string | null;
   onSelectVisual: (id: string) => void;
   onSelectReference?: (id: string) => void;
@@ -101,7 +99,6 @@ export default function ResultPanel({
   isPoster = false,
   planCards = [],
   selectedThemeIds = [],
-  unselectableThemeIds = [],
   referenceImageId = null,
   onSelectVisual,
   onSelectReference,
@@ -194,7 +191,6 @@ export default function ResultPanel({
               selectedThemeIds={selectedThemeIds}
               selectionMode={detailImage ? 'single' : 'multiple'}
               streaming={analysisStreaming}
-              unselectableThemeIds={unselectableThemeIds}
               onToggleTheme={onToggleTheme ?? (() => undefined)}
               onCardSave={onPlanCardSave ?? (() => undefined)}
               onEditingChange={setPlanEditing}

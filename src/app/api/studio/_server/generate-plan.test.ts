@@ -179,8 +179,7 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'mainImage',
       count: 1,
-      analysisText: '',
-      mainImageDescription: '底色走冷白',
+      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [img('a'), img('b')],
       brandLogoDataUrl: img('logo').dataUrl,
@@ -192,8 +191,6 @@ describe('buildGeneratePlan 批次展开', () => {
       img('logo').dataUrl,
     ]);
     expect(plan[0]?.prompt).toContain('第3个参考图（即【品牌 Logo】）');
-    expect(plan[0]?.prompt).toContain('【主图说明】\n底色走冷白');
-    expect(plan[0]?.prompt).not.toContain('【商业分析】');
   });
 
   it('主图无产品精修图时参考图数组只剩末位两张，序号按真实位置重排', () => {
@@ -227,7 +224,7 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.referenceImageDataUrls).toEqual([]);
   });
 
-  it('详情图不出现品牌 Logo 与主图说明段', () => {
+  it('详情图不出现品牌 Logo 段', () => {
     const plan = buildGeneratePlan({
       ...base,
       kind: 'detailImage',
@@ -238,7 +235,6 @@ describe('buildGeneratePlan 批次展开', () => {
     });
 
     expect(plan[0]?.prompt).not.toContain('【品牌 Logo】');
-    expect(plan[0]?.prompt).not.toContain('【主图说明】');
   });
 
   it('详情图按「主题 × 数量」展开，参考图为产品图 + 上一屏', () => {

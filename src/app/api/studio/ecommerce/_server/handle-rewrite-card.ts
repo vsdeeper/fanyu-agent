@@ -36,10 +36,7 @@ export async function handleRewriteCard(req: Request): Promise<Response> {
   }
 
   const analysisText = body.analysisText.trim();
-  // 主图的商业分析非必填，改与主图说明合判「至少一项非空」；详情图仍必须有商业分析
-  const mainImageDescription =
-    body.kind === 'mainImage' ? (body.mainImageDescription?.trim() ?? '') : '';
-  if (!analysisText && !mainImageDescription) {
+  if (!analysisText) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, EMPTY_ANALYSIS_DOC, 400);
   }
 
@@ -64,7 +61,6 @@ export async function handleRewriteCard(req: Request): Promise<Response> {
         draft: body.draft,
         otherCards,
         analysisText,
-        mainImageDescription,
         productDocumentsText: body.productDocumentsText,
       }),
       temperature: rewriteCardTemperature(body.draft),

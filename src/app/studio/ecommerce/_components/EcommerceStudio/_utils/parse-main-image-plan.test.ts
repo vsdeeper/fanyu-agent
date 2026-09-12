@@ -48,22 +48,17 @@ describe('parseMainImagePlan', () => {
     );
   });
 
-  it('Markdown 里若出现「规格主图」节则照收，排在末位', () => {
+  it('未列入主题表的标题一律丢弃', () => {
     const parsed = parseMainImagePlan(
       `${SAMPLE}\n\n## 规格主图\n设计目标：白色款\n展示重点：\n- 正面平铺\n`,
     );
-
-    // 分析指令并不要求模型写这一节，正常不会出现；万一出现，收下比丢掉更有用，
-    // 客户端补卡（withMainImageSpecCard）再按 themeId 去重，不会重复追加。
     expect(parsed.cards.map((card) => card.themeId)).toEqual([
       'product',
       'sellingPoint',
       'feature',
       'scene',
       'value',
-      'spec',
     ]);
-    expect(parsed.cards.at(-1)?.requirement).toBe('设计目标：白色款\n展示重点：\n- 正面平铺');
   });
 
   it('流式半成品只保留已出现的完整节', () => {
