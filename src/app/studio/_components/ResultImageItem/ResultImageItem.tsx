@@ -71,7 +71,7 @@ export default function ResultImageItem({
         width={width}
         height={height}
         alt={alt}
-        preview={{ mask: '预览' }}
+        preview={{ mask: '预览', minScale: 0.5 }}
         className={styles.image}
         classNames={imageClassNames}
         fallback={failedFallbackSrc}

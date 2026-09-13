@@ -102,6 +102,7 @@ export default function AuxiliaryPanel({ chatId }: AuxiliaryPanelProps) {
                   alt={content.title}
                   width="100%"
                   className={styles.imageListItem}
+                  preview={{ minScale: 0.5 }}
                 />
               ))}
             </div>

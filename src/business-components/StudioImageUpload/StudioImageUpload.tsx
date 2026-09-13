@@ -82,7 +82,10 @@ export default function StudioImageUpload({
         </Upload>
       ) : (
         <div className={styles.thumbs}>
-          <Image.PreviewGroup classNames={STUDIO_IMAGE_PREVIEW_GROUP_CLASS_NAMES}>
+          <Image.PreviewGroup
+            classNames={STUDIO_IMAGE_PREVIEW_GROUP_CLASS_NAMES}
+            preview={{ minScale: 0.5 }}
+          >
             {images.map((item) => (
               <div key={item.uid} className={styles.thumb}>
                 <Image

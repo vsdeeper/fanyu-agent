@@ -66,7 +66,11 @@ export default function ResultImageGrid({
 
   return (
     <div className={styles.grid}>
-      <Image.PreviewGroup items={previewItems} classNames={RESULT_PREVIEW_GROUP_CLASS_NAMES}>
+      <Image.PreviewGroup
+        items={previewItems}
+        classNames={RESULT_PREVIEW_GROUP_CLASS_NAMES}
+        preview={{ minScale: 0.5 }}
+      >
         {images.map((item) => {
           const { width, height } = aspectRatioToSize(item.aspectRatio, RESULT_IMAGE_SIZE);
           return (

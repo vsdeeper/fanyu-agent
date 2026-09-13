@@ -25,7 +25,10 @@ export default function UserAttachmentList({ parts }: UserAttachmentListProps) {
 
   return (
     <div className={styles.list}>
-      <Image.PreviewGroup classNames={CHAT_IMAGE_PREVIEW_GROUP_CLASS_NAMES}>
+      <Image.PreviewGroup
+        classNames={CHAT_IMAGE_PREVIEW_GROUP_CLASS_NAMES}
+        preview={{ minScale: 0.5 }}
+      >
         {fileParts.map((part, index) => {
           const fileName = getUserFileName(part);
           const key = getUserFileKey(part, index);

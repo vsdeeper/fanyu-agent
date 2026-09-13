@@ -93,7 +93,11 @@ export default function GenerateImageBlock({ parts }: GenerateImageBlockProps) {
 
     return (
       <div className={styles.list}>
-        <Image.PreviewGroup items={previewItems} classNames={CHAT_IMAGE_PREVIEW_GROUP_CLASS_NAMES}>
+        <Image.PreviewGroup
+          items={previewItems}
+          classNames={CHAT_IMAGE_PREVIEW_GROUP_CLASS_NAMES}
+          preview={{ minScale: 0.5 }}
+        >
           {visibleParts.map((part, index) => (
             <GenerateImageItem key={`generate-image-${index}`} part={part} />
           ))}
@@ -134,6 +138,7 @@ export default function GenerateImageBlock({ parts }: GenerateImageBlockProps) {
             <Image.PreviewGroup
               items={group.items.map((item) => ({ src: item.src }))}
               classNames={CHAT_IMAGE_PREVIEW_GROUP_CLASS_NAMES}
+              preview={{ minScale: 0.5 }}
             >
               <OverlapStack items={group.items} preview />
             </Image.PreviewGroup>

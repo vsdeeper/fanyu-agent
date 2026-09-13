@@ -21,7 +21,7 @@ export default function ChatImage({
       width={size}
       height={size}
       alt={alt}
-      preview={preview ?? { mask: '预览' }}
+      preview={preview ?? { mask: '预览', minScale: 0.5 }}
       placeholder={placeholder ?? <Skeleton.Image active style={{ width: size, height: size }} />}
       fallback={FALLBACK_ICON_SRC}
       styles={imageStyles}

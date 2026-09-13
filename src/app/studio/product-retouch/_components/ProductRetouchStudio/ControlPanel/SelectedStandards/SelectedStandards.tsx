@@ -15,7 +15,7 @@ export default function SelectedStandards({ urls }: SelectedStandardsProps) {
         <span className={styles.label}>{REFINE_STANDARD_BADGE}</span>
         <span className={styles.sub}>{SELECTED_STANDARDS_SUBTITLE}</span>
       </div>
-      <Image.PreviewGroup>
+      <Image.PreviewGroup preview={{ minScale: 0.5 }}>
         <div className={styles.thumbs}>
           {urls.map((url, index) => (
             <div key={`${index}-${url}`} className={styles.thumb}>
