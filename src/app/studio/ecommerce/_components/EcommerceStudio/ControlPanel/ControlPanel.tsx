@@ -1,5 +1,5 @@
 import { HighlightOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Input } from 'antd';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import ProductDocsUpload from '@/business-components/ProductDocsUpload';
@@ -15,6 +15,9 @@ import {
   MAIN_IMAGE_BUTTON,
   MAX_BRAND_LOGOS,
   POSTER_BUTTON,
+  USER_REQUIREMENT_HINT,
+  USER_REQUIREMENT_LABEL,
+  USER_REQUIREMENT_PLACEHOLDER,
   VISUAL_BUTTON,
   VISUAL_PRODUCT_IMAGE_SUBTITLE,
 } from '../constants';
@@ -40,6 +43,9 @@ type ControlPanelProps = {
   productDocs: ProductDocItem[];
   /** 品牌 Logo（至多一张）；主图 / 详情图任务在分析步录入，营销海报在主视觉步录入 */
   brandLogo: ProductImageItem[];
+  /** 用户要求（营销海报主视觉步录入，主视觉与海报两步共用）；默认为空串 */
+  userRequirement: string;
+  onUserRequirementChange: (value: string) => void;
   modelImages: ProductImageItem[];
   form: StudioFormState;
   designForm: DesignFormState;
@@ -76,6 +82,8 @@ export default function ControlPanel({
   documents,
   productDocs,
   brandLogo,
+  userRequirement,
+  onUserRequirementChange,
   modelImages,
   form,
   designForm,
@@ -200,6 +208,18 @@ export default function ControlPanel({
                   onAppend={onDocsAppend}
                   onRemove={onDocRemove}
                 />
+                <label className={styles.field}>
+                  <span className={styles.label}>{USER_REQUIREMENT_LABEL}</span>
+                  <Input.TextArea
+                    value={userRequirement}
+                    disabled={formLocked}
+                    autoSize={{ minRows: 4, maxRows: 8 }}
+                    placeholder={USER_REQUIREMENT_PLACEHOLDER}
+                    aria-label={USER_REQUIREMENT_LABEL}
+                    onChange={(event) => onUserRequirementChange(event.target.value)}
+                  />
+                  <span className={styles.hint}>{USER_REQUIREMENT_HINT}</span>
+                </label>
               </>
             ) : null}
             <GenerateForm

@@ -100,6 +100,22 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).toContain('本批没有产品精修图参考');
   });
 
+  it('营销主视觉带用户要求时整批 prompt 都注入该段', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'visual',
+      count: 2,
+      analysisText: '分析',
+      productViewImages: [img('a')],
+      userRequirement: '不要文字堆叠',
+    });
+
+    expect(
+      plan.every((item) => item.prompt.includes('【用户要求】（最高优先级）\n不要文字堆叠')),
+    ).toBe(true);
+    expect(plan[0]?.prompt).toContain('以上文字编排的默认口径让位');
+  });
+
   it('营销主视觉带品牌 Logo 时追加为参考图最末位，无产品图时 Logo 就是第 1 张', () => {
     const withProduct = buildGeneratePlan({
       ...base,

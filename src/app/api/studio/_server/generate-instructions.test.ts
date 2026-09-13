@@ -579,6 +579,40 @@ describe('电商生图指令', () => {
     );
   });
 
+  it('营销主视觉同样注入用户要求，并在文字编排后重申让位', () => {
+    const prompt = buildVisualPrompt({
+      analysisText: '分析',
+      productImageCount: 1,
+      hasBrandLogo: false,
+      userRequirement: '  不要文字堆叠，加大字号  ',
+    });
+
+    // 主视觉是海报的上游：用户要求在这里就该生效，否则海报只能延续一张已经跑偏的主视觉
+    expect(prompt).toContain('【用户要求】（最高优先级）\n不要文字堆叠，加大字号');
+    expect(prompt).toContain('含文字编排里「3～5 条卖点要点」的默认密度');
+    expect(prompt).toContain('产品实际外观、放置方式与尺寸比例三条事实底线不在此列');
+    expect(prompt.indexOf('【用户要求】')).toBeLessThan(prompt.indexOf('第1个参考图'));
+    expect(prompt.indexOf('以上文字编排的默认口径让位')).toBeGreaterThan(
+      prompt.indexOf('文字编排：'),
+    );
+
+    const withoutRequirement = buildVisualPrompt({
+      analysisText: '分析',
+      productImageCount: 1,
+      hasBrandLogo: false,
+    });
+    expect(withoutRequirement).not.toContain('【用户要求】');
+    expect(withoutRequirement).not.toContain('以上文字编排的默认口径让位');
+
+    const blank = buildVisualPrompt({
+      analysisText: '分析',
+      productImageCount: 1,
+      hasBrandLogo: false,
+      userRequirement: '   ',
+    });
+    expect(blank).not.toContain('【用户要求】');
+  });
+
   it('用户要求留空或全空白时不注入该段', () => {
     const base = {
       taskType: '营销海报',
@@ -1034,6 +1068,19 @@ describe('营销主视觉请求契约', () => {
     ).toEqual([]);
 
     expect(parseGenerateBody({ ...BASE_VISUAL_REQUEST, analysisText: '' })).toBeNull();
+  });
+
+  it('可附带用户要求，缺省为 undefined，非字符串时拒绝', () => {
+    const parsed = parseGenerateBody({
+      ...BASE_VISUAL_REQUEST,
+      userRequirement: '不要文字堆叠',
+    });
+    expect(parsed && parsed.kind === 'visual' ? parsed.userRequirement : '').toBe('不要文字堆叠');
+
+    const without = parseGenerateBody(BASE_VISUAL_REQUEST);
+    expect(without && without.kind === 'visual' ? without.userRequirement : '').toBeUndefined();
+
+    expect(parseGenerateBody({ ...BASE_VISUAL_REQUEST, userRequirement: 1 })).toBeNull();
   });
 
   it('可附带品牌 Logo data URL，缺省为 undefined，且必须是 data URL', () => {

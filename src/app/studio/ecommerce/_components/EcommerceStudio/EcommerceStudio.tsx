@@ -180,6 +180,8 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   const [brandLogo, setBrandLogo] = useState<ProductImageItem[]>(
     themePlan ? (initialAnalysis?.brandLogoImages ?? []) : (initialVisual?.brandLogoImages ?? []),
   );
+  // 用户要求同样录在主视觉步，但主视觉与营销海报两步都按它出图，故独立于两处表单状态
+  const [userRequirement, setUserRequirement] = useState(initialVisual?.userRequirement ?? '');
   const [form, setForm] = useState<StudioFormState>(
     restoredVisualForm ?? initialVisual?.form ?? DEFAULT_FORM_STATE,
   );
@@ -378,6 +380,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         documents: documentsRef.current,
         analysisText,
         brandLogoImages: brandLogoRef.current,
+        userRequirement,
       });
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.visual)) return;
       const saved = await saveStudioStep(task.id, 'visual', next);
@@ -391,6 +394,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     },
     [
       analysisText,
+      userRequirement,
       task.id,
       setForm,
       setVisualImages,
@@ -654,7 +658,10 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         stepKey: 'visual',
         kind: 'generate',
         pending: { stepKey: 'visual', slots, form },
-        body: await toVisualGeneratePayload(form, analysisText, images, { brandLogoDataUrl }),
+        body: await toVisualGeneratePayload(form, analysisText, images, {
+          brandLogoDataUrl,
+          userRequirement,
+        }),
       });
       // 建作业幂等：服务端可能返回既有的运行中作业（本次 pending 被忽略），
       // 此时上面新建的槽位收不到任何事件，须按服务端槽位校准，否则图会重复或永远停在骨架
@@ -667,7 +674,17 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       setVisualImages(visualImages);
       setPhase('visual');
     }
-  }, [analysisText, brandLogo, form, images, message, setPhase, startJob, visualImages]);
+  }, [
+    analysisText,
+    brandLogo,
+    form,
+    images,
+    message,
+    setPhase,
+    startJob,
+    userRequirement,
+    visualImages,
+  ]);
 
   const handleGenerateDesign = useCallback(async () => {
     // 三类任务的产品精修图都非必填（无参考图时生图侧降级为文生图），故此处不再卡图片张数
@@ -782,7 +799,11 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
             analysisText,
             images,
             visualDataUrl ? await readUrlAsDataUrl(visualDataUrl) : undefined,
-            { modelImages: await toAnalyzeImages(modelImages), brandLogoDataUrl },
+            {
+              modelImages: await toAnalyzeImages(modelImages),
+              brandLogoDataUrl,
+              userRequirement,
+            },
           );
       const snapshot = await startJob({
         stepKey: 'design',
@@ -823,6 +844,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     setPhase,
     startJob,
     themePlan,
+    userRequirement,
     visualImages,
   ]);
 
@@ -1138,6 +1160,8 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
                 documents={documents}
                 productDocs={productDocs}
                 brandLogo={brandLogo}
+                userRequirement={userRequirement}
+                onUserRequirementChange={setUserRequirement}
                 modelImages={modelImages}
                 form={form}
                 designForm={designForm}

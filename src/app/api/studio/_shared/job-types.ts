@@ -16,8 +16,6 @@ export type StudioJobFormEcho = {
   count: string;
   /** design 步骤用于分组的任务类型 */
   taskType?: string;
-  /** design 步的用户要求：结算时要用它回填表单，否则生成完这一栏就被清空 */
-  userRequirement?: string;
 };
 
 /**

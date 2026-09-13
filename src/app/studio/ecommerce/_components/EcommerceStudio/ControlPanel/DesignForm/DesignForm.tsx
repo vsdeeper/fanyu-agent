@@ -1,4 +1,4 @@
-import { Input, Select } from 'antd';
+import { Select } from 'antd';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import StudioImageUpload from '@/business-components/StudioImageUpload';
 import {
@@ -7,9 +7,6 @@ import {
   MODEL_IMAGE_HINT,
   MODEL_IMAGE_SUBTITLE,
   MODEL_OPTIONS,
-  USER_REQUIREMENT_HINT,
-  USER_REQUIREMENT_LABEL,
-  USER_REQUIREMENT_PLACEHOLDER,
 } from '../../constants';
 import { toClarityOptions, toCountOptions } from '../../model-options';
 import type { DesignFormState, ProductImageItem } from '../../types';
@@ -28,7 +25,7 @@ type DesignFormProps = {
 };
 
 /**
- * 视觉设计 / 营销海报表单：海报步提供可选模特形象与用户要求。
+ * 视觉设计 / 营销海报表单：海报步提供可选模特形象。
  */
 export default function DesignForm({
   form,
@@ -44,33 +41,17 @@ export default function DesignForm({
   return (
     <>
       {poster ? (
-        <>
-          <StudioImageUpload
-            images={modelImages}
-            max={MAX_MODEL_IMAGES}
-            label="产品模特"
-            subtitle={MODEL_IMAGE_SUBTITLE}
-            hint={MODEL_IMAGE_HINT}
-            ariaLabel="上传产品模特"
-            disabled={disabled}
-            onAppend={onModelImagesAppend}
-            onRemove={onModelImageRemove}
-          />
-          <label className={styles.field}>
-            <span className={styles.label}>{USER_REQUIREMENT_LABEL}</span>
-            <Input.TextArea
-              value={form.userRequirement ?? ''}
-              disabled={disabled}
-              autoSize={{ minRows: 4, maxRows: 8 }}
-              placeholder={USER_REQUIREMENT_PLACEHOLDER}
-              aria-label={USER_REQUIREMENT_LABEL}
-              onChange={(event) =>
-                onFormChange(patchFormState(form, 'userRequirement', event.target.value))
-              }
-            />
-            <span className={styles.hint}>{USER_REQUIREMENT_HINT}</span>
-          </label>
-        </>
+        <StudioImageUpload
+          images={modelImages}
+          max={MAX_MODEL_IMAGES}
+          label="产品模特"
+          subtitle={MODEL_IMAGE_SUBTITLE}
+          hint={MODEL_IMAGE_HINT}
+          ariaLabel="上传产品模特"
+          disabled={disabled}
+          onAppend={onModelImagesAppend}
+          onRemove={onModelImageRemove}
+        />
       ) : null}
 
       <div className={styles.pair}>

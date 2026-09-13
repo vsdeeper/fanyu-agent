@@ -335,14 +335,15 @@ describe('视觉设计请求体', () => {
     expect(payload).not.toHaveProperty('visualDataUrl');
   });
 
-  it('营销海报请求体：用户要求随表单传，留空或全空白一律不携带', async () => {
+  it('营销海报请求体：用户要求由调用方传入（录在主视觉步），留空或全空白一律不携带', async () => {
     const base = { ...DEFAULT_DESIGN_FORM_STATE, taskType: '营销海报' as const };
 
     const withRequirement = await toDesignGeneratePayload(
-      { ...base, userRequirement: ' 主标题写「轻盈一夏」 ' },
+      base,
       '商业分析',
       [],
       'data:image/png;base64,visual',
+      { userRequirement: ' 主标题写「轻盈一夏」 ' },
     );
     expect(withRequirement).toMatchObject({ userRequirement: '主标题写「轻盈一夏」' });
 
@@ -355,10 +356,13 @@ describe('视觉设计请求体', () => {
     expect(withoutRequirement).not.toHaveProperty('userRequirement');
 
     const blank = await toDesignGeneratePayload(
-      { ...base, userRequirement: '   ' },
+      base,
       '商业分析',
       [],
       'data:image/png;base64,visual',
+      {
+        userRequirement: '   ',
+      },
     );
     expect(blank).not.toHaveProperty('userRequirement');
   });
@@ -416,6 +420,17 @@ describe('营销主视觉请求体', () => {
       productViewImages: [],
       brandLogoDataUrl: 'data:image/png;base64,logo',
     });
+  });
+
+  it('用户要求随主视觉请求体一起传（主视觉与海报共用同一份），留空不携带', async () => {
+    const withRequirement = await toVisualGeneratePayload(DEFAULT_FORM_STATE, '商业分析', [], {
+      userRequirement: ' 不要文字堆叠 ',
+    });
+    expect(withRequirement).toMatchObject({ userRequirement: '不要文字堆叠' });
+
+    expect(
+      await toVisualGeneratePayload(DEFAULT_FORM_STATE, '商业分析', [], { userRequirement: '   ' }),
+    ).not.toHaveProperty('userRequirement');
   });
 });
 
@@ -800,6 +815,33 @@ describe('步骤快照水合', () => {
     expect(blank).not.toHaveProperty('brandLogoImages');
     expect(
       readVisualStepSnapshot(JSON.parse(JSON.stringify(blank)))?.brandLogoImages,
+    ).toBeUndefined();
+  });
+
+  it('主视觉快照的用户要求往返后判等，留空不写键', async () => {
+    const withRequirement = await createVisualStepSnapshot(DEFAULT_FORM_STATE, [], null, {
+      images: [],
+      documents: [],
+      analysisText: '',
+      userRequirement: ' 不要文字堆叠 ',
+    });
+    expect(withRequirement.userRequirement).toBe('不要文字堆叠');
+    expect(
+      isSameStepSnapshot(
+        readVisualStepSnapshot(JSON.parse(JSON.stringify(withRequirement))),
+        withRequirement,
+      ),
+    ).toBe(true);
+
+    const blank = await createVisualStepSnapshot(DEFAULT_FORM_STATE, [], null, {
+      images: [],
+      documents: [],
+      analysisText: '',
+      userRequirement: '   ',
+    });
+    expect(blank).not.toHaveProperty('userRequirement');
+    expect(
+      readVisualStepSnapshot(JSON.parse(JSON.stringify(blank)))?.userRequirement,
     ).toBeUndefined();
   });
 

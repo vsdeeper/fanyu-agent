@@ -58,7 +58,7 @@ export type StudioProductModelGenerateRequest = StudioGenerateBase & {
   modelImages?: StudioImageInput[];
 };
 
-/** 营销主视觉：表单规格 + 商业分析正文 + 产品精修图 + 可选品牌 Logo */
+/** 营销主视觉：表单规格 + 商业分析正文 + 产品精修图 + 可选品牌 Logo 与用户要求 */
 export type StudioVisualGenerateRequest = StudioGenerateBase & {
   kind: 'visual';
   count: number;
@@ -70,6 +70,11 @@ export type StudioVisualGenerateRequest = StudioGenerateBase & {
    * 单值而非数组：Logo 至多一张。
    */
   brandLogoDataUrl?: string;
+  /**
+   * 用户直接下达的额外要求（主视觉步录入，主视觉与营销海报共用同一份）；未填写时省略。
+   * 优先级与覆盖范围见 `USER_REQUIREMENT_PROMPT`。
+   */
+  userRequirement?: string;
 };
 
 /** 视觉设计：表单配置 + 分析结果 + 产品精修图 + 可选已选主视觉、用户要求、品牌 Logo 与模特标准图 */
