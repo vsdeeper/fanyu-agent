@@ -24,7 +24,6 @@ export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
   complete: 3,
 };
 
-export const NO_IMAGE_WARNING = '请先上传产品图';
 export const ANALYSIS_MISSING = '请先完成产品分析';
 export const VISUAL_SELECT_MISSING = '请先点选一张主视觉作为视觉标准';
 export const DESIGN_RESULT_MISSING = '请先生成至少一张视觉设计';
@@ -78,12 +77,18 @@ export const MAX_MODEL_IMAGES = 1;
 export const MODEL_IMAGE_SUBTITLE = '可选，锁定外貌与服装，姿势可按设计调整';
 export const MODEL_IMAGE_HINT = '上传模特身份参考图（可选）';
 
-/** 品牌 Logo（主图 / 详情图分析步左栏，可选，至多一张，作出图参考图末位） */
+/** 品牌 Logo（主图 / 详情图分析步、营销海报主视觉步左栏，可选，至多一张，作出图参考图末位） */
 export const MAX_BRAND_LOGOS = 1;
 export const BRAND_LOGO_LABEL = '品牌 Logo';
 export const BRAND_LOGO_SUBTITLE = '可选，作参考图；画面中的品牌标识以它为准';
 export const BRAND_LOGO_HINT = '上传品牌 Logo 原图（透明底 PNG 最佳）';
 export const BRAND_LOGO_ARIA_LABEL = '上传品牌 Logo';
+
+/**
+ * 营销主视觉步的产品精修图（参数与主图 / 详情图的设计步不同，故单独一份）：
+ * 非必填，不上传时生图侧降级为文生图，产品外观只能按商业分析描述生成。
+ */
+export const VISUAL_PRODUCT_IMAGE_SUBTITLE = '可选；不上传时产品本体按商业分析描述生成';
 
 /** 模型下拉（id + label），派生自 model-options，与服务端模型清单一致 */
 export const MODEL_OPTIONS = toModelOptions();

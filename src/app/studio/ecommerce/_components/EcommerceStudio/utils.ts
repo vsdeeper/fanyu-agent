@@ -136,11 +136,12 @@ export function revokeProductDocUrls(items: ProductDocItem[]): void {
   revokeUploadItemUrls(items);
 }
 
-/** 营销主视觉请求体：表单规格 + 商业分析正文 + 产品图 */
+/** 营销主视觉请求体：表单规格 + 商业分析正文 + 产品精修图（非必填）+ 可选品牌 Logo */
 export async function toVisualGeneratePayload(
   form: StudioFormState,
   analysisText: string,
   productImages: ProductImageItem[],
+  options: { brandLogoDataUrl?: string } = {},
 ): Promise<StudioGenerateRequest> {
   return {
     kind: 'visual',
@@ -151,17 +152,22 @@ export async function toVisualGeneratePayload(
     count: Number.parseInt(form.count, 10) || 1,
     analysisText: analysisText.trim(),
     productViewImages: await toAnalyzeImages(productImages),
+    ...(options.brandLogoDataUrl ? { brandLogoDataUrl: options.brandLogoDataUrl } : {}),
   };
 }
 
-/** 视觉设计请求体：表单 + 分析/全部产品图 + 已选主视觉标准 + 可选模特形象 */
+/** 视觉设计请求体：表单 + 分析/产品精修图（非必填） + 已选主视觉标准 + 可选品牌 Logo 与模特形象 */
 export async function toDesignGeneratePayload(
   form: DesignFormState,
   analysisText: string,
   productImages: ProductImageItem[],
   visualDataUrl: string,
-  modelImages: BusinessAnalysisImageInput[] = [],
+  options: {
+    modelImages?: BusinessAnalysisImageInput[];
+    brandLogoDataUrl?: string;
+  } = {},
 ): Promise<StudioGenerateRequest> {
+  const modelImages = options.modelImages ?? [];
   const includeModel = modelImages.length > 0;
   return {
     kind: 'design',
@@ -176,6 +182,7 @@ export async function toDesignGeneratePayload(
     productViewImages: await toAnalyzeImages(productImages),
     visualDataUrl,
     ...(includeModel ? { modelImages } : {}),
+    ...(options.brandLogoDataUrl ? { brandLogoDataUrl: options.brandLogoDataUrl } : {}),
   };
 }
 
@@ -544,25 +551,46 @@ export function readVisualStepSnapshot(value: unknown): VisualStepSnapshot | und
     images: Array.isArray(snapshot.images) ? snapshot.images : undefined,
     documents: Array.isArray(snapshot.documents) ? snapshot.documents : undefined,
     analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : undefined,
+    // 与 createVisualStepSnapshot 对称：空值一律归 undefined，避免判等时把「没写键」与「写了空值」当成两份快照
+    brandLogoImages:
+      Array.isArray(snapshot.brandLogoImages) && snapshot.brandLogoImages.length > 0
+        ? snapshot.brandLogoImages
+        : undefined,
   };
 }
 
-/** 构造营销主视觉步骤快照，海报含精修图与分析文件。 */
+/** `createVisualStepSnapshot` 入参：上传项两组同型，一律走具名键，避免位置传错后只静默串值。 */
+export type VisualStepSnapshotInput = {
+  images: ProductImageItem[];
+  documents: ProductDocItem[];
+  analysisText: string;
+  /** 品牌 Logo（至多一张）；空数组不写键 */
+  brandLogoImages?: ProductImageItem[];
+};
+
+/** 构造营销主视觉步骤快照，海报含精修图、品牌 Logo 与分析文件。 */
 export async function createVisualStepSnapshot(
   form: StudioFormState,
   visualImages: StudioResultImage[],
   selectedVisualId: string | null,
-  images: ProductImageItem[],
-  documents: ProductDocItem[],
-  analysisText: string,
+  input: VisualStepSnapshotInput,
 ): Promise<VisualStepSnapshot> {
+  const brandLogoImages = input.brandLogoImages ?? [];
   return {
     form,
     visualImages,
     selectedVisualId,
-    images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
-    documents: (await Promise.all(documents.map(serializeUploadItem))) as ProductDocItem[],
-    analysisText,
+    images: (await Promise.all(input.images.map(serializeUploadItem))) as ProductImageItem[],
+    documents: (await Promise.all(input.documents.map(serializeUploadItem))) as ProductDocItem[],
+    analysisText: input.analysisText,
+    // 空值不写键：新字段若恒写空值，首次进入点「下一步」会因快照判等失败而白打一次保存
+    ...(brandLogoImages.length > 0
+      ? {
+          brandLogoImages: (await Promise.all(
+            brandLogoImages.map(serializeUploadItem),
+          )) as ProductImageItem[],
+        }
+      : {}),
   };
 }
 

@@ -16,6 +16,7 @@ import {
   MAX_BRAND_LOGOS,
   POSTER_BUTTON,
   VISUAL_BUTTON,
+  VISUAL_PRODUCT_IMAGE_SUBTITLE,
 } from '../constants';
 import type {
   DesignFormState,
@@ -37,7 +38,7 @@ type ControlPanelProps = {
   images: ProductImageItem[];
   documents: ProductDocItem[];
   productDocs: ProductDocItem[];
-  /** 品牌 Logo（至多一张）；主图 / 详情图任务在分析步录入 */
+  /** 品牌 Logo（至多一张）；主图 / 详情图任务在分析步录入，营销海报在主视觉步录入 */
   brandLogo: ProductImageItem[];
   modelImages: ProductImageItem[];
   form: StudioFormState;
@@ -171,7 +172,19 @@ export default function ControlPanel({
             {poster ? (
               <>
                 <StudioImageUpload
+                  label={BRAND_LOGO_LABEL}
+                  subtitle={BRAND_LOGO_SUBTITLE}
+                  hint={BRAND_LOGO_HINT}
+                  ariaLabel={BRAND_LOGO_ARIA_LABEL}
+                  images={brandLogo}
+                  max={MAX_BRAND_LOGOS}
+                  disabled={formLocked}
+                  onAppend={onBrandLogoAppend}
+                  onRemove={onBrandLogoRemove}
+                />
+                <StudioImageUpload
                   label="产品精修图"
+                  subtitle={VISUAL_PRODUCT_IMAGE_SUBTITLE}
                   images={images}
                   disabled={formLocked}
                   onAppend={onImagesAppend}

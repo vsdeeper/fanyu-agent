@@ -20,6 +20,7 @@ import {
   createAnalysisStepSnapshot,
   createDefaultDesignForm,
   createDesignStepSnapshot,
+  createVisualStepSnapshot,
   getGeneratedDesignGroups,
   isSameStepSnapshot,
   pendingImagesFromCount,
@@ -302,13 +303,15 @@ describe('视觉设计请求体', () => {
       '商业分析',
       [IMAGE_ITEM('p-1', 'product.png')],
       'data:image/png;base64,visual',
-      [
-        {
-          filename: 'model.png',
-          mediaType: 'image/png',
-          dataUrl: 'data:image/png;base64,model',
-        },
-      ],
+      {
+        modelImages: [
+          {
+            filename: 'model.png',
+            mediaType: 'image/png',
+            dataUrl: 'data:image/png;base64,model',
+          },
+        ],
+      },
     );
 
     expect(payload).toMatchObject({
@@ -318,6 +321,27 @@ describe('视觉设计请求体', () => {
       visualDataUrl: 'data:image/png;base64,visual',
     });
     expect(payload).toHaveProperty('modelImages');
+  });
+
+  it('营销海报请求体：无精修图与无 Logo 时都不携带，Logo 与主视觉参考图各归其位', async () => {
+    const withNone = await toDesignGeneratePayload(
+      { ...DEFAULT_DESIGN_FORM_STATE, taskType: '营销海报' },
+      '商业分析',
+      [],
+      'data:image/png;base64,visual',
+    );
+    expect(withNone).toMatchObject({ productViewImages: [], includeModel: false });
+    expect(withNone).not.toHaveProperty('brandLogoDataUrl');
+    expect(withNone).not.toHaveProperty('modelImages');
+
+    const withLogo = await toDesignGeneratePayload(
+      { ...DEFAULT_DESIGN_FORM_STATE, taskType: '营销海报' },
+      '商业分析',
+      [],
+      'data:image/png;base64,visual',
+      { brandLogoDataUrl: 'data:image/png;base64,logo' },
+    );
+    expect(withLogo).toMatchObject({ brandLogoDataUrl: 'data:image/png;base64,logo' });
   });
 });
 
@@ -336,6 +360,21 @@ describe('营销主视觉请求体', () => {
         { filename: 'a.png', mediaType: 'image/png', dataUrl: 'data:image/png;base64,product' },
         { filename: 'b.png', mediaType: 'image/png', dataUrl: 'data:image/png;base64,product' },
       ],
+    });
+    expect(payload).not.toHaveProperty('brandLogoDataUrl');
+  });
+
+  it('产品精修图非必填，品牌 Logo 按需携带', async () => {
+    const withoutAny = await toVisualGeneratePayload(DEFAULT_FORM_STATE, '商业分析', []);
+    expect(withoutAny).toMatchObject({ productViewImages: [] });
+    expect(withoutAny).not.toHaveProperty('brandLogoDataUrl');
+
+    const logoOnly = await toVisualGeneratePayload(DEFAULT_FORM_STATE, '商业分析', [], {
+      brandLogoDataUrl: 'data:image/png;base64,logo',
+    });
+    expect(logoOnly).toMatchObject({
+      productViewImages: [],
+      brandLogoDataUrl: 'data:image/png;base64,logo',
     });
   });
 });
@@ -687,10 +726,41 @@ describe('步骤快照水合', () => {
         { uid: 'doc-1', previewUrl: '/api/studio/ecommerce/tasks/t1/assets/a1', name: '分析.md' },
       ],
       analysisText: '上传的商业分析正文',
+      brandLogoImages: [
+        { uid: 'logo-1', previewUrl: '/api/studio/ecommerce/tasks/t1/assets/l1', name: 'logo.png' },
+      ],
     });
     expect(visual?.images).toHaveLength(1);
     expect(visual?.documents?.[0]?.name).toBe('分析.md');
     expect(visual?.analysisText).toBe('上传的商业分析正文');
+    expect(visual?.brandLogoImages?.[0]?.name).toBe('logo.png');
+  });
+
+  it('主视觉快照的品牌 Logo 往返后判等，空值不写键', async () => {
+    const logo = IMAGE_ITEM('logo-1', 'logo.png');
+    const withLogo = await createVisualStepSnapshot(DEFAULT_FORM_STATE, [], null, {
+      images: [],
+      documents: [],
+      analysisText: '',
+      brandLogoImages: [logo],
+    });
+    expect(withLogo.brandLogoImages).toHaveLength(1);
+    expect(withLogo.brandLogoImages?.[0]?.file).toBeUndefined();
+    expect(
+      isSameStepSnapshot(readVisualStepSnapshot(JSON.parse(JSON.stringify(withLogo))), withLogo),
+    ).toBe(true);
+
+    // 空数组一律不写键，否则首次进入点「下一步」会白打一次保存
+    const blank = await createVisualStepSnapshot(DEFAULT_FORM_STATE, [], null, {
+      images: [],
+      documents: [],
+      analysisText: '',
+      brandLogoImages: [],
+    });
+    expect(blank).not.toHaveProperty('brandLogoImages');
+    expect(
+      readVisualStepSnapshot(JSON.parse(JSON.stringify(blank)))?.brandLogoImages,
+    ).toBeUndefined();
   });
 
   it('主图设计快照读取精修图', () => {

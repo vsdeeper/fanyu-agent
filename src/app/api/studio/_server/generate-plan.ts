@@ -107,13 +107,29 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
       ...(body.modelImages?.map((image) => image.dataUrl) ?? []),
     ];
   } else if (body.kind === 'visual') {
-    prompt = buildVisualPrompt(body.analysisText);
-    referenceImageDataUrls = body.productViewImages.map((image) => image.dataUrl);
+    // 参考图数组顺序固定为「产品精修图 → 品牌 Logo」，两者都可缺省，prompt 按真实张数点名序号
+    prompt = buildVisualPrompt({
+      analysisText: body.analysisText,
+      productImageCount: body.productViewImages.length,
+      hasBrandLogo: Boolean(body.brandLogoDataUrl),
+    });
+    referenceImageDataUrls = [
+      ...body.productViewImages.map((image) => image.dataUrl),
+      ...(body.brandLogoDataUrl ? [body.brandLogoDataUrl] : []),
+    ];
   } else {
-    prompt = buildDesignPrompt(body.taskType, body.analysisText, body.includeModel);
+    // 参考图数组顺序固定为「产品精修图 → 主视觉 → 品牌 Logo → 模特图」，除主视觉外都可缺省
+    prompt = buildDesignPrompt({
+      taskType: body.taskType,
+      analysisText: body.analysisText,
+      includeModel: body.includeModel,
+      productImageCount: body.productViewImages.length,
+      hasBrandLogo: Boolean(body.brandLogoDataUrl),
+    });
     referenceImageDataUrls = [
       ...body.productViewImages.map((image) => image.dataUrl),
       body.visualDataUrl,
+      ...(body.brandLogoDataUrl ? [body.brandLogoDataUrl] : []),
       ...(body.modelImages?.map((image) => image.dataUrl) ?? []),
     ];
   }

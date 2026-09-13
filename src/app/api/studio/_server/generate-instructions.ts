@@ -13,6 +13,7 @@ import {
   MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT,
   MAIN_IMAGE_FIDELITY_NO_REFERENCE_PROMPT,
   MARKETING_COPY_TYPOGRAPHY_PROMPT,
+  MARKETING_FIDELITY_NO_REFERENCE_PROMPT,
   PRODUCT_FIDELITY_PROMPT_GUARD,
   PRODUCT_PLACEMENT_PROMPT_GUARD,
   PRODUCT_REFINE_FIDELITY_PROMPT_GUARD,
@@ -229,39 +230,102 @@ export function buildDetailImagePrompt(input: DetailImagePromptInput): string {
   ].join('\n');
 }
 
+/** `buildVisualPrompt` 入参：尾部可选值同型，一律走具名键，避免位置传错后只静默串值。 */
+export type VisualPromptInput = {
+  /** 商业分析正文 */
+  analysisText: string;
+  /** 产品精修图张数（不含品牌 Logo）；可为 0（非必填，无参考图时降级为文生图） */
+  productImageCount: number;
+  hasBrandLogo: boolean;
+};
+
 /**
  * 营销主视觉出站 prompt：商业分析为内容依据，上传的全部产品图为改图参考。
+ *
+ * `productImageCount` / `hasBrandLogo` 必填：参考图数组顺序为 产品精修图 → 品牌 Logo，
+ * 必须按真实张数点名序号，否则默认那句「其余参考图仅补充同一产品的可见角度」会把 Logo 误当成同一产品的另一角度。
+ * 产品精修图非必填：`productImageCount === 0` 时没有产品角度可言，产品图那句与产品保真底线都要换成无参考图的说法。
  */
-export function buildVisualPrompt(analysisText: string): string {
+export function buildVisualPrompt(input: VisualPromptInput): string {
+  const { productImageCount, hasBrandLogo } = input;
+  const hasProductReference = productImageCount > 0;
+  const productRange =
+    productImageCount <= 1 ? '第1个参考图' : `第1至第${productImageCount}个参考图`;
+  // 序号按参考图数组的真实位置算，不能用 max(1, P) 兜底：P=0 时品牌 Logo 就是第 1 张
+  const logoReferenceIndex = productImageCount + 1;
+  const productRule = !hasProductReference
+    ? '本批没有产品精修图参考：产品本体按【商业分析】的描述呈现，不得臆造品牌、规格、结构或资料未提及的细节。'
+    : hasBrandLogo
+      ? productImageCount <= 1
+        ? '第1个参考图=用户上传的产品精修图，定义产品本体；本批只有这一张产品图，没有其它产品角度参考。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。'
+        : `${productRange}=用户上传的产品精修图，定义产品本体；该范围内的图都属于同一产品，仅补充其可见角度与细节，不得混合不同 SKU。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。`
+      : '第1个参考图=用户上传的产品精修图，定义产品本体；其余参考图仅补充同一产品的可见角度与细节，不得混合不同 SKU。主视觉只输出一张完整广告图。';
+
   return [
     '生成一张电商营销主视觉图，作为后续所有设计物料的统一视觉标准。',
-    '第1个参考图=用户上传的产品图，定义产品本体；其余参考图仅补充同一产品的可见角度与细节，不得混合不同 SKU。主视觉只输出一张完整广告图。',
+    productRule,
+    ...(hasBrandLogo
+      ? [
+          `第${logoReferenceIndex}个参考图（即【品牌 Logo】）=用户上传的品牌 Logo 原图，是画面中品牌标识的呈现依据。`,
+          BRAND_LOGO_PROMPT,
+        ]
+      : []),
     '根据商业分析确定整体配色、场景、光影、构图、品牌氛围与视觉风格。',
     '画面突出产品主体，具有商业广告品质；一张图一个主焦点。',
     '【商业分析】',
-    analysisText.trim(),
+    input.analysisText.trim(),
     MARKETING_COPY_TYPOGRAPHY_PROMPT,
     PRODUCT_SCALE_PROMPT_GUARD,
     PRODUCT_PLACEMENT_PROMPT_GUARD,
-    PRODUCT_FIDELITY_PROMPT_GUARD,
+    hasProductReference ? PRODUCT_FIDELITY_PROMPT_GUARD : MARKETING_FIDELITY_NO_REFERENCE_PROMPT,
     VISUAL_AD_PROMPT_GUARD,
   ].join('\n');
 }
 
+/** `buildDesignPrompt` 入参：尾部可选值同型，一律走具名键，避免位置传错后只静默串值。 */
+export type DesignPromptInput = {
+  taskType: string;
+  /** 商业分析正文 */
+  analysisText: string;
+  includeModel: boolean;
+  /** 产品精修图张数（不含主视觉、品牌 Logo 与模特图）；可为 0（非必填，无参考图时降级为文生图） */
+  productImageCount: number;
+  hasBrandLogo: boolean;
+};
+
 /**
- * 视觉设计出站 prompt：以分析和任务类型定目标，产品标准图定产品，主视觉定风格，可选图补充模特身份。
+ * 视觉设计出站 prompt：以分析和任务类型定目标，产品标准图定产品，主视觉定风格，可选 Logo 与模特图补品牌标识与人物身份。
+ *
+ * `productImageCount` / `hasBrandLogo` 必填：参考图数组顺序为 产品精修图 → 主视觉 → 品牌 Logo → 模特图，
+ * 必须按真实张数点名序号，否则「其余参考图仅补充同一产品的可见角度」会把主视觉、Logo 与模特图一并误当成产品图，
+ * 模特那句「第 N 个及之后」也会指到 Logo 上。
+ * 产品精修图非必填：`productImageCount === 0` 时主视觉就是第 1 张，产品图那句与产品保真底线都要换成无参考图的说法。
  */
-export function buildDesignPrompt(
-  taskType: string,
-  analysisText: string,
-  includeModel: boolean,
-): string {
+export function buildDesignPrompt(input: DesignPromptInput): string {
+  const { taskType, includeModel, productImageCount, hasBrandLogo } = input;
+  const hasProductReference = productImageCount > 0;
+  const productRange =
+    productImageCount <= 1 ? '第1个参考图' : `第1至第${productImageCount}个参考图`;
+  const visualReferenceIndex = productImageCount + 1;
+  // Logo 紧随主视觉，模特图排在 Logo 之后：模特那句是「第 N 个及之后」，Logo 若排在其后会被一并算成模特
+  const logoReferenceIndex = visualReferenceIndex + 1;
+  const modelFromIndex = visualReferenceIndex + (hasBrandLogo ? 2 : 1);
   const referenceRules = [
-    '第1个参考图=用户上传的产品图，定义产品本体；其余参考图仅补充同一产品的可见角度与细节，不得混合不同 SKU。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。',
-    '第2个参考图=已选营销主视觉，用于延续配色、光影、品牌氛围与视觉语言，不要求照搬原构图。',
+    hasProductReference
+      ? productImageCount <= 1
+        ? '第1个参考图=用户上传的产品精修图，定义产品本体；本批只有这一张产品图，没有其它产品角度参考。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。'
+        : `${productRange}=用户上传的产品精修图，定义产品本体；该范围内的图都属于同一产品，仅补充其可见角度与细节，不得混合不同 SKU。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。`
+      : '本批没有产品精修图参考：产品本体按【商业分析】的描述呈现，不得臆造品牌、规格、结构或资料未提及的细节。',
+    `第${visualReferenceIndex}个参考图=已选营销主视觉，用于延续配色、光影、品牌氛围与视觉语言，不要求照搬原构图。`,
+    ...(hasBrandLogo
+      ? [
+          `第${logoReferenceIndex}个参考图（即【品牌 Logo】）=用户上传的品牌 Logo 原图，是画面中品牌标识的呈现依据。`,
+          BRAND_LOGO_PROMPT,
+        ]
+      : []),
     ...(includeModel
       ? [
-          '第3个及之后的参考图=同一位模特的身份与着装参考，必须把该人物融合进成品画面并参与构图，不得省略人物或换成别人。',
+          `第${modelFromIndex}个及之后的参考图=同一位模特的身份与着装参考，必须把该人物融合进成品画面并参与构图，不得省略人物或换成别人。`,
           '锁定性别、五官、脸型、肤色、发型、气质，以及服装款式、颜色、材质与关键服饰细节。',
           '姿势、站位、动作与取景可按当前物料的广告设计需要调整，不必照搬参考图。',
         ]
@@ -280,11 +344,11 @@ export function buildDesignPrompt(
     '根据商业分析确定目标人群、卖点优先级、品牌调性、使用场景与信息层级；最终画面须是可直接评审的完整设计成品。',
     MARKETING_COPY_TYPOGRAPHY_PROMPT,
     '【商业分析】',
-    analysisText.trim(),
+    input.analysisText.trim(),
     VISUAL_AD_PROMPT_GUARD,
     PRODUCT_SCALE_PROMPT_GUARD,
     PRODUCT_PLACEMENT_PROMPT_GUARD,
-    PRODUCT_FIDELITY_PROMPT_GUARD,
+    hasProductReference ? PRODUCT_FIDELITY_PROMPT_GUARD : MARKETING_FIDELITY_NO_REFERENCE_PROMPT,
   ].join('\n');
 }
 

@@ -66,7 +66,9 @@ const visualGenerateSchema = specFieldsSchema.extend({
     .int()
     .refine((value) => (STUDIO_COUNT_VALUES as readonly number[]).includes(value)),
   analysisText: z.string().min(1),
-  productViewImages: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
+  // 产品精修图非必填（可空数组）：没有参考图时生图侧自动降级为文生图
+  productViewImages: z.array(imageInputSchema).max(MAX_STUDIO_PRODUCT_IMAGES),
+  brandLogoDataUrl: imageDataUrlSchema.optional(),
 });
 
 const mainImageGenerateSchema = specFieldsSchema.extend({
@@ -115,8 +117,10 @@ const designGenerateSchema = specFieldsSchema.extend({
   taskType: z.string().trim().min(1),
   includeModel: z.boolean(),
   analysisText: z.string().min(1),
-  productViewImages: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
+  // 产品精修图非必填（可空数组）：没有参考图时生图侧自动降级为文生图
+  productViewImages: z.array(imageInputSchema).max(MAX_STUDIO_PRODUCT_IMAGES),
   visualDataUrl: imageDataUrlSchema,
+  brandLogoDataUrl: imageDataUrlSchema.optional(),
   modelImages: z.array(imageInputSchema).max(MAX_STUDIO_MODEL_IMAGES).optional(),
 });
 

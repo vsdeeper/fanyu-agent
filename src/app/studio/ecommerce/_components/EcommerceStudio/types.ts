@@ -69,6 +69,11 @@ export type VisualStepSnapshot = {
   images?: ProductImageItem[];
   documents?: ProductDocItem[];
   analysisText?: string;
+  /**
+   * 营销海报任务的品牌 Logo（至多一张，作主视觉与海报出图的参考图末位）；未上传时省略。
+   * 海报没有分析步，Logo 与产品精修图一起在主视觉步录入，故存在本快照而非分析快照。
+   */
+  brandLogoImages?: ProductImageItem[];
 };
 
 export type DesignStepSnapshot = {

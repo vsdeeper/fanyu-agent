@@ -37,7 +37,6 @@ import {
   MAIN_IMAGE_RESULT_MISSING,
   MAX_BRAND_LOGOS,
   MAX_MODEL_IMAGES,
-  NO_IMAGE_WARNING,
   POSTER_RESULT_MISSING,
   THEME_SELECT_MISSING,
   VISUAL_SELECT_MISSING,
@@ -178,9 +177,9 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   const [productDocs, setProductDocs] = useState<ProductDocItem[]>(
     initialAnalysis?.productDocs ?? [],
   );
-  // 品牌 Logo 服务主图 / 详情图任务，在分析步录入、出图步复用
+  // 品牌 Logo 在各自流程的第一步录入、出图步复用：主图 / 详情图在分析步，营销海报在主视觉步
   const [brandLogo, setBrandLogo] = useState<ProductImageItem[]>(
-    initialAnalysis?.brandLogoImages ?? [],
+    themePlan ? (initialAnalysis?.brandLogoImages ?? []) : (initialVisual?.brandLogoImages ?? []),
   );
   const [form, setForm] = useState<StudioFormState>(
     restoredVisualForm ?? initialVisual?.form ?? DEFAULT_FORM_STATE,
@@ -375,14 +374,12 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
 
   const persistVisualStep = useCallback(
     async (f: StudioFormState, imgs: StudioResultImage[], selectedId: string | null) => {
-      const next = await createVisualStepSnapshot(
-        f,
-        imgs,
-        selectedId,
-        imagesRef.current,
-        documentsRef.current,
+      const next = await createVisualStepSnapshot(f, imgs, selectedId, {
+        images: imagesRef.current,
+        documents: documentsRef.current,
         analysisText,
-      );
+        brandLogoImages: brandLogoRef.current,
+      });
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.visual)) return;
       const saved = await saveStudioStep(task.id, 'visual', next);
       lastSnapshotsRef.current.visual = saved;
@@ -390,9 +387,19 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       setVisualImages(saved.visualImages);
       if (saved.images) setImages(saved.images);
       if (saved.documents) setDocuments(saved.documents);
+      if (saved.brandLogoImages) setBrandLogo(saved.brandLogoImages);
       if (typeof saved.analysisText === 'string') setAnalysisText(saved.analysisText);
     },
-    [analysisText, task.id, setForm, setVisualImages, setImages, setDocuments, setAnalysisText],
+    [
+      analysisText,
+      task.id,
+      setForm,
+      setVisualImages,
+      setImages,
+      setDocuments,
+      setBrandLogo,
+      setAnalysisText,
+    ],
   );
 
   const persistDesignStep = useCallback(
@@ -624,13 +631,17 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   ]);
 
   const handleGenerateVisual = useCallback(async () => {
-    if (images.length === 0) {
-      message.warning(NO_IMAGE_WARNING);
-      return;
-    }
     if (!analysisText.trim()) {
       message.warning(ANALYSIS_MISSING);
       return;
+    }
+    // 产品精修图与品牌 Logo 都非必填，全不传时降级为纯文生图
+    let brandLogoDataUrl: string | undefined;
+    try {
+      brandLogoDataUrl = await readBrandLogoDataUrl(brandLogo);
+    } catch (err) {
+      // Logo 读不到时降级为「不带 Logo」继续出图，不把整批卡死
+      console.error('[ecommerce-studio] read brand logo', err);
     }
     const count = Number.parseInt(form.count, 10) || 1;
     const slots = pendingImagesFromCount(count, form.aspectRatio);
@@ -644,7 +655,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         stepKey: 'visual',
         kind: 'generate',
         pending: { stepKey: 'visual', slots, form },
-        body: await toVisualGeneratePayload(form, analysisText, images),
+        body: await toVisualGeneratePayload(form, analysisText, images, { brandLogoDataUrl }),
       });
       // 建作业幂等：服务端可能返回既有的运行中作业（本次 pending 被忽略），
       // 此时上面新建的槽位收不到任何事件，须按服务端槽位校准，否则图会重复或永远停在骨架
@@ -657,14 +668,10 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       setVisualImages(visualImages);
       setPhase('visual');
     }
-  }, [analysisText, form, images, message, setPhase, startJob, visualImages]);
+  }, [analysisText, brandLogo, form, images, message, setPhase, startJob, visualImages]);
 
   const handleGenerateDesign = useCallback(async () => {
-    // 主图 / 详情图的产品精修图非必填（无参考图时生图侧降级为文生图）；营销海报的设计步仍必须上传产品图
-    if (images.length === 0 && !themePlan) {
-      message.warning(NO_IMAGE_WARNING);
-      return;
-    }
+    // 三类任务的产品精修图都非必填（无参考图时生图侧降级为文生图），故此处不再卡图片张数
     const selectedCards = planCards.filter((card) => selectedThemeIds.includes(card.themeId));
     let analysisFromDocs = '';
     let productDocsText = '';
@@ -724,13 +731,11 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       }
     }
     let brandLogoDataUrl: string | undefined;
-    if (themePlan) {
-      try {
-        brandLogoDataUrl = await readBrandLogoDataUrl(brandLogo);
-      } catch (err) {
-        // 同文案标准参考图：Logo 读不到时降级为「不带 Logo」继续出图
-        console.error('[ecommerce-studio] read brand logo', err);
-      }
+    try {
+      brandLogoDataUrl = await readBrandLogoDataUrl(brandLogo);
+    } catch (err) {
+      // 同文案标准参考图：Logo 读不到时降级为「不带 Logo」继续出图
+      console.error('[ecommerce-studio] read brand logo', err);
     }
     const taskType = nextDesignForm.taskType;
     const perCardCount = Number.parseInt(nextDesignForm.count, 10) || 1;
@@ -782,7 +787,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
             analysisText,
             images,
             await readUrlAsDataUrl(visualDataUrl),
-            await toAnalyzeImages(modelImages),
+            { modelImages: await toAnalyzeImages(modelImages), brandLogoDataUrl },
           );
       const snapshot = await startJob({
         stepKey: 'design',
@@ -1147,7 +1152,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
                 phase={phase}
                 formLocked={formLocked}
                 jobRunning={jobRunning}
-                canGenerateVisual={images.length > 0 && Boolean(analysisText.trim())}
+                canGenerateVisual={Boolean(analysisText.trim())}
                 canGenerateDesign={
                   themePlan ? selectedCards.length > 0 && documents.length > 0 : true
                 }

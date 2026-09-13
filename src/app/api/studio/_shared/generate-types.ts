@@ -58,23 +58,35 @@ export type StudioProductModelGenerateRequest = StudioGenerateBase & {
   modelImages?: StudioImageInput[];
 };
 
-/** 营销主视觉：表单规格 + 商业分析正文 + 产品图 */
+/** 营销主视觉：表单规格 + 商业分析正文 + 产品精修图 + 可选品牌 Logo */
 export type StudioVisualGenerateRequest = StudioGenerateBase & {
   kind: 'visual';
   count: number;
   analysisText: string;
+  /** 产品精修图非必填（可空数组）：没有参考图时生图侧自动降级为文生图 */
   productViewImages: StudioImageInput[];
+  /**
+   * 用户上传的品牌 Logo 原图，作参考图数组**末位**（排在 productViewImages 之后）；未上传时省略。
+   * 单值而非数组：Logo 至多一张。
+   */
+  brandLogoDataUrl?: string;
 };
 
-/** 视觉设计：表单配置 + 分析结果 + 全部产品图 + 已选主视觉 + 可选模特标准图 */
+/** 视觉设计：表单配置 + 分析结果 + 产品精修图 + 已选主视觉 + 可选品牌 Logo 与模特标准图 */
 export type StudioDesignGenerateRequest = StudioGenerateBase & {
   kind: 'design';
   count: number;
   taskType: string;
   includeModel: boolean;
   analysisText: string;
+  /** 产品精修图非必填（可空数组）：没有参考图时生图侧自动降级为文生图 */
   productViewImages: StudioImageInput[];
   visualDataUrl: string;
+  /**
+   * 用户上传的品牌 Logo 原图，作参考图数组**第 3 位**（排在 productViewImages 与 visualDataUrl 之后、模特图之前）；未上传时省略。
+   * 单值而非数组：Logo 至多一张。
+   */
+  brandLogoDataUrl?: string;
   modelImages?: StudioImageInput[];
 };
 

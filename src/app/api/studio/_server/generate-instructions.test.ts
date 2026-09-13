@@ -108,7 +108,11 @@ describe('电商生图指令', () => {
   });
 
   it('营销主视觉保留商业分析并叠加广告视觉规则', () => {
-    const prompt = buildVisualPrompt('品牌采用克制的暖色调');
+    const prompt = buildVisualPrompt({
+      analysisText: '品牌采用克制的暖色调',
+      productImageCount: 1,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).toContain('【商业分析】\n品牌采用克制的暖色调');
     expect(prompt).toContain('Logo、品牌文字、标签和图案必须原样、清晰、完整保留');
@@ -490,11 +494,17 @@ describe('电商生图指令', () => {
   });
 
   it.each(ECOMMERCE_TASK_TYPES)('视觉设计为“%s”时包含类型要求与商业分析', (taskType) => {
-    const prompt = buildDesignPrompt(taskType, '目标人群偏好暖色', true);
+    const prompt = buildDesignPrompt({
+      taskType,
+      analysisText: '目标人群偏好暖色',
+      includeModel: true,
+      productImageCount: 1,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).toContain(`“${taskType}”视觉设计成品`);
     expect(prompt).toContain('【商业分析】\n目标人群偏好暖色');
-    expect(prompt).toContain('第1个参考图=用户上传的产品图');
+    expect(prompt).toContain('第1个参考图=用户上传的产品精修图');
     expect(prompt).toContain('第2个参考图=已选营销主视觉');
     expect(prompt).toContain('第3个及之后的参考图=同一位模特的身份与着装参考');
     expect(prompt).toContain('必须把该人物融合进成品画面并参与构图');
@@ -506,7 +516,13 @@ describe('电商生图指令', () => {
   });
 
   it('营销海报在有模特参考时将人物融入构图并锁定外貌与服装', () => {
-    const prompt = buildDesignPrompt('营销海报', '分析', true);
+    const prompt = buildDesignPrompt({
+      taskType: '营销海报',
+      analysisText: '分析',
+      includeModel: true,
+      productImageCount: 1,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).toContain('该人物必须出现在海报中');
     expect(prompt).toContain('第2个参考图=已选营销主视觉');
@@ -520,11 +536,82 @@ describe('电商生图指令', () => {
   });
 
   it('营销海报未带模特参考时不强制入画', () => {
-    const prompt = buildDesignPrompt('营销海报', '分析', false);
+    const prompt = buildDesignPrompt({
+      taskType: '营销海报',
+      analysisText: '分析',
+      includeModel: false,
+      productImageCount: 1,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).not.toContain('该人物必须出现在海报中');
     expect(prompt).toContain('未带入模特参考图');
     expect(prompt).toContain('第2个参考图=已选营销主视觉');
+  });
+
+  it('营销主视觉无产品精修图时按商业分析描述呈现产品', () => {
+    const prompt = buildVisualPrompt({
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 0,
+      hasBrandLogo: false,
+    });
+
+    expect(prompt).toContain('本批没有产品精修图参考');
+    expect(prompt).toContain('不得臆造品牌、规格、功能、配件、结构或资料未提及的细节');
+    // 无参考图可对位时不能留下「第1个参考图定义产品本体」那句，否则模型会去对一张并不存在的图
+    expect(prompt).not.toContain('第1个参考图');
+    expect(prompt).toContain('按【商业分析】的描述呈现');
+  });
+
+  it('营销主视觉带品牌 Logo 时点名 Logo 序号，无产品图时就是第 1 张', () => {
+    const withProduct = buildVisualPrompt({
+      analysisText: '分析',
+      productImageCount: 1,
+      hasBrandLogo: true,
+    });
+    expect(withProduct).toContain('第2个参考图（即【品牌 Logo】）');
+    expect(withProduct).toContain('该参考图是画面中唯一允许新增的品牌标识来源');
+    // 有 Logo 时产品图那句要收窄到「只有这一张」，否则「其余参考图」会把 Logo 算成产品另一角度
+    // （末尾的产品保真底线仍带「其余参考图仅补充同一产品的可见角度」，与主图同款：冲突由 BRAND_LOGO_PROMPT 声明优先级）
+    expect(withProduct).toContain('本批只有这一张产品图，没有其它产品角度参考');
+
+    const logoOnly = buildVisualPrompt({
+      analysisText: '分析',
+      productImageCount: 0,
+      hasBrandLogo: true,
+    });
+    expect(logoOnly).toContain('第1个参考图（即【品牌 Logo】）');
+    expect(logoOnly).toContain('本批没有产品精修图参考');
+  });
+
+  it('视觉设计带品牌 Logo 时点名 Logo 序号，模特序号随之后移', () => {
+    const prompt = buildDesignPrompt({
+      taskType: '营销海报',
+      analysisText: '分析',
+      includeModel: true,
+      productImageCount: 2,
+      hasBrandLogo: true,
+    });
+
+    expect(prompt).toContain('第3个参考图=已选营销主视觉');
+    expect(prompt).toContain('第4个参考图（即【品牌 Logo】）');
+    expect(prompt).toContain('第5个及之后的参考图=同一位模特的身份与着装参考');
+    expect(prompt).toContain('该参考图是画面中唯一允许新增的品牌标识来源');
+  });
+
+  it('视觉设计无产品精修图时主视觉顺位成为第 1 张', () => {
+    const prompt = buildDesignPrompt({
+      taskType: '营销海报',
+      analysisText: '分析',
+      includeModel: true,
+      productImageCount: 0,
+      hasBrandLogo: false,
+    });
+
+    expect(prompt).toContain('第1个参考图=已选营销主视觉');
+    expect(prompt).toContain('第2个及之后的参考图=同一位模特的身份与着装参考');
+    expect(prompt).toContain('本批没有产品精修图参考');
+    expect(prompt).not.toContain('第1个参考图=用户上传的产品精修图');
   });
 });
 
@@ -755,6 +842,39 @@ describe('视觉设计请求契约', () => {
       }),
     ).toBeNull();
   });
+
+  it('接受空产品精修图（非必填）与可选品牌 Logo', () => {
+    const parsed = parseGenerateBody({
+      ...BASE_DESIGN_REQUEST,
+      productViewImages: [],
+      includeModel: false,
+      visualDataUrl: 'data:image/png;base64,VISUAL',
+      brandLogoDataUrl: 'data:image/png;base64,LOGO',
+    });
+
+    expect(parsed && parsed.kind === 'design' ? parsed.productViewImages : null).toEqual([]);
+    expect(parsed && parsed.kind === 'design' ? parsed.brandLogoDataUrl : '').toBe(
+      'data:image/png;base64,LOGO',
+    );
+
+    const withoutLogo = parseGenerateBody({
+      ...BASE_DESIGN_REQUEST,
+      includeModel: false,
+      visualDataUrl: 'data:image/png;base64,VISUAL',
+    });
+    expect(
+      withoutLogo && withoutLogo.kind === 'design' ? withoutLogo.brandLogoDataUrl : '',
+    ).toBeUndefined();
+
+    expect(
+      parseGenerateBody({
+        ...BASE_DESIGN_REQUEST,
+        includeModel: false,
+        visualDataUrl: 'data:image/png;base64,VISUAL',
+        brandLogoDataUrl: 'https://x/y.png',
+      }),
+    ).toBeNull();
+  });
 });
 
 describe('营销主视觉请求契约', () => {
@@ -779,9 +899,38 @@ describe('营销主视觉请求契约', () => {
     expect(parsed && parsed.kind === 'visual' ? parsed.productViewImages : []).toHaveLength(1);
   });
 
-  it('缺少产品图或无商业分析时拒绝', () => {
-    expect(parseGenerateBody({ ...BASE_VISUAL_REQUEST, productViewImages: [] })).toBeNull();
+  it('接受空产品精修图（非必填），但缺商业分析时拒绝', () => {
+    const withoutProductImages = parseGenerateBody({
+      ...BASE_VISUAL_REQUEST,
+      productViewImages: [],
+    });
+    expect(withoutProductImages?.kind).toBe('visual');
+    expect(
+      withoutProductImages && withoutProductImages.kind === 'visual'
+        ? withoutProductImages.productViewImages
+        : null,
+    ).toEqual([]);
+
     expect(parseGenerateBody({ ...BASE_VISUAL_REQUEST, analysisText: '' })).toBeNull();
+  });
+
+  it('可附带品牌 Logo data URL，缺省为 undefined，且必须是 data URL', () => {
+    const parsed = parseGenerateBody({
+      ...BASE_VISUAL_REQUEST,
+      brandLogoDataUrl: 'data:image/png;base64,LOGO',
+    });
+    expect(parsed && parsed.kind === 'visual' ? parsed.brandLogoDataUrl : '').toBe(
+      'data:image/png;base64,LOGO',
+    );
+
+    const withoutLogo = parseGenerateBody(BASE_VISUAL_REQUEST);
+    expect(withoutLogo && withoutLogo.kind === 'visual' ? withoutLogo.brandLogoDataUrl : '').toBe(
+      undefined,
+    );
+
+    expect(
+      parseGenerateBody({ ...BASE_VISUAL_REQUEST, brandLogoDataUrl: 'https://x/y.png' }),
+    ).toBeNull();
   });
 });
 

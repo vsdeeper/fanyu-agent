@@ -87,6 +87,43 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan.every((item) => item.referenceImageDataUrls.length === 1)).toBe(true);
   });
 
+  it('营销主视觉无产品精修图时出图清单不带参考图，交给文生图', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'visual',
+      count: 1,
+      analysisText: '分析',
+      productViewImages: [],
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([]);
+    expect(plan[0]?.prompt).toContain('本批没有产品精修图参考');
+  });
+
+  it('营销主视觉带品牌 Logo 时追加为参考图最末位，无产品图时 Logo 就是第 1 张', () => {
+    const withProduct = buildGeneratePlan({
+      ...base,
+      kind: 'visual',
+      count: 1,
+      analysisText: '分析',
+      productViewImages: [img('a')],
+      brandLogoDataUrl: img('logo').dataUrl,
+    });
+    expect(withProduct[0]?.referenceImageDataUrls).toEqual([img('a').dataUrl, img('logo').dataUrl]);
+    expect(withProduct[0]?.prompt).toContain('第2个参考图（即【品牌 Logo】）');
+
+    const logoOnly = buildGeneratePlan({
+      ...base,
+      kind: 'visual',
+      count: 1,
+      analysisText: '分析',
+      productViewImages: [],
+      brandLogoDataUrl: img('logo').dataUrl,
+    });
+    expect(logoOnly[0]?.referenceImageDataUrls).toEqual([img('logo').dataUrl]);
+    expect(logoOnly[0]?.prompt).toContain('第1个参考图（即【品牌 Logo】）');
+  });
+
   it('视觉设计的参考图为产品图 + 主视觉 + 模特图', () => {
     const plan = buildGeneratePlan({
       ...base,
@@ -106,6 +143,48 @@ describe('buildGeneratePlan 批次展开', () => {
       img('v').dataUrl,
       img('m').dataUrl,
     ]);
+  });
+
+  it('视觉设计带品牌 Logo 时排在主视觉与模特图之间，模特序号随之后移', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'design',
+      count: 1,
+      taskType: '营销海报',
+      includeModel: true,
+      analysisText: '分析',
+      productViewImages: [img('a')],
+      visualDataUrl: img('v').dataUrl,
+      brandLogoDataUrl: img('logo').dataUrl,
+      modelImages: [img('m')],
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([
+      img('a').dataUrl,
+      img('v').dataUrl,
+      img('logo').dataUrl,
+      img('m').dataUrl,
+    ]);
+    expect(plan[0]?.prompt).toContain('第2个参考图=已选营销主视觉');
+    expect(plan[0]?.prompt).toContain('第3个参考图（即【品牌 Logo】）');
+    expect(plan[0]?.prompt).toContain('第4个及之后的参考图=同一位模特的身份与着装参考');
+  });
+
+  it('视觉设计无产品精修图时主视觉顺位成为第 1 张', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'design',
+      count: 1,
+      taskType: '营销海报',
+      includeModel: false,
+      analysisText: '分析',
+      productViewImages: [],
+      visualDataUrl: img('v').dataUrl,
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([img('v').dataUrl]);
+    expect(plan[0]?.prompt).toContain('第1个参考图=已选营销主视觉');
+    expect(plan[0]?.prompt).toContain('本批没有产品精修图参考');
   });
 
   it('主图按「主题 × 数量」顺序展开，参考图为产品图', () => {
