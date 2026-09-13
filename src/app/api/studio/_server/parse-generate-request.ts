@@ -103,7 +103,8 @@ const detailImageGenerateSchema = specFieldsSchema.extend({
       }),
     )
     .min(1),
-  productViewImages: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
+  // 产品精修图非必填（可空数组）：没有参考图时生图侧自动降级为文生图
+  productViewImages: z.array(imageInputSchema).max(MAX_STUDIO_PRODUCT_IMAGES),
   previousScreenDataUrl: imageDataUrlSchema.optional(),
   brandLogoDataUrl: imageDataUrlSchema.optional(),
 });

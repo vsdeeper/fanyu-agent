@@ -305,4 +305,32 @@ describe('buildGeneratePlan 批次展开', () => {
 
     expect(plan[0]?.referenceImageDataUrls).toEqual([img('a').dataUrl]);
   });
+
+  it('详情图无产品精修图时该图只作上一屏参考，序号按真实位置从 1 起', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'detailImage',
+      count: 1,
+      analysisText: '分析',
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [],
+      previousScreenDataUrl: img('p').dataUrl,
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([img('p').dataUrl]);
+    expect(plan[0]?.prompt).toContain('第1个参考图=上一屏详情图');
+  });
+
+  it('详情图参考图全空时出图清单不带参考图，交给文生图', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'detailImage',
+      count: 1,
+      analysisText: '分析',
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [],
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([]);
+  });
 });

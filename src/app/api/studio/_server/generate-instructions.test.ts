@@ -6,10 +6,12 @@ import { ECOMMERCE_TASK_TYPES } from '@/app/api/studio/ecommerce/_shared/task-co
 import {
   BRAND_LOGO_PROMPT,
   DETAIL_IMAGE_CONTINUITY_PROMPT,
+  DETAIL_IMAGE_FIDELITY_NO_REFERENCE_PROMPT,
+  DETAIL_IMAGE_FRAMING_NO_REFERENCE_PROMPT,
   MAIN_IMAGE_COPY_REFERENCE_PROMPT,
   MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
   MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT,
-  PRODUCT_FIDELITY_NO_REFERENCE_PROMPT,
+  MAIN_IMAGE_FIDELITY_NO_REFERENCE_PROMPT,
   PRODUCT_FIDELITY_PROMPT_GUARD,
 } from './constants';
 import {
@@ -307,7 +309,7 @@ describe('电商生图指令', () => {
     expect(prompt).not.toContain('其余参考图仅补充同一产品的可见角度与细节');
     // 「第1个参考图定义产品本体」无从对位，必须换成无参考图的那条底线
     expect(prompt).not.toContain(PRODUCT_FIDELITY_PROMPT_GUARD);
-    expect(prompt).toContain(PRODUCT_FIDELITY_NO_REFERENCE_PROMPT);
+    expect(prompt).toContain(MAIN_IMAGE_FIDELITY_NO_REFERENCE_PROMPT);
     expect(prompt).toContain('整套主图必须是同一个产品');
   });
 
@@ -420,6 +422,42 @@ describe('电商生图指令', () => {
 
     expect(prompt).not.toContain('【品牌 Logo】');
     expect(prompt).not.toContain(BRAND_LOGO_PROMPT);
+  });
+
+  it('详情图无产品精修图时不点名产品参考图，取景句与保真底线都换成无参考图口径', () => {
+    const prompt = buildDetailImagePrompt({
+      requirement: '设计目标：建立品牌第一印象。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 0,
+      hasPreviousScreen: false,
+      hasBrandLogo: false,
+    });
+
+    expect(prompt).toContain('本屏没有产品精修图参考');
+    expect(prompt).not.toContain('第1个参考图=用户上传的产品精修图');
+    expect(prompt).not.toContain('其余精修图仅补充同一产品的其它可见角度');
+    // 「第1个参考图定义产品本体」无从对位，且取景句里对位的精修参考图并不存在
+    expect(prompt).not.toContain(PRODUCT_FIDELITY_PROMPT_GUARD);
+    expect(prompt).not.toContain('与精修参考图冲突时以此为准');
+    expect(prompt).toContain(DETAIL_IMAGE_FIDELITY_NO_REFERENCE_PROMPT);
+    expect(prompt).toContain(DETAIL_IMAGE_FRAMING_NO_REFERENCE_PROMPT);
+    expect(prompt).toContain('整套详情页必须是同一个产品');
+    // 与有无参考图无关的互斥诉求必须留下
+    expect(prompt).toContain('各屏机位与占比必须互斥');
+  });
+
+  it('详情图无产品精修图时上一屏序号为 1、Logo 顺延', () => {
+    // 参考图数组此时只剩上一屏 → 它是第 1 张（用 max(1, P)+1 会错算成第 2 张）
+    const onlyPrevious = buildDetailImagePrompt({
+      requirement: '设计目标：建立品牌第一印象。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 0,
+      hasPreviousScreen: true,
+      hasBrandLogo: true,
+    });
+
+    expect(onlyPrevious).toContain('第1个参考图=上一屏详情图');
+    expect(onlyPrevious).toContain('第2个参考图（即【品牌 Logo】）');
   });
 
   it('详情图带产品资料时叠加【产品资料】段与事实优先级', () => {
@@ -790,19 +828,6 @@ describe('电商主图请求契约', () => {
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, requirements: [] })).toBeNull();
   });
 
-  it('详情图仍必须有产品精修图', () => {
-    expect(
-      parseGenerateBody({
-        kind: 'detailImage',
-        ...SPEC_FIELDS,
-        count: 1,
-        analysisText: '商业分析',
-        requirements: [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }],
-        productViewImages: [],
-      }),
-    ).toBeNull();
-  });
-
   it('主图必须有商业分析（含全空白一律拒绝）', () => {
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: '' })).toBeNull();
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: '  ' })).toBeNull();
@@ -904,8 +929,35 @@ describe('电商详情图请求契约', () => {
     );
   });
 
-  it('缺少产品图、商业分析或主题要求时拒绝', () => {
-    expect(parseGenerateBody({ ...BASE_DETAIL_IMAGE_REQUEST, productViewImages: [] })).toBeNull();
+  it('产品精修图非必填（可空数组，生图侧降级为文生图）', () => {
+    const parsed = parseGenerateBody({ ...BASE_DETAIL_IMAGE_REQUEST, productViewImages: [] });
+
+    expect(parsed && parsed.kind === 'detailImage' ? parsed.productViewImages : null).toEqual([]);
+  });
+
+  it('可附带品牌 Logo，缺省为 undefined，且必须是 data URL', () => {
+    const parsed = parseGenerateBody({
+      ...BASE_DETAIL_IMAGE_REQUEST,
+      brandLogoDataUrl: 'data:image/png;base64,LOGO',
+    });
+    expect(parsed && parsed.kind === 'detailImage' ? parsed.brandLogoDataUrl : '').toBe(
+      'data:image/png;base64,LOGO',
+    );
+
+    const withoutLogo = parseGenerateBody(BASE_DETAIL_IMAGE_REQUEST);
+    expect(
+      withoutLogo && withoutLogo.kind === 'detailImage' ? withoutLogo.brandLogoDataUrl : '',
+    ).toBeUndefined();
+
+    expect(
+      parseGenerateBody({
+        ...BASE_DETAIL_IMAGE_REQUEST,
+        brandLogoDataUrl: 'https://x/y.png',
+      }),
+    ).toBeNull();
+  });
+
+  it('缺少商业分析或主题要求时拒绝', () => {
     expect(parseGenerateBody({ ...BASE_DETAIL_IMAGE_REQUEST, analysisText: ' ' })).toBeNull();
     expect(parseGenerateBody({ ...BASE_DETAIL_IMAGE_REQUEST, requirements: [] })).toBeNull();
   });

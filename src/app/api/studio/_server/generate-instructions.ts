@@ -4,13 +4,15 @@ import {
   BRAND_LOGO_PROMPT,
   DETAIL_IMAGE_CONTINUITY_PROMPT,
   DETAIL_IMAGE_COPY_TYPOGRAPHY_PROMPT,
+  DETAIL_IMAGE_FIDELITY_NO_REFERENCE_PROMPT,
+  DETAIL_IMAGE_FRAMING_NO_REFERENCE_PROMPT,
   DETAIL_IMAGE_FRAMING_PROMPT,
   TASK_TYPE_PROMPT_BY_TYPE,
   MAIN_IMAGE_COPY_REFERENCE_PROMPT,
   MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
   MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT,
+  MAIN_IMAGE_FIDELITY_NO_REFERENCE_PROMPT,
   MARKETING_COPY_TYPOGRAPHY_PROMPT,
-  PRODUCT_FIDELITY_NO_REFERENCE_PROMPT,
   PRODUCT_FIDELITY_PROMPT_GUARD,
   PRODUCT_PLACEMENT_PROMPT_GUARD,
   PRODUCT_REFINE_FIDELITY_PROMPT_GUARD,
@@ -140,7 +142,7 @@ export function buildMainImagePrompt(input: MainImagePromptInput): string {
     PRODUCT_SCALE_PROMPT_GUARD,
     PRODUCT_PLACEMENT_PROMPT_GUARD,
     // 无产品参考图时「第1个参考图定义产品本体」无从对位，换成按描述呈现 + 跨张一致的说法
-    hasProductReference ? PRODUCT_FIDELITY_PROMPT_GUARD : PRODUCT_FIDELITY_NO_REFERENCE_PROMPT,
+    hasProductReference ? PRODUCT_FIDELITY_PROMPT_GUARD : MAIN_IMAGE_FIDELITY_NO_REFERENCE_PROMPT,
   ].join('\n');
 }
 
@@ -150,7 +152,7 @@ export type DetailImagePromptInput = {
   requirement: string;
   /** 商业分析正文 */
   analysisText: string;
-  /** 产品精修图张数（不含上一屏与品牌 Logo） */
+  /** 产品精修图张数（不含上一屏与品牌 Logo）；可为 0（非必填，无参考图时降级为文生图） */
   productImageCount: number;
   hasPreviousScreen: boolean;
   hasBrandLogo: boolean;
@@ -163,17 +165,30 @@ export type DetailImagePromptInput = {
  * `productImageCount` / `hasPreviousScreen` / `hasBrandLogo` 必填：参考图数组顺序为
  * 产品精修图 → 上一屏 → 品牌 Logo，必须按真实张数点名序号，否则「其余精修图仅补充同一产品的其它角度」
  * 会把后两张图误当成同一产品的另一角度或另一屏。
+ * 产品精修图非必填：`productImageCount === 0` 时没有产品角度可言，产品图那句、取景句与产品保真底线
+ * 都要换成无参考图的说法（否则模型会去对位一张并不存在的第 1 张）。
  */
 export function buildDetailImagePrompt(input: DetailImagePromptInput): string {
   const { productImageCount, hasPreviousScreen, hasBrandLogo } = input;
   const productDocsText = input.productDocumentsText?.trim();
+  const hasProductReference = productImageCount > 0;
+  // 取景句与保真底线都由「有没有产品精修图」决定、必须同进同退，故取一次值，
+  // 不让两处各写一个基于同一条件的独立三元（漏改一处就会留下与不存在的参考图对位的句子）
+  const productReference = hasProductReference
+    ? { framing: DETAIL_IMAGE_FRAMING_PROMPT, fidelity: PRODUCT_FIDELITY_PROMPT_GUARD }
+    : {
+        framing: DETAIL_IMAGE_FRAMING_NO_REFERENCE_PROMPT,
+        fidelity: DETAIL_IMAGE_FIDELITY_NO_REFERENCE_PROMPT,
+      };
   const productRange =
     productImageCount <= 1 ? '第1个参考图' : `第1至第${productImageCount}个参考图`;
-  // 序号按参考图数组的真实位置算，上一屏与 Logo 依次排在产品精修图之后
-  const previousIndex = Math.max(1, productImageCount) + 1;
+  // 序号按参考图数组的真实位置算，不能用 max(1, P) 兜底：P=0 时上一屏就是第 1 张
+  const previousIndex = productImageCount + 1;
   const logoReferenceIndex = previousIndex + (hasPreviousScreen ? 1 : 0);
   const referenceRules = [
-    `${productRange}=用户上传的产品精修图，定义产品本体外观、颜色、材质与结构；不得把精修图的拍摄角度、取景远近或产品占画面大小复制到本屏。其余精修图仅补充同一产品的其它可见角度与细节，供本屏按展示重点选用合适机位，不得混合不同 SKU。产品外观、颜色、结构、材质与细节如下方产品保真底线为准。`,
+    hasProductReference
+      ? `${productRange}=用户上传的产品精修图，定义产品本体外观、颜色、材质与结构；不得把精修图的拍摄角度、取景远近或产品占画面大小复制到本屏。其余精修图仅补充同一产品的其它可见角度与细节，供本屏按展示重点选用合适机位，不得混合不同 SKU。产品外观、颜色、结构、材质与细节如下方产品保真底线为准。`
+      : '本屏没有产品精修图参考：产品本体按【当前屏主题卡】与【产品资料】的描述呈现，不得臆造品牌、规格、结构或资料未提及的细节。',
     ...(hasPreviousScreen
       ? [
           `第${previousIndex}个参考图=上一屏详情图，只锁定整套详情页的视觉语言，不是当前屏要复制的构图、主题或产品机位。`,
@@ -205,12 +220,12 @@ export function buildDetailImagePrompt(input: DetailImagePromptInput): string {
       : []),
     '【当前屏主题卡】',
     input.requirement.trim(),
-    DETAIL_IMAGE_FRAMING_PROMPT,
+    productReference.framing,
     DETAIL_IMAGE_COPY_TYPOGRAPHY_PROMPT,
     VISUAL_AD_PROMPT_GUARD,
     PRODUCT_SCALE_PROMPT_GUARD,
     PRODUCT_PLACEMENT_PROMPT_GUARD,
-    PRODUCT_FIDELITY_PROMPT_GUARD,
+    productReference.fidelity,
   ].join('\n');
 }
 

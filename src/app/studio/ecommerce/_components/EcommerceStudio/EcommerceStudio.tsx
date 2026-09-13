@@ -660,8 +660,8 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   }, [analysisText, form, images, message, setPhase, startJob, visualImages]);
 
   const handleGenerateDesign = useCallback(async () => {
-    // 主图的产品精修图非必填（无参考图时生图侧降级为文生图）；详情图与营销海报的设计步仍必须上传产品图
-    if (images.length === 0 && !mainImage) {
+    // 主图 / 详情图的产品精修图非必填（无参考图时生图侧降级为文生图）；营销海报的设计步仍必须上传产品图
+    if (images.length === 0 && !themePlan) {
       message.warning(NO_IMAGE_WARNING);
       return;
     }
@@ -1149,11 +1149,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
                 jobRunning={jobRunning}
                 canGenerateVisual={images.length > 0 && Boolean(analysisText.trim())}
                 canGenerateDesign={
-                  themePlan
-                    ? (mainImage || images.length > 0) &&
-                      selectedCards.length > 0 &&
-                      documents.length > 0
-                    : true
+                  themePlan ? selectedCards.length > 0 && documents.length > 0 : true
                 }
                 selectedCards={selectedCards}
                 onImagesAppend={handleImagesAppend}
