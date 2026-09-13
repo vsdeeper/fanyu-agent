@@ -239,7 +239,7 @@ describe('视觉设计请求体', () => {
       ' 气质冷白 ',
       [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }],
       [IMAGE_ITEM('p-1', 'product.png')],
-      'data:image/png;base64,previous',
+      { previousScreenDataUrl: 'data:image/png;base64,previous' },
     );
 
     expect(payload).toMatchObject({
@@ -251,40 +251,49 @@ describe('视觉设计请求体', () => {
     });
     expect(payload).not.toHaveProperty('visualDataUrl');
     expect(payload).not.toHaveProperty('taskType');
+    expect(payload).not.toHaveProperty('brandLogoDataUrl');
   });
 
-  it('详情图请求体带产品资料正文，无资料或空白串不携带', async () => {
+  it('详情图请求体三个可选值各归其位，空值一律不携带', async () => {
     const form = { ...DEFAULT_DESIGN_FORM_STATE, taskType: '详情图' as const, aspectRatio: '3:4' };
     const requirements = [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }];
     const productImages = [IMAGE_ITEM('p-1', 'product.png')];
 
-    const withoutProductDocs = await toDetailImageGeneratePayload(
+    const withAll = await toDetailImageGeneratePayload(
       form,
       '气质冷白',
       requirements,
       productImages,
+      {
+        previousScreenDataUrl: 'data:image/png;base64,previous',
+        productDocumentsText: ' 容量 500ml ',
+        brandLogoDataUrl: 'data:image/png;base64,logo',
+      },
     );
-    expect(withoutProductDocs).not.toHaveProperty('productDocumentsText');
+    expect(withAll).toMatchObject({
+      previousScreenDataUrl: 'data:image/png;base64,previous',
+      productDocumentsText: '容量 500ml',
+      brandLogoDataUrl: 'data:image/png;base64,logo',
+    });
 
-    const blankProductDocs = await toDetailImageGeneratePayload(
+    const withNone = await toDetailImageGeneratePayload(
       form,
       '气质冷白',
       requirements,
       productImages,
-      undefined,
-      '   ',
     );
-    expect(blankProductDocs).not.toHaveProperty('productDocumentsText');
+    expect(withNone).not.toHaveProperty('previousScreenDataUrl');
+    expect(withNone).not.toHaveProperty('productDocumentsText');
+    expect(withNone).not.toHaveProperty('brandLogoDataUrl');
 
-    const withProductDocs = await toDetailImageGeneratePayload(
+    const withBlank = await toDetailImageGeneratePayload(
       form,
       '气质冷白',
       requirements,
       productImages,
-      undefined,
-      ' 容量 500ml ',
+      { productDocumentsText: '   ' },
     );
-    expect(withProductDocs).toMatchObject({ productDocumentsText: '容量 500ml' });
+    expect(withBlank).not.toHaveProperty('productDocumentsText');
   });
 
   it('营销海报同样带入主视觉，并可附带可选模特形象', async () => {

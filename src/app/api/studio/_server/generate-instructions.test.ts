@@ -4,8 +4,8 @@ vi.mock('server-only', () => ({}));
 
 import { ECOMMERCE_TASK_TYPES } from '@/app/api/studio/ecommerce/_shared/task-constants';
 import {
+  BRAND_LOGO_PROMPT,
   DETAIL_IMAGE_CONTINUITY_PROMPT,
-  MAIN_IMAGE_BRAND_LOGO_PROMPT,
   MAIN_IMAGE_COPY_REFERENCE_PROMPT,
   MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
   MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT,
@@ -248,7 +248,7 @@ describe('电商生图指令', () => {
       '第1至第2个参考图=用户上传的产品精修图，定义产品本体；该范围内的图都属于同一产品',
     );
     expect(withoutCopyRef).toContain('第3个参考图（即【品牌 Logo】）');
-    expect(withoutCopyRef).toContain(MAIN_IMAGE_BRAND_LOGO_PROMPT);
+    expect(withoutCopyRef).toContain(BRAND_LOGO_PROMPT);
 
     // 两者都有时 Logo 顺延到第 4，文案标准参考图序号不变
     const withBoth = buildMainImagePrompt({
@@ -290,7 +290,7 @@ describe('电商生图指令', () => {
     });
 
     expect(prompt).not.toContain('【品牌 Logo】');
-    expect(prompt).not.toContain(MAIN_IMAGE_BRAND_LOGO_PROMPT);
+    expect(prompt).not.toContain(BRAND_LOGO_PROMPT);
   });
 
   it('主图无产品精修图时不点名产品参考图，保真底线换成按描述呈现', () => {
@@ -345,12 +345,13 @@ describe('电商生图指令', () => {
   });
 
   it('详情图有上一屏时标明参考图角色、当前屏主题卡与连贯句', () => {
-    const prompt = buildDetailImagePrompt(
-      '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
-      '目标人群偏好冷白',
-      2,
-      true,
-    );
+    const prompt = buildDetailImagePrompt({
+      requirement: '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 2,
+      hasPreviousScreen: true,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).toContain('第1至第2个参考图=用户上传的产品精修图');
     expect(prompt).toContain('不得把精修图的拍摄角度、取景远近或产品占画面大小复制到本屏');
@@ -365,12 +366,13 @@ describe('电商生图指令', () => {
   });
 
   it('详情图无上一屏时不含上一屏角色说明与连贯句', () => {
-    const prompt = buildDetailImagePrompt(
-      '设计目标：建立品牌第一印象。',
-      '目标人群偏好冷白',
-      1,
-      false,
-    );
+    const prompt = buildDetailImagePrompt({
+      requirement: '设计目标：建立品牌第一印象。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 1,
+      hasPreviousScreen: false,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).toContain('第1个参考图=用户上传的产品精修图');
     expect(prompt).not.toContain('上一屏');
@@ -381,14 +383,54 @@ describe('电商生图指令', () => {
     );
   });
 
+  it('详情图上传品牌 Logo 时按真实序号点名，并排在上一屏之后', () => {
+    // 有上一屏时 Logo 顺延到第 3；产品精修图那条规则必须限定范围，否则 Logo 会被当成产品的另一个角度
+    const withPrevious = buildDetailImagePrompt({
+      requirement: '设计目标：建立品牌第一印象。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 1,
+      hasPreviousScreen: true,
+      hasBrandLogo: true,
+    });
+
+    expect(withPrevious).toContain('第2个参考图=上一屏详情图');
+    expect(withPrevious).toContain('第3个参考图（即【品牌 Logo】）');
+    expect(withPrevious).toContain(BRAND_LOGO_PROMPT);
+
+    // 无上一屏时 Logo 紧随产品精修图
+    const withoutPrevious = buildDetailImagePrompt({
+      requirement: '设计目标：建立品牌第一印象。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 2,
+      hasPreviousScreen: false,
+      hasBrandLogo: true,
+    });
+
+    expect(withoutPrevious).toContain('第3个参考图（即【品牌 Logo】）');
+  });
+
+  it('详情图未上传 Logo 时不含 Logo 角色说明与 Logo 注入语', () => {
+    const prompt = buildDetailImagePrompt({
+      requirement: '设计目标：建立品牌第一印象。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 1,
+      hasPreviousScreen: false,
+      hasBrandLogo: false,
+    });
+
+    expect(prompt).not.toContain('【品牌 Logo】');
+    expect(prompt).not.toContain(BRAND_LOGO_PROMPT);
+  });
+
   it('详情图带产品资料时叠加【产品资料】段与事实优先级', () => {
-    const prompt = buildDetailImagePrompt(
-      '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
-      '目标人群偏好冷白',
-      1,
-      false,
-      '容量 500ml，品牌 凡域',
-    );
+    const prompt = buildDetailImagePrompt({
+      requirement: '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 1,
+      hasPreviousScreen: false,
+      hasBrandLogo: false,
+      productDocumentsText: '容量 500ml，品牌 凡域',
+    });
 
     expect(prompt).toContain('【商业分析】\n目标人群偏好冷白');
     expect(prompt).toContain('【产品资料】\n容量 500ml，品牌 凡域');
@@ -398,12 +440,13 @@ describe('电商生图指令', () => {
   });
 
   it('详情图无产品资料时不出现【产品资料】段', () => {
-    const prompt = buildDetailImagePrompt(
-      '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
-      '目标人群偏好冷白',
-      1,
-      false,
-    );
+    const prompt = buildDetailImagePrompt({
+      requirement: '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
+      analysisText: '目标人群偏好冷白',
+      productImageCount: 1,
+      hasPreviousScreen: false,
+      hasBrandLogo: false,
+    });
 
     expect(prompt).not.toContain('【产品资料】');
   });

@@ -105,6 +105,7 @@ const detailImageGenerateSchema = specFieldsSchema.extend({
     .min(1),
   productViewImages: z.array(imageInputSchema).min(1).max(MAX_STUDIO_PRODUCT_IMAGES),
   previousScreenDataUrl: imageDataUrlSchema.optional(),
+  brandLogoDataUrl: imageDataUrlSchema.optional(),
 });
 
 const designGenerateSchema = specFieldsSchema.extend({

@@ -227,15 +227,23 @@ export async function toMainImageGeneratePayload(
   };
 }
 
-/** 详情图请求体：规格 + 商业分析 + 可选产品资料正文 + 当前屏主题卡 + 产品精修图 + 可选上一屏 */
+/**
+ * 详情图请求体：规格 + 商业分析 + 当前屏主题卡 + 产品精修图；尾部可选值统一走 options。
+ *
+ * 尾部几个可选值同型，一律用具名键——按位置传不会报类型错、只会静默串值。
+ */
 export async function toDetailImageGeneratePayload(
   form: DesignFormState,
   analysisText: string,
   requirements: ThemePlanCard[],
   productImages: ProductImageItem[],
-  previousScreenDataUrl?: string,
-  productDocumentsText?: string,
+  options: {
+    previousScreenDataUrl?: string;
+    productDocumentsText?: string;
+    brandLogoDataUrl?: string;
+  } = {},
 ): Promise<StudioGenerateRequest> {
+  const productDocumentsText = options.productDocumentsText?.trim();
   return {
     kind: 'detailImage',
     model: form.model,
@@ -250,8 +258,11 @@ export async function toDetailImageGeneratePayload(
       requirement: card.requirement.trim(),
     })),
     productViewImages: await toAnalyzeImages(productImages),
-    ...(previousScreenDataUrl ? { previousScreenDataUrl } : {}),
-    ...(productDocumentsText?.trim() ? { productDocumentsText: productDocumentsText.trim() } : {}),
+    ...(options.previousScreenDataUrl
+      ? { previousScreenDataUrl: options.previousScreenDataUrl }
+      : {}),
+    ...(productDocumentsText ? { productDocumentsText } : {}),
+    ...(options.brandLogoDataUrl ? { brandLogoDataUrl: options.brandLogoDataUrl } : {}),
   };
 }
 

@@ -46,6 +46,12 @@ describe('品牌认知的 Logo 规则', () => {
     expect(DETAIL_IMAGE_THEME_DUTIES.brand).toContain('不能只让它出现在产品机身上');
   });
 
+  it('用户提供了品牌 Logo 时以其为准，未提供才回落到产品上已有的品牌标识', () => {
+    expect(DETAIL_IMAGE_THEME_DUTIES.brand).toContain(
+      '用户提供了品牌 Logo 时以它为准，否则用产品上已有的品牌标识',
+    );
+  });
+
   it('无品牌信息时可省略，不去编造品牌', () => {
     expect(DETAIL_IMAGE_THEME_DUTIES.brand).toContain('商业分析确无品牌信息时才可省略');
   });

@@ -37,7 +37,7 @@ type ControlPanelProps = {
   images: ProductImageItem[];
   documents: ProductDocItem[];
   productDocs: ProductDocItem[];
-  /** 主图品牌 Logo（至多一张）；仅主图任务使用 */
+  /** 品牌 Logo（至多一张）；主图 / 详情图任务在分析步录入 */
   brandLogo: ProductImageItem[];
   modelImages: ProductImageItem[];
   form: StudioFormState;
@@ -136,7 +136,7 @@ export default function ControlPanel({
       <div className={styles.scroll}>
         {showAnalyzeForm ? (
           <>
-            {mainImage ? (
+            {themePlan ? (
               <StudioImageUpload
                 label={BRAND_LOGO_LABEL}
                 subtitle={BRAND_LOGO_SUBTITLE}

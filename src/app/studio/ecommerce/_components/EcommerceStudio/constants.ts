@@ -78,7 +78,7 @@ export const MAX_MODEL_IMAGES = 1;
 export const MODEL_IMAGE_SUBTITLE = '可选，锁定外貌与服装，姿势可按设计调整';
 export const MODEL_IMAGE_HINT = '上传模特身份参考图（可选）';
 
-/** 品牌 Logo（主图分析步左栏，可选，至多一张，作出图参考图末位） */
+/** 品牌 Logo（主图 / 详情图分析步左栏，可选，至多一张，作出图参考图末位） */
 export const MAX_BRAND_LOGOS = 1;
 export const BRAND_LOGO_LABEL = '品牌 Logo';
 export const BRAND_LOGO_SUBTITLE = '可选，作参考图；画面中的品牌标识以它为准';

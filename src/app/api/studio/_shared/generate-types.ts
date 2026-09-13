@@ -103,7 +103,7 @@ export type StudioMainImageGenerateRequest = StudioGenerateBase & {
   brandLogoDataUrl?: string;
 };
 
-/** 电商详情图：规格 + 商业分析 + 可选产品资料正文 + 当前屏主题卡 + 产品精修图 + 可选上一屏 */
+/** 电商详情图：规格 + 商业分析 + 可选产品资料正文 + 当前屏主题卡 + 产品精修图 + 可选上一屏与品牌 Logo */
 export type StudioDetailImageGenerateRequest = StudioGenerateBase & {
   kind: 'detailImage';
   count: number;
@@ -117,6 +117,11 @@ export type StudioDetailImageGenerateRequest = StudioGenerateBase & {
   }>;
   productViewImages: StudioImageInput[];
   previousScreenDataUrl?: string;
+  /**
+   * 用户上传的品牌 Logo 原图，作参考图数组**末位**（排在 previousScreenDataUrl 之后）；未上传时省略。
+   * 单值而非数组：Logo 至多一张。
+   */
+  brandLogoDataUrl?: string;
 };
 
 export type StudioGenerateRequest =

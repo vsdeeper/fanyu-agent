@@ -178,7 +178,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   const [productDocs, setProductDocs] = useState<ProductDocItem[]>(
     initialAnalysis?.productDocs ?? [],
   );
-  // 品牌 Logo 只服务主图任务，在分析步录入、出图步复用
+  // 品牌 Logo 服务主图 / 详情图任务，在分析步录入、出图步复用
   const [brandLogo, setBrandLogo] = useState<ProductImageItem[]>(
     initialAnalysis?.brandLogoImages ?? [],
   );
@@ -346,7 +346,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
               planCards: extras?.planCards ?? planCards,
               selectedThemeIds: extras?.selectedThemeIds ?? selectedThemeIds,
               productDocs: productDocsRef.current,
-              ...(mainImage ? { brandLogoImages: brandLogoRef.current } : {}),
+              ...(themePlan ? { brandLogoImages: brandLogoRef.current } : {}),
             }
           : undefined,
       );
@@ -363,7 +363,6 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     },
     [
       themePlan,
-      mainImage,
       planCards,
       selectedThemeIds,
       task.id,
@@ -725,7 +724,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       }
     }
     let brandLogoDataUrl: string | undefined;
-    if (mainImage) {
+    if (themePlan) {
       try {
         brandLogoDataUrl = await readBrandLogoDataUrl(brandLogo);
       } catch (err) {
@@ -761,8 +760,11 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
               analysisFromDocs,
               selectedCards,
               images,
-              previousScreenDataUrl,
-              productDocsText,
+              {
+                previousScreenDataUrl,
+                productDocumentsText: productDocsText,
+                brandLogoDataUrl,
+              },
             )
           : await toMainImageGeneratePayload(
               nextDesignForm,

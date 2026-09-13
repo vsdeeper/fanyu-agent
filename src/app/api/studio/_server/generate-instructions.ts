@@ -1,11 +1,11 @@
 import 'server-only';
 
 import {
+  BRAND_LOGO_PROMPT,
   DETAIL_IMAGE_CONTINUITY_PROMPT,
   DETAIL_IMAGE_COPY_TYPOGRAPHY_PROMPT,
   DETAIL_IMAGE_FRAMING_PROMPT,
   TASK_TYPE_PROMPT_BY_TYPE,
-  MAIN_IMAGE_BRAND_LOGO_PROMPT,
   MAIN_IMAGE_COPY_REFERENCE_PROMPT,
   MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
   MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT,
@@ -111,7 +111,7 @@ export function buildMainImagePrompt(input: MainImagePromptInput): string {
     ...(hasBrandLogo
       ? [
           `第${logoReferenceIndex}个参考图（即【品牌 Logo】）=用户上传的品牌 Logo 原图，是画面中品牌标识的呈现依据。`,
-          MAIN_IMAGE_BRAND_LOGO_PROMPT,
+          BRAND_LOGO_PROMPT,
         ]
       : []),
   ];
@@ -144,20 +144,34 @@ export function buildMainImagePrompt(input: MainImagePromptInput): string {
   ].join('\n');
 }
 
+/** `buildDetailImagePrompt` 入参：尾部可选值同型，一律走具名键，避免位置传错后只静默串值。 */
+export type DetailImagePromptInput = {
+  /** 本屏主题卡正文 */
+  requirement: string;
+  /** 商业分析正文 */
+  analysisText: string;
+  /** 产品精修图张数（不含上一屏与品牌 Logo） */
+  productImageCount: number;
+  hasPreviousScreen: boolean;
+  hasBrandLogo: boolean;
+  productDocumentsText?: string;
+};
+
 /**
  * 电商详情图出站 prompt：商业分析定整套气质，可选产品资料定第一手产品事实，当前屏主题卡定本张内容；精修图为产品事实。
+ *
+ * `productImageCount` / `hasPreviousScreen` / `hasBrandLogo` 必填：参考图数组顺序为
+ * 产品精修图 → 上一屏 → 品牌 Logo，必须按真实张数点名序号，否则「其余精修图仅补充同一产品的其它角度」
+ * 会把后两张图误当成同一产品的另一角度或另一屏。
  */
-export function buildDetailImagePrompt(
-  requirement: string,
-  analysisText: string,
-  productImageCount: number,
-  hasPreviousScreen: boolean,
-  productDocumentsText?: string,
-): string {
-  const productDocsText = productDocumentsText?.trim();
+export function buildDetailImagePrompt(input: DetailImagePromptInput): string {
+  const { productImageCount, hasPreviousScreen, hasBrandLogo } = input;
+  const productDocsText = input.productDocumentsText?.trim();
   const productRange =
     productImageCount <= 1 ? '第1个参考图' : `第1至第${productImageCount}个参考图`;
+  // 序号按参考图数组的真实位置算，上一屏与 Logo 依次排在产品精修图之后
   const previousIndex = Math.max(1, productImageCount) + 1;
+  const logoReferenceIndex = previousIndex + (hasPreviousScreen ? 1 : 0);
   const referenceRules = [
     `${productRange}=用户上传的产品精修图，定义产品本体外观、颜色、材质与结构；不得把精修图的拍摄角度、取景远近或产品占画面大小复制到本屏。其余精修图仅补充同一产品的其它可见角度与细节，供本屏按展示重点选用合适机位，不得混合不同 SKU。产品外观、颜色、结构、材质与细节如下方产品保真底线为准。`,
     ...(hasPreviousScreen
@@ -165,6 +179,12 @@ export function buildDetailImagePrompt(
           `第${previousIndex}个参考图=上一屏详情图，只锁定整套详情页的视觉语言，不是当前屏要复制的构图、主题或产品机位。`,
           DETAIL_IMAGE_CONTINUITY_PROMPT,
           '上一屏只作风格参考，画面信息、构图切片、文案以及产品角度/远近/占比必须按【当前屏主题卡】重新设计，禁止复刻上一屏版式、卖点或同一产品机位。',
+        ]
+      : []),
+    ...(hasBrandLogo
+      ? [
+          `第${logoReferenceIndex}个参考图（即【品牌 Logo】）=用户上传的品牌 Logo 原图，是画面中品牌标识的呈现依据。`,
+          BRAND_LOGO_PROMPT,
         ]
       : []),
   ];
@@ -175,7 +195,7 @@ export function buildDetailImagePrompt(
     '根据【商业分析】确定整套配色、光影气质、材质与品牌氛围。',
     '本张画面信息、文案、产品机位（角度/远近/占比）与构图切片只来自【当前屏主题卡】的设计目标与展示重点。',
     '【商业分析】',
-    analysisText.trim(),
+    input.analysisText.trim(),
     ...(productDocsText
       ? [
           '【产品资料】',
@@ -184,7 +204,7 @@ export function buildDetailImagePrompt(
         ]
       : []),
     '【当前屏主题卡】',
-    requirement.trim(),
+    input.requirement.trim(),
     DETAIL_IMAGE_FRAMING_PROMPT,
     DETAIL_IMAGE_COPY_TYPOGRAPHY_PROMPT,
     VISUAL_AD_PROMPT_GUARD,

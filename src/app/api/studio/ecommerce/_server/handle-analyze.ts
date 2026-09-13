@@ -41,7 +41,7 @@ function analyzeInstructions(kind: EcommerceAnalyzeKind): string {
 
 /** 品牌 Logo 的识图问题：只问主题卡规划用得上的造型与呈现方式，不问画面构图（那由出图环节定）。 */
 const BRAND_LOGO_VISION_QUESTION =
-  '请描述这个品牌 Logo：造型与图形构成、是否含文字与文字内容、字体特征、主色与辅助色、透明底与否，以及把它作为设计元素融入电商主图画面时适合的呈现方式。';
+  '请描述这个品牌 Logo：造型与图形构成、是否含文字与文字内容、字体特征、主色与辅助色、透明底与否，以及把它作为设计元素融入电商画面时适合的呈现方式。';
 
 /**
  * 把品牌 Logo 原图转成中文描述供分析使用；识图失败返回 undefined。

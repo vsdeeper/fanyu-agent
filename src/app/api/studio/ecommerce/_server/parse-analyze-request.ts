@@ -21,7 +21,7 @@ const analyzeBodySchema = z.object({
   // 主图 / 详情图任务的补充产品资料；documents 恒为商业分析文档，两组不可混用
   productDocuments: z.array(documentInputSchema).max(MAX_STUDIO_PRODUCT_DOCS).optional(),
   /**
-   * 品牌 Logo 原图（仅主图，至多一张）：服务端先经 analyzeImage 转成中文描述再进分析。
+   * 品牌 Logo 原图（主图 / 详情图，至多一张）：服务端先经 analyzeImage 转成中文描述再进分析。
    * 分析用的主模型在缺省 provider 下看不见像素，故这里只作识图入参，不直接喂给 streamText。
    */
   brandLogoDataUrl: z.string().startsWith('data:image/').optional(),

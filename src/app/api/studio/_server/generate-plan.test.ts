@@ -224,7 +224,7 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.referenceImageDataUrls).toEqual([]);
   });
 
-  it('详情图不出现品牌 Logo 段', () => {
+  it('详情图未上传 Logo 时不出现品牌 Logo 段', () => {
     const plan = buildGeneratePlan({
       ...base,
       kind: 'detailImage',
@@ -235,6 +235,43 @@ describe('buildGeneratePlan 批次展开', () => {
     });
 
     expect(plan[0]?.prompt).not.toContain('【品牌 Logo】');
+  });
+
+  it('详情图带品牌 Logo 时追加为参考图最末位并点名序号', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'detailImage',
+      count: 1,
+      analysisText: '分析',
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [img('a')],
+      previousScreenDataUrl: img('p').dataUrl,
+      brandLogoDataUrl: img('logo').dataUrl,
+    });
+
+    // Logo 排在上一屏之后，故上一屏序号仍是「产品图张数 + 1」
+    expect(plan[0]?.referenceImageDataUrls).toEqual([
+      img('a').dataUrl,
+      img('p').dataUrl,
+      img('logo').dataUrl,
+    ]);
+    expect(plan[0]?.prompt).toContain('第2个参考图=上一屏详情图');
+    expect(plan[0]?.prompt).toContain('第3个参考图（即【品牌 Logo】）');
+  });
+
+  it('详情图无上一屏但有 Logo 时 Logo 紧随产品图', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'detailImage',
+      count: 1,
+      analysisText: '分析',
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [img('a')],
+      brandLogoDataUrl: img('logo').dataUrl,
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([img('a').dataUrl, img('logo').dataUrl]);
+    expect(plan[0]?.prompt).toContain('第2个参考图（即【品牌 Logo】）');
   });
 
   it('详情图按「主题 × 数量」展开，参考图为产品图 + 上一屏', () => {

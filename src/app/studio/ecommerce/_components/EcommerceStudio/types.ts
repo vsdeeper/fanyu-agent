@@ -55,7 +55,7 @@ export type AnalysisStepSnapshot = {
   documents: ProductDocItem[];
   /** 主图 / 详情图任务的补充产品资料（TXT / MD）；documents 恒为商业分析文档，两组不可混用 */
   productDocs?: ProductDocItem[];
-  /** 主图任务的品牌 Logo（至多一张，作出图参考图末位）；仅主图，未上传时省略 */
+  /** 主图 / 详情图任务的品牌 Logo（至多一张，作出图参考图末位）；未上传时省略 */
   brandLogoImages?: ProductImageItem[];
   analysisText: string;
   planCards?: ThemePlanCard[];
