@@ -194,6 +194,24 @@ describe('buildGeneratePlan 批次展开', () => {
     );
   });
 
+  it('视觉设计未点选视觉标准时参考图不含主视觉，Logo 顺位前移', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'design',
+      count: 1,
+      taskType: '营销海报',
+      includeModel: false,
+      analysisText: '分析',
+      productViewImages: [img('a')],
+      brandLogoDataUrl: img('logo').dataUrl,
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([img('a').dataUrl, img('logo').dataUrl]);
+    expect(plan[0]?.prompt).not.toContain('=已选营销主视觉');
+    expect(plan[0]?.prompt).toContain('第2个参考图（即【品牌 Logo】）');
+    expect(plan[0]?.prompt).toContain('本批没有已选营销主视觉参考');
+  });
+
   it('视觉设计无产品精修图时主视觉顺位成为第 1 张', () => {
     const plan = buildGeneratePlan({
       ...base,

@@ -500,6 +500,7 @@ describe('电商生图指令', () => {
       includeModel: true,
       productImageCount: 1,
       hasBrandLogo: false,
+      hasVisualStandard: true,
     });
 
     expect(prompt).toContain(`“${taskType}”视觉设计成品`);
@@ -522,6 +523,7 @@ describe('电商生图指令', () => {
       includeModel: true,
       productImageCount: 1,
       hasBrandLogo: false,
+      hasVisualStandard: true,
     });
 
     expect(prompt).toContain('该人物必须出现在海报中');
@@ -542,6 +544,7 @@ describe('电商生图指令', () => {
       includeModel: false,
       productImageCount: 1,
       hasBrandLogo: false,
+      hasVisualStandard: true,
       userRequirement: '  主标题写「轻盈一夏」，背景换成原木桌面  ',
     });
 
@@ -562,6 +565,7 @@ describe('电商生图指令', () => {
       includeModel: false,
       productImageCount: 1,
       hasBrandLogo: false,
+      hasVisualStandard: true,
       userRequirement: '不要文字堆叠',
     });
 
@@ -582,11 +586,29 @@ describe('电商生图指令', () => {
       includeModel: false,
       productImageCount: 1,
       hasBrandLogo: false,
+      hasVisualStandard: true,
     };
 
     expect(buildDesignPrompt(base)).not.toContain('【用户要求】');
     expect(buildDesignPrompt(base)).not.toContain('以上文字编排的默认口径让位');
     expect(buildDesignPrompt({ ...base, userRequirement: '   ' })).not.toContain('【用户要求】');
+  });
+
+  it('视觉设计未点选视觉标准时不出现主视觉规则，序号按真实位置重排', () => {
+    const prompt = buildDesignPrompt({
+      taskType: '营销海报',
+      analysisText: '分析',
+      includeModel: true,
+      productImageCount: 1,
+      hasVisualStandard: false,
+      hasBrandLogo: true,
+    });
+
+    expect(prompt).toContain('本批没有已选营销主视觉参考');
+    expect(prompt).not.toContain('=已选营销主视觉，用于延续');
+    // 主视觉缺位后 Logo 与模特图各前移一位
+    expect(prompt).toContain('第2个参考图（即【品牌 Logo】）');
+    expect(prompt).toContain('第3个及之后的参考图=同一位模特的身份与着装参考');
   });
 
   it('营销海报未带模特参考时不强制入画', () => {
@@ -596,6 +618,7 @@ describe('电商生图指令', () => {
       includeModel: false,
       productImageCount: 1,
       hasBrandLogo: false,
+      hasVisualStandard: true,
     });
 
     expect(prompt).not.toContain('该人物必须出现在海报中');
@@ -645,6 +668,7 @@ describe('电商生图指令', () => {
       includeModel: true,
       productImageCount: 2,
       hasBrandLogo: true,
+      hasVisualStandard: true,
     });
 
     expect(prompt).toContain('第3个参考图=已选营销主视觉');
@@ -660,6 +684,7 @@ describe('电商生图指令', () => {
       includeModel: true,
       productImageCount: 0,
       hasBrandLogo: false,
+      hasVisualStandard: true,
     });
 
     expect(prompt).toContain('第1个参考图=已选营销主视觉');
@@ -881,18 +906,29 @@ describe('视觉设计请求契约', () => {
     expect(parsed?.kind).toBe('design');
   });
 
-  it('拒绝缺少主视觉或模特开关与参考图不一致的请求', () => {
+  it('视觉标准非必选，但模特开关与参考图不一致时拒绝', () => {
+    const withoutVisual = parseGenerateBody({
+      ...BASE_DESIGN_REQUEST,
+      includeModel: false,
+    });
+    expect(withoutVisual?.kind).toBe('design');
     expect(
-      parseGenerateBody({
-        ...BASE_DESIGN_REQUEST,
-        includeModel: false,
-      }),
-    ).toBeNull();
+      withoutVisual && withoutVisual.kind === 'design' ? withoutVisual.visualDataUrl : '',
+    ).toBeUndefined();
+
     expect(
       parseGenerateBody({
         ...BASE_DESIGN_REQUEST,
         includeModel: true,
         visualDataUrl: 'data:image/png;base64,VISUAL',
+      }),
+    ).toBeNull();
+
+    expect(
+      parseGenerateBody({
+        ...BASE_DESIGN_REQUEST,
+        includeModel: false,
+        visualDataUrl: 'https://x/y.png',
       }),
     ).toBeNull();
   });

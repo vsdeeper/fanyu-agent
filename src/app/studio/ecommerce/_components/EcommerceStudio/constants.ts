@@ -25,7 +25,6 @@ export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
 };
 
 export const ANALYSIS_MISSING = '请先完成产品分析';
-export const VISUAL_SELECT_MISSING = '请先点选一张主视觉作为视觉标准';
 export const DESIGN_RESULT_MISSING = '请先生成至少一张视觉设计';
 export const MAIN_IMAGE_RESULT_MISSING = '请先生成至少一张主图';
 export const POSTER_RESULT_MISSING = '请先生成至少一张营销海报';

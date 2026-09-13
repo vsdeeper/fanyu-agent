@@ -96,19 +96,20 @@ export function reconcilePlanScrollPin(
 }
 
 /**
- * 下一步是否禁用：分析须有正文，主题规划须点选主题，主视觉须点选，设计须至少有一张成果。
+ * 下一步是否禁用：分析须有正文，主题规划须点选主题，设计须至少有一张成果。
+ * 主视觉步恒可进入下一步 —— 视觉标准已是非必选，不点选也允许往下走（风格由商业分析定）。
  */
 export function isNextDisabled(
   phase: StudioPhase,
-  selectedVisualId: string | null,
   hasDesignResults: boolean,
   options?: { selectedThemeCount?: number; isEditing?: boolean },
 ): boolean {
   if (options?.isEditing) return true;
   // analyzed 相位只可能是主图 / 详情图（主题规划类），判据即「是否已点选主题」
   if (phase === 'analyzed') return (options?.selectedThemeCount ?? 0) < 1;
-  if (phase === 'visual') return selectedVisualId === null;
   if (phase === 'design') return !hasDesignResults;
+  if (phase === 'visual') return false;
+  // input / analyzing 是分析步的生图前状态，不得跨过
   return true;
 }
 

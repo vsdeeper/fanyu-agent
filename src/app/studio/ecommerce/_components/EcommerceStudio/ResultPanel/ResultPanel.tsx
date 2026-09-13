@@ -129,7 +129,7 @@ export default function ResultPanel({
   );
   const nextDisabled =
     isEditing ||
-    isNextDisabled(phase, selectedVisualId, hasDesignResults, {
+    isNextDisabled(phase, hasDesignResults, {
       selectedThemeCount: selectedThemeIds.length,
       isEditing: planEditing,
     });

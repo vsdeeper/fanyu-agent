@@ -156,12 +156,13 @@ export async function toVisualGeneratePayload(
   };
 }
 
-/** 视觉设计请求体：表单（含用户要求）+ 分析/产品精修图（非必填） + 已选主视觉标准 + 可选品牌 Logo 与模特形象 */
+/** 视觉设计请求体：表单（含用户要求）+ 分析/产品精修图（非必填） + 可选视觉标准、品牌 Logo 与模特形象 */
 export async function toDesignGeneratePayload(
   form: DesignFormState,
   analysisText: string,
   productImages: ProductImageItem[],
-  visualDataUrl: string,
+  /** 视觉标准（点选的营销主视觉）的 data URL；未点选时不传，风格由商业分析定 */
+  visualDataUrl: string | undefined,
   options: {
     modelImages?: BusinessAnalysisImageInput[];
     brandLogoDataUrl?: string;
@@ -182,7 +183,7 @@ export async function toDesignGeneratePayload(
     includeModel,
     analysisText: analysisText.trim(),
     productViewImages: await toAnalyzeImages(productImages),
-    visualDataUrl,
+    ...(visualDataUrl ? { visualDataUrl } : {}),
     ...(userRequirement ? { userRequirement } : {}),
     ...(includeModel ? { modelImages } : {}),
     ...(options.brandLogoDataUrl ? { brandLogoDataUrl: options.brandLogoDataUrl } : {}),

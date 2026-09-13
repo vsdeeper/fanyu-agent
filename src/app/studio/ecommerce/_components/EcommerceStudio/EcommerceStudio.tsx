@@ -39,7 +39,6 @@ import {
   MAX_MODEL_IMAGES,
   POSTER_RESULT_MISSING,
   THEME_SELECT_MISSING,
-  VISUAL_SELECT_MISSING,
 } from './constants';
 import ResultPanel from './ResultPanel';
 import type {
@@ -698,14 +697,10 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         : detailImage
           ? { ...designForm, taskType: '详情图' as const }
           : designForm;
-    let visualDataUrl = '';
+    // 视觉标准非必选：没点选就不带主视觉参考图，整体风格由商业分析定
+    let visualDataUrl: string | undefined;
     if (!themePlan) {
-      const selected = getSelectedResultImageUrl(visualImages, selectedVisualId);
-      if (!selected) {
-        message.warning(VISUAL_SELECT_MISSING);
-        return;
-      }
-      visualDataUrl = selected;
+      visualDataUrl = getSelectedResultImageUrl(visualImages, selectedVisualId) ?? undefined;
     }
     let previousScreenDataUrl: string | undefined;
     if (detailImage && referenceImageId !== null) {
@@ -786,7 +781,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
             nextDesignForm,
             analysisText,
             images,
-            await readUrlAsDataUrl(visualDataUrl),
+            visualDataUrl ? await readUrlAsDataUrl(visualDataUrl) : undefined,
             { modelImages: await toAnalyzeImages(modelImages), brandLogoDataUrl },
           );
       const snapshot = await startJob({
@@ -908,8 +903,9 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   );
 
   const handleSelectVisual = useCallback((id: string) => {
-    // 点选视觉图仅更新交互态，落库收敛到下一步/完成
-    setSelectedVisualId(id);
+    // 点选视觉图仅更新交互态，落库收敛到下一步/完成；再点已选中的那张即取消
+    // （视觉标准非必选，需要能退回「不带主视觉」出海报，与 handleSelectReference 同款切换）
+    setSelectedVisualId((current) => (current === id ? null : id));
   }, []);
 
   const handleSelectReference = useCallback((id: string) => {
@@ -972,10 +968,6 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   }, [abortCurrent, cancelJob, phase, setPhase]);
 
   const handleNext = useCallback(async () => {
-    if (phase === 'visual' && selectedVisualId === null) {
-      message.warning(VISUAL_SELECT_MISSING);
-      return;
-    }
     if (
       phase === 'design' &&
       !Object.values(designResultGroups).some((group) =>

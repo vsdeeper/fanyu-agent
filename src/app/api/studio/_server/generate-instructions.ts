@@ -292,38 +292,48 @@ export type DesignPromptInput = {
   includeModel: boolean;
   /** 产品精修图张数（不含主视觉、品牌 Logo 与模特图）；可为 0（非必填，无参考图时降级为文生图） */
   productImageCount: number;
+  /** 是否点选了营销主视觉作视觉标准；未点选时风格全按商业分析定 */
+  hasVisualStandard: boolean;
   hasBrandLogo: boolean;
   /** 用户直接下达的额外要求（最高优先级）；空白串与未填写等价 */
   userRequirement?: string;
 };
 
 /**
- * 视觉设计出站 prompt：以分析和任务类型定目标，产品标准图定产品，主视觉定风格，可选 Logo 与模特图补品牌标识与人物身份。
+ * 视觉设计出站 prompt：以分析和任务类型定目标，产品标准图定产品，视觉标准（若点选）定风格，可选 Logo 与模特图补品牌标识与人物身份。
  *
- * `productImageCount` / `hasBrandLogo` 必填：参考图数组顺序为 产品精修图 → 主视觉 → 品牌 Logo → 模特图，
- * 必须按真实张数点名序号，否则「其余参考图仅补充同一产品的可见角度」会把主视觉、Logo 与模特图一并误当成产品图，
+ * `productImageCount` / `hasVisualStandard` / `hasBrandLogo` 必填：参考图数组顺序为
+ * 产品精修图 → 主视觉 → 品牌 Logo → 模特图（前三段都可缺省），必须按真实张数点名序号，
+ * 否则「其余参考图仅补充同一产品的可见角度」会把主视觉、Logo 与模特图一并误当成产品图，
  * 模特那句「第 N 个及之后」也会指到 Logo 上。
- * 产品精修图非必填：`productImageCount === 0` 时主视觉就是第 1 张，产品图那句与产品保真底线都要换成无参考图的说法。
+ * 产品精修图非必填：`productImageCount === 0` 时第 1 张就是主视觉或 Logo，产品图那句与产品保真底线都要换成无参考图的说法。
+ * 视觉标准非必选：`hasVisualStandard === false` 时没有主视觉可延续，配色与光影全按商业分析定。
  * 用户要求非必填：填写时插在任务类型句之后、其余默认口径之前，并在文字编排后就近重申一次让位
  * （见 USER_REQUIREMENT_PROMPT；它是「用户描述」，故三条事实底线仍排在它前面）。
  */
 export function buildDesignPrompt(input: DesignPromptInput): string {
-  const { taskType, includeModel, productImageCount, hasBrandLogo } = input;
+  const { taskType, includeModel, productImageCount, hasVisualStandard, hasBrandLogo } = input;
   const userRequirement = input.userRequirement?.trim();
   const hasProductReference = productImageCount > 0;
   const productRange =
     productImageCount <= 1 ? '第1个参考图' : `第1至第${productImageCount}个参考图`;
   const visualReferenceIndex = productImageCount + 1;
   // Logo 紧随主视觉，模特图排在 Logo 之后：模特那句是「第 N 个及之后」，Logo 若排在其后会被一并算成模特
-  const logoReferenceIndex = visualReferenceIndex + 1;
-  const modelFromIndex = visualReferenceIndex + (hasBrandLogo ? 2 : 1);
+  const logoReferenceIndex = visualReferenceIndex + (hasVisualStandard ? 1 : 0);
+  const modelFromIndex = logoReferenceIndex + (hasBrandLogo ? 1 : 0);
   const referenceRules = [
     hasProductReference
       ? productImageCount <= 1
         ? '第1个参考图=用户上传的产品精修图，定义产品本体；本批只有这一张产品图，没有其它产品角度参考。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。'
         : `${productRange}=用户上传的产品精修图，定义产品本体；该范围内的图都属于同一产品，仅补充其可见角度与细节，不得混合不同 SKU。产品外观、颜色、比例、结构、材质与细节如下方产品保真底线为准。`
       : '本批没有产品精修图参考：产品本体按【商业分析】的描述呈现，不得臆造品牌、规格、结构或资料未提及的细节。',
-    `第${visualReferenceIndex}个参考图=已选营销主视觉，用于延续配色、光影、品牌氛围与视觉语言，不要求照搬原构图。`,
+    ...(hasVisualStandard
+      ? [
+          `第${visualReferenceIndex}个参考图=已选营销主视觉，用于延续配色、光影、品牌氛围与视觉语言，不要求照搬原构图。`,
+        ]
+      : [
+          '本批没有已选营销主视觉参考：整体配色、光影与品牌氛围按【商业分析】确定，不要照搬任何外部版式。',
+        ]),
     ...(hasBrandLogo
       ? [
           `第${logoReferenceIndex}个参考图（即【品牌 Logo】）=用户上传的品牌 Logo 原图，是画面中品牌标识的呈现依据。`,

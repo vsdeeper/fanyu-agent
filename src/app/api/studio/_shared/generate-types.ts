@@ -72,7 +72,7 @@ export type StudioVisualGenerateRequest = StudioGenerateBase & {
   brandLogoDataUrl?: string;
 };
 
-/** 视觉设计：表单配置 + 分析结果 + 产品精修图 + 已选主视觉 + 可选用户要求、品牌 Logo 与模特标准图 */
+/** 视觉设计：表单配置 + 分析结果 + 产品精修图 + 可选已选主视觉、用户要求、品牌 Logo 与模特标准图 */
 export type StudioDesignGenerateRequest = StudioGenerateBase & {
   kind: 'design';
   count: number;
@@ -81,7 +81,11 @@ export type StudioDesignGenerateRequest = StudioGenerateBase & {
   analysisText: string;
   /** 产品精修图非必填（可空数组）：没有参考图时生图侧自动降级为文生图 */
   productViewImages: StudioImageInput[];
-  visualDataUrl: string;
+  /**
+   * 用户点选的营销主视觉（视觉标准），作参考图数组**第 2 位**（排在产品精修图之后）；未点选时省略。
+   * 视觉标准非必选：没有时整体配色、光影与品牌氛围按商业分析确定。
+   */
+  visualDataUrl?: string;
   /**
    * 用户直接下达的额外要求，优先级高于商业分析、文字编排、构图取景与画风倾向；
    * 产品保真、放置与尺寸比例三条事实底线不可被它覆盖。未填写时省略。

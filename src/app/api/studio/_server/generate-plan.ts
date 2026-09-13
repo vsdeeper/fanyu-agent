@@ -118,18 +118,19 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
       ...(body.brandLogoDataUrl ? [body.brandLogoDataUrl] : []),
     ];
   } else {
-    // 参考图数组顺序固定为「产品精修图 → 主视觉 → 品牌 Logo → 模特图」，除主视觉外都可缺省
+    // 参考图数组顺序固定为「产品精修图 → 主视觉 → 品牌 Logo → 模特图」，四段都可缺省
     prompt = buildDesignPrompt({
       taskType: body.taskType,
       analysisText: body.analysisText,
       includeModel: body.includeModel,
       productImageCount: body.productViewImages.length,
+      hasVisualStandard: Boolean(body.visualDataUrl),
       hasBrandLogo: Boolean(body.brandLogoDataUrl),
       userRequirement: body.userRequirement,
     });
     referenceImageDataUrls = [
       ...body.productViewImages.map((image) => image.dataUrl),
-      body.visualDataUrl,
+      ...(body.visualDataUrl ? [body.visualDataUrl] : []),
       ...(body.brandLogoDataUrl ? [body.brandLogoDataUrl] : []),
       ...(body.modelImages?.map((image) => image.dataUrl) ?? []),
     ];

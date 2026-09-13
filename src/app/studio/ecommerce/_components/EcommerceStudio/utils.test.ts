@@ -323,6 +323,18 @@ describe('视觉设计请求体', () => {
     expect(payload).toHaveProperty('modelImages');
   });
 
+  it('营销海报请求体：视觉标准非必选，未点选时不携带', async () => {
+    const payload = await toDesignGeneratePayload(
+      { ...DEFAULT_DESIGN_FORM_STATE, taskType: '营销海报' },
+      '商业分析',
+      [IMAGE_ITEM('p-1', 'product.png')],
+      undefined,
+    );
+
+    expect(payload).toMatchObject({ kind: 'design', taskType: '营销海报' });
+    expect(payload).not.toHaveProperty('visualDataUrl');
+  });
+
   it('营销海报请求体：用户要求随表单传，留空或全空白一律不携带', async () => {
     const base = { ...DEFAULT_DESIGN_FORM_STATE, taskType: '营销海报' as const };
 
@@ -976,13 +988,20 @@ describe('流程导航', () => {
   });
 
   it('视觉设计至少有一张成果时才能进入完成', () => {
-    expect(isNextDisabled('design', null, false)).toBe(true);
-    expect(isNextDisabled('design', null, true)).toBe(false);
+    expect(isNextDisabled('design', false)).toBe(true);
+    expect(isNextDisabled('design', true)).toBe(false);
   });
 
   it('主图分析未点选主题时不能进入设计', () => {
-    expect(isNextDisabled('analyzed', null, false, { selectedThemeCount: 0 })).toBe(true);
-    expect(isNextDisabled('analyzed', null, false, { selectedThemeCount: 2 })).toBe(false);
+    expect(isNextDisabled('analyzed', false, { selectedThemeCount: 0 })).toBe(true);
+    expect(isNextDisabled('analyzed', false, { selectedThemeCount: 2 })).toBe(false);
+  });
+
+  it('主视觉步不点选视觉标准也能进入下一步，生成中与分析步仍不得跨过', () => {
+    expect(isNextDisabled('visual', false)).toBe(false);
+    expect(isNextDisabled('visualGenerating', false)).toBe(true);
+    expect(isNextDisabled('input', false)).toBe(true);
+    expect(isNextDisabled('analyzing', false)).toBe(true);
   });
 
   it('主图设计步标题与空态不走视觉设计文案', () => {
