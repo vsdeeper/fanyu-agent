@@ -120,6 +120,8 @@ const designGenerateSchema = specFieldsSchema.extend({
   // 产品精修图非必填（可空数组）：没有参考图时生图侧自动降级为文生图
   productViewImages: z.array(imageInputSchema).max(MAX_STUDIO_PRODUCT_IMAGES),
   visualDataUrl: imageDataUrlSchema,
+  // 用户要求：自由文本，留空即省略；空白串按未填写处理（prompt 侧也会 trim 一次）
+  userRequirement: z.string().optional(),
   brandLogoDataUrl: imageDataUrlSchema.optional(),
   modelImages: z.array(imageInputSchema).max(MAX_STUDIO_MODEL_IMAGES).optional(),
 });

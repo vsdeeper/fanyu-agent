@@ -170,6 +170,30 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).toContain('第4个及之后的参考图=同一位模特的身份与着装参考');
   });
 
+  it('视觉设计带用户要求时整批 prompt 都注入该段，且排在参考图角色之前', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'design',
+      count: 2,
+      taskType: '营销海报',
+      includeModel: false,
+      analysisText: '分析',
+      productViewImages: [img('a')],
+      visualDataUrl: img('v').dataUrl,
+      userRequirement: '主标题写「轻盈一夏」',
+    });
+
+    expect(plan).toHaveLength(2);
+    expect(
+      plan.every((item) =>
+        item.prompt.includes('【用户要求】（最高优先级）\n主标题写「轻盈一夏」'),
+      ),
+    ).toBe(true);
+    expect(plan[0]?.prompt.indexOf('【用户要求】')).toBeLessThan(
+      plan[0]?.prompt.indexOf('第2个参考图=已选营销主视觉') ?? 0,
+    );
+  });
+
   it('视觉设计无产品精修图时主视觉顺位成为第 1 张', () => {
     const plan = buildGeneratePlan({
       ...base,

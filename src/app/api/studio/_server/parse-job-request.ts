@@ -26,6 +26,8 @@ const pendingSchema = z.object({
     clarity: z.string().min(1),
     count: z.string().min(1),
     taskType: z.string().optional(),
+    // 与 taskType 同理：这不是生成规格，但作业结算时要用它回填表单，zod 默认会静默剥键
+    userRequirement: z.string().optional(),
   }),
 });
 

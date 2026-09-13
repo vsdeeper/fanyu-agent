@@ -125,6 +125,7 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
       includeModel: body.includeModel,
       productImageCount: body.productViewImages.length,
       hasBrandLogo: Boolean(body.brandLogoDataUrl),
+      userRequirement: body.userRequirement,
     });
     referenceImageDataUrls = [
       ...body.productViewImages.map((image) => image.dataUrl),

@@ -46,6 +46,11 @@ export type StudioFormState = StudioSpecFields & {
 
 export type DesignFormState = StudioFormState & {
   taskType: EcommerceTaskType;
+  /**
+   * 用户直接下达的额外要求（营销海报表单左栏，默认为空）。
+   * 随设计步表单落库；留空即不进 prompt，故不做空串归一（与可选参考图那类「不写键」字段不同）。
+   */
+  userRequirement?: string;
 };
 
 export type DesignResultGroups = Partial<Record<EcommerceTaskType, StudioResultImage[]>>;

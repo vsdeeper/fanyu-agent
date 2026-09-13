@@ -18,6 +18,8 @@ import {
   PRODUCT_PLACEMENT_PROMPT_GUARD,
   PRODUCT_REFINE_FIDELITY_PROMPT_GUARD,
   PRODUCT_SCALE_PROMPT_GUARD,
+  USER_REQUIREMENT_PROMPT,
+  USER_REQUIREMENT_REMINDER_PROMPT,
   VISUAL_AD_PROMPT_GUARD,
 } from './constants';
 
@@ -291,6 +293,8 @@ export type DesignPromptInput = {
   /** 产品精修图张数（不含主视觉、品牌 Logo 与模特图）；可为 0（非必填，无参考图时降级为文生图） */
   productImageCount: number;
   hasBrandLogo: boolean;
+  /** 用户直接下达的额外要求（最高优先级）；空白串与未填写等价 */
+  userRequirement?: string;
 };
 
 /**
@@ -300,9 +304,12 @@ export type DesignPromptInput = {
  * 必须按真实张数点名序号，否则「其余参考图仅补充同一产品的可见角度」会把主视觉、Logo 与模特图一并误当成产品图，
  * 模特那句「第 N 个及之后」也会指到 Logo 上。
  * 产品精修图非必填：`productImageCount === 0` 时主视觉就是第 1 张，产品图那句与产品保真底线都要换成无参考图的说法。
+ * 用户要求非必填：填写时插在任务类型句之后、其余默认口径之前，并在文字编排后就近重申一次让位
+ * （见 USER_REQUIREMENT_PROMPT；它是「用户描述」，故三条事实底线仍排在它前面）。
  */
 export function buildDesignPrompt(input: DesignPromptInput): string {
   const { taskType, includeModel, productImageCount, hasBrandLogo } = input;
+  const userRequirement = input.userRequirement?.trim();
   const hasProductReference = productImageCount > 0;
   const productRange =
     productImageCount <= 1 ? '第1个参考图' : `第1至第${productImageCount}个参考图`;
@@ -334,6 +341,10 @@ export function buildDesignPrompt(input: DesignPromptInput): string {
 
   return [
     `生成恰好一张“${taskType}”视觉设计成品，不要输出说明、草图或多方案拼图。`,
+    // 用户要求排在所有默认口径之前：它要压过后面每一条，先立优先级再给默认值
+    ...(userRequirement
+      ? ['【用户要求】（最高优先级）', userRequirement, USER_REQUIREMENT_PROMPT]
+      : []),
     ...(TASK_TYPE_PROMPT_BY_TYPE[taskType] ? [TASK_TYPE_PROMPT_BY_TYPE[taskType]] : []),
     ...(taskType === '营销海报' && includeModel
       ? [
@@ -343,6 +354,7 @@ export function buildDesignPrompt(input: DesignPromptInput): string {
     ...referenceRules,
     '根据商业分析确定目标人群、卖点优先级、品牌调性、使用场景与信息层级；最终画面须是可直接评审的完整设计成品。',
     MARKETING_COPY_TYPOGRAPHY_PROMPT,
+    ...(userRequirement ? [USER_REQUIREMENT_REMINDER_PROMPT] : []),
     '【商业分析】',
     input.analysisText.trim(),
     VISUAL_AD_PROMPT_GUARD,

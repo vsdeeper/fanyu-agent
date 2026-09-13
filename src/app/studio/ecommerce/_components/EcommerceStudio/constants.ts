@@ -77,6 +77,13 @@ export const MAX_MODEL_IMAGES = 1;
 export const MODEL_IMAGE_SUBTITLE = '可选，锁定外貌与服装，姿势可按设计调整';
 export const MODEL_IMAGE_HINT = '上传模特身份参考图（可选）';
 
+/** 营销海报表单的用户要求：自由文本，默认空；填写后压过商业分析、文字编排与画风倾向 */
+export const USER_REQUIREMENT_LABEL = '用户要求';
+export const USER_REQUIREMENT_PLACEHOLDER =
+  '例如：主标题写「轻盈一夏」，背景换成原木桌面，产品居中偏左，不要促销大字';
+export const USER_REQUIREMENT_HINT =
+  '可选；优先级最高，与其它指令重叠时以此为准（产品外观、放置与尺寸比例底线除外）';
+
 /** 品牌 Logo（主图 / 详情图分析步、营销海报主视觉步左栏，可选，至多一张，作出图参考图末位） */
 export const MAX_BRAND_LOGOS = 1;
 export const BRAND_LOGO_LABEL = '品牌 Logo';

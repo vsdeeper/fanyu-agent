@@ -156,7 +156,7 @@ export async function toVisualGeneratePayload(
   };
 }
 
-/** 视觉设计请求体：表单 + 分析/产品精修图（非必填） + 已选主视觉标准 + 可选品牌 Logo 与模特形象 */
+/** 视觉设计请求体：表单（含用户要求）+ 分析/产品精修图（非必填） + 已选主视觉标准 + 可选品牌 Logo 与模特形象 */
 export async function toDesignGeneratePayload(
   form: DesignFormState,
   analysisText: string,
@@ -169,6 +169,8 @@ export async function toDesignGeneratePayload(
 ): Promise<StudioGenerateRequest> {
   const modelImages = options.modelImages ?? [];
   const includeModel = modelImages.length > 0;
+  // 用户要求是表单字段而非可选素材，随 form 一起传；留空（含全空白）即不写键
+  const userRequirement = form.userRequirement?.trim();
   return {
     kind: 'design',
     model: form.model,
@@ -181,6 +183,7 @@ export async function toDesignGeneratePayload(
     analysisText: analysisText.trim(),
     productViewImages: await toAnalyzeImages(productImages),
     visualDataUrl,
+    ...(userRequirement ? { userRequirement } : {}),
     ...(includeModel ? { modelImages } : {}),
     ...(options.brandLogoDataUrl ? { brandLogoDataUrl: options.brandLogoDataUrl } : {}),
   };

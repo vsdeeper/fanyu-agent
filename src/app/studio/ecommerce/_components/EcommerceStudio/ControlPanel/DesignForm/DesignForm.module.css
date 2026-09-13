@@ -10,6 +10,12 @@
   color: var(--one-color-text);
 }
 
+.hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--one-color-text-tertiary);
+}
+
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
