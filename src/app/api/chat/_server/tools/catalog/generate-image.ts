@@ -188,7 +188,7 @@ function getImageSystemHint(): string {
 - 给用户的汇总文字不要出现 assetId、模型 id、图片 URL、/api/images 链接等内部标识；这些仅供工具入参（sourceAssetIds / model / assetId）内部复用，用户不关心也不懂。确需说明来源或所用模型时用用户能懂的说法（如「你上传的参考图」「写实商拍模型」），不要写出模型 id 或资产 id
 - 用户明确要求透明背景、去底、抠图或 PNG alpha 时：transparent=true；未要求时不要传 true
 - 生成应用图标 / App Icon / logo / 标志 / 品牌标识等需要「方形满铺」的图时：prompt 必须写明背景为单一纯色、满铺到画布四边、无内缩白边/留白、无圆角或超椭圆、无投影/发光/描边边框、无纹理；图形居中置于中央约 80% 安全区。此类图标默认不透明（勿设 transparent=true），仅用户明确要透明背景时才设 true
-- 用户指定画面比例时传 aspectRatio（如 3:2、16:9）；不传或传 auto 时交由模型自选
+- 只在用户明确要求改变画面尺寸或比例时才传 size / aspectRatio（如「改成横版」「放大到 4K」）；改图不传时服务端会保持源图的尺寸与比例，生图不传时交由模型自选
 - 当前 skill 需要按类型分组展示图片时，每次调用显式传 type（如 main / detail / marketing）；不需要分组则不要传
 ${modelLine}
 ${sizeLine}`;
@@ -198,9 +198,9 @@ ${sizeLine}`;
 function getSizeFieldDescribe(): string {
   const configured = getConfiguredImageModelId();
   if (configured) {
-    return `${describeImageSize(getImageSpec(configured))}；编辑历史图时档位以该图模型为准`;
+    return `${describeImageSize(getImageSpec(configured))}；改图不传时沿用源图尺寸，编辑历史图时档位以该图模型为准`;
   }
-  return '生图尺寸随所选模型而异（档位与像素区间见所选模型说明），默认 2K；编辑历史图时以该图模型为准';
+  return '生图尺寸随所选模型而异（档位与像素区间见所选模型说明），默认 2K；改图不传时沿用源图尺寸（历史图以该图模型为准）';
 }
 
 /** quality 参数描述：按当前模型质量规格给出说明；仅支持 quality 的模型生效 */
@@ -259,7 +259,7 @@ function createGenerateImageTool(
         .regex(ASPECT_RATIO_PATTERN, '宽高比须为 auto 或 WIDTH:HEIGHT（如 3:2、16:9）')
         .optional()
         .describe(
-          `生图宽高比；${IMAGE_ASPECT_RATIO_AUTO}（默认）或不传为模型自选，支持 ${IMAGE_ASPECT_RATIOS.join('、')} 等`,
+          `生图宽高比；不传或传 ${IMAGE_ASPECT_RATIO_AUTO} 时，改图保持源图比例、生图交由模型自选；可选 ${IMAGE_ASPECT_RATIOS.join('、')} 等`,
         ),
       transparent: z
         .boolean()

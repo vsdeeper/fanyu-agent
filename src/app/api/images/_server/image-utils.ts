@@ -88,6 +88,18 @@ export function readImageDimensions(
   return undefined;
 }
 
+/**
+ * 从 data URL 的 base64 载荷读出像素尺寸；非 base64 data URL（含外链）或格式不可识别返回 undefined。
+ */
+export function readDataUrlDimensions(
+  dataUrl: string,
+): { width: number; height: number } | undefined {
+  // 只匹配头部前缀：跨数 MB base64 的贪婪量词会撑爆 V8 正则栈
+  const match = /^data:([^;,]+)?;base64,/.exec(dataUrl);
+  if (!match) return undefined;
+  return readImageDimensions(decodeBase64Image(dataUrl.slice(match[0].length)));
+}
+
 export async function downloadImage(
   url: string,
   signal?: AbortSignal,

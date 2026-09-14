@@ -1,3 +1,4 @@
+import { inheritEditSourceGeometry } from './edit-geometry';
 import {
   getConfiguredImageModelId,
   getCurrentImageModelId,
@@ -48,6 +49,16 @@ export async function generateImageViaRouter(
     throw new Error('当前模型不支持改图');
   }
 
+  // 改图未指定尺寸/比例时继承源图（详见 edit-geometry），生图与非改图请求不受影响
+  const geometry = inheritEditSourceGeometry(req, profile.id);
+  if (geometry.size || geometry.aspectRatio) {
+    console.info('[images] 改图继承源图几何', {
+      modelId: profile.id,
+      size: geometry.size ?? '默认档位',
+      aspectRatio: geometry.aspectRatio,
+    });
+  }
+
   const provider = getProvider(profile.provider);
-  return provider.generate({ ...req, modelId: profile.id });
+  return provider.generate({ ...req, ...geometry, modelId: profile.id });
 }
