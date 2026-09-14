@@ -1,4 +1,5 @@
 import {
+  isReasoningUIPart,
   isTextUIPart,
   type ChatRequestOptions,
   type PrepareSendMessagesRequest,
@@ -17,6 +18,19 @@ export function getPartsText(
     .filter((part) => part.type === type && typeof part.text === 'string')
     .map((part) => (part.text as string) ?? '')
     .join('');
+}
+
+/**
+ * 判断 assistant 消息当前是否仍在思考：只看 reasoning part 自身的 state
+ * （SDK 在 reasoning-start 置 streaming、reasoning-end 置 done），与正文 text 无关——
+ * 模型某步把过渡句写进正文时思考并未结束，反之正文为空也不代表还在思考。
+ * 调用方须再叠 status === 'streaming'：中止/中途关页的轮次会以 streaming 落盘，刷新后仅凭
+ * state 会被误判成仍在思考。
+ */
+export function isReasoningStreaming(message: UIMessage): boolean {
+  return Boolean(
+    message.parts?.some((part) => isReasoningUIPart(part) && part.state === 'streaming'),
+  );
 }
 
 /**
