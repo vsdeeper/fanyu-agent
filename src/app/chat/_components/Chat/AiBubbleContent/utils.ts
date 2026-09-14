@@ -5,12 +5,63 @@ export type MessagePart = { type: string; [key: string]: unknown };
 
 export type AiBubbleContentProps = {
   messageId: string;
+  /** 整条正文（聚合全部 text part）：来源条解析「参考来源」区块要按全文取最后一个标题 */
   text: string;
-  reasoning: string;
   streaming: boolean;
-  thinking: boolean;
   messageParts: ReadonlyArray<MessagePart> | undefined;
 };
+
+/** 正文块：一条 assistant 消息里连续同类 text / reasoning part 聚成的展示单元 */
+export type ContentBlock = {
+  kind: 'text' | 'reasoning';
+  /** React key：块内首个 part 在 parts 中的下标（parts 只追加不重排，同条消息内稳定唯一） */
+  key: string;
+  text: string;
+  /** 块内最后一个 part 是否仍在流式 */
+  streaming: boolean;
+};
+
+/**
+ * 按 parts 顺序把连续的同类 text / reasoning part 聚成块，供气泡逐块渲染「思考-正文-思考-正文」。
+ * - 只对 text / reasoning 成块；tool-* / source-url / file 等无正文 part 结束当前块，工具调用即分步边界
+ * - step-start 透明：它自身无内容，且网关会在首个 step 前塞一条「当前执行模型: xxx」的 reasoning
+ *   横幅，按 step-start 切断会让该横幅单独成一个只有一行的思考块
+ * - 全空白块丢弃，避免渲染空 Markdown / 空思考条
+ * - streaming 取块内最后一个 part 的状态：存在 [reasoning(streaming), reasoning(done)] 这种尾 part 已 done
+ *   的组合，用 some() 会让该块一直显示「思考中」
+ */
+export function getContentBlocks(
+  messageParts: ReadonlyArray<MessagePart> | undefined,
+): ContentBlock[] {
+  const blocks: ContentBlock[] = [];
+  const parts = messageParts ?? [];
+  // 当前块的 blocks 下标；-1 表示已被无正文 part（工具调用等）打断，后续同类 part 要另起一块
+  let currentIndex = -1;
+
+  for (let index = 0; index < parts.length; index++) {
+    const part = parts[index];
+
+    if (part.type !== 'text' && part.type !== 'reasoning') {
+      if (part.type !== 'step-start') currentIndex = -1;
+      continue;
+    }
+
+    const text = typeof part.text === 'string' ? part.text : '';
+    const streaming = part.state === 'streaming';
+    const current = currentIndex >= 0 ? blocks[currentIndex] : undefined;
+
+    if (current?.kind === part.type) {
+      current.text += text;
+      current.streaming = streaming;
+      continue;
+    }
+
+    blocks.push({ kind: part.type, key: `${part.type}:${index}`, text, streaming });
+    currentIndex = blocks.length - 1;
+  }
+
+  return blocks.filter((block) => block.text.trim() !== '');
+}
 
 /** 「参考来源」标题在正文中的起始位置（取最后一个匹配） */
 type ReferenceSectionStart = { lineIndex: number; col: number };
@@ -225,6 +276,23 @@ export function designMdPartsKey(messageParts: ReadonlyArray<MessagePart> | unde
   return keys.join('|');
 }
 
+/**
+ * memo 比较用：按序序列化 text / reasoning part（类型 + 状态 + 文本长度）。
+ * 聚合串相同但切分不同（块结构变化）也要能被感知；且「某步只有思考、正文尚未到达」时
+ * 聚合 text 不变，state 由 streaming 转 done 只能靠这里触发重渲染，否则自动收起静默失效。
+ */
+export function contentPartsKey(messageParts: ReadonlyArray<MessagePart> | undefined): string {
+  if (!messageParts?.length) return '';
+
+  const keys: string[] = [];
+  for (const part of messageParts) {
+    if (part.type !== 'text' && part.type !== 'reasoning') continue;
+    const length = typeof part.text === 'string' ? part.text.length : 0;
+    keys.push(`${part.type}:${String(part.state ?? '')}:${length}`);
+  }
+  return keys.join('|');
+}
+
 export function getGenerateImageParts(
   messageParts: ReadonlyArray<MessagePart> | undefined,
 ): MessagePart[] {
@@ -267,9 +335,8 @@ export function aiBubbleContentPropsAreEqual(
   return (
     prev.messageId === next.messageId &&
     prev.text === next.text &&
-    prev.reasoning === next.reasoning &&
     prev.streaming === next.streaming &&
-    prev.thinking === next.thinking &&
+    contentPartsKey(prev.messageParts) === contentPartsKey(next.messageParts) &&
     sourcePartsKey(prev.messageParts) === sourcePartsKey(next.messageParts) &&
     imagePartsKey(prev.messageParts) === imagePartsKey(next.messageParts) &&
     designMdPartsKey(prev.messageParts) === designMdPartsKey(next.messageParts)

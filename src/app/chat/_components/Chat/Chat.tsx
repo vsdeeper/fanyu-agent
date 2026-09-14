@@ -18,7 +18,6 @@ import {
   getPartsText,
   isMessageStopped,
   isNearBottom,
-  isReasoningStreaming,
   submitChatMessage,
 } from './utils';
 
@@ -89,7 +88,6 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
       const text = getPartsText(message, 'text');
       const reasoning = isAi ? getPartsText(message, 'reasoning') : '';
       const hasVisibleAiContent = Boolean(text || reasoning);
-      const thinking = streaming && isReasoningStreaming(message);
       const stopped =
         isAi && !streaming && (stoppedMessageIds.has(message.id) || isMessageStopped(message));
       const bubbleLoading = isAwaitingAi && isAi && isLast && !hasVisibleAiContent;
@@ -101,9 +99,7 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
           <AiBubbleContent
             messageId={message.id}
             text={text}
-            reasoning={reasoning}
             streaming={streaming}
-            thinking={thinking}
             messageParts={message.parts}
           />
         ) : (
@@ -132,9 +128,7 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
           <AiBubbleContent
             messageId={AWAITING_ASSISTANT_BUBBLE_KEY}
             text=""
-            reasoning=""
             streaming={false}
-            thinking={false}
             messageParts={[]}
           />
         ),

@@ -14,6 +14,7 @@ import SourceBar from './SourceBar';
 import {
   type AiBubbleContentProps,
   aiBubbleContentPropsAreEqual,
+  getContentBlocks,
   getDesignMdParts,
   getGenerateImageParts,
   getSourceItems,
@@ -22,39 +23,43 @@ import {
 
 export type { AiBubbleContentProps };
 
-function AiBubbleContent({
-  messageId,
-  text,
-  reasoning,
-  streaming,
-  thinking,
-  messageParts,
-}: AiBubbleContentProps) {
+function AiBubbleContent({ messageId, text, streaming, messageParts }: AiBubbleContentProps) {
   const { mode } = useThemeMode();
   const sourceItems = useMemo(() => getSourceItems(messageParts, text), [messageParts, text]);
   const imageParts = useMemo(() => getGenerateImageParts(messageParts), [messageParts]);
   const designMdParts = useMemo(() => getDesignMdParts(messageParts), [messageParts]);
-  // 修复：裁切末尾「参考来源」区块后再渲染 Markdown，避免与来源条重复展示
-  const displayText = useMemo(() => stripReferenceSection(text), [text]);
+  // 按 parts 顺序逐块渲染「思考-正文-思考-正文」；出图 / DESIGN.md 卡片与来源条仍在气泡末尾汇总
+  const blocks = useMemo(() => getContentBlocks(messageParts), [messageParts]);
+  // 「参考来源」只裁最后一个正文块：模型可能在前面的块里提到该词，逐块裁会误删那句正文
+  const lastTextKey = useMemo(
+    () => blocks.findLast((block) => block.kind === 'text')?.key,
+    [blocks],
+  );
 
   return (
     <div className={styles.bubbleContent}>
-      {reasoning ? <ReasoningThink thinking={thinking}>{reasoning}</ReasoningThink> : null}
-      {text ? (
-        <XMarkdown
-          className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
-          content={displayText}
-          components={markdownComponents}
-          paragraphTag="div"
-          openLinksInNewTab
-          escapeRawHtml
-          streaming={{
-            hasNextChunk: streaming,
-            incompleteMarkdownComponentMap: { image: 'incomplete-image' },
-          }}
-          disableDefaultStyles={['code', 'img']}
-        />
-      ) : null}
+      {blocks.map((block) =>
+        block.kind === 'reasoning' ? (
+          <ReasoningThink key={block.key} thinking={streaming && block.streaming}>
+            {block.text}
+          </ReasoningThink>
+        ) : (
+          <XMarkdown
+            key={block.key}
+            className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
+            content={block.key === lastTextKey ? stripReferenceSection(block.text) : block.text}
+            components={markdownComponents}
+            paragraphTag="div"
+            openLinksInNewTab
+            escapeRawHtml
+            streaming={{
+              hasNextChunk: streaming && block.streaming,
+              incompleteMarkdownComponentMap: { image: 'incomplete-image' },
+            }}
+            disableDefaultStyles={['code', 'img']}
+          />
+        ),
+      )}
       {imageParts.length > 0 ? <GenerateImageBlock parts={imageParts} /> : null}
       {designMdParts.length > 0 ? <DesignMdBlock parts={designMdParts} /> : null}
       {sourceItems.length > 0 && !streaming ? (
