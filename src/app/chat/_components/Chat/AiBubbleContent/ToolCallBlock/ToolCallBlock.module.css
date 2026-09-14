@@ -1,0 +1,36 @@
+.tool {
+  margin-bottom: 0;
+}
+
+.status {
+  font-size: 13px;
+}
+
+.content {
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.rows {
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.row + .row {
+  margin-top: 4px;
+}
+
+.label {
+  flex: none;
+  color: var(--one-color-text-secondary);
+}
+
+.value {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

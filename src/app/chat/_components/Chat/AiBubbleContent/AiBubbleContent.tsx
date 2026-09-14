@@ -11,6 +11,7 @@ import GenerateImageBlock from './GenerateImageBlock';
 import { markdownComponents } from './MarkdownImage';
 import ReasoningThink from './ReasoningThink';
 import SourceBar from './SourceBar';
+import ToolCallBlock from './ToolCallBlock';
 import {
   type AiBubbleContentProps,
   aiBubbleContentPropsAreEqual,
@@ -38,12 +39,18 @@ function AiBubbleContent({ messageId, text, streaming, messageParts }: AiBubbleC
 
   return (
     <div className={styles.bubbleContent}>
-      {blocks.map((block) =>
-        block.kind === 'reasoning' ? (
-          <ReasoningThink key={block.key} thinking={streaming && block.streaming}>
-            {block.text}
-          </ReasoningThink>
-        ) : (
+      {blocks.map((block) => {
+        if (block.kind === 'tool') {
+          return <ToolCallBlock key={block.key} part={block.part} />;
+        }
+        if (block.kind === 'reasoning') {
+          return (
+            <ReasoningThink key={block.key} thinking={streaming && block.streaming}>
+              {block.text}
+            </ReasoningThink>
+          );
+        }
+        return (
           <XMarkdown
             key={block.key}
             className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
@@ -58,8 +65,8 @@ function AiBubbleContent({ messageId, text, streaming, messageParts }: AiBubbleC
             }}
             disableDefaultStyles={['code', 'img']}
           />
-        ),
-      )}
+        );
+      })}
       {imageParts.length > 0 ? <GenerateImageBlock parts={imageParts} /> : null}
       {designMdParts.length > 0 ? <DesignMdBlock parts={designMdParts} /> : null}
       {sourceItems.length > 0 && !streaming ? (

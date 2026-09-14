@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { contentPartsKey, getContentBlocks, getSourceItems, stripReferenceSection } from './utils';
-import type { MessagePart } from './utils';
+import {
+  contentPartsKey,
+  getContentBlocks,
+  getSourceItems,
+  stripReferenceSection,
+  toolPartsKey,
+} from './utils';
+import type { ContentBlock, MessagePart } from './utils';
 
 function reasoning(text: string, state: 'streaming' | 'done' = 'done'): MessagePart {
   return { type: 'reasoning', text, state };
@@ -12,6 +18,11 @@ function text(body: string, state: 'streaming' | 'done' = 'done'): MessagePart {
 
 function stepStart(): MessagePart {
   return { type: 'step-start' };
+}
+
+/** 取出正文/思考块（工具块没有 text），供只关心块内容与流式态的断言使用 */
+function bodyBlocks(blocks: ContentBlock[]) {
+  return blocks.filter((block) => block.kind !== 'tool');
 }
 
 function sourceUrl(url: string, title: string, sourceId: string): MessagePart {
@@ -116,7 +127,7 @@ describe('getContentBlocks', () => {
       'reasoning:4',
       'text:5',
     ]);
-    expect(blocks.map((block) => block.text)).toEqual(['想一', '答一', '想二', '答二']);
+    expect(bodyBlocks(blocks).map((block) => block.text)).toEqual(['想一', '答一', '想二', '答二']);
   });
 
   it('step-start 不切断块：网关横幅 reasoning 与其后的真实思考并成一块', () => {
@@ -127,10 +138,10 @@ describe('getContentBlocks', () => {
     ]);
 
     expect(blocks).toHaveLength(1);
-    expect(blocks[0]?.text).toBe('当前执行模型: mini真正的思考');
+    expect(bodyBlocks(blocks)[0]?.text).toBe('当前执行模型: mini真正的思考');
   });
 
-  it('工具调用结束当前块，其前后两段思考各自成块', () => {
+  it('工具调用独立成块，并断开其前后的同类块', () => {
     const blocks = getContentBlocks([
       stepStart(),
       reasoning('先搜索'),
@@ -138,10 +149,18 @@ describe('getContentBlocks', () => {
       reasoning('看结果'),
     ]);
 
-    expect(blocks.map((block) => [block.kind, block.text])).toEqual([
-      ['reasoning', '先搜索'],
-      ['reasoning', '看结果'],
+    expect(blocks.map((block) => block.kind)).toEqual(['reasoning', 'tool', 'reasoning']);
+    expect(blocks[1]?.key).toBe('tool-web_search:2');
+  });
+
+  it('被工具调用打断的同类正文各自成块', () => {
+    const blocks = getContentBlocks([
+      text('答一'),
+      { type: 'tool-generate_image', state: 'input-streaming' },
+      text('答二'),
     ]);
+
+    expect(blocks.map((block) => block.kind)).toEqual(['text', 'tool', 'text']);
   });
 
   it('streaming 取块内最后一个 part 的状态', () => {
@@ -152,9 +171,9 @@ describe('getContentBlocks', () => {
     const finished = getContentBlocks([reasoning('前半', 'streaming'), reasoning('后半', 'done')]);
 
     expect(stillStreaming).toHaveLength(1);
-    expect(stillStreaming[0]?.streaming).toBe(true);
+    expect(bodyBlocks(stillStreaming)[0]?.streaming).toBe(true);
     expect(finished).toHaveLength(1);
-    expect(finished[0]?.streaming).toBe(false);
+    expect(bodyBlocks(finished)[0]?.streaming).toBe(false);
   });
 
   it('丢弃全空白块，忽略无正文的 part', () => {
@@ -168,12 +187,13 @@ describe('getContentBlocks', () => {
     ]);
 
     expect(blocks).toHaveLength(1);
-    expect(blocks[0]?.text).toBe('正式回答');
+    expect(bodyBlocks(blocks)[0]?.text).toBe('正式回答');
   });
 
-  it('无 parts 或只有非正文 part 时返回空数组', () => {
+  it('无 parts，或只有 step-start / source-url / file 时返回空数组', () => {
     expect(getContentBlocks(undefined)).toEqual([]);
-    expect(getContentBlocks([stepStart(), { type: 'tool-generate_image' }])).toEqual([]);
+    expect(getContentBlocks([stepStart(), { type: 'file', mediaType: 'image/png' }])).toEqual([]);
+    expect(getContentBlocks([{ type: 'source-url', url: 'https://example.com/' }])).toEqual([]);
   });
 });
 
@@ -193,6 +213,21 @@ describe('contentPartsKey', () => {
     expect(
       contentPartsKey([stepStart(), { type: 'tool-generate_image', state: 'output-error' }]),
     ).toBe('');
+  });
+});
+
+describe('toolPartsKey', () => {
+  it('入参或状态变化都会改变 key', () => {
+    const base: MessagePart[] = [
+      { type: 'tool-generate_image', state: 'input-streaming', input: { prompt: '猫' } },
+    ];
+
+    expect(toolPartsKey(base)).not.toBe(toolPartsKey([{ ...base[0], input: { prompt: '猫猫' } }]));
+    expect(toolPartsKey(base)).not.toBe(toolPartsKey([{ ...base[0], state: 'output-available' }]));
+  });
+
+  it('忽略非工具 part', () => {
+    expect(toolPartsKey([stepStart(), text('正文')])).toBe('');
   });
 });
 
