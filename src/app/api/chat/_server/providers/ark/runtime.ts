@@ -4,7 +4,7 @@ import { getArkClient } from './client';
 import { getArkInstructions } from './instructions';
 import type { ChatProviderRuntime } from '../types';
 
-/** 方舟 Provider 运行时：web_search 定位、instructions 合并 */
+/** 方舟 Provider 运行时：web_search 定位、instructions 合并；主模型自带视觉直读图 */
 export const arkRuntime: ChatProviderRuntime = {
   getClient: getArkClient,
 
@@ -13,7 +13,7 @@ export const arkRuntime: ChatProviderRuntime = {
   },
 
   getCapabilities() {
-    return { acceptsImageInput: false, usesSdkWebSearchTool: true, needsOpenaiStoreFalse: true };
+    return { acceptsImageInput: true, usesSdkWebSearchTool: true, needsOpenaiStoreFalse: true };
   },
 
   getWebSearchArgs(userLocation: UserLocation | undefined) {

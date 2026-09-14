@@ -7,7 +7,7 @@ export type AgentToolContext = {
   chatId: string;
   /** 本轮粘贴/上传的全部图片 data URL（按附件顺序） */
   pastedImageDataUrls?: string[];
-  /** true = 主模型自带视觉（如 zhipu glm），注册表据此剔除「盲主模型专属」工具与提示词 */
+  /** true = 主模型自带视觉，注册表据此剔除「盲主模型专属」工具与提示词 */
   mainModelAcceptsImage?: boolean;
   /** true = Provider 链路已有原生联网搜索（deepseek/ark 的 SDK server tool），本地 web_search 与之互斥 */
   providerHasNativeWebSearch?: boolean;

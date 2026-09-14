@@ -17,7 +17,7 @@ export type ChatProviderInstructionsOptions = {
  * 勿在业务代码内联 provider 字符串判断。
  */
 export type ChatProviderCapabilities = {
-  /** true = 图片 file part 原样透传直达主模型；false = 转占位符、像素只走 analyze_image */
+  /** true = 图片 file part 原样透传直达主模型；false = 转占位符（供将来盲主模型 Provider） */
   acceptsImageInput: boolean;
   /** true = 注册 OpenAI 风格 client.tools.webSearch() SDK 工具；false = Provider 自行处理联网搜索 */
   usesSdkWebSearchTool: boolean;

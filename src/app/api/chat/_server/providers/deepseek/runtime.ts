@@ -4,7 +4,7 @@ import { getDeepseekInstructions } from './instructions';
 import { encodeReasoningPassback, extractReasoningTexts } from './reasoning-passback';
 import type { ChatProviderRuntime } from '../types';
 
-/** DeepSeek Provider 运行时：instructions+passback、forceReasoning */
+/** DeepSeek Provider 运行时：instructions+passback、forceReasoning；主模型自带视觉直读图 */
 export const deepseekRuntime: ChatProviderRuntime = {
   getClient: getDeepseekClient,
 
@@ -13,7 +13,7 @@ export const deepseekRuntime: ChatProviderRuntime = {
   },
 
   getCapabilities() {
-    return { acceptsImageInput: false, usesSdkWebSearchTool: true, needsOpenaiStoreFalse: true };
+    return { acceptsImageInput: true, usesSdkWebSearchTool: true, needsOpenaiStoreFalse: true };
   },
 
   getWebSearchArgs() {

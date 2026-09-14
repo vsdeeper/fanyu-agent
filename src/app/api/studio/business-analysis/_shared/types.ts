@@ -13,8 +13,7 @@ export type BusinessAnalysisAnalyzeRequest = {
   images: BusinessAnalysisImageInput[];
   documents?: BusinessAnalysisDocumentInput[];
   /**
-   * 品牌 Logo 原图（至多一张）：服务端先经 analyzeImage 转成中文描述再进 prompt。
-   * 分析用的主模型在缺省 provider 下看不见像素，故这里只作识图入参，不直接喂给 streamText。
+   * 品牌 Logo 原图（至多一张）：以多模态附件直达主模型，请模型直接阅读画面。
    */
   brandLogoDataUrl?: string;
   /** 产品说明自由文本；与产品资料可并存 */

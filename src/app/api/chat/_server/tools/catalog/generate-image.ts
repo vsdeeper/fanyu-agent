@@ -178,7 +178,7 @@ function getImageSystemHint(): string {
 - 用户明确要求生成/绘制/出图时调用 generate_image，mode=generate
 - 用户要求修改图片时调用 generate_image，mode=edit
 - 仅讨论如何画、不请求出图时不要调用
-- 有源图且改图/按图生图指令依赖画面内容（复刻风格、改文字、提取局部、指定元素）时：先调用 analyze_image，再按分析结果调用本工具
+- 有源图且改图/按图生图指令依赖画面内容（复刻风格、改文字、提取局部、指定元素）时：先看清源图画面，再按所见调用本工具
 - 用户本轮消息含图片附件并要求修改时：mode=edit，服务端优先使用该附件作源图，无需传 sourceAssetIds
 - 用户贴了多张图并要求「把这些图一起合成一张」时：strategy=merge（多个参考合并成一张）；要求「把这几张各自都改成 X」时：必传 strategy=batch（每张各出一张新图），漏传会静默合成一张、用户多张请求被缩水
 - 只对多张做批改或合成，必传 pastedImageIndexes 指认参考（0 基，0=第一张）；省略时服务端只用第一张，不会自动用全部。多参考按顺序在 prompt 说明图片用途（如「第1张作场景、第2张是主体」）
@@ -213,7 +213,7 @@ function getQualityFieldDescribe(): string {
 }
 
 const PASTE_IMAGE_EDIT_HINT =
-  '本轮用户消息含图片附件，edit 将使用这些附件作源图（第一张为默认源，可传 pastedImageIndexes 指定某几张，strategy 决定合成一张还是每张各一张）；若改图依赖画面内容，先 analyze_image 再调用本工具。';
+  '本轮用户消息含图片附件，edit 将使用这些附件作源图（第一张为默认源，可传 pastedImageIndexes 指定某几张，strategy 决定合成一张还是每张各一张）；若改图依赖画面内容，先看清附件画面再调用本工具。';
 
 /** 创建 generate_image：出图或改图（支持多参考合成/批量），成功后逐张落盘为会话图片资产。 */
 function createGenerateImageTool(

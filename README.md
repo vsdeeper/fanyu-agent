@@ -7,9 +7,9 @@
 ## 功能概览
 
 - **流式对话**：Think 推理、联网搜索引用、停止生成；刷新后可还原思考过程与引用来源
-- **多 Provider**：默认 DeepSeek 直连；可切火山方舟 / 智谱 BigModel。识图始终走方舟，生图按所选模型路由
+- **多 Provider**：默认 DeepSeek 直连；可切火山方舟 / 智谱 BigModel。对话与工作室识图走主模型直读，生图按所选模型路由
 - **模型路由**：按消息复杂度自动选择 `pro` / `lite` / `mini` 三档
-- **工具**：文生图 / 改图（支持多参考图）、识图、DESIGN.md 落盘；联网搜索按 Provider 适配
+- **工具**：文生图 / 改图（支持多参考图）、DESIGN.md 落盘；联网搜索按 Provider 适配
 - **Skills**：品牌规范板、移动端 / Web 端设计；出图后可按需导出语义化 DESIGN.md
 - **附件**：图片（png / jpeg / webp / gif）、PDF、txt / md、docx（最多 5 个，单文件 10MB）
 - **主题**：浅色 / 深色 / 跟随系统，SSR 无闪白
@@ -40,7 +40,7 @@ cp .env.example .env.local
 
 在 `.env.local` 中填写密钥。完整列表与注释以 [`.env.example`](./.env.example) 为准；业务代码假定其中列出的变量已配置且非空。
 
-默认对话 Provider 为 DeepSeek；**识图无论主对话用哪家，都需要方舟，生图默认走老张**：
+默认对话 Provider 为 DeepSeek；**对话与工作室识图走主模型直读**，生图默认走老张（选用 Seedream 时需方舟）：
 
 ```env
 CHAT_PROVIDER=deepseek
@@ -54,14 +54,14 @@ DEEPSEEK_MODEL_MINI=your-deepseek-model-mini
 # 可选：思考强度，默认 high
 # DEEPSEEK_REASONING_EFFORT=high
 
-# 识图始终走方舟（任何 CHAT_PROVIDER 都需要）
+# 火山方舟（CHAT_PROVIDER=ark 时作为主对话；Seedream 生图亦需下列 ARK_*）
 ARK_API_KEY=your-ark-api-key
 ARK_BASE_URL=https://your-ark-base-url
 ARK_MODEL_PRO=your-ark-model-pro
 ARK_MODEL_LITE=your-ark-model-lite
 ARK_MODEL_MINI=your-ark-model-mini
 
-# 智谱 BigModel（CHAT_PROVIDER=zhipu 时作为主对话；生图 / 识图底座仍依赖上方 ARK_*）
+# 智谱 BigModel（CHAT_PROVIDER=zhipu 时作为主对话；生图选用 Seedream 时仍依赖上方 ARK_*）
 ZHIPU_API_KEY=your-zhipu-api-key
 ZHIPU_BASE_URL=https://open.bigmodel.cn/api/paas/v4
 ZHIPU_MODEL_PRO=your-zhipu-model-pro
@@ -160,7 +160,6 @@ drizzle/               # SQL migrations
 | 工具             | 作用                                                                                                                                                 |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `generate_image` | 文生图（`generate`）与改图（`edit`，支持多参考图）；按所选模型路由 Provider                                                                          |
-| `analyze_image`  | 识图：方舟视觉模型返回结构化描述，回喂主模型（主模型本身看不见图）                                                                                   |
 | `save_design_md` | 将会话 DESIGN.md 落盘，对话里只展示下载卡片                                                                                                          |
 | `web_search`     | 联网搜索：方舟在 Provider 侧透传（可带高德逆地理近似位置）；智谱经独立 Web Search API 由本地工具调用；DeepSeek 走 Responses API 原生搜索，无需该工具 |
 

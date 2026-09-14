@@ -2,7 +2,7 @@ import { isFileUIPart, type UIMessage } from 'ai';
 
 /**
  * 从消息历史取最新一条 user 消息里的**全部** image/* 附件的 data URL（粘贴/上传/拖拽）。
- * 按附件在原消息里的排列顺序返回，供 generate_image edit / analyze_image 作参考图。
+ * 按附件在原消息里的排列顺序返回，供 generate_image edit 作参考图。
  * 用于让主模型按意图自主选择某几张；无则返回空数组。
  */
 export function getLatestUserImageDataUrls(messages: UIMessage[]): string[] {

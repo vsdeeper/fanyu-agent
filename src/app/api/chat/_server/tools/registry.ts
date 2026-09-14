@@ -1,13 +1,12 @@
 import 'server-only';
 
-import { analyzeImage } from './catalog/analyze-image';
 import { generateImage } from './catalog/generate-image';
 import { saveDesignMd } from './catalog/save-design-md';
 import { webSearch } from './catalog/web-search';
 import type { AgentToolContext, AgentToolDefinition } from './types';
 
 // 新增 tool：对照已有 catalog 条目实现 AgentToolDefinition，再在 TOOLS 数组 import 追加。
-const TOOLS: AgentToolDefinition[] = [generateImage, analyzeImage, webSearch, saveDesignMd];
+const TOOLS: AgentToolDefinition[] = [generateImage, webSearch, saveDesignMd];
 
 /**
  * 按 Provider 主模型的能力决定哪些工具对本轮「可见」（创建实例 + 注入提示词），
@@ -17,7 +16,7 @@ const TOOLS: AgentToolDefinition[] = [generateImage, analyzeImage, webSearch, sa
  *
  * | 维度                     | 成立时的业务含义                       |
  * | ------------------------ | -------------------------------------- |
- * | acceptBlindOnly          | 主模型看不见图（deepseek/ark），analyze_image 这类「代客识图」工具有价值；自带视觉的模型（zhipu glm）直读像素，这类工具纯属冗余 |
+ * | acceptBlindOnly          | 主模型看不见图时，「代客识图」类工具才有价值；当前三家主模型均自带视觉，此类工具默认不注册 |
  * | acceptNoNativeWebSearch  | Provider 没有原生联网搜索（zhipu），本地 web_search 才上场；deepseek/ark 已有 SDK 原生 server tool，同职责的工具与之重叠、必须剔除 |
  */
 function pickVisibleTools(

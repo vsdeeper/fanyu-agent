@@ -100,7 +100,7 @@ src/
         business-analysis/    # 商业分析工作室；另有 analyze
         product-model/ / product-retouch/  # 产品差异 tasks
       geo/regeo/route.ts + _server/ + _shared/types.ts
-      images/[assetId]/route.ts + _server/   # assets / router / vision / providers / registry
+      images/[assetId]/route.ts + _server/   # assets / router / providers / registry
       docs/[chatId]/[assetId]/route.ts + _server/ + _shared/
     page.tsx
     layout.tsx
@@ -157,7 +157,7 @@ src/hooks           →  禁止依赖 app/ 与任何产品实现
 
 工作室共用放 `api/studio/_server` + `_shared`；产品差异放 `api/studio/{ecommerce,business-analysis,product-model,product-retouch}/_server` 与 `_shared`。禁止把共用层与子域实现混进同一个 barrel `index.ts`。
 
-允许的跨域服务端调用（应用层编排）：`api/chat/_server/stream-chat` → images / docs / geo；`api/images/_server/vision` 可共用 `api/chat/_server/providers/ark/client`；`api/studio/_server` 生图可调用 `api/images/_server`。
+允许的跨域服务端调用（应用层编排）：`api/chat/_server/stream-chat` → images / docs / geo；`api/studio/_server` 生图可调用 `api/images/_server`。
 
 | API Route                               | 实现目录                  | 说明                                                                                                                                                                                                                  |
 | --------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

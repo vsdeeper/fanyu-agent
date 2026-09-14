@@ -14,7 +14,7 @@ import {
   extractStudioDocuments,
   formatDocumentsPrompt,
 } from '@/app/api/studio/business-analysis/_server/extract-documents';
-import { analyzeImage, formatVisionAnalysisText } from '@/app/api/images/_server/vision';
+import { parseImageDataUrlToFilePart } from '@/app/api/studio/_server/parse-image-data-url';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 import { INVALID_FORM, INVALID_JSON } from '@/app/api/studio/_server/constants';
 import { buildAnalyzePrompt } from './analyze-prompt';
@@ -33,38 +33,17 @@ import {
 
 type SseSend = (event: string, data: unknown) => Promise<void>;
 
+type UserContentPart =
+  { type: 'text'; text: string } | { type: 'file'; data: Buffer; mediaType: string };
+
 function analyzeInstructions(kind: EcommerceAnalyzeKind): string {
   return kind === 'detailImage'
     ? DETAIL_IMAGE_ANALYZE_INSTRUCTIONS
     : MAIN_IMAGE_ANALYZE_INSTRUCTIONS;
 }
 
-/** 品牌 Logo 的识图问题：只问主题卡规划用得上的造型与呈现方式，不问画面构图（那由出图环节定）。 */
-const BRAND_LOGO_VISION_QUESTION =
-  '请描述这个品牌 Logo：造型与图形构成、是否含文字与文字内容、字体特征、主色与辅助色、透明底与否，以及把它作为设计元素融入电商画面时适合的呈现方式。';
-
 /**
- * 把品牌 Logo 原图转成中文描述供分析使用；识图失败返回 undefined。
- *
- * 分析用的主模型在缺省 provider（deepseek）下看不见像素，图片不能直接进 streamText，
- * 故与商业分析工作室一致：先经 analyzeImage 转文本，再把文本拼进 prompt。
- * Logo 是可选增强，失败只跳过、不阻断整轮分析。
- */
-async function describeBrandLogo(
-  dataUrl: string | undefined,
-  signal: AbortSignal,
-): Promise<string | undefined> {
-  if (!dataUrl || signal.aborted) return undefined;
-  const vision = await analyzeImage(dataUrl, BRAND_LOGO_VISION_QUESTION, signal);
-  if (!vision.ok) {
-    console.error('[ecommerce/analyze] brand logo vision', vision.error);
-    return undefined;
-  }
-  return formatVisionAnalysisText(vision.analysis);
-}
-
-/**
- * 抽取商业分析与可选产品资料，把品牌 Logo 识图结果一并拼进 prompt，流式输出策划 Markdown。
+ * 抽取商业分析与可选产品资料；品牌 Logo 以 file part 直达主模型，流式输出策划 Markdown。
  */
 async function pipeAnalyzeEvents(
   kind: EcommerceAnalyzeKind,
@@ -92,9 +71,22 @@ async function pipeAnalyzeEvents(
     }
   }
 
-  // 识图这一步在流开始前跑完，用户会多等一次上游调用；失败不阻断分析
-  const brandLogoText = await describeBrandLogo(options.brandLogoDataUrl, signal);
+  let brandLogoPart: ReturnType<typeof parseImageDataUrlToFilePart> = null;
+  if (options.brandLogoDataUrl) {
+    brandLogoPart = parseImageDataUrlToFilePart(options.brandLogoDataUrl);
+    if (!brandLogoPart) {
+      console.error('[ecommerce/analyze] invalid brand logo dataUrl');
+    }
+  }
   if (signal.aborted) return;
+
+  const hasBrandLogo = Boolean(brandLogoPart);
+  const promptText = buildAnalyzePrompt(kind, documentsText, { productDocsText, hasBrandLogo });
+  const content: UserContentPart[] = [{ type: 'text', text: promptText }];
+  if (brandLogoPart) {
+    content.push({ type: 'text', text: '以下附件是品牌 Logo：' });
+    content.push(brandLogoPart);
+  }
 
   const provider = getChatProvider();
   const runtime = getChatProviderRuntimeFor(provider);
@@ -108,7 +100,7 @@ async function pipeAnalyzeEvents(
   const result = streamText({
     model: runtime.getMainModel(getModelId(provider, 'pro')),
     instructions: analyzeInstructions(kind),
-    prompt: buildAnalyzePrompt(kind, documentsText, { productDocsText, brandLogoText }),
+    messages: [{ role: 'user', content }],
     abortSignal: signal,
     providerOptions: { openai: openaiOptions },
   });
@@ -132,8 +124,8 @@ async function pipeAnalyzeEvents(
 }
 
 /**
- * POST /api/studio/ecommerce/analyze：商业分析文档 + 品牌 Logo 原图 + 可选补充产品资料，
- * 按 kind 规划主图或详情图主题卡。Logo 原图先经识图转成中文描述再进 prompt。
+ * POST /api/studio/ecommerce/analyze：商业分析文档 + 可选品牌 Logo 原图 + 可选补充产品资料，
+ * 按 kind 规划主图或详情图主题卡。Logo 原图以多模态附件直达主模型。
  */
 export async function handleEcommerceAnalyze(req: Request): Promise<Response> {
   let json: unknown;

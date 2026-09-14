@@ -96,7 +96,7 @@ function decodeDataUrl(url: string): Buffer {
 /**
  * 归一化模型入参里的 file part：text/* 与 .docx 解码为 text part 供模型阅读；
  * image/* 在 acceptsImageInput 时原样保留（多模态主模型直读像素），否则换成短文本占位
- * （盲主模型的像素只走 analyze_image / generate_image）；
+ * （盲主模型路径；像素仍可由 generate_image edit 从原始 UIMessage 读取）；
  * application/pdf 原样保留；其余不支持类型（.doc 等二进制）从入参剔除。
  *
  * 修复：方舟 Responses 只接受 application/pdf 的内联 file part，text/markdown 等会抛
@@ -137,8 +137,8 @@ export async function sanitizeFilePartsForModel(
 
           const mediaType = part.mediaType;
           if (mediaType.startsWith('image/')) {
-            // acceptsImageInput 的 Provider（zhipu glm 主模型自带视觉）若转占位符，
-            // 像素永远不会到达主模型，多模态直读即失效；仅盲主模型链路才降级为 analyze_image 占位
+            // acceptsImageInput 的 Provider 若转占位符，像素永远不会到达主模型，
+            // 多模态直读即失效；仅盲主模型链路才降级为文本占位
             if (acceptsImageInput) {
               return part;
             }
@@ -201,6 +201,6 @@ function imageFilePartToPlaceholder(
   const indexHint = isLatestUser && total > 1 ? '；多张时可用 pastedImageIndexes 指定某几张' : '';
   return {
     type: 'text',
-    text: `本轮含图片附件${seq}${label}，请用 analyze_image 查看${indexHint}`,
+    text: `本轮含图片附件${seq}${label}，主模型当前无法直接看见像素；请结合用户文字意图，或在改图时通过 generate_image 引用附件${indexHint}`,
   };
 }

@@ -26,26 +26,18 @@ describe('buildAnalyzePrompt', () => {
     expect(prompt).not.toContain('- 产品资料：');
   });
 
-  it('主图带品牌 Logo 识图结果时追加 Logo 告知行与识图段', () => {
+  it('主图带品牌 Logo 时追加 Logo 告知行', () => {
     const prompt = buildAnalyzePrompt('mainImage', '商业分析正文', {
-      brandLogoText: '圆形徽标，主色墨绿。',
+      hasBrandLogo: true,
     });
-    expect(prompt).toContain('- 品牌 Logo：用户已提供品牌 Logo 图');
-    expect(prompt).toContain('- 品牌 Logo 识图结果：\n圆形徽标，主色墨绿。');
-    // 识图段排在产品资料之后，是最后一段资料
-    expect(prompt.indexOf('- 品牌 Logo 识图结果：')).toBeGreaterThan(
-      prompt.indexOf('- 商业分析：'),
-    );
+    expect(prompt).toContain('- 品牌 Logo：用户已提供品牌 Logo 图（见本消息附件）');
+    expect(prompt).not.toContain('识图结果');
+    expect(prompt.indexOf('- 品牌 Logo：')).toBeGreaterThan(prompt.indexOf('- 商业分析：'));
   });
 
-  it('未上传品牌 Logo（或识图失败）时不追加 Logo 段', () => {
+  it('未上传品牌 Logo 时不追加 Logo 段', () => {
     const withoutLogo = buildAnalyzePrompt('mainImage', '商业分析正文');
     expect(withoutLogo).not.toContain('- 品牌 Logo：');
-    expect(withoutLogo).not.toContain('- 品牌 Logo 识图结果：');
-
-    // 识图失败时上层传 undefined；空白串等同无内容
-    const blankLogo = buildAnalyzePrompt('mainImage', '商业分析正文', { brandLogoText: '   ' });
-    expect(blankLogo).not.toContain('- 品牌 Logo：');
   });
 
   it('详情图保持原有两段', () => {

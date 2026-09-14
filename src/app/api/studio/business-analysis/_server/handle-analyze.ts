@@ -8,15 +8,15 @@ import {
   getTitleReasoningEffort,
 } from '@/app/api/chat/_server/providers/config';
 import { getChatProviderRuntimeFor } from '@/app/api/chat/_server/providers/resolve';
-import { analyzeImage, formatVisionAnalysisText } from '@/app/api/images/_server/vision';
 import { ANALYZE_SSE_EVENT } from '@/app/api/studio/business-analysis/_shared/constants';
 import type {
   BusinessAnalysisAnalyzeRequest,
   BusinessAnalysisAnalyzeTextEvent,
 } from '@/app/api/studio/business-analysis/_shared/types';
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { parseImageDataUrlToFilePart } from '@/app/api/studio/_server/parse-image-data-url';
 import { ANALYZE_INSTRUCTIONS } from './analyze-instructions';
-import { ANALYZE_FAILED, BRAND_LOGO_VISION_QUESTION, MISSING_ANALYZE_MATERIAL } from './constants';
+import { ANALYZE_FAILED, MISSING_ANALYZE_MATERIAL } from './constants';
 import { INVALID_FORM, INVALID_JSON } from '@/app/api/studio/_server/constants';
 import { buildAnalyzePrompt } from './analyze-prompt';
 import { extractStudioDocuments, formatDocumentsPrompt } from './extract-documents';
@@ -30,68 +30,69 @@ import {
 
 type SseSend = (event: string, data: unknown) => Promise<void>;
 
-/**
- * 品牌 Logo 识图；未提供或识图失败返回 undefined，由 prompt 组装按「无品牌素材」处理。
- */
-async function describeBrandLogo(
-  dataUrl: string | undefined,
-  signal: AbortSignal,
-): Promise<string | undefined> {
-  if (!dataUrl || signal.aborted) return undefined;
-  const vision = await analyzeImage(dataUrl, BRAND_LOGO_VISION_QUESTION, signal);
-  if (!vision.ok) {
-    console.error('[business-analysis/analyze] brand logo vision', vision.error);
-    return undefined;
-  }
-  return formatVisionAnalysisText(vision.analysis);
-}
+type UserContentPart =
+  { type: 'text'; text: string } | { type: 'file'; data: Buffer; mediaType: string };
 
 /**
- * 识图 + streamText，把 text / done 写入已建立的 SSE。不落盘会话或图片资产。
+ * 主模型多模态 streamText：产品图 / Logo 以 file part 直达，文本资料进同一条 user message。
+ * 不落盘会话或图片资产。
  */
 async function pipeAnalyzeEvents(
   body: BusinessAnalysisAnalyzeRequest,
   signal: AbortSignal,
   send: SseSend,
 ): Promise<void> {
-  const visionChunks: string[] = [];
+  const productImageParts: Array<{ type: 'file'; data: Buffer; mediaType: string }> = [];
   for (const image of body.images) {
-    if (signal.aborted) return;
-    const vision = await analyzeImage(
-      image.dataUrl,
-      '请描述这件商品的品类、材质、颜色、形状、卖点与适合的电商画面气质',
-      signal,
-    );
-    if (vision.ok) {
-      visionChunks.push(formatVisionAnalysisText(vision.analysis));
+    const part = parseImageDataUrlToFilePart(image.dataUrl);
+    if (part) {
+      productImageParts.push(part);
     } else {
-      console.error('[business-analysis/analyze] analyzeImage', vision.error);
+      console.error('[business-analysis/analyze] invalid product image dataUrl');
+    }
+  }
+
+  let brandLogoPart: ReturnType<typeof parseImageDataUrlToFilePart> = null;
+  if (body.brandLogoDataUrl) {
+    brandLogoPart = parseImageDataUrlToFilePart(body.brandLogoDataUrl);
+    if (!brandLogoPart) {
+      console.error('[business-analysis/analyze] invalid brand logo dataUrl');
     }
   }
 
   const extracted = await extractStudioDocuments(body.documents);
   const productDescription = body.productDescription?.trim();
-  // Logo 的识图结果单独攒，不能混进产品图那段 —— 混进去模型会把 Logo 描述当成产品本体
-  const brandLogoText = await describeBrandLogo(body.brandLogoDataUrl, signal);
+  const hasProductImages = productImageParts.length > 0;
+  const hasBrandLogo = Boolean(brandLogoPart);
+  const hasTextMaterial = Boolean(productDescription) || extracted.texts.length > 0;
 
-  const hasTextMaterial =
-    Boolean(brandLogoText) || Boolean(productDescription) || extracted.texts.length > 0;
-  if (visionChunks.length === 0 && !hasTextMaterial) {
+  if (!hasProductImages && !hasBrandLogo && !hasTextMaterial) {
     await send(ANALYZE_SSE_EVENT.error, {
-      // 传了产品图却全识图失败属上游故障，与「四项素材本来就没填」要分开报
-      message: body.images.length > 0 ? ANALYZE_FAILED : MISSING_ANALYZE_MATERIAL,
+      // 传了图却全部解码失败属上游/数据故障，与「四项素材本来就没填」分开报
+      message:
+        body.images.length > 0 || body.brandLogoDataUrl ? ANALYZE_FAILED : MISSING_ANALYZE_MATERIAL,
     });
     return;
   }
 
-  const prompt = buildAnalyzePrompt({
+  const promptText = buildAnalyzePrompt({
     productDescription,
     // 判「有没有资料」看 texts.length：坏文件会被 extractStudioDocuments 静默跳过，
     // 只看 body.documents.length 会让一份没解析出文本的资料冒充素材
     documentsText: extracted.texts.length > 0 ? formatDocumentsPrompt(extracted) : '',
-    visionText: visionChunks.join('\n\n'),
-    brandLogoText,
+    hasProductImages,
+    hasBrandLogo,
   });
+
+  const content: UserContentPart[] = [{ type: 'text', text: promptText }];
+  if (hasProductImages) {
+    content.push(...productImageParts);
+  }
+  if (brandLogoPart) {
+    // Logo 与产品图分开标注，避免模型把徽标当成产品本体
+    content.push({ type: 'text', text: '以下附件是品牌 Logo：' });
+    content.push(brandLogoPart);
+  }
 
   const provider = getChatProvider();
   const runtime = getChatProviderRuntimeFor(provider);
@@ -106,7 +107,7 @@ async function pipeAnalyzeEvents(
   const result = streamText({
     model: runtime.getMainModel(getModelId(provider, 'pro')),
     instructions: ANALYZE_INSTRUCTIONS,
-    prompt,
+    messages: [{ role: 'user', content }],
     abortSignal: signal,
     providerOptions: { openai: openaiOptions },
   });
@@ -130,7 +131,7 @@ async function pipeAnalyzeEvents(
 }
 
 /**
- * POST /api/studio/business-analysis/analyze：校验后立刻推 SSE，识图与规划在流内进行。
+ * POST /api/studio/business-analysis/analyze：校验后立刻推 SSE，规划在流内进行。
  */
 export async function handleBusinessAnalysisAnalyze(req: Request): Promise<Response> {
   let json: unknown;
