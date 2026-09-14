@@ -42,7 +42,9 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
     // 参考图数组顺序固定为「产品精修图 → 点选参考图（主图=文案标准参考图，详情图=上一屏）→ 品牌 Logo」，
     // 两种任务的额外参考图恒为末尾且 Logo 在后，故 prompt 可按张数点名序号
     const copyStyleReferenceDataUrl =
-      body.kind === 'mainImage' ? body.copyStyleReferenceDataUrl : undefined;
+      body.kind === 'mainImage' && !body.textlessVisual
+        ? body.copyStyleReferenceDataUrl
+        : undefined;
     const brandLogoDataUrl = body.brandLogoDataUrl;
     const hasCopyReference = Boolean(copyStyleReferenceDataUrl);
     const hasBrandLogo = Boolean(brandLogoDataUrl);
@@ -67,19 +69,23 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
         body.kind === 'detailImage'
           ? buildDetailImagePrompt({
               requirement: item.requirement,
-              analysisText: body.analysisText,
               productImageCount,
               hasPreviousScreen,
               hasBrandLogo,
               productDocumentsText: body.productDocumentsText,
+              visualMoodSummary: body.visualMoodSummary,
+              textlessVisual: body.textlessVisual,
+              unifyVisualMood: body.unifyVisualMood,
             })
           : buildMainImagePrompt({
               requirement: item.requirement,
-              analysisText: body.analysisText,
               productImageCount,
               hasCopyReference,
               hasBrandLogo,
               productDocumentsText: body.productDocumentsText,
+              visualMoodSummary: body.visualMoodSummary,
+              textlessVisual: body.textlessVisual,
+              unifyVisualMood: body.unifyVisualMood,
             });
       for (let i = 0; i < count; i++) {
         plan.push({ index: plan.length, prompt, referenceImageDataUrls });

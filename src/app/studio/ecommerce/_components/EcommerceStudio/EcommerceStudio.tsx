@@ -93,6 +93,7 @@ import {
   toThemeAnalyzePayload,
   toMainImageGeneratePayload,
   toVisualGeneratePayload,
+  withDesignVisualFlags,
 } from './utils';
 import { parseDetailImagePlan } from './_utils/parse-detail-image-plan';
 import { parseMainImagePlan } from './_utils/parse-main-image-plan';
@@ -186,8 +187,12 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     restoredVisualForm ?? initialVisual?.form ?? DEFAULT_FORM_STATE,
   );
   const [designForm, setDesignForm] = useState<DesignFormState>(() => {
-    const base =
-      restoredDesignForm ?? initialDesign?.form ?? createDefaultDesignForm(task.taskType);
+    const fallback = createDefaultDesignForm(task.taskType);
+    const raw = restoredDesignForm ?? initialDesign?.form ?? fallback;
+    const base = withDesignVisualFlags({
+      ...fallback,
+      ...raw,
+    });
     if (mainImage) return { ...base, taskType: '主图' };
     if (detailImage) return { ...base, taskType: '详情图', aspectRatio: base.aspectRatio || '3:4' };
     return poster ? { ...base, taskType: '营销海报' } : base;
@@ -215,6 +220,9 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     : { cards: [] };
   const [planCards, setPlanCards] = useState<ThemePlanCard[]>(
     initialAnalysis?.planCards?.length ? initialAnalysis.planCards : initialParsedPlan.cards,
+  );
+  const [visualMoodSummary, setVisualMoodSummary] = useState(
+    initialAnalysis?.visualMoodSummary ?? initialParsedPlan.visualMoodSummary ?? '',
   );
   const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>(
     initialAnalysis?.selectedThemeIds ?? [],
@@ -335,6 +343,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       extras?: {
         planCards?: ThemePlanCard[];
         selectedThemeIds?: string[];
+        visualMoodSummary?: string;
       },
     ) => {
       const next = await createAnalysisStepSnapshot(
@@ -345,6 +354,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
           ? {
               planCards: extras?.planCards ?? planCards,
               selectedThemeIds: extras?.selectedThemeIds ?? selectedThemeIds,
+              visualMoodSummary: extras?.visualMoodSummary ?? visualMoodSummary,
               productDocs: productDocsRef.current,
               ...(themePlan ? { brandLogoImages: brandLogoRef.current } : {}),
             }
@@ -359,11 +369,14 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       if (saved.brandLogoImages) setBrandLogo(saved.brandLogoImages);
       setAnalysisText(saved.analysisText);
       if (saved.planCards) setPlanCards(saved.planCards);
+      if (typeof saved.visualMoodSummary === 'string')
+        setVisualMoodSummary(saved.visualMoodSummary);
       if (saved.selectedThemeIds) setSelectedThemeIds(saved.selectedThemeIds);
     },
     [
       themePlan,
       planCards,
+      visualMoodSummary,
       selectedThemeIds,
       task.id,
       setImages,
@@ -423,7 +436,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.design)) return;
       const saved = await saveStudioStep(task.id, 'design', next);
       lastSnapshotsRef.current.design = saved;
-      setDesignForm(saved.form);
+      setDesignForm(withDesignVisualFlags(saved.form));
       setDesignResultGroups(saved.designResultGroups);
       setModelImages(saved.modelImages);
       if (saved.images) setImages(saved.images);
@@ -499,7 +512,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
           return;
         }
         if (snap.stepKey === 'design') {
-          const jobForm = snap.data.pending.form as DesignFormState;
+          const jobForm = withDesignVisualFlags(snap.data.pending.form as DesignFormState);
           const taskType = (snap.data.pending.taskType ?? task.taskType) as EcommerceTaskType;
           const merged = mergeBatchGroups(designResultGroups, taskType, batch);
           const groups = succeeded ? merged : getGeneratedDesignGroups(merged);
@@ -548,6 +561,9 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       ? (detailImage ? parseDetailImagePlan : parseMainImagePlan)(analysisText)
       : null;
   const displayPlanCards = streamedPlan ? streamedPlan.cards : planCards;
+  const displayVisualMoodSummary = streamedPlan
+    ? (streamedPlan.visualMoodSummary ?? '')
+    : visualMoodSummary;
 
   const handleAnalyze = useCallback(async () => {
     if (documents.length === 0) {
@@ -560,6 +576,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     setPhase('analyzing');
     analysisBuffer.reset();
     setPlanCards([]);
+    setVisualMoodSummary('');
     setSelectedThemeIds([]);
     try {
       const payload = await toThemeAnalyzePayload(
@@ -598,11 +615,13 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         const text = analysisBuffer.getText();
         const parsed = (detailImage ? parseDetailImagePlan : parseMainImagePlan)(text);
         setPlanCards(parsed.cards);
+        setVisualMoodSummary(parsed.visualMoodSummary ?? '');
         setPhase('analyzed');
         try {
           await persistAnalysisStep(images, documents, text, {
             planCards: parsed.cards,
             selectedThemeIds: [],
+            visualMoodSummary: parsed.visualMoodSummary ?? '',
           });
         } catch (err) {
           console.error('[ecommerce-studio] persist analysis', err);
@@ -689,17 +708,10 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   const handleGenerateDesign = useCallback(async () => {
     // 三类任务的产品精修图都非必填（无参考图时生图侧降级为文生图），故此处不再卡图片张数
     const selectedCards = planCards.filter((card) => selectedThemeIds.includes(card.themeId));
-    let analysisFromDocs = '';
     let productDocsText = '';
     if (themePlan) {
       if (selectedCards.length === 0) {
         message.warning(THEME_SELECT_MISSING);
-        return;
-      }
-      analysisFromDocs = await readProductDocsAsText(documents);
-      // 这里判读出的正文而非文件数：上传了却读不出文本时不能放行
-      if (!analysisFromDocs) {
-        message.warning(ANALYSIS_UPLOAD_MISSING);
         return;
       }
       productDocsText = productDocs.length > 0 ? await readProductDocsAsText(productDocs) : '';
@@ -728,7 +740,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       if (selected) previousScreenDataUrl = await readUrlAsDataUrl(selected);
     }
     let copyStyleReferenceDataUrl: string | undefined;
-    if (mainImage && referenceImageId !== null) {
+    if (mainImage && !nextDesignForm.textlessVisual && referenceImageId !== null) {
       const selected = getSelectedResultImageUrl(
         designResultGroups['主图'] ?? [],
         referenceImageId,
@@ -772,28 +784,18 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     try {
       const body = themePlan
         ? detailImage
-          ? await toDetailImageGeneratePayload(
-              nextDesignForm,
-              analysisFromDocs,
-              selectedCards,
-              images,
-              {
-                previousScreenDataUrl,
-                productDocumentsText: productDocsText,
-                brandLogoDataUrl,
-              },
-            )
-          : await toMainImageGeneratePayload(
-              nextDesignForm,
-              analysisFromDocs,
-              selectedCards,
-              images,
-              {
-                productDocumentsText: productDocsText,
-                copyStyleReferenceDataUrl,
-                brandLogoDataUrl,
-              },
-            )
+          ? await toDetailImageGeneratePayload(nextDesignForm, selectedCards, images, {
+              visualMoodSummary,
+              previousScreenDataUrl,
+              productDocumentsText: productDocsText,
+              brandLogoDataUrl,
+            })
+          : await toMainImageGeneratePayload(nextDesignForm, selectedCards, images, {
+              visualMoodSummary,
+              productDocumentsText: productDocsText,
+              copyStyleReferenceDataUrl,
+              brandLogoDataUrl,
+            })
         : await toDesignGeneratePayload(
             nextDesignForm,
             analysisText,
@@ -829,7 +831,6 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     designForm,
     designResultGroups,
     detailImage,
-    documents,
     expectedDesignCount,
     images,
     mainImage,
@@ -846,6 +847,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     themePlan,
     userRequirement,
     visualImages,
+    visualMoodSummary,
   ]);
 
   const handleImagesAppend = useCallback(
@@ -1169,9 +1171,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
                 formLocked={formLocked}
                 jobRunning={jobRunning}
                 canGenerateVisual={Boolean(analysisText.trim())}
-                canGenerateDesign={
-                  themePlan ? selectedCards.length > 0 && documents.length > 0 : true
-                }
+                canGenerateDesign={themePlan ? selectedCards.length > 0 : true}
                 selectedCards={selectedCards}
                 onImagesAppend={handleImagesAppend}
                 onImageRemove={handleImageRemove}
@@ -1201,6 +1201,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
                 nextLoading={nextLoading}
                 isPoster={poster}
                 planCards={displayPlanCards}
+                visualMoodSummary={displayVisualMoodSummary}
                 selectedThemeIds={selectedThemeIds}
                 referenceImageId={referenceImageId}
                 running={generating}

@@ -73,10 +73,19 @@ const visualGenerateSchema = specFieldsSchema.extend({
   userRequirement: z.string().optional(),
 });
 
+const themePlanVisualFields = {
+  visualMoodSummary: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() || undefined),
+  textlessVisual: z.boolean().optional(),
+  unifyVisualMood: z.boolean().optional(),
+};
+
 const mainImageGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('mainImage'),
   count: countSchema,
-  analysisText: z.string().trim().min(1),
+  ...themePlanVisualFields,
   brandLogoDataUrl: imageDataUrlSchema.optional(),
   productDocumentsText: z.string().optional(),
   requirements: z
@@ -96,7 +105,7 @@ const mainImageGenerateSchema = specFieldsSchema.extend({
 const detailImageGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('detailImage'),
   count: countSchema,
-  analysisText: z.string().trim().min(1),
+  ...themePlanVisualFields,
   productDocumentsText: z.string().optional(),
   requirements: z
     .array(

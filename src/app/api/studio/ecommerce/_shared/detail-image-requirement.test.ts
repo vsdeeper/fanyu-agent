@@ -10,4 +10,8 @@ describe('formatDetailImageRequirement', () => {
       DETAIL_IMAGE_REQUIREMENT_SAMPLE,
     );
   });
+
+  it('样例含画面文案列表', () => {
+    expect(DETAIL_IMAGE_REQUIREMENT_SAMPLE).toContain('画面文案：\n- 清新一夏');
+  });
 });

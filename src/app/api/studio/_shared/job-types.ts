@@ -7,6 +7,7 @@ export type StudioJobKind = (typeof STUDIO_JOB_KINDS)[number];
 
 /**
  * 表单回声：只带回重建与结算所需的生成规格，字段与客户端 `StudioFormState` / `DesignFormState` 对齐。
+ * 主图 / 详情图的出图开关为可选：旧作业或主视觉步骤可能没有这两键。
  */
 export type StudioJobFormEcho = {
   model: string;
@@ -16,6 +17,10 @@ export type StudioJobFormEcho = {
   count: string;
   /** design 步骤用于分组的任务类型 */
   taskType?: string;
+  /** 纯视觉无文字；缺省时客户端按 false */
+  textlessVisual?: boolean;
+  /** 统一视觉气质；缺省时客户端按 true */
+  unifyVisualMood?: boolean;
 };
 
 /**

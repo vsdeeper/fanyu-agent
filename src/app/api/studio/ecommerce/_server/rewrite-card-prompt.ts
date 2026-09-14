@@ -108,7 +108,7 @@ export function buildRewriteCardPrompt(input: {
 }
 
 /**
- * 清洗帮写结果，收成设计目标 + 展示重点列表（主图与详情图共用格式）。
+ * 清洗帮写结果，收成设计目标 + 画面文案 + 展示重点列表（主图与详情图共用格式）。
  */
 export function sanitizeRewriteCardOutput(raw: string): string {
   return formatThemePlanRequirement(raw);

@@ -81,6 +81,22 @@ export function createDefaultDesignForm(taskType: EcommerceTaskType): DesignForm
 }
 
 /**
+ * 补齐出图开关字段。作业回声或旧快照可能缺键；缺省时与默认表单一致（无文字=否、统一气质=是）。
+ */
+export function withDesignVisualFlags<T extends Partial<DesignFormState>>(
+  form: T,
+): T & {
+  textlessVisual: boolean;
+  unifyVisualMood: boolean;
+} {
+  return {
+    ...form,
+    textlessVisual: typeof form.textlessVisual === 'boolean' ? form.textlessVisual : false,
+    unifyVisualMood: typeof form.unifyVisualMood === 'boolean' ? form.unifyVisualMood : true,
+  };
+}
+
+/**
  * 将选择的文件追加为本地预览项；超出上限的部分丢弃。
  */
 export function appendProductImages(
@@ -203,22 +219,29 @@ export async function readProductDocsAsText(documents: ProductDocItem[]): Promis
 }
 
 /**
- * 主图请求体：规格 + 商业分析 + 选中主题文案 + 产品精修图；尾部可选值统一走 options。
+ * 主图请求体：规格 + 选中主题文案 + 产品精修图；气质摘要与开关走 form / options。
  *
  * 尾部几个可选值同型，一律用具名键——按位置传不会报类型错、只会静默串值。
  */
 export async function toMainImageGeneratePayload(
   form: DesignFormState,
-  analysisText: string,
   requirements: ThemePlanCard[],
   productImages: ProductImageItem[],
   options: {
+    visualMoodSummary?: string;
     productDocumentsText?: string;
     copyStyleReferenceDataUrl?: string;
     brandLogoDataUrl?: string;
   } = {},
 ): Promise<StudioGenerateRequest> {
   const productDocumentsText = options.productDocumentsText?.trim();
+  const visualMoodSummary =
+    form.unifyVisualMood && options.visualMoodSummary?.trim()
+      ? options.visualMoodSummary.trim()
+      : undefined;
+  const copyStyleReferenceDataUrl = form.textlessVisual
+    ? undefined
+    : options.copyStyleReferenceDataUrl;
   return {
     kind: 'mainImage',
     model: form.model,
@@ -226,38 +249,42 @@ export async function toMainImageGeneratePayload(
     quality: form.quality,
     clarity: form.clarity,
     count: Number.parseInt(form.count, 10) || 1,
-    analysisText: analysisText.trim(),
+    textlessVisual: form.textlessVisual,
+    unifyVisualMood: form.unifyVisualMood,
     requirements: requirements.map((card) => ({
       themeId: card.themeId,
       title: card.title,
       requirement: card.requirement.trim(),
     })),
     productViewImages: await toAnalyzeImages(productImages),
+    ...(visualMoodSummary ? { visualMoodSummary } : {}),
     ...(productDocumentsText ? { productDocumentsText } : {}),
-    ...(options.copyStyleReferenceDataUrl
-      ? { copyStyleReferenceDataUrl: options.copyStyleReferenceDataUrl }
-      : {}),
+    ...(copyStyleReferenceDataUrl ? { copyStyleReferenceDataUrl } : {}),
     ...(options.brandLogoDataUrl ? { brandLogoDataUrl: options.brandLogoDataUrl } : {}),
   };
 }
 
 /**
- * 详情图请求体：规格 + 商业分析 + 当前屏主题卡 + 产品精修图；尾部可选值统一走 options。
+ * 详情图请求体：规格 + 当前屏主题卡 + 产品精修图；气质摘要与开关走 form / options。
  *
  * 尾部几个可选值同型，一律用具名键——按位置传不会报类型错、只会静默串值。
  */
 export async function toDetailImageGeneratePayload(
   form: DesignFormState,
-  analysisText: string,
   requirements: ThemePlanCard[],
   productImages: ProductImageItem[],
   options: {
+    visualMoodSummary?: string;
     previousScreenDataUrl?: string;
     productDocumentsText?: string;
     brandLogoDataUrl?: string;
   } = {},
 ): Promise<StudioGenerateRequest> {
   const productDocumentsText = options.productDocumentsText?.trim();
+  const visualMoodSummary =
+    form.unifyVisualMood && options.visualMoodSummary?.trim()
+      ? options.visualMoodSummary.trim()
+      : undefined;
   return {
     kind: 'detailImage',
     model: form.model,
@@ -265,13 +292,15 @@ export async function toDetailImageGeneratePayload(
     quality: form.quality,
     clarity: form.clarity,
     count: Number.parseInt(form.count, 10) || 1,
-    analysisText: analysisText.trim(),
+    textlessVisual: form.textlessVisual,
+    unifyVisualMood: form.unifyVisualMood,
     requirements: requirements.map((card) => ({
       themeId: card.themeId,
       title: card.title,
       requirement: card.requirement.trim(),
     })),
     productViewImages: await toAnalyzeImages(productImages),
+    ...(visualMoodSummary ? { visualMoodSummary } : {}),
     ...(options.previousScreenDataUrl
       ? { previousScreenDataUrl: options.previousScreenDataUrl }
       : {}),
@@ -431,16 +460,19 @@ export async function createAnalysisStepSnapshot(
   extras?: {
     planCards?: ThemePlanCard[];
     selectedThemeIds?: string[];
+    visualMoodSummary?: string;
     productDocs?: ProductDocItem[];
     brandLogoImages?: ProductImageItem[];
   },
 ): Promise<AnalysisStepSnapshot> {
   const brandLogoImages = extras?.brandLogoImages ?? [];
+  const visualMoodSummary = extras?.visualMoodSummary?.trim();
   return {
     images: (await Promise.all(images.map(serializeUploadItem))) as ProductImageItem[],
     documents: (await Promise.all(documents.map(serializeUploadItem))) as ProductDocItem[],
     analysisText,
     ...(extras?.planCards ? { planCards: extras.planCards } : {}),
+    ...(visualMoodSummary ? { visualMoodSummary } : {}),
     ...(extras?.selectedThemeIds ? { selectedThemeIds: extras.selectedThemeIds } : {}),
     ...(extras?.productDocs
       ? {
@@ -539,6 +571,10 @@ export function readAnalysisStepSnapshot(value: unknown): AnalysisStepSnapshot |
         : undefined,
     analysisText: typeof snapshot.analysisText === 'string' ? snapshot.analysisText : '',
     planCards: Array.isArray(snapshot.planCards) ? snapshot.planCards : undefined,
+    visualMoodSummary:
+      typeof snapshot.visualMoodSummary === 'string' && snapshot.visualMoodSummary.trim()
+        ? snapshot.visualMoodSummary
+        : undefined,
     selectedThemeIds: Array.isArray(snapshot.selectedThemeIds)
       ? snapshot.selectedThemeIds.filter((id): id is string => typeof id === 'string')
       : undefined,
@@ -619,10 +655,10 @@ export function readDesignStepSnapshot(value: unknown): DesignStepSnapshot | und
   const { designType, ...formRest } = snapshot.form;
   delete (formRest as { referenceVisual?: boolean }).referenceVisual;
   delete (formRest as { requirement?: string }).requirement;
-  const form: DesignFormState = {
+  const form: DesignFormState = withDesignVisualFlags({
     ...formRest,
     taskType: snapshot.form.taskType ?? designType ?? '主图',
-  };
+  });
   const designResultGroups: DesignResultGroups = {};
   for (const taskType of ECOMMERCE_TASK_TYPES) {
     const images = snapshot.designResultGroups[taskType];

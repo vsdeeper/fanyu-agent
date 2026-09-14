@@ -34,6 +34,7 @@ import {
 import ResultImageGrid from './ResultImageGrid';
 import DesignResultGroupsView from './DesignResultGroups';
 import ThemePlanCards from './ThemePlanCards';
+import VisualMoodSummary from './VisualMoodSummary';
 import { usePlanStreamScroll } from './hooks/usePlanStreamScroll';
 import {
   groupResultImagesByRatio,
@@ -67,6 +68,7 @@ type ResultPanelProps = {
   onCancel: () => void;
   isPoster?: boolean;
   planCards?: ThemePlanCard[];
+  visualMoodSummary?: string;
   selectedThemeIds?: string[];
   referenceImageId?: string | null;
   onSelectVisual: (id: string) => void;
@@ -98,6 +100,7 @@ export default function ResultPanel({
   onCancel,
   isPoster = false,
   planCards = [],
+  visualMoodSummary = '',
   selectedThemeIds = [],
   referenceImageId = null,
   onSelectVisual,
@@ -116,7 +119,8 @@ export default function ResultPanel({
   const themePlan = isThemePlanTask(taskType);
   const detailImage = isDetailImageTask(taskType);
   const showPlan = isPlanPhase(phase) && Boolean(analysisText) && !themePlan;
-  const showThemePlan = themePlan && isPlanPhase(phase) && planCards.length > 0;
+  const showThemePlan =
+    themePlan && isPlanPhase(phase) && (planCards.length > 0 || Boolean(visualMoodSummary));
   const showVisualGrid = isVisualResultPhase(phase) && visualImages.length > 0;
   const visualRatioGroups = groupResultImagesByRatio(visualImages);
   const showDesignGroups =
@@ -185,17 +189,20 @@ export default function ResultPanel({
         </div>
       ) : showThemePlan ? (
         <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
-          <div ref={contentRef}>
-            <ThemePlanCards
-              cards={planCards}
-              selectedThemeIds={selectedThemeIds}
-              selectionMode={detailImage ? 'single' : 'multiple'}
-              streaming={analysisStreaming}
-              onToggleTheme={onToggleTheme ?? (() => undefined)}
-              onCardSave={onPlanCardSave ?? (() => undefined)}
-              onEditingChange={setPlanEditing}
-              onAiAssist={themePlan ? onPlanCardAiAssist : undefined}
-            />
+          <div ref={contentRef} className={styles.planStack}>
+            {visualMoodSummary ? <VisualMoodSummary summary={visualMoodSummary} /> : null}
+            {planCards.length > 0 ? (
+              <ThemePlanCards
+                cards={planCards}
+                selectedThemeIds={selectedThemeIds}
+                selectionMode={detailImage ? 'single' : 'multiple'}
+                streaming={analysisStreaming}
+                onToggleTheme={onToggleTheme ?? (() => undefined)}
+                onCardSave={onPlanCardSave ?? (() => undefined)}
+                onEditingChange={setPlanEditing}
+                onAiAssist={themePlan ? onPlanCardAiAssist : undefined}
+              />
+            ) : null}
           </div>
         </div>
       ) : showPlan ? (

@@ -14,5 +14,6 @@ export function parseMainImagePlan(markdown: string): ParsedMainImagePlan {
       ...card,
       requirement: formatMainImageRequirement(card.requirement),
     })),
+    ...(parsed.visualMoodSummary ? { visualMoodSummary: parsed.visualMoodSummary } : {}),
   };
 }

@@ -104,12 +104,17 @@ export type StudioDesignGenerateRequest = StudioGenerateBase & {
   modelImages?: StudioImageInput[];
 };
 
-/** 电商主图：规格 + 商业分析 + 可选产品资料正文 + 多张主题文案 + 产品精修图 + 可选参考图 */
+/** 电商主图：规格 + 可选气质摘要 + 多张主题文案 + 产品精修图 + 可选参考图 */
 export type StudioMainImageGenerateRequest = StudioGenerateBase & {
   kind: 'mainImage';
   count: number;
-  analysisText: string;
-  /** 补充产品资料正文（第一手产品事实，优先于商业分析）；未上传时省略 */
+  /** 分析步抽出的跨张气质摘要；未统一气质或旧任务无摘要时省略 */
+  visualMoodSummary?: string;
+  /** 纯视觉无文字 */
+  textlessVisual?: boolean;
+  /** 统一视觉气质 */
+  unifyVisualMood?: boolean;
+  /** 补充产品资料正文（第一手产品事实，优先于主题卡）；未上传时省略 */
   productDocumentsText?: string;
   requirements: Array<{
     themeId: string;
@@ -118,7 +123,7 @@ export type StudioMainImageGenerateRequest = StudioGenerateBase & {
   }>;
   productViewImages: StudioImageInput[];
   /**
-   * 用户点选的主图成品，只作画面文案的字体与配色标准；未点选时省略。
+   * 用户点选的主图成品，只作画面文案的字体与配色标准；未点选或纯视觉无文字时省略。
    * 单值而非数组：文案标准参考图至多一张，与 productViewImages 的多图形态刻意区分。
    */
   copyStyleReferenceDataUrl?: string;
@@ -129,12 +134,17 @@ export type StudioMainImageGenerateRequest = StudioGenerateBase & {
   brandLogoDataUrl?: string;
 };
 
-/** 电商详情图：规格 + 商业分析 + 可选产品资料正文 + 当前屏主题卡 + 产品精修图 + 可选上一屏与品牌 Logo */
+/** 电商详情图：规格 + 可选气质摘要 + 当前屏主题卡 + 产品精修图 + 可选上一屏与品牌 Logo */
 export type StudioDetailImageGenerateRequest = StudioGenerateBase & {
   kind: 'detailImage';
   count: number;
-  analysisText: string;
-  /** 补充产品资料正文（第一手产品事实，优先于商业分析）；未上传时省略 */
+  /** 分析步抽出的跨屏气质摘要；未统一气质或旧任务无摘要时省略 */
+  visualMoodSummary?: string;
+  /** 纯视觉无文字 */
+  textlessVisual?: boolean;
+  /** 统一视觉气质 */
+  unifyVisualMood?: boolean;
+  /** 补充产品资料正文（第一手产品事实，优先于主题卡）；未上传时省略 */
   productDocumentsText?: string;
   requirements: Array<{
     themeId: string;

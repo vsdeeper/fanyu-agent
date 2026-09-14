@@ -132,4 +132,6 @@ export const DEFAULT_DESIGN_FORM_STATE: DesignFormState = {
   quality: 'high',
   clarity: DEFAULT_CLARITY_BY_TASK_TYPE['主图'],
   count: '1',
+  textlessVisual: false,
+  unifyVisualMood: true,
 };

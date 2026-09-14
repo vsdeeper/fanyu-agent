@@ -18,6 +18,7 @@ import {
   PRODUCT_PLACEMENT_PROMPT_GUARD,
   PRODUCT_REFINE_FIDELITY_PROMPT_GUARD,
   PRODUCT_SCALE_PROMPT_GUARD,
+  THEME_PLAN_TEXTLESS_PROMPT,
   USER_REQUIREMENT_PROMPT,
   USER_REQUIREMENT_REMINDER_PROMPT,
   VISUAL_AD_PROMPT_GUARD,
@@ -70,26 +71,56 @@ export function buildProductViewPrompt(): string {
 export type MainImagePromptInput = {
   /** 本张主题卡正文 */
   requirement: string;
-  /** 商业分析正文 */
-  analysisText: string;
   /** 产品精修图张数（不含文案标准参考图与品牌 Logo） */
   productImageCount: number;
   hasCopyReference: boolean;
   hasBrandLogo: boolean;
   productDocumentsText?: string;
+  visualMoodSummary?: string;
+  /** 缺省视为否 */
+  textlessVisual?: boolean;
+  /** 缺省视为是 */
+  unifyVisualMood?: boolean;
+};
+
+type ThemePlanVisualResolved = {
+  injectMood: boolean;
+  mood: string;
+  textlessVisual: boolean;
+  unifyVisualMood: boolean;
 };
 
 /**
- * 电商主图出站 prompt：商业分析定整套气质，可选产品资料定第一手产品事实，本张主题卡定文案与拍法；精修图为产品事实。
+ * 解析气质摘要与两个出图开关；缺省与表单默认一致（统一气质是、无文字否）。
+ */
+function resolveThemePlanVisual(input: {
+  visualMoodSummary?: string;
+  textlessVisual?: boolean;
+  unifyVisualMood?: boolean;
+}): ThemePlanVisualResolved {
+  const unifyVisualMood = input.unifyVisualMood !== false;
+  const mood = input.visualMoodSummary?.trim() ?? '';
+  return {
+    unifyVisualMood,
+    textlessVisual: input.textlessVisual === true,
+    mood,
+    injectMood: unifyVisualMood && Boolean(mood),
+  };
+}
+
+/**
+ * 电商主图出站 prompt：气质摘要定整套氛围（可关），本张主题卡定文案与拍法；精修图为产品事实。
  *
  * `productImageCount` / `hasCopyReference` / `hasBrandLogo` 必填：参考图数组顺序为
  * 产品精修图 → 文案标准参考图 → 品牌 Logo，必须按真实张数点名序号，否则默认那句
  * 「其余参考图仅补充同一产品的可见角度」会把后两张图误当成同一产品的另一角度。
  * 产品精修图非必填：`productImageCount === 0` 时没有产品角度可言，产品图那句与产品保真底线都要换成无参考图的说法。
+ * 纯视觉无文字时调用方不得再传文案标准参考图，`hasCopyReference` 应为 false。
  */
 export function buildMainImagePrompt(input: MainImagePromptInput): string {
-  const { productImageCount, hasCopyReference, hasBrandLogo } = input;
-  const analysisText = input.analysisText.trim();
+  const { productImageCount, hasBrandLogo } = input;
+  const visual = resolveThemePlanVisual(input);
+  const hasCopyReference = visual.textlessVisual ? false : input.hasCopyReference;
   const productDocsText = input.productDocumentsText?.trim();
   const hasProductReference = productImageCount > 0;
   const productRange =
@@ -124,23 +155,32 @@ export function buildMainImagePrompt(input: MainImagePromptInput): string {
     '生成恰好一张电商主图，不要输出说明、草图或多方案拼图。',
     ...referenceRules,
     '产品底座必须贴实支撑面：四边接触、接触阴影贴边连续，禁止腾空、半边离地或阴影与底座分离；主图不允许悬浮创意。',
-    '根据【商业分析】确定整套配色、光影气质、材质与品牌氛围；本张空间、道具、机位与构图切片以【本张主题卡】的展示重点为准。',
-    '本张出现的画面文案只来自【本张主题卡】设计目标可转化的短句与展示重点，禁止把拍摄写法说明当文字写进画面。',
+    visual.injectMood
+      ? '根据【视觉气质摘要】确定整套配色、光影气质、材质与品牌氛围；本张空间、道具、机位与构图切片以【本张主题卡】的展示重点为准。'
+      : visual.unifyVisualMood
+        ? '本张空间、道具、机位与构图切片以【本张主题卡】的展示重点为准。'
+        : '本张配色、光影与品牌氛围以【本张主题卡】为准，不必与其它张统一视觉气质；本张空间、道具、机位与构图切片以【本张主题卡】的展示重点为准。',
+    visual.textlessVisual
+      ? THEME_PLAN_TEXTLESS_PROMPT
+      : '本张出现的画面文案只来自【本张主题卡】的「画面文案」列表；禁止把展示重点里的拍法说明当文字写进画面。',
     '禁止把空洞白底棚拍或同一套通用生活方式模板当作所有主题的默认背景；套图之间构图与场景须按各自展示重点区分。',
-    '【商业分析】',
-    analysisText,
+    ...(visual.injectMood ? ['【视觉气质摘要】', visual.mood] : []),
     ...(productDocsText
       ? [
           '【产品资料】',
           productDocsText,
-          '品牌、产品名与规格数值等第一手产品事实以【产品资料】为准，缺失时以【商业分析】为准。',
+          '品牌、产品名与规格数值等第一手产品事实以【产品资料】为准，缺失时以【本张主题卡】为准。',
         ]
       : []),
     '【本张主题卡】',
     input.requirement.trim(),
-    hasCopyReference
-      ? MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT
-      : MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
+    ...(visual.textlessVisual
+      ? []
+      : [
+          hasCopyReference
+            ? MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT
+            : MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT,
+        ]),
     VISUAL_AD_PROMPT_GUARD,
     PRODUCT_SCALE_PROMPT_GUARD,
     PRODUCT_PLACEMENT_PROMPT_GUARD,
@@ -153,17 +193,18 @@ export function buildMainImagePrompt(input: MainImagePromptInput): string {
 export type DetailImagePromptInput = {
   /** 本屏主题卡正文 */
   requirement: string;
-  /** 商业分析正文 */
-  analysisText: string;
   /** 产品精修图张数（不含上一屏与品牌 Logo）；可为 0（非必填，无参考图时降级为文生图） */
   productImageCount: number;
   hasPreviousScreen: boolean;
   hasBrandLogo: boolean;
   productDocumentsText?: string;
+  visualMoodSummary?: string;
+  textlessVisual?: boolean;
+  unifyVisualMood?: boolean;
 };
 
 /**
- * 电商详情图出站 prompt：商业分析定整套气质，可选产品资料定第一手产品事实，当前屏主题卡定本张内容；精修图为产品事实。
+ * 电商详情图出站 prompt：气质摘要定整套氛围（可关），当前屏主题卡定本张内容；精修图为产品事实。
  *
  * `productImageCount` / `hasPreviousScreen` / `hasBrandLogo` 必填：参考图数组顺序为
  * 产品精修图 → 上一屏 → 品牌 Logo，必须按真实张数点名序号，否则「其余精修图仅补充同一产品的其它角度」
@@ -173,6 +214,7 @@ export type DetailImagePromptInput = {
  */
 export function buildDetailImagePrompt(input: DetailImagePromptInput): string {
   const { productImageCount, hasPreviousScreen, hasBrandLogo } = input;
+  const visual = resolveThemePlanVisual(input);
   const productDocsText = input.productDocumentsText?.trim();
   const hasProductReference = productImageCount > 0;
   // 取景句与保真底线都由「有没有产品精修图」决定、必须同进同退，故取一次值，
@@ -210,26 +252,33 @@ export function buildDetailImagePrompt(input: DetailImagePromptInput): string {
   return [
     '生成恰好一张电商详情页当前屏，不要输出说明、草图或多方案拼图。',
     ...referenceRules,
-    '根据【商业分析】确定整套配色、光影气质、材质与品牌氛围。',
-    '本张画面信息、文案、产品机位（角度/远近/占比）与构图切片只来自【当前屏主题卡】的设计目标与展示重点。',
-    '【商业分析】',
-    input.analysisText.trim(),
+    visual.injectMood
+      ? '根据【视觉气质摘要】确定整套配色、光影气质、材质与品牌氛围。'
+      : visual.unifyVisualMood
+        ? undefined
+        : '本屏配色、光影与品牌氛围以【当前屏主题卡】为准，不必与其它屏统一视觉气质。',
+    visual.textlessVisual
+      ? THEME_PLAN_TEXTLESS_PROMPT
+      : '本张画面信息、产品机位（角度/远近/占比）与构图切片只来自【当前屏主题卡】的设计目标与展示重点；画面上的字只来自「画面文案」列表。',
+    ...(visual.injectMood ? ['【视觉气质摘要】', visual.mood] : []),
     ...(productDocsText
       ? [
           '【产品资料】',
           productDocsText,
-          '品牌、产品名与规格数值等第一手产品事实以【产品资料】为准，缺失时以【商业分析】为准。',
+          '品牌、产品名与规格数值等第一手产品事实以【产品资料】为准，缺失时以【当前屏主题卡】为准。',
         ]
       : []),
     '【当前屏主题卡】',
     input.requirement.trim(),
     productReference.framing,
-    DETAIL_IMAGE_COPY_TYPOGRAPHY_PROMPT,
+    ...(visual.textlessVisual ? [] : [DETAIL_IMAGE_COPY_TYPOGRAPHY_PROMPT]),
     VISUAL_AD_PROMPT_GUARD,
     PRODUCT_SCALE_PROMPT_GUARD,
     PRODUCT_PLACEMENT_PROMPT_GUARD,
     productReference.fidelity,
-  ].join('\n');
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join('\n');
 }
 
 /**

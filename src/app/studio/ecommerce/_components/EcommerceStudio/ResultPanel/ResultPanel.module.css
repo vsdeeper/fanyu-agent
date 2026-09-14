@@ -75,6 +75,12 @@
   overflow-anchor: none;
 }
 
+.planStack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .markdown {
   font-size: 14px;
   line-height: 1.7;

@@ -6,3 +6,10 @@ export const PRODUCT_IMAGE_LABEL = '产品精修图';
  */
 export const PRODUCT_IMAGE_SUBTITLE = '可选；不上传时产品外观按主题卡与产品资料描述生成';
 export const PRODUCT_IMAGE_HINT = '上传清晰的产品图片，白底最佳';
+
+export const TEXTLESS_VISUAL_LABEL = '纯视觉无文字';
+export const UNIFY_VISUAL_MOOD_LABEL = '统一视觉气质';
+export const YES_NO_OPTIONS = [
+  { label: '是', value: true },
+  { label: '否', value: false },
+];

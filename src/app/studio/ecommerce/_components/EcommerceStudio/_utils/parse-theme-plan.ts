@@ -1,8 +1,11 @@
 import type { ThemeDefinition, ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import { themeIdByTitle } from '@/app/api/studio/ecommerce/_shared/theme-plan';
+import { VISUAL_MOOD_SUMMARY_TITLE } from '@/app/api/studio/ecommerce/_shared/visual-mood';
 
 export type ParsedThemePlan = {
   cards: ThemePlanCard[];
+  /** 跨张共用的短气质摘要；未写出该节时省略 */
+  visualMoodSummary?: string;
 };
 
 type MarkdownSection = {
@@ -49,5 +52,10 @@ export function parsePlanByThemes(
     return card ? [card] : [];
   });
 
-  return { cards };
+  const mood = sections.find((section) => section.title === VISUAL_MOOD_SUMMARY_TITLE);
+  const visualMoodSummary = mood?.body.trim();
+  return {
+    cards,
+    ...(visualMoodSummary ? { visualMoodSummary } : {}),
+  };
 }

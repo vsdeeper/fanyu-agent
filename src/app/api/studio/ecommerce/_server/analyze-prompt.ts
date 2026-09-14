@@ -24,8 +24,8 @@ export function buildAnalyzePrompt(
 ): string {
   const headline =
     kind === 'detailImage'
-      ? '【详情图结构规划】请按指令输出六个互斥主题卡，每张含设计目标与展示重点。本轮不要出图。'
-      : '【主图分析】请按指令输出五个互斥主题卡，每张含设计目标与展示重点，五张互斥。本轮不要出图。';
+      ? '【详情图结构规划】请按指令先输出「视觉气质摘要」，再输出六个互斥主题卡，每张含设计目标、画面文案与展示重点。本轮不要出图。'
+      : '【主图分析】请按指令先输出「视觉气质摘要」，再输出五个互斥主题卡，每张含设计目标、画面文案与展示重点，五张互斥。本轮不要出图。';
   const productDocsText = options.productDocsText?.trim();
   const brandLogoText = options.brandLogoText?.trim();
   return [

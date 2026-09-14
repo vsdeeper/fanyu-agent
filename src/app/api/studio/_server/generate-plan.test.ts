@@ -250,7 +250,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'mainImage',
       count: 2,
-      analysisText: '分析',
       requirements: [
         { themeId: 't1', title: '主题一', requirement: '卖点一' },
         { themeId: 't2', title: '主题二', requirement: '卖点二' },
@@ -273,7 +272,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'mainImage',
       count: 1,
-      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [img('a'), img('b')],
       copyStyleReferenceDataUrl: img('r').dataUrl,
@@ -293,7 +291,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'mainImage',
       count: 1,
-      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [img('a'), img('b')],
       copyStyleReferenceDataUrl: img('r').dataUrl,
@@ -316,7 +313,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'mainImage',
       count: 1,
-      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [img('a'), img('b')],
       brandLogoDataUrl: img('logo').dataUrl,
@@ -335,7 +331,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'mainImage',
       count: 1,
-      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [],
       copyStyleReferenceDataUrl: img('r').dataUrl,
@@ -353,7 +348,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'mainImage',
       count: 1,
-      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [],
     });
@@ -361,12 +355,41 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.referenceImageDataUrls).toEqual([]);
   });
 
+  it('主图纯视觉无文字时不把文案标准参考图送进参考图数组', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'mainImage',
+      count: 1,
+      textlessVisual: true,
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [img('a')],
+      copyStyleReferenceDataUrl: img('r').dataUrl,
+    });
+
+    expect(plan[0]?.referenceImageDataUrls).toEqual([img('a').dataUrl]);
+    expect(plan[0]?.prompt).not.toContain('【文案标准参考图】');
+    expect(plan[0]?.prompt).toContain('画面禁止任何可读文字');
+  });
+
+  it('主图统一气质时注入视觉气质摘要', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'mainImage',
+      count: 1,
+      unifyVisualMood: true,
+      visualMoodSummary: '冷白克制',
+      requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
+      productViewImages: [img('a')],
+    });
+
+    expect(plan[0]?.prompt).toContain('【视觉气质摘要】\n冷白克制');
+  });
+
   it('详情图未上传 Logo 时不出现品牌 Logo 段', () => {
     const plan = buildGeneratePlan({
       ...base,
       kind: 'detailImage',
       count: 1,
-      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [img('a')],
     });
@@ -379,7 +402,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'detailImage',
       count: 1,
-      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [img('a')],
       previousScreenDataUrl: img('p').dataUrl,
@@ -401,7 +423,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'detailImage',
       count: 1,
-      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [img('a')],
       brandLogoDataUrl: img('logo').dataUrl,
@@ -416,7 +437,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'detailImage',
       count: 1,
-      analysisText: '分析',
       requirements: [
         { themeId: 't1', title: '主题一', requirement: '卖点一' },
         { themeId: 't2', title: '主题二', requirement: '卖点二' },
@@ -435,7 +455,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'detailImage',
       count: 1,
-      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [img('a')],
     });
@@ -448,7 +467,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'detailImage',
       count: 1,
-      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [],
       previousScreenDataUrl: img('p').dataUrl,
@@ -463,7 +481,6 @@ describe('buildGeneratePlan 批次展开', () => {
       ...base,
       kind: 'detailImage',
       count: 1,
-      analysisText: '分析',
       requirements: [{ themeId: 't1', title: '主题一', requirement: '卖点一' }],
       productViewImages: [],
     });

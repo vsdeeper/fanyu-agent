@@ -36,6 +36,7 @@ import {
   toMainImageGeneratePayload,
   toThemeAnalyzePayload,
   toVisualGeneratePayload,
+  withDesignVisualFlags,
 } from './utils';
 
 /** 生成一个可序列化的产品图（无 file，previewUrl 为 data URL，直接被 readUrlAsDataUrl 原样返回）。 */
@@ -91,6 +92,26 @@ describe('pendingImagesFromCount', () => {
   });
 });
 
+describe('withDesignVisualFlags', () => {
+  it('缺键时补默认：无文字否、统一气质是', () => {
+    const { textlessVisual, unifyVisualMood, ...rest } = DEFAULT_DESIGN_FORM_STATE;
+    expect(withDesignVisualFlags(rest)).toMatchObject({
+      textlessVisual: false,
+      unifyVisualMood: true,
+    });
+  });
+
+  it('保留用户显式选择', () => {
+    expect(
+      withDesignVisualFlags({
+        ...DEFAULT_DESIGN_FORM_STATE,
+        textlessVisual: true,
+        unifyVisualMood: false,
+      }),
+    ).toMatchObject({ textlessVisual: true, unifyVisualMood: false });
+  });
+});
+
 describe('applyGenerateEvent', () => {
   it('只更新事件指向的槽位，其余原样保留', () => {
     const current: StudioResultImage[] = [
@@ -135,7 +156,11 @@ describe('applyGenerateEvent', () => {
 
 describe('设计表单默认值', () => {
   it('主图与详情图默认 1K，营销海报默认 2K', () => {
-    expect(createDefaultDesignForm('主图').clarity).toBe('1K');
+    expect(createDefaultDesignForm('主图')).toMatchObject({
+      clarity: '1K',
+      textlessVisual: false,
+      unifyVisualMood: true,
+    });
     expect(createDefaultDesignForm('详情图')).toMatchObject({
       clarity: '1K',
       aspectRatio: '3:4',
@@ -172,19 +197,21 @@ describe('视觉设计请求体', () => {
     expect(payload).not.toHaveProperty('modelImages');
   });
 
-  it('主图请求体含商业分析与主题列表，不含主视觉、模特与套图视觉规范', async () => {
+  it('主图请求体含主题列表与出图开关，不含商业分析、主视觉与模特', async () => {
     const payload = await toMainImageGeneratePayload(
       DEFAULT_DESIGN_FORM_STATE,
-      ' 目标人群偏好冷白 ',
       [{ themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' }],
       [IMAGE_ITEM('p-1', 'product.png')],
     );
 
     expect(payload).toMatchObject({
       kind: 'mainImage',
-      analysisText: '目标人群偏好冷白',
+      textlessVisual: false,
+      unifyVisualMood: true,
       requirements: [{ themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' }],
     });
+    expect(payload).not.toHaveProperty('analysisText');
+    expect(payload).not.toHaveProperty('visualMoodSummary');
     expect(payload).not.toHaveProperty('visualDataUrl');
     expect(payload).not.toHaveProperty('modelImages');
     expect(payload).not.toHaveProperty('taskType');
@@ -199,16 +226,17 @@ describe('视觉设计请求体', () => {
 
     const withAll = await toMainImageGeneratePayload(
       DEFAULT_DESIGN_FORM_STATE,
-      '目标人群偏好冷白',
       requirements,
       images,
       {
+        visualMoodSummary: ' 冷白克制 ',
         productDocumentsText: ' 容量 500ml ',
         copyStyleReferenceDataUrl: 'data:image/png;base64,ref',
         brandLogoDataUrl: 'data:image/png;base64,logo',
       },
     );
     expect(withAll).toMatchObject({
+      visualMoodSummary: '冷白克制',
       productDocumentsText: '容量 500ml',
       copyStyleReferenceDataUrl: 'data:image/png;base64,ref',
       brandLogoDataUrl: 'data:image/png;base64,logo',
@@ -216,28 +244,44 @@ describe('视觉设计请求体', () => {
 
     const withNone = await toMainImageGeneratePayload(
       DEFAULT_DESIGN_FORM_STATE,
-      '目标人群偏好冷白',
       requirements,
       images,
     );
     expect(withNone).not.toHaveProperty('copyStyleReferenceDataUrl');
     expect(withNone).not.toHaveProperty('brandLogoDataUrl');
     expect(withNone).not.toHaveProperty('productDocumentsText');
+    expect(withNone).not.toHaveProperty('visualMoodSummary');
 
     const withBlank = await toMainImageGeneratePayload(
       DEFAULT_DESIGN_FORM_STATE,
-      '目标人群偏好冷白',
       requirements,
       images,
       { productDocumentsText: '  ' },
     );
     expect(withBlank).not.toHaveProperty('productDocumentsText');
+
+    const textless = await toMainImageGeneratePayload(
+      { ...DEFAULT_DESIGN_FORM_STATE, textlessVisual: true },
+      requirements,
+      images,
+      { copyStyleReferenceDataUrl: 'data:image/png;base64,ref', visualMoodSummary: '冷白' },
+    );
+    expect(textless).not.toHaveProperty('copyStyleReferenceDataUrl');
+    expect(textless).toMatchObject({ textlessVisual: true, visualMoodSummary: '冷白' });
+
+    const noUnify = await toMainImageGeneratePayload(
+      { ...DEFAULT_DESIGN_FORM_STATE, unifyVisualMood: false },
+      requirements,
+      images,
+      { visualMoodSummary: '冷白' },
+    );
+    expect(noUnify).not.toHaveProperty('visualMoodSummary');
+    expect(noUnify).toMatchObject({ unifyVisualMood: false });
   });
 
   it('详情图请求体含当前屏主题卡，可选上一屏参考图', async () => {
     const payload = await toDetailImageGeneratePayload(
       { ...DEFAULT_DESIGN_FORM_STATE, taskType: '详情图', aspectRatio: '3:4' },
-      ' 气质冷白 ',
       [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }],
       [IMAGE_ITEM('p-1', 'product.png')],
       { previousScreenDataUrl: 'data:image/png;base64,previous' },
@@ -245,11 +289,11 @@ describe('视觉设计请求体', () => {
 
     expect(payload).toMatchObject({
       kind: 'detailImage',
-      analysisText: '气质冷白',
       aspectRatio: '3:4',
       requirements: [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }],
       previousScreenDataUrl: 'data:image/png;base64,previous',
     });
+    expect(payload).not.toHaveProperty('analysisText');
     expect(payload).not.toHaveProperty('visualDataUrl');
     expect(payload).not.toHaveProperty('taskType');
     expect(payload).not.toHaveProperty('brandLogoDataUrl');
@@ -260,40 +304,27 @@ describe('视觉设计请求体', () => {
     const requirements = [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }];
     const productImages = [IMAGE_ITEM('p-1', 'product.png')];
 
-    const withAll = await toDetailImageGeneratePayload(
-      form,
-      '气质冷白',
-      requirements,
-      productImages,
-      {
-        previousScreenDataUrl: 'data:image/png;base64,previous',
-        productDocumentsText: ' 容量 500ml ',
-        brandLogoDataUrl: 'data:image/png;base64,logo',
-      },
-    );
+    const withAll = await toDetailImageGeneratePayload(form, requirements, productImages, {
+      visualMoodSummary: '气质冷白',
+      previousScreenDataUrl: 'data:image/png;base64,previous',
+      productDocumentsText: ' 容量 500ml ',
+      brandLogoDataUrl: 'data:image/png;base64,logo',
+    });
     expect(withAll).toMatchObject({
+      visualMoodSummary: '气质冷白',
       previousScreenDataUrl: 'data:image/png;base64,previous',
       productDocumentsText: '容量 500ml',
       brandLogoDataUrl: 'data:image/png;base64,logo',
     });
 
-    const withNone = await toDetailImageGeneratePayload(
-      form,
-      '气质冷白',
-      requirements,
-      productImages,
-    );
+    const withNone = await toDetailImageGeneratePayload(form, requirements, productImages);
     expect(withNone).not.toHaveProperty('previousScreenDataUrl');
     expect(withNone).not.toHaveProperty('productDocumentsText');
     expect(withNone).not.toHaveProperty('brandLogoDataUrl');
 
-    const withBlank = await toDetailImageGeneratePayload(
-      form,
-      '气质冷白',
-      requirements,
-      productImages,
-      { productDocumentsText: '   ' },
-    );
+    const withBlank = await toDetailImageGeneratePayload(form, requirements, productImages, {
+      productDocumentsText: '   ',
+    });
     expect(withBlank).not.toHaveProperty('productDocumentsText');
   });
 
@@ -642,6 +673,19 @@ describe('步骤快照水合', () => {
     expect(readAnalysisStepSnapshot({ images: [] })).toBeUndefined();
   });
 
+  it('分析快照读写视觉气质摘要，空值不写键', async () => {
+    const withMood = await createAnalysisStepSnapshot([], [], '', {
+      visualMoodSummary: ' 冷白克制 ',
+    });
+    expect(withMood.visualMoodSummary).toBe('冷白克制');
+    expect(readAnalysisStepSnapshot(JSON.parse(JSON.stringify(withMood)))?.visualMoodSummary).toBe(
+      '冷白克制',
+    );
+
+    const blank = await createAnalysisStepSnapshot([], [], '');
+    expect(blank).not.toHaveProperty('visualMoodSummary');
+  });
+
   it('分析快照水合产品资料：有则透传，无则为 undefined', () => {
     const withProductDocs = readAnalysisStepSnapshot({
       images: [],
@@ -857,6 +901,18 @@ describe('步骤快照水合', () => {
     });
     expect(design?.images).toHaveLength(1);
     expect(design?.form).not.toHaveProperty('requirement');
+  });
+
+  it('旧设计快照缺出图开关时补默认：无文字否、统一气质是', () => {
+    const { textlessVisual, unifyVisualMood, ...legacyForm } = DEFAULT_DESIGN_FORM_STATE;
+    const design = readDesignStepSnapshot({
+      form: legacyForm,
+      designResultGroups: {
+        主图: [{ id: 'm-1', aspectRatio: '1:1', status: 'ready', url: '/api/img/1' }],
+      },
+    });
+    expect(design?.form.textlessVisual).toBe(false);
+    expect(design?.form.unifyVisualMood).toBe(true);
   });
 
   it('详情图设计快照读取上一屏与导出点选', () => {

@@ -1,9 +1,17 @@
+import { Radio } from 'antd';
 import StudioImageUpload from '@/business-components/StudioImageUpload';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import GenerateForm from '../GenerateForm';
 import { patchFormState } from '../utils';
 import type { DesignFormState, ProductImageItem, StudioSpecFields } from '../../types';
-import { PRODUCT_IMAGE_HINT, PRODUCT_IMAGE_LABEL, PRODUCT_IMAGE_SUBTITLE } from './constants';
+import {
+  PRODUCT_IMAGE_HINT,
+  PRODUCT_IMAGE_LABEL,
+  PRODUCT_IMAGE_SUBTITLE,
+  TEXTLESS_VISUAL_LABEL,
+  UNIFY_VISUAL_MOOD_LABEL,
+  YES_NO_OPTIONS,
+} from './constants';
 import SelectedPlanCards from './SelectedPlanCards';
 import styles from './ThemeDesignForm.module.css';
 
@@ -18,7 +26,7 @@ type ThemeDesignFormProps = {
 };
 
 /**
- * 主题出图表单：精修图、已选主题卡片与出图规格。主图与详情图共用。
+ * 主题出图表单：精修图、已选主题卡片、出图开关与规格。主图与详情图共用。
  *
  * 两种任务的产品精修图都非必填，所以副标题与提示恒为「可选」口径 ——
  * 本组件只由主题规划类任务渲染，不用再按 taskType 分支。
@@ -53,6 +61,34 @@ export default function ThemeDesignForm({
           <SelectedPlanCards cards={selectedCards} />
         </div>
       ) : null}
+      <label className={styles.field}>
+        <span className={styles.label}>{TEXTLESS_VISUAL_LABEL}</span>
+        <Radio.Group
+          block
+          optionType="button"
+          buttonStyle="solid"
+          value={form.textlessVisual}
+          options={YES_NO_OPTIONS}
+          disabled={disabled}
+          onChange={(event) =>
+            onFormChange(patchFormState(form, 'textlessVisual', event.target.value as boolean))
+          }
+        />
+      </label>
+      <label className={styles.field}>
+        <span className={styles.label}>{UNIFY_VISUAL_MOOD_LABEL}</span>
+        <Radio.Group
+          block
+          optionType="button"
+          buttonStyle="solid"
+          value={form.unifyVisualMood}
+          options={YES_NO_OPTIONS}
+          disabled={disabled}
+          onChange={(event) =>
+            onFormChange(patchFormState(form, 'unifyVisualMood', event.target.value as boolean))
+          }
+        />
+      </label>
       <GenerateForm
         form={form}
         disabled={disabled}

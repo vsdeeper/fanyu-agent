@@ -26,6 +26,8 @@ const pendingSchema = z.object({
     clarity: z.string().min(1),
     count: z.string().min(1),
     taskType: z.string().optional(),
+    textlessVisual: z.boolean().optional(),
+    unifyVisualMood: z.boolean().optional(),
   }),
 });
 

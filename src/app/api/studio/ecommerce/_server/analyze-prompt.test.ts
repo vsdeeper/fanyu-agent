@@ -10,6 +10,7 @@ describe('buildAnalyzePrompt', () => {
       productDocsText: '产品资料正文',
     });
     expect(prompt).toContain('【主图分析】');
+    expect(prompt).toContain('先输出「视觉气质摘要」');
     expect(prompt).toContain('- 商业分析：商业分析正文');
     expect(prompt).toContain('- 产品资料：产品资料正文');
   });
@@ -50,6 +51,7 @@ describe('buildAnalyzePrompt', () => {
   it('详情图保持原有两段', () => {
     const prompt = buildAnalyzePrompt('detailImage', '商业分析正文');
     expect(prompt).toContain('【详情图结构规划】');
+    expect(prompt).toContain('先输出「视觉气质摘要」');
     expect(prompt).toContain('- 商业分析：商业分析正文');
     expect(prompt).not.toContain('- 产品资料：');
   });

@@ -13,6 +13,7 @@ import {
   MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT,
   MAIN_IMAGE_FIDELITY_NO_REFERENCE_PROMPT,
   PRODUCT_FIDELITY_PROMPT_GUARD,
+  THEME_PLAN_TEXTLESS_PROMPT,
 } from './constants';
 import {
   buildDesignPrompt,
@@ -131,7 +132,7 @@ describe('电商生图指令', () => {
     const prompt = buildMainImagePrompt({
       requirement:
         '设计目标：一眼记住哑光金属机身与轻巧体量。\n展示重点：\n- 正视特写整机轮廓，突出冷白金属壳\n- 书房书桌近景，午后窗光侧打，留白构图',
-      analysisText: '目标人群偏好冷白，Logo 克制',
+      visualMoodSummary: '目标人群偏好冷白，Logo 克制',
       productImageCount: 1,
       hasCopyReference: false,
       hasBrandLogo: false,
@@ -140,20 +141,21 @@ describe('电商生图指令', () => {
     expect(prompt).toContain(
       '【本张主题卡】\n设计目标：一眼记住哑光金属机身与轻巧体量。\n展示重点：\n- 正视特写整机轮廓，突出冷白金属壳\n- 书房书桌近景，午后窗光侧打，留白构图',
     );
-    expect(prompt).toContain('【商业分析】\n目标人群偏好冷白，Logo 克制');
+    expect(prompt).toContain('【视觉气质摘要】\n目标人群偏好冷白，Logo 克制');
     expect(prompt).not.toContain('【套图视觉规范】');
     expect(prompt).toContain('以【本张主题卡】的展示重点为准');
-    expect(prompt).toContain('画面文案只来自【本张主题卡】设计目标可转化的短句与展示重点');
-    expect(prompt).toContain('禁止把拍摄写法说明当文字写进画面');
+    expect(prompt).toContain('画面文案只来自【本张主题卡】的「画面文案」列表');
+    expect(prompt).toContain('禁止把展示重点里的拍法说明当文字写进画面');
     expect(prompt).toContain('电影感定向光');
     expect(prompt).toContain('简洁、清晰、易读');
+    expect(prompt).toContain('只采用【本张主题卡】「画面文案」列表中的短句');
     expect(prompt).not.toContain('必要时辅以 3～5 条卖点要点');
     expect(prompt).toContain('第1个参考图=用户上传的产品精修图');
     expect(prompt).not.toContain('已选营销主视觉');
     expect(prompt).toContain('产品必须稳定放置在场景中的支撑面');
     expect(prompt).toContain('主图不允许悬浮创意');
     expect(prompt).toContain('字体家族、文案配色必须整套统一');
-    expect(prompt).not.toContain('【商业分析】里的字体与文案配色');
+    expect(prompt).not.toContain('【视觉气质摘要】里的字体与文案配色');
     expect(prompt).not.toContain('【文案标准参考图】');
     expect(prompt).toContain('构图、光影、场景与道具以本张展示重点为准');
     expect(prompt).not.toContain('主标题：');
@@ -162,24 +164,24 @@ describe('电商生图指令', () => {
   it('主图带产品资料时叠加【产品资料】段与事实优先级', () => {
     const prompt = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 1,
       hasCopyReference: false,
       hasBrandLogo: false,
       productDocumentsText: '容量 500ml，品牌 凡域',
     });
 
-    expect(prompt).toContain('【商业分析】\n目标人群偏好冷白');
+    expect(prompt).toContain('【视觉气质摘要】\n目标人群偏好冷白');
     expect(prompt).toContain('【产品资料】\n容量 500ml，品牌 凡域');
-    expect(prompt).toContain('第一手产品事实以【产品资料】为准，缺失时以【商业分析】为准');
-    expect(prompt.indexOf('【商业分析】')).toBeLessThan(prompt.indexOf('【产品资料】'));
+    expect(prompt).toContain('第一手产品事实以【产品资料】为准，缺失时以【本张主题卡】为准');
+    expect(prompt.indexOf('【视觉气质摘要】')).toBeLessThan(prompt.indexOf('【产品资料】'));
     expect(prompt.indexOf('【产品资料】')).toBeLessThan(prompt.indexOf('\n【本张主题卡】\n'));
   });
 
   it('主图无产品资料时不出现【产品资料】段', () => {
     const prompt = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 1,
       hasCopyReference: false,
       hasBrandLogo: false,
@@ -191,7 +193,7 @@ describe('电商生图指令', () => {
   it('主图点选文案标准参考图后按序号点名，且只锁文案字体与配色', () => {
     const prompt = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。\n展示重点：\n- 正视特写整机轮廓',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 2,
       hasCopyReference: true,
       hasBrandLogo: false,
@@ -204,8 +206,10 @@ describe('电商生图指令', () => {
     expect(prompt).not.toContain(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT);
     expect(prompt).toContain('禁止复制其产品主体呈现');
     expect(prompt).toContain('也禁止因它改变本张的主色板');
-    // 配色来源恒为必填的【商业分析】
-    expect(prompt).toContain('画面整体配色仍以【商业分析】为准');
+    // 配色来源为【视觉气质摘要】
+    expect(prompt).toContain(
+      '画面整体配色仍以【视觉气质摘要】为准，未提供摘要时以【本张主题卡】为准',
+    );
     // 防与详情图的「上一屏」机制串味
     expect(prompt).not.toContain(DETAIL_IMAGE_CONTINUITY_PROMPT);
   });
@@ -213,7 +217,7 @@ describe('电商生图指令', () => {
   it('主图仅一张精修图时文案标准参考图序号为 2', () => {
     const prompt = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 1,
       hasCopyReference: true,
       hasBrandLogo: false,
@@ -226,7 +230,7 @@ describe('电商生图指令', () => {
   it('主图未点选参考图时不含文案标准参考图的角色说明与锁定语', () => {
     const prompt = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 2,
       hasCopyReference: false,
       hasBrandLogo: false,
@@ -243,7 +247,7 @@ describe('电商生图指令', () => {
     // 无文案标准参考图时 Logo 紧随产品图，此时产品图那句不得再用「其余参考图」泛指
     const withoutCopyRef = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 2,
       hasCopyReference: false,
       hasBrandLogo: true,
@@ -259,7 +263,7 @@ describe('电商生图指令', () => {
     // 两者都有时 Logo 顺延到第 4，文案标准参考图序号不变
     const withBoth = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 2,
       hasCopyReference: true,
       hasBrandLogo: true,
@@ -275,7 +279,7 @@ describe('电商生图指令', () => {
   it('主图仅一张精修图且有 Logo 时 Logo 序号为 2', () => {
     const prompt = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 1,
       hasCopyReference: false,
       hasBrandLogo: true,
@@ -289,7 +293,7 @@ describe('电商生图指令', () => {
   it('主图未上传 Logo 时不含 Logo 角色说明与 Logo 注入语', () => {
     const prompt = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 1,
       hasCopyReference: false,
       hasBrandLogo: false,
@@ -302,7 +306,7 @@ describe('电商生图指令', () => {
   it('主图无产品精修图时不点名产品参考图，保真底线换成按描述呈现', () => {
     const prompt = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 0,
       hasCopyReference: false,
       hasBrandLogo: false,
@@ -321,7 +325,7 @@ describe('电商生图指令', () => {
     // 参考图数组此时只剩文案标准参考图 → 它是第 1 张（用 max(1, P)+1 会错算成第 2 张）
     const onlyCopyRef = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 0,
       hasCopyReference: true,
       hasBrandLogo: true,
@@ -332,7 +336,7 @@ describe('电商生图指令', () => {
 
     const onlyLogo = buildMainImagePrompt({
       requirement: '设计目标：一眼记住哑光金属机身。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 0,
       hasCopyReference: false,
       hasBrandLogo: true,
@@ -345,15 +349,46 @@ describe('电商生图指令', () => {
     expect(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT).toContain('字体家族、文案配色必须整套统一');
     expect(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT).toContain('禁止一张衬线一张无衬线');
     expect(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT).toContain('禁止各张自选字色');
-    expect(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT).not.toContain('【商业分析】');
+    expect(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT).not.toContain('【视觉气质摘要】');
     expect(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT).not.toContain('【文案标准参考图】');
     expect(MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT).toContain('【文案标准参考图】');
+  });
+
+  it('主图统一气质关闭时不贴摘要，并声明各张不必统一', () => {
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      visualMoodSummary: '冷白克制',
+      productImageCount: 1,
+      hasCopyReference: false,
+      hasBrandLogo: false,
+      unifyVisualMood: false,
+    });
+
+    expect(prompt).not.toContain('【视觉气质摘要】');
+    expect(prompt).toContain('不必与其它张统一视觉气质');
+    expect(prompt).not.toContain(THEME_PLAN_TEXTLESS_PROMPT);
+  });
+
+  it('主图纯视觉无文字时禁止可读文案且不注入文字编排', () => {
+    const prompt = buildMainImagePrompt({
+      requirement: '设计目标：一眼记住哑光金属机身。',
+      visualMoodSummary: '冷白克制',
+      productImageCount: 1,
+      hasCopyReference: true,
+      hasBrandLogo: false,
+      textlessVisual: true,
+    });
+
+    expect(prompt).toContain(THEME_PLAN_TEXTLESS_PROMPT);
+    expect(prompt).not.toContain(MAIN_IMAGE_COPY_TYPOGRAPHY_PROMPT);
+    expect(prompt).not.toContain(MAIN_IMAGE_COPY_TYPOGRAPHY_WITH_REFERENCE_PROMPT);
+    expect(prompt).not.toContain('【文案标准参考图】');
   });
 
   it('详情图有上一屏时标明参考图角色、当前屏主题卡与连贯句', () => {
     const prompt = buildDetailImagePrompt({
       requirement: '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 2,
       hasPreviousScreen: true,
       hasBrandLogo: false,
@@ -368,13 +403,14 @@ describe('电商生图指令', () => {
     expect(prompt).toContain(
       '产品拍摄角度、取景远近与占画面比例必须按【当前屏主题卡】的展示重点重新决定',
     );
-    expect(prompt).toContain('【商业分析】\n目标人群偏好冷白');
+    expect(prompt).toContain('画面上的字只来自「画面文案」列表');
+    expect(prompt).toContain('【视觉气质摘要】\n目标人群偏好冷白');
   });
 
   it('详情图无上一屏时不含上一屏角色说明与连贯句', () => {
     const prompt = buildDetailImagePrompt({
       requirement: '设计目标：建立品牌第一印象。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 1,
       hasPreviousScreen: false,
       hasBrandLogo: false,
@@ -393,7 +429,7 @@ describe('电商生图指令', () => {
     // 有上一屏时 Logo 顺延到第 3；产品精修图那条规则必须限定范围，否则 Logo 会被当成产品的另一个角度
     const withPrevious = buildDetailImagePrompt({
       requirement: '设计目标：建立品牌第一印象。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 1,
       hasPreviousScreen: true,
       hasBrandLogo: true,
@@ -406,7 +442,7 @@ describe('电商生图指令', () => {
     // 无上一屏时 Logo 紧随产品精修图
     const withoutPrevious = buildDetailImagePrompt({
       requirement: '设计目标：建立品牌第一印象。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 2,
       hasPreviousScreen: false,
       hasBrandLogo: true,
@@ -418,7 +454,7 @@ describe('电商生图指令', () => {
   it('详情图未上传 Logo 时不含 Logo 角色说明与 Logo 注入语', () => {
     const prompt = buildDetailImagePrompt({
       requirement: '设计目标：建立品牌第一印象。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 1,
       hasPreviousScreen: false,
       hasBrandLogo: false,
@@ -431,7 +467,7 @@ describe('电商生图指令', () => {
   it('详情图无产品精修图时不点名产品参考图，取景句与保真底线都换成无参考图口径', () => {
     const prompt = buildDetailImagePrompt({
       requirement: '设计目标：建立品牌第一印象。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 0,
       hasPreviousScreen: false,
       hasBrandLogo: false,
@@ -454,7 +490,7 @@ describe('电商生图指令', () => {
     // 参考图数组此时只剩上一屏 → 它是第 1 张（用 max(1, P)+1 会错算成第 2 张）
     const onlyPrevious = buildDetailImagePrompt({
       requirement: '设计目标：建立品牌第一印象。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 0,
       hasPreviousScreen: true,
       hasBrandLogo: true,
@@ -467,24 +503,24 @@ describe('电商生图指令', () => {
   it('详情图带产品资料时叠加【产品资料】段与事实优先级', () => {
     const prompt = buildDetailImagePrompt({
       requirement: '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 1,
       hasPreviousScreen: false,
       hasBrandLogo: false,
       productDocumentsText: '容量 500ml，品牌 凡域',
     });
 
-    expect(prompt).toContain('【商业分析】\n目标人群偏好冷白');
+    expect(prompt).toContain('【视觉气质摘要】\n目标人群偏好冷白');
     expect(prompt).toContain('【产品资料】\n容量 500ml，品牌 凡域');
-    expect(prompt).toContain('第一手产品事实以【产品资料】为准，缺失时以【商业分析】为准');
-    expect(prompt.indexOf('【商业分析】')).toBeLessThan(prompt.indexOf('【产品资料】'));
+    expect(prompt).toContain('第一手产品事实以【产品资料】为准，缺失时以【当前屏主题卡】为准');
+    expect(prompt.indexOf('【视觉气质摘要】')).toBeLessThan(prompt.indexOf('【产品资料】'));
     expect(prompt.indexOf('【产品资料】')).toBeLessThan(prompt.indexOf('\n【当前屏主题卡】\n'));
   });
 
   it('详情图无产品资料时不出现【产品资料】段', () => {
     const prompt = buildDetailImagePrompt({
       requirement: '设计目标：建立品牌第一印象。\n展示重点：Logo 与定位。',
-      analysisText: '目标人群偏好冷白',
+      visualMoodSummary: '目标人群偏好冷白',
       productImageCount: 1,
       hasPreviousScreen: false,
       hasBrandLogo: false,
@@ -1108,7 +1144,6 @@ describe('电商主图请求契约', () => {
     kind: 'mainImage',
     ...SPEC_FIELDS,
     count: 2,
-    analysisText: '目标人群偏好冷白',
     requirements: [{ themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' }],
     productViewImages: [
       {
@@ -1119,16 +1154,14 @@ describe('电商主图请求契约', () => {
     ],
   } as const;
 
-  it('接受商业分析、主题要求与产品精修图', () => {
+  it('接受主题要求与产品精修图，商业分析不再必填', () => {
     const parsed = parseGenerateBody(BASE_MAIN_IMAGE_REQUEST);
 
     expect(parsed?.kind).toBe('mainImage');
-    expect(parsed && parsed.kind === 'mainImage' ? parsed.analysisText : '').toBe(
-      '目标人群偏好冷白',
-    );
     expect(parsed && parsed.kind === 'mainImage' ? parsed.requirements : []).toEqual([
       { themeId: 'scene', title: '使用场景', requirement: '本轮只出使用场景' },
     ]);
+    expect(parsed).not.toHaveProperty('analysisText');
   });
 
   it('接受空产品精修图（非必填），但缺主题要求时拒绝', () => {
@@ -1146,9 +1179,13 @@ describe('电商主图请求契约', () => {
     expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, requirements: [] })).toBeNull();
   });
 
-  it('主图必须有商业分析（含全空白一律拒绝）', () => {
-    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: '' })).toBeNull();
-    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: '  ' })).toBeNull();
+  it('主图不再要求商业分析字段', () => {
+    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: '' })?.kind).toBe(
+      'mainImage',
+    );
+    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: '  ' })?.kind).toBe(
+      'mainImage',
+    );
   });
 
   it('可附带品牌 Logo data URL，缺省为 undefined，且必须是 data URL', () => {
@@ -1170,8 +1207,24 @@ describe('电商主图请求契约', () => {
     ).toBeNull();
   });
 
-  it('商业分析仍必须是非空字符串字段，不接受非字符串', () => {
-    expect(parseGenerateBody({ ...BASE_MAIN_IMAGE_REQUEST, analysisText: undefined })).toBeNull();
+  it('可附带气质摘要与出图开关；空白摘要视为未传', () => {
+    const parsed = parseGenerateBody({
+      ...BASE_MAIN_IMAGE_REQUEST,
+      visualMoodSummary: ' 冷白克制 ',
+      textlessVisual: true,
+      unifyVisualMood: false,
+    });
+    expect(parsed && parsed.kind === 'mainImage' ? parsed.visualMoodSummary : '').toBe('冷白克制');
+    expect(parsed && parsed.kind === 'mainImage' ? parsed.textlessVisual : undefined).toBe(true);
+    expect(parsed && parsed.kind === 'mainImage' ? parsed.unifyVisualMood : undefined).toBe(false);
+
+    const blankMood = parseGenerateBody({
+      ...BASE_MAIN_IMAGE_REQUEST,
+      visualMoodSummary: '   ',
+    });
+    expect(
+      blankMood && blankMood.kind === 'mainImage' ? blankMood.visualMoodSummary : 'x',
+    ).toBeUndefined();
   });
 
   it('可附带产品资料正文，缺省为 undefined', () => {
@@ -1215,7 +1268,6 @@ describe('电商详情图请求契约', () => {
     kind: 'detailImage',
     ...SPEC_FIELDS,
     count: 1,
-    analysisText: '目标人群偏好冷白',
     requirements: [{ themeId: 'brand', title: '品牌认知', requirement: '建立品牌第一印象' }],
     productViewImages: [
       {
@@ -1226,7 +1278,7 @@ describe('电商详情图请求契约', () => {
     ],
   } as const;
 
-  it('接受商业分析、当前屏主题卡与产品精修图', () => {
+  it('接受当前屏主题卡与产品精修图，商业分析不再必填', () => {
     const parsed = parseGenerateBody(BASE_DETAIL_IMAGE_REQUEST);
 
     expect(parsed?.kind).toBe('detailImage');
@@ -1275,8 +1327,10 @@ describe('电商详情图请求契约', () => {
     ).toBeNull();
   });
 
-  it('缺少商业分析或主题要求时拒绝', () => {
-    expect(parseGenerateBody({ ...BASE_DETAIL_IMAGE_REQUEST, analysisText: ' ' })).toBeNull();
+  it('缺少主题要求时拒绝，空白商业分析不影响校验', () => {
+    expect(parseGenerateBody({ ...BASE_DETAIL_IMAGE_REQUEST, analysisText: ' ' })?.kind).toBe(
+      'detailImage',
+    );
     expect(parseGenerateBody({ ...BASE_DETAIL_IMAGE_REQUEST, requirements: [] })).toBeNull();
   });
 });

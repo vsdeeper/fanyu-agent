@@ -37,4 +37,35 @@ describe('formatThemePlanRequirement', () => {
   it('空白输出得到空串', () => {
     expect(formatThemePlanRequirement('   \n  ')).toBe('');
   });
+
+  it('保留画面文案列表，且不与展示重点串段', () => {
+    const raw = [
+      '设计目标：第一眼记住轻巧体量',
+      '画面文案：',
+      '- 轻盈随行',
+      '- 500ml',
+      '展示重点：',
+      '- 正视特写杯身',
+      '- 浅台面侧逆光',
+    ].join('\n');
+    expect(formatThemePlanRequirement(raw)).toBe(
+      [
+        '设计目标：第一眼记住轻巧体量',
+        '画面文案：',
+        '- 轻盈随行',
+        '- 500ml',
+        '展示重点：',
+        '- 正视特写杯身',
+        '- 浅台面侧逆光',
+      ].join('\n'),
+    );
+  });
+
+  it('旧稿无画面文案节时仍只收设计目标与展示重点', () => {
+    const raw = '设计目标：建立印象\n展示重点：中景全貌';
+    expect(formatThemePlanRequirement(raw)).toBe(
+      ['设计目标：建立印象', '展示重点：', '- 中景全貌'].join('\n'),
+    );
+    expect(formatThemePlanRequirement(raw)).not.toContain('画面文案：');
+  });
 });

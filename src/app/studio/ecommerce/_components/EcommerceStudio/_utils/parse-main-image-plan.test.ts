@@ -3,33 +3,44 @@ import { parseMainImagePlan } from './parse-main-image-plan';
 
 const SAMPLE = `## 产品展示
 设计目标：一眼记住哑光金属机身的轻巧体量。
+画面文案：
+- 轻盈随行
+- 冷白金属壳
 展示重点：
 - 近景台面特写整机轮廓，突出冷白金属壳
 - 浅木台面，窗光侧打，留白构图
 
 ## 核心卖点
 设计目标：三档强风覆盖整张书桌。
+画面文案：
+- 三档强风
 展示重点：
 - 深色书桌斜俯，台灯暖光点缀，产品偏一侧
 
 ## 功能特点
 设计目标：左右摇头送风全桌覆盖。
+画面文案：
+- 左右摇头
 展示重点：
 - 侧光剪影看摇头轨迹，深色背景，低机位
 
 ## 使用场景
 设计目标：午后书桌办公的清凉搭档。
+画面文案：
+- 午后清凉
 展示重点：
 - 真实书房全景，显示器与文件入画，午后窗光
 
 ## 用户价值
 设计目标：清凉不占地方。
+画面文案：
+- 不占地方
 展示重点：
 - 窄边几角落，晨雾窗纱，产品靠墙收纳
 `;
 
 describe('parseMainImagePlan', () => {
-  it('按固定标题切出五张卡，正文收成设计目标加展示重点', () => {
+  it('按固定标题切出五张卡，正文收成设计目标、画面文案与展示重点', () => {
     const parsed = parseMainImagePlan(SAMPLE);
     expect(parsed.cards.map((card) => card.themeId)).toEqual([
       'product',
@@ -41,6 +52,9 @@ describe('parseMainImagePlan', () => {
     expect(parsed.cards[0]?.requirement).toBe(
       [
         '设计目标：一眼记住哑光金属机身的轻巧体量。',
+        '画面文案：',
+        '- 轻盈随行',
+        '- 冷白金属壳',
         '展示重点：',
         '- 近景台面特写整机轮廓，突出冷白金属壳',
         '- 浅木台面，窗光侧打，留白构图',
@@ -79,6 +93,24 @@ describe('parseMainImagePlan', () => {
         requirement: '展示重点：\n- 强风\n- 拍摄场景：斜光书桌。',
       },
     ]);
+  });
+
+  it('抽出视觉气质摘要且不把它当成主题卡', () => {
+    const parsed = parseMainImagePlan(
+      `## 视觉气质摘要
+冷白克制、低对比窗光、哑光金属。
+
+${SAMPLE}`,
+    );
+    expect(parsed.visualMoodSummary).toBe('冷白克制、低对比窗光、哑光金属。');
+    expect(parsed.cards.map((card) => card.themeId)).toEqual([
+      'product',
+      'sellingPoint',
+      'feature',
+      'scene',
+      'value',
+    ]);
+    expect(parsed.cards.some((card) => card.title === '视觉气质摘要')).toBe(false);
   });
 
   it('旧格式（主标题/辅/拍摄场景）正文收敛为列表不崩溃', () => {

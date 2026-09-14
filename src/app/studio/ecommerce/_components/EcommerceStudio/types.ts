@@ -46,6 +46,10 @@ export type StudioFormState = StudioSpecFields & {
 
 export type DesignFormState = StudioFormState & {
   taskType: EcommerceTaskType;
+  /** 纯视觉无文字：画面禁止可读文案 */
+  textlessVisual: boolean;
+  /** 统一视觉气质：出图注入气质摘要并要求套图一致 */
+  unifyVisualMood: boolean;
 };
 
 export type DesignResultGroups = Partial<Record<EcommerceTaskType, StudioResultImage[]>>;
@@ -59,6 +63,8 @@ export type AnalysisStepSnapshot = {
   brandLogoImages?: ProductImageItem[];
   analysisText: string;
   planCards?: ThemePlanCard[];
+  /** 分析产出的跨张气质摘要；旧快照可能缺此键 */
+  visualMoodSummary?: string;
   selectedThemeIds?: string[];
 };
 
