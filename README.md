@@ -103,7 +103,7 @@ pnpm run dev
 
 ## 数据库迁移
 
-会话数据使用 Drizzle + SQLite（`CHAT_STORE_DIR/chats.db`）。**`db:generate` / `db:migrate` 不会随 `dev` / `build` 自动执行**，仅在改表结构或需要单独跑迁移时使用。
+会话数据使用 Drizzle + SQLite（`dirname(CHAT_STORE_DIR)/chats.db`，默认 `./data/chats.db`）。**`db:generate` / `db:migrate` 不会随 `dev` / `build` 自动执行**，仅在改表结构或需要单独跑迁移时使用。
 
 | 命令          | 何时需要                                                                        |
 | ------------- | ------------------------------------------------------------------------------- |
@@ -122,17 +122,17 @@ pnpm run db:generate
 pnpm run dev
 ```
 
-`db:generate` 与 `db:migrate` 均读取 `CHAT_STORE_DIR`（默认 `./data/chats`），请与 `.env.local` 保持一致，避免迁错库文件。
+`db:generate` 与 `db:migrate` 均读取 `CHAT_STORE_DIR` 并定位其上一级的 `chats.db`（默认 `./data/chats.db`），请与 `.env.local` 保持一致，避免迁错库文件。
 
 ## 本地数据备份
 
-会话 SQLite、图片与 DESIGN.md 默认落在项目内 `data/chats`；工作室任务资产在同级 `data/studio/{product}/`（均已 git 忽略）。云盘路径 `CHAT_SYNC_REMOTE_DIR` 仅作手动备份对端，应填 `.../chats`，脚本会同时镜像同级 `studio`：
+会话图片与 DESIGN.md 默认落在项目内 `data/chats`；会话库为同级的 `data/chats.db`；工作室任务资产在同级 `data/studio/{product}/`（均已 git 忽略）。云盘路径 `CHAT_SYNC_REMOTE_DIR` 仅作手动备份对端，应填 `.../chats`，脚本会同时镜像同级 `studio` 与上一级 `chats.db`：
 
 ```bash
-# 本地 → 云盘（chats 与同级 studio）
+# 本地 → 云盘（chats、同级 studio、上一级 chats.db）
 pnpm sync:data:push
 
-# 云盘 → 本地（会覆盖本地 data/chats 与 data/studio，需确认）
+# 云盘 → 本地（会覆盖本地 data/chats、data/studio 与 data/chats.db，需确认）
 pnpm sync:data:pull
 pnpm sync:data:pull -- --yes   # 跳过确认
 ```

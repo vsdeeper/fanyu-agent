@@ -264,9 +264,9 @@ Button/
 
 ## 会话持久化约定
 
-- 存储目录由环境变量 **`CHAT_STORE_DIR`** 指定（默认项目内 `./data/chats`，git 忽略）；库文件为目录内 **`chats.db`**（Drizzle + better-sqlite3，`journal_mode=WAL`，运行中可能另有 `chats.db-wal` / `chats.db-shm`）
-- 工作室任务资产落盘于 `dirname(CHAT_STORE_DIR)/studio/{product}/{taskId}/`（默认 `./data/studio/{product}/`，`product` 为 `ecommerce` / `business-analysis` / `product-model` / `product-retouch`）；与会话目录平级，`chats.db`、`images/`、`docs/` 仍在 `CHAT_STORE_DIR` 下
-- 云盘备份路径 **`CHAT_SYNC_REMOTE_DIR`**（须在 `.env.local` 配置，无代码内默认绝对路径）仅作手动同步对端，应指向 `.../chats` 以便对端出现同级 `.../studio`；非运行时目录。`pnpm sync:data:push` 本地→云盘，`pnpm sync:data:pull` 云盘→本地（镜像 chats 与同级 studio，pull 会覆盖本地）
+- 存储目录由环境变量 **`CHAT_STORE_DIR`** 指定（默认项目内 `./data/chats`，git 忽略）：`images/`、`docs/` 在该目录下；**`chats.db` 落在其上一级**（默认 `./data/chats.db`，Drizzle + better-sqlite3，`journal_mode=WAL`，运行中可能另有 `chats.db-wal` / `chats.db-shm`）。启动时若仅发现旧路径 `CHAT_STORE_DIR/chats.db` 会改名迁到上一级
+- 工作室任务资产落盘于 `dirname(CHAT_STORE_DIR)/studio/{product}/{taskId}/`（默认 `./data/studio/{product}/`，`product` 为 `ecommerce` / `business-analysis` / `product-model` / `product-retouch`）；与会话资产目录、`chats.db` 平级
+- 云盘备份路径 **`CHAT_SYNC_REMOTE_DIR`**（须在 `.env.local` 配置，无代码内默认绝对路径）仅作手动同步对端，应指向 `.../chats` 以便对端出现同级 `.../studio` 与上一级 `.../chats.db`；非运行时目录。`pnpm sync:data:push` 本地→云盘，`pnpm sync:data:pull` 云盘→本地（镜像 chats、同级 studio 与上一级 chats.db，pull 会覆盖本地）
 - 表：`chats` + `messages`（`messages.data` 存完整 **`UIMessage` JSON**，含 reasoning / source-url）；刷新可还原 Think 与引用
 - 同步前建议先关闭应用，便于 WAL checkpoint 回主库
 - **修复**：调方舟前仍用 `pruneMessages` 去掉历史 reasoning；持久化与模型入参解耦，勿把落盘也 prune 掉
