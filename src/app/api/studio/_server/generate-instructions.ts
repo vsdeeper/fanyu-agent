@@ -19,8 +19,6 @@ import {
   PRODUCT_REFINE_FIDELITY_PROMPT_GUARD,
   PRODUCT_SCALE_PROMPT_GUARD,
   THEME_PLAN_TEXTLESS_PROMPT,
-  USER_REQUIREMENT_PROMPT,
-  USER_REQUIREMENT_REMINDER_PROMPT,
   VISUAL_AD_PROMPT_GUARD,
 } from './constants';
 
@@ -281,18 +279,6 @@ export function buildDetailImagePrompt(input: DetailImagePromptInput): string {
     .join('\n');
 }
 
-/**
- * 用户要求段：整段插在 prompt 最前，先立优先级再给后面的默认口径。
- *
- * 营销主视觉与视觉设计两个 kind 共用：同一段用户要求随两种请求各跑一遍，冲突对象
- * （商业分析、文字编排、构图取景、画风倾向）完全同型，故不拆成两份措辞。
- * 未填写（含全空白）返回空数组，调用方直接展开。
- */
-function buildUserRequirementLines(userRequirement?: string): string[] {
-  const trimmed = userRequirement?.trim();
-  return trimmed ? ['【用户要求】（最高优先级）', trimmed, USER_REQUIREMENT_PROMPT] : [];
-}
-
 /** `buildVisualPrompt` 入参：尾部可选值同型，一律走具名键，避免位置传错后只静默串值。 */
 export type VisualPromptInput = {
   /** 商业分析正文 */
@@ -300,8 +286,6 @@ export type VisualPromptInput = {
   /** 产品精修图张数（不含品牌 Logo）；可为 0（非必填，无参考图时降级为文生图） */
   productImageCount: number;
   hasBrandLogo: boolean;
-  /** 用户直接下达的额外要求（最高优先级）；空白串与未填写等价 */
-  userRequirement?: string;
 };
 
 /**
@@ -310,11 +294,9 @@ export type VisualPromptInput = {
  * `productImageCount` / `hasBrandLogo` 必填：参考图数组顺序为 产品精修图 → 品牌 Logo，
  * 必须按真实张数点名序号，否则默认那句「其余参考图仅补充同一产品的可见角度」会把 Logo 误当成同一产品的另一角度。
  * 产品精修图非必填：`productImageCount === 0` 时没有产品角度可言，产品图那句与产品保真底线都要换成无参考图的说法。
- * 用户要求非必填：与视觉设计共用同一段（见 buildUserRequirementLines），插在最前并在文字编排后就近重申一次让位。
  */
 export function buildVisualPrompt(input: VisualPromptInput): string {
   const { productImageCount, hasBrandLogo } = input;
-  const userRequirementLines = buildUserRequirementLines(input.userRequirement);
   const hasProductReference = productImageCount > 0;
   const productRange =
     productImageCount <= 1 ? '第1个参考图' : `第1至第${productImageCount}个参考图`;
@@ -330,8 +312,6 @@ export function buildVisualPrompt(input: VisualPromptInput): string {
 
   return [
     '生成一张电商营销主视觉图，作为后续所有设计物料的统一视觉标准。',
-    // 用户要求排在所有默认口径之前：它要压过后面每一条，先立优先级再给默认值
-    ...userRequirementLines,
     productRule,
     ...(hasBrandLogo
       ? [
@@ -344,7 +324,6 @@ export function buildVisualPrompt(input: VisualPromptInput): string {
     '【商业分析】',
     input.analysisText.trim(),
     MARKETING_COPY_TYPOGRAPHY_PROMPT,
-    ...(userRequirementLines.length > 0 ? [USER_REQUIREMENT_REMINDER_PROMPT] : []),
     PRODUCT_SCALE_PROMPT_GUARD,
     PRODUCT_PLACEMENT_PROMPT_GUARD,
     hasProductReference ? PRODUCT_FIDELITY_PROMPT_GUARD : MARKETING_FIDELITY_NO_REFERENCE_PROMPT,
@@ -363,8 +342,6 @@ export type DesignPromptInput = {
   /** 是否点选了营销主视觉作视觉标准；未点选时风格全按商业分析定 */
   hasVisualStandard: boolean;
   hasBrandLogo: boolean;
-  /** 用户直接下达的额外要求（最高优先级）；空白串与未填写等价 */
-  userRequirement?: string;
 };
 
 /**
@@ -376,12 +353,9 @@ export type DesignPromptInput = {
  * 模特那句「第 N 个及之后」也会指到 Logo 上。
  * 产品精修图非必填：`productImageCount === 0` 时第 1 张就是主视觉或 Logo，产品图那句与产品保真底线都要换成无参考图的说法。
  * 视觉标准非必选：`hasVisualStandard === false` 时没有主视觉可延续，配色与光影全按商业分析定。
- * 用户要求非必填：与营销主视觉共用同一段（见 buildUserRequirementLines），插在任务类型句之后、其余默认口径之前，
- * 并在文字编排后就近重申一次让位；它是「用户描述」，故三条事实底线仍排在它前面。
  */
 export function buildDesignPrompt(input: DesignPromptInput): string {
   const { taskType, includeModel, productImageCount, hasVisualStandard, hasBrandLogo } = input;
-  const userRequirementLines = buildUserRequirementLines(input.userRequirement);
   const hasProductReference = productImageCount > 0;
   const productRange =
     productImageCount <= 1 ? '第1个参考图' : `第1至第${productImageCount}个参考图`;
@@ -419,8 +393,6 @@ export function buildDesignPrompt(input: DesignPromptInput): string {
 
   return [
     `生成恰好一张“${taskType}”视觉设计成品，不要输出说明、草图或多方案拼图。`,
-    // 用户要求排在所有默认口径之前：它要压过后面每一条，先立优先级再给默认值
-    ...userRequirementLines,
     ...(TASK_TYPE_PROMPT_BY_TYPE[taskType] ? [TASK_TYPE_PROMPT_BY_TYPE[taskType]] : []),
     ...(taskType === '营销海报' && includeModel
       ? [
@@ -430,7 +402,6 @@ export function buildDesignPrompt(input: DesignPromptInput): string {
     ...referenceRules,
     '根据商业分析确定目标人群、卖点优先级、品牌调性、使用场景与信息层级；最终画面须是可直接评审的完整设计成品。',
     MARKETING_COPY_TYPOGRAPHY_PROMPT,
-    ...(userRequirementLines.length > 0 ? [USER_REQUIREMENT_REMINDER_PROMPT] : []),
     '【商业分析】',
     input.analysisText.trim(),
     VISUAL_AD_PROMPT_GUARD,

@@ -29,22 +29,3 @@
 .analyzeBtn {
   height: 40px !important;
 }
-
-/* 用户要求是左栏唯一一处自由文本，字段样式与各表单组件（DesignForm / ThemeDesignForm）保持一致 */
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--one-color-text);
-}
-
-.hint {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--one-color-text-tertiary);
-}

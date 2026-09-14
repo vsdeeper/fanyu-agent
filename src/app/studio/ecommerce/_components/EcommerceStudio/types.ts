@@ -80,11 +80,6 @@ export type VisualStepSnapshot = {
    * 海报没有分析步，Logo 与产品精修图一起在主视觉步录入，故存在本快照而非分析快照。
    */
   brandLogoImages?: ProductImageItem[];
-  /**
-   * 用户直接下达的额外要求（主视觉步左栏，默认为空）：营销主视觉与营销海报两步共用同一份，
-   * 故随主视觉步而非设计步落库 —— 设计步是它的下游，不是它的录入处。空串不写键。
-   */
-  userRequirement?: string;
 };
 
 export type DesignStepSnapshot = {

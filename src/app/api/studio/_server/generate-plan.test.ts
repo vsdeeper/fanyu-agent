@@ -100,22 +100,6 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).toContain('本批没有产品精修图参考');
   });
 
-  it('营销主视觉带用户要求时整批 prompt 都注入该段', () => {
-    const plan = buildGeneratePlan({
-      ...base,
-      kind: 'visual',
-      count: 2,
-      analysisText: '分析',
-      productViewImages: [img('a')],
-      userRequirement: '不要文字堆叠',
-    });
-
-    expect(
-      plan.every((item) => item.prompt.includes('【用户要求】（最高优先级）\n不要文字堆叠')),
-    ).toBe(true);
-    expect(plan[0]?.prompt).toContain('以上文字编排的默认口径让位');
-  });
-
   it('营销主视觉带品牌 Logo 时追加为参考图最末位，无产品图时 Logo 就是第 1 张', () => {
     const withProduct = buildGeneratePlan({
       ...base,
@@ -184,30 +168,6 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).toContain('第2个参考图=已选营销主视觉');
     expect(plan[0]?.prompt).toContain('第3个参考图（即【品牌 Logo】）');
     expect(plan[0]?.prompt).toContain('第4个及之后的参考图=同一位模特的身份与着装参考');
-  });
-
-  it('视觉设计带用户要求时整批 prompt 都注入该段，且排在参考图角色之前', () => {
-    const plan = buildGeneratePlan({
-      ...base,
-      kind: 'design',
-      count: 2,
-      taskType: '营销海报',
-      includeModel: false,
-      analysisText: '分析',
-      productViewImages: [img('a')],
-      visualDataUrl: img('v').dataUrl,
-      userRequirement: '主标题写「轻盈一夏」',
-    });
-
-    expect(plan).toHaveLength(2);
-    expect(
-      plan.every((item) =>
-        item.prompt.includes('【用户要求】（最高优先级）\n主标题写「轻盈一夏」'),
-      ),
-    ).toBe(true);
-    expect(plan[0]?.prompt.indexOf('【用户要求】')).toBeLessThan(
-      plan[0]?.prompt.indexOf('第2个参考图=已选营销主视觉') ?? 0,
-    );
   });
 
   it('视觉设计未点选视觉标准时参考图不含主视觉，Logo 顺位前移', () => {

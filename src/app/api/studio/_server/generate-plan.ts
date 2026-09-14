@@ -118,7 +118,6 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
       analysisText: body.analysisText,
       productImageCount: body.productViewImages.length,
       hasBrandLogo: Boolean(body.brandLogoDataUrl),
-      userRequirement: body.userRequirement,
     });
     referenceImageDataUrls = [
       ...body.productViewImages.map((image) => image.dataUrl),
@@ -133,7 +132,6 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
       productImageCount: body.productViewImages.length,
       hasVisualStandard: Boolean(body.visualDataUrl),
       hasBrandLogo: Boolean(body.brandLogoDataUrl),
-      userRequirement: body.userRequirement,
     });
     referenceImageDataUrls = [
       ...body.productViewImages.map((image) => image.dataUrl),

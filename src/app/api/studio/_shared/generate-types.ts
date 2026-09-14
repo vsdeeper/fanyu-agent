@@ -58,7 +58,7 @@ export type StudioProductModelGenerateRequest = StudioGenerateBase & {
   modelImages?: StudioImageInput[];
 };
 
-/** 营销主视觉：表单规格 + 商业分析正文 + 产品精修图 + 可选品牌 Logo 与用户要求 */
+/** 营销主视觉：表单规格 + 商业分析正文 + 产品精修图 + 可选品牌 Logo */
 export type StudioVisualGenerateRequest = StudioGenerateBase & {
   kind: 'visual';
   count: number;
@@ -70,14 +70,9 @@ export type StudioVisualGenerateRequest = StudioGenerateBase & {
    * 单值而非数组：Logo 至多一张。
    */
   brandLogoDataUrl?: string;
-  /**
-   * 用户直接下达的额外要求（主视觉步录入，主视觉与营销海报共用同一份）；未填写时省略。
-   * 优先级与覆盖范围见 `USER_REQUIREMENT_PROMPT`。
-   */
-  userRequirement?: string;
 };
 
-/** 视觉设计：表单配置 + 分析结果 + 产品精修图 + 可选已选主视觉、用户要求、品牌 Logo 与模特标准图 */
+/** 视觉设计：表单配置 + 分析结果 + 产品精修图 + 可选已选主视觉、品牌 Logo 与模特标准图 */
 export type StudioDesignGenerateRequest = StudioGenerateBase & {
   kind: 'design';
   count: number;
@@ -91,11 +86,6 @@ export type StudioDesignGenerateRequest = StudioGenerateBase & {
    * 视觉标准非必选：没有时整体配色、光影与品牌氛围按商业分析确定。
    */
   visualDataUrl?: string;
-  /**
-   * 用户直接下达的额外要求，优先级高于商业分析、文字编排、构图取景与画风倾向；
-   * 产品保真、放置与尺寸比例三条事实底线不可被它覆盖。未填写时省略。
-   */
-  userRequirement?: string;
   /**
    * 用户上传的品牌 Logo 原图，作参考图数组**第 3 位**（排在 productViewImages 与 visualDataUrl 之后、模特图之前）；未上传时省略。
    * 单值而非数组：Logo 至多一张。

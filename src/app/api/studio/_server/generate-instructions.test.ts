@@ -573,97 +573,6 @@ describe('电商生图指令', () => {
     expect(prompt).not.toContain('不得沿用');
   });
 
-  it('用户要求以最高优先级注入，并显式保留三条事实底线', () => {
-    const prompt = buildDesignPrompt({
-      taskType: '营销海报',
-      analysisText: '分析',
-      includeModel: false,
-      productImageCount: 1,
-      hasBrandLogo: false,
-      hasVisualStandard: true,
-      userRequirement: '  主标题写「轻盈一夏」，背景换成原木桌面  ',
-    });
-
-    expect(prompt).toContain('【用户要求】（最高优先级）\n主标题写「轻盈一夏」，背景换成原木桌面');
-    // 只声明「最高」会与三条底线的「与任何用户描述冲突时以此为准」打架，必须一并划出覆盖范围
-    expect(prompt).toContain('先满足本段再谈其它');
-    // 覆盖范围要指名道姓：「3～5 条卖点要点」正是把文案堆起来的默认口径，实测不点名就照旧堆文案
-    expect(prompt).toContain('含文字编排里「3～5 条卖点要点」的默认密度');
-    expect(prompt).toContain('画面元素与人物数量');
-    expect(prompt).toContain('产品实际外观、放置方式与尺寸比例三条事实底线不在此列');
-    expect(prompt).toContain('不得为满足以上要求而改款、换色、换 Logo');
-  });
-
-  it('用户要求排在默认口径之前，并在文字编排后就近重申一次让位', () => {
-    const prompt = buildDesignPrompt({
-      taskType: '营销海报',
-      analysisText: '分析',
-      includeModel: false,
-      productImageCount: 1,
-      hasBrandLogo: false,
-      hasVisualStandard: true,
-      userRequirement: '不要文字堆叠',
-    });
-
-    // 先立优先级再给默认值：用户要求要压过后面每一条
-    expect(prompt.indexOf('【用户要求】')).toBeLessThan(prompt.indexOf('第1个参考图'));
-    expect(prompt.indexOf('【用户要求】')).toBeLessThan(prompt.indexOf('【商业分析】'));
-    // 与用户要求重叠最多的是文字编排里的文案条数与字号，隔着整段商业分析会衰减
-    expect(prompt).toContain('文字编排：');
-    expect(prompt.indexOf('以上文字编排的默认口径让位')).toBeGreaterThan(
-      prompt.indexOf('文字编排：'),
-    );
-  });
-
-  it('营销主视觉同样注入用户要求，并在文字编排后重申让位', () => {
-    const prompt = buildVisualPrompt({
-      analysisText: '分析',
-      productImageCount: 1,
-      hasBrandLogo: false,
-      userRequirement: '  不要文字堆叠，加大字号  ',
-    });
-
-    // 主视觉是海报的上游：用户要求在这里就该生效，否则海报只能延续一张已经跑偏的主视觉
-    expect(prompt).toContain('【用户要求】（最高优先级）\n不要文字堆叠，加大字号');
-    expect(prompt).toContain('含文字编排里「3～5 条卖点要点」的默认密度');
-    expect(prompt).toContain('产品实际外观、放置方式与尺寸比例三条事实底线不在此列');
-    expect(prompt.indexOf('【用户要求】')).toBeLessThan(prompt.indexOf('第1个参考图'));
-    expect(prompt.indexOf('以上文字编排的默认口径让位')).toBeGreaterThan(
-      prompt.indexOf('文字编排：'),
-    );
-
-    const withoutRequirement = buildVisualPrompt({
-      analysisText: '分析',
-      productImageCount: 1,
-      hasBrandLogo: false,
-    });
-    expect(withoutRequirement).not.toContain('【用户要求】');
-    expect(withoutRequirement).not.toContain('以上文字编排的默认口径让位');
-
-    const blank = buildVisualPrompt({
-      analysisText: '分析',
-      productImageCount: 1,
-      hasBrandLogo: false,
-      userRequirement: '   ',
-    });
-    expect(blank).not.toContain('【用户要求】');
-  });
-
-  it('用户要求留空或全空白时不注入该段', () => {
-    const base = {
-      taskType: '营销海报',
-      analysisText: '分析',
-      includeModel: false,
-      productImageCount: 1,
-      hasBrandLogo: false,
-      hasVisualStandard: true,
-    };
-
-    expect(buildDesignPrompt(base)).not.toContain('【用户要求】');
-    expect(buildDesignPrompt(base)).not.toContain('以上文字编排的默认口径让位');
-    expect(buildDesignPrompt({ ...base, userRequirement: '   ' })).not.toContain('【用户要求】');
-  });
-
   it('视觉设计未点选视觉标准时不出现主视觉规则，序号按真实位置重排', () => {
     const prompt = buildDesignPrompt({
       taskType: '营销海报',
@@ -1003,38 +912,6 @@ describe('视觉设计请求契约', () => {
     ).toBeNull();
   });
 
-  it('用户要求可选，缺省为 undefined，非字符串时拒绝', () => {
-    const parsed = parseGenerateBody({
-      ...BASE_DESIGN_REQUEST,
-      includeModel: false,
-      visualDataUrl: 'data:image/png;base64,VISUAL',
-      userRequirement: '主标题写「轻盈一夏」',
-    });
-    expect(parsed && parsed.kind === 'design' ? parsed.userRequirement : '').toBe(
-      '主标题写「轻盈一夏」',
-    );
-
-    const withoutRequirement = parseGenerateBody({
-      ...BASE_DESIGN_REQUEST,
-      includeModel: false,
-      visualDataUrl: 'data:image/png;base64,VISUAL',
-    });
-    expect(
-      withoutRequirement && withoutRequirement.kind === 'design'
-        ? withoutRequirement.userRequirement
-        : '',
-    ).toBeUndefined();
-
-    expect(
-      parseGenerateBody({
-        ...BASE_DESIGN_REQUEST,
-        includeModel: false,
-        visualDataUrl: 'data:image/png;base64,VISUAL',
-        userRequirement: 1,
-      }),
-    ).toBeNull();
-  });
-
   it('接受空产品精修图（非必填）与可选品牌 Logo', () => {
     const parsed = parseGenerateBody({
       ...BASE_DESIGN_REQUEST,
@@ -1104,19 +981,6 @@ describe('营销主视觉请求契约', () => {
     ).toEqual([]);
 
     expect(parseGenerateBody({ ...BASE_VISUAL_REQUEST, analysisText: '' })).toBeNull();
-  });
-
-  it('可附带用户要求，缺省为 undefined，非字符串时拒绝', () => {
-    const parsed = parseGenerateBody({
-      ...BASE_VISUAL_REQUEST,
-      userRequirement: '不要文字堆叠',
-    });
-    expect(parsed && parsed.kind === 'visual' ? parsed.userRequirement : '').toBe('不要文字堆叠');
-
-    const without = parseGenerateBody(BASE_VISUAL_REQUEST);
-    expect(without && without.kind === 'visual' ? without.userRequirement : '').toBeUndefined();
-
-    expect(parseGenerateBody({ ...BASE_VISUAL_REQUEST, userRequirement: 1 })).toBeNull();
   });
 
   it('可附带品牌 Logo data URL，缺省为 undefined，且必须是 data URL', () => {

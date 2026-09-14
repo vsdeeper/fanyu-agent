@@ -152,12 +152,12 @@ export function revokeProductDocUrls(items: ProductDocItem[]): void {
   revokeUploadItemUrls(items);
 }
 
-/** 营销主视觉请求体：表单规格 + 商业分析正文 + 产品精修图（非必填）+ 可选品牌 Logo 与用户要求 */
+/** 营销主视觉请求体：表单规格 + 商业分析正文 + 产品精修图（非必填）+ 可选品牌 Logo */
 export async function toVisualGeneratePayload(
   form: StudioFormState,
   analysisText: string,
   productImages: ProductImageItem[],
-  options: { brandLogoDataUrl?: string; userRequirement?: string } = {},
+  options: { brandLogoDataUrl?: string } = {},
 ): Promise<StudioGenerateRequest> {
   return {
     kind: 'visual',
@@ -169,11 +169,10 @@ export async function toVisualGeneratePayload(
     analysisText: analysisText.trim(),
     productViewImages: await toAnalyzeImages(productImages),
     ...(options.brandLogoDataUrl ? { brandLogoDataUrl: options.brandLogoDataUrl } : {}),
-    ...(options.userRequirement?.trim() ? { userRequirement: options.userRequirement.trim() } : {}),
   };
 }
 
-/** 视觉设计请求体：表单 + 分析/产品精修图（非必填） + 可选视觉标准、品牌 Logo、模特形象与用户要求 */
+/** 视觉设计请求体：表单 + 分析/产品精修图（非必填） + 可选视觉标准、品牌 Logo 与模特形象 */
 export async function toDesignGeneratePayload(
   form: DesignFormState,
   analysisText: string,
@@ -183,14 +182,10 @@ export async function toDesignGeneratePayload(
   options: {
     modelImages?: BusinessAnalysisImageInput[];
     brandLogoDataUrl?: string;
-    /** 用户要求录在主视觉步，不在本表单里，故由调用方以上下文传入 */
-    userRequirement?: string;
   } = {},
 ): Promise<StudioGenerateRequest> {
   const modelImages = options.modelImages ?? [];
   const includeModel = modelImages.length > 0;
-  // 留空（含全空白）即不写键
-  const userRequirement = options.userRequirement?.trim();
   return {
     kind: 'design',
     model: form.model,
@@ -203,7 +198,6 @@ export async function toDesignGeneratePayload(
     analysisText: analysisText.trim(),
     productViewImages: await toAnalyzeImages(productImages),
     ...(visualDataUrl ? { visualDataUrl } : {}),
-    ...(userRequirement ? { userRequirement } : {}),
     ...(includeModel ? { modelImages } : {}),
     ...(options.brandLogoDataUrl ? { brandLogoDataUrl: options.brandLogoDataUrl } : {}),
   };
@@ -599,10 +593,6 @@ export function readVisualStepSnapshot(value: unknown): VisualStepSnapshot | und
       Array.isArray(snapshot.brandLogoImages) && snapshot.brandLogoImages.length > 0
         ? snapshot.brandLogoImages
         : undefined,
-    userRequirement:
-      typeof snapshot.userRequirement === 'string' && snapshot.userRequirement.trim()
-        ? snapshot.userRequirement
-        : undefined,
   };
 }
 
@@ -613,11 +603,9 @@ export type VisualStepSnapshotInput = {
   analysisText: string;
   /** 品牌 Logo（至多一张）；空数组不写键 */
   brandLogoImages?: ProductImageItem[];
-  /** 用户要求（主视觉与营销海报共用）；空白串不写键 */
-  userRequirement?: string;
 };
 
-/** 构造营销主视觉步骤快照，海报含精修图、品牌 Logo、用户要求与分析文件。 */
+/** 构造营销主视觉步骤快照，海报含精修图、品牌 Logo 与分析文件。 */
 export async function createVisualStepSnapshot(
   form: StudioFormState,
   visualImages: StudioResultImage[],
@@ -625,7 +613,6 @@ export async function createVisualStepSnapshot(
   input: VisualStepSnapshotInput,
 ): Promise<VisualStepSnapshot> {
   const brandLogoImages = input.brandLogoImages ?? [];
-  const userRequirement = input.userRequirement?.trim();
   return {
     form,
     visualImages,
@@ -641,7 +628,6 @@ export async function createVisualStepSnapshot(
           )) as ProductImageItem[],
         }
       : {}),
-    ...(userRequirement ? { userRequirement } : {}),
   };
 }
 
