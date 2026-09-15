@@ -52,8 +52,8 @@ describe('品牌认知的 Logo 规则', () => {
     );
   });
 
-  it('无品牌信息时可省略，不去编造品牌', () => {
-    expect(DETAIL_IMAGE_THEME_DUTIES.brand).toContain('商业分析确无品牌信息时才可省略品牌名');
+  it('无品牌信息时不编造品牌名', () => {
+    expect(DETAIL_IMAGE_THEME_DUTIES.brand).toContain('商业分析确无品牌信息时不要编造品牌名');
   });
 
   it('允许写 Logo 呈现方式但仍禁止写具体位置', () => {

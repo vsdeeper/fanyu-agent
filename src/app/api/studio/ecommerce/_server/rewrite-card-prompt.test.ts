@@ -53,9 +53,9 @@ describe('buildRewriteCardPrompt（详情图）', () => {
     expect(prompt).toContain('## 产品细节');
     expect(prompt).toContain('请只输出当前屏正文');
     expect(prompt).toContain('设计目标：');
-    expect(prompt).toContain('画面文案：');
+    expect(prompt).not.toContain('画面文案：');
     expect(prompt).toContain('展示重点：');
-    expect(prompt).toContain('- 清新一夏');
+    expect(prompt).not.toContain('- 清新一夏');
     expect(prompt).toContain('- 中景展示整机全貌');
   });
 
@@ -199,10 +199,17 @@ describe('buildRewriteCardInstructions', () => {
 });
 
 describe('sanitizeRewriteCardOutput', () => {
-  it('收成设计目标、画面文案与展示重点列表', () => {
+  it('主图收成设计目标、画面文案与展示重点列表', () => {
     const raw = '```markdown\n设计目标：建立印象\n画面文案：\n- 清新一夏\n展示重点：中景全貌\n```';
-    expect(sanitizeRewriteCardOutput(raw)).toBe(
+    expect(sanitizeRewriteCardOutput(raw, 'mainImage')).toBe(
       ['设计目标：建立印象', '画面文案：', '- 清新一夏', '展示重点：', '- 中景全貌'].join('\n'),
+    );
+  });
+
+  it('详情图丢弃画面文案，只留设计目标与展示重点', () => {
+    const raw = '```markdown\n设计目标：建立印象\n画面文案：\n- 清新一夏\n展示重点：中景全貌\n```';
+    expect(sanitizeRewriteCardOutput(raw, 'detailImage')).toBe(
+      ['设计目标：建立印象', '展示重点：', '- 中景全貌'].join('\n'),
     );
   });
 

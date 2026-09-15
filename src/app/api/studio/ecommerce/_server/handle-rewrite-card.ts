@@ -69,7 +69,7 @@ export async function handleRewriteCard(req: Request): Promise<Response> {
       providerOptions: { openai: openaiOptions },
     });
 
-    const requirement = sanitizeRewriteCardOutput(result.text);
+    const requirement = sanitizeRewriteCardOutput(result.text, body.kind);
     if (!requirement) {
       return jsonFail(ApiErrorCode.INTERNAL_ERROR, REWRITE_FAILED, 500);
     }

@@ -403,7 +403,8 @@ describe('电商生图指令', () => {
     expect(prompt).toContain(
       '产品拍摄角度、取景远近与占画面比例必须按【当前屏主题卡】的展示重点重新决定',
     );
-    expect(prompt).toContain('画面上的字只来自「画面文案」列表');
+    expect(prompt).toContain('从设计目标转化短句');
+    expect(prompt).not.toContain('画面上的字只来自「画面文案」列表');
     expect(prompt).toContain('【视觉气质摘要】\n目标人群偏好冷白');
   });
 

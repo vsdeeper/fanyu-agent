@@ -8,11 +8,21 @@ const MAX_FOCUS_ITEMS = 3;
 
 type ParseSection = 'none' | 'copy' | 'focus';
 
+export type FormatThemePlanRequirementOptions = {
+  /**
+   * 是否保留「画面文案」节。主图默认 true；详情图传 false，旧稿文案节也会被丢弃。
+   */
+  includeCopy?: boolean;
+};
+
 /**
  * 把主题卡正文收成「设计目标」+ 可选「画面文案：」列表 +「展示重点：」列表。
  * 主图与详情图共用同一套标签与归一化；旧稿无「画面文案」节时仍可解析。
  */
-export function formatThemePlanRequirement(raw: string): string {
+export function formatThemePlanRequirement(
+  raw: string,
+  options: FormatThemePlanRequirementOptions = {},
+): string {
   let text = raw.trim();
   const fenced = text.match(FENCE_RE);
   if (fenced?.[1]) text = fenced[1].trim();
@@ -22,7 +32,7 @@ export function formatThemePlanRequirement(raw: string): string {
     .map((line) => line.trim())
     .filter((line) => line && !/^#{1,6}\s+/.test(line));
 
-  return normalizeRequirementLines(lines) || text;
+  return normalizeRequirementLines(lines, options.includeCopy !== false) || text;
 }
 
 /**
@@ -31,7 +41,7 @@ export function formatThemePlanRequirement(raw: string): string {
  * 带标签的节切换解析态：子弹后跟在「画面文案：」后进文案列表，跟在「展示重点：」后进拍法列表；
  * 无标签的散行仍归展示重点，兼容旧稿。
  */
-function normalizeRequirementLines(lines: string[]): string {
+function normalizeRequirementLines(lines: string[], includeCopy: boolean): string {
   let goal = '';
   const copies: string[] = [];
   const focuses: string[] = [];
@@ -48,7 +58,7 @@ function normalizeRequirementLines(lines: string[]): string {
     if (copyMatch) {
       section = 'copy';
       const rest = (copyMatch[1] ?? '').trim();
-      if (rest) copies.push(...splitListItems(rest.replace(BULLET_RE, '$1')));
+      if (includeCopy && rest) copies.push(...splitListItems(rest.replace(BULLET_RE, '$1')));
       continue;
     }
     const focusMatch = line.match(FOCUS_RE);
@@ -62,7 +72,7 @@ function normalizeRequirementLines(lines: string[]): string {
     const item = bulletMatch ? (bulletMatch[1] ?? '').trim() : line;
     if (!item) continue;
     if (section === 'copy') {
-      copies.push(...splitListItems(item));
+      if (includeCopy) copies.push(...splitListItems(item));
       continue;
     }
     // 无标签散行与「展示重点」子弹：一律进拍法，避免把旧稿正文误收成画面文案
@@ -70,7 +80,7 @@ function normalizeRequirementLines(lines: string[]): string {
     section = 'focus';
   }
 
-  const copyItems = uniqueItems(copies).slice(0, MAX_COPY_ITEMS);
+  const copyItems = includeCopy ? uniqueItems(copies).slice(0, MAX_COPY_ITEMS) : [];
   const focusItems = uniqueItems(focuses).slice(0, MAX_FOCUS_ITEMS);
   const parts: string[] = [];
   if (goal) parts.push(`设计目标：${goal}`);

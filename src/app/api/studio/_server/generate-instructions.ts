@@ -257,7 +257,7 @@ export function buildDetailImagePrompt(input: DetailImagePromptInput): string {
         : '本屏配色、光影与品牌氛围以【当前屏主题卡】为准，不必与其它屏统一视觉气质。',
     visual.textlessVisual
       ? THEME_PLAN_TEXTLESS_PROMPT
-      : '本张画面信息、产品机位（角度/远近/占比）与构图切片只来自【当前屏主题卡】的设计目标与展示重点；画面上的字只来自「画面文案」列表。',
+      : '本张画面信息、产品机位（角度/远近/占比）与构图切片只来自【当前屏主题卡】的设计目标与展示重点；若需上字，从设计目标转化短句，禁止照搬展示重点里的拍法说明。',
     ...(visual.injectMood ? ['【视觉气质摘要】', visual.mood] : []),
     ...(productDocsText
       ? [

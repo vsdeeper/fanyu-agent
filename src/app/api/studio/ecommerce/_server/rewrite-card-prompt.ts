@@ -6,7 +6,10 @@ import type {
   RewriteCardKind,
   RewriteCardPeer,
 } from '@/app/api/studio/ecommerce/_shared/rewrite-card';
-import { DETAIL_IMAGE_REQUIREMENT_SAMPLE } from '@/app/api/studio/ecommerce/_shared/detail-image-requirement';
+import {
+  DETAIL_IMAGE_REQUIREMENT_SAMPLE,
+  formatDetailImageRequirement,
+} from '@/app/api/studio/ecommerce/_shared/detail-image-requirement';
 import { MAIN_IMAGE_REQUIREMENT_SAMPLE } from '@/app/api/studio/ecommerce/_shared/main-image-requirement';
 import { formatThemePlanRequirement } from '@/app/api/studio/ecommerce/_shared/theme-plan-requirement';
 import { REWRITE_CARD_POLISH_TEMPERATURE, REWRITE_CARD_RANDOM_TEMPERATURE } from './constants';
@@ -108,8 +111,13 @@ export function buildRewriteCardPrompt(input: {
 }
 
 /**
- * 清洗帮写结果，收成设计目标 + 画面文案 + 展示重点列表（主图与详情图共用格式）。
+ * 清洗帮写结果：主图收成设计目标 + 画面文案 + 展示重点；详情图只保留设计目标与展示重点。
  */
-export function sanitizeRewriteCardOutput(raw: string): string {
-  return formatThemePlanRequirement(raw);
+export function sanitizeRewriteCardOutput(
+  raw: string,
+  kind: RewriteCardKind = 'mainImage',
+): string {
+  return kind === 'detailImage'
+    ? formatDetailImageRequirement(raw)
+    : formatThemePlanRequirement(raw);
 }
