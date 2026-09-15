@@ -95,8 +95,9 @@ function decodeDataUrl(url: string): Buffer {
 
 /**
  * 归一化模型入参里的 file part：text/* 与 .docx 解码为 text part 供模型阅读；
- * image/* 在 acceptsImageInput 时原样保留（多模态主模型直读像素），否则换成短文本占位
- * （盲主模型路径；像素仍可由 generate_image edit 从原始 UIMessage 读取）；
+ * image/* 仅在 acceptsImageInput 且为最新 user 轮时原样保留像素；更早轮次一律换短文本占位
+ * （避免多轮 base64 累积撑爆上游请求体）；盲主模型则所有轮次均占位
+ * （像素仍可由 generate_image edit 从原始 UIMessage 读取）；
  * application/pdf 原样保留；其余不支持类型（.doc 等二进制）从入参剔除。
  *
  * 修复：方舟 Responses 只接受 application/pdf 的内联 file part，text/markdown 等会抛
@@ -137,9 +138,10 @@ export async function sanitizeFilePartsForModel(
 
           const mediaType = part.mediaType;
           if (mediaType.startsWith('image/')) {
-            // acceptsImageInput 的 Provider 若转占位符，像素永远不会到达主模型，
-            // 多模态直读即失效；仅盲主模型链路才降级为文本占位
-            if (acceptsImageInput) {
+            // 修复：原对 acceptsImageInput 全量透传历史图 base64，多轮累积后 DeepSeek 等上游
+            // 内联请求体超限（约 48 MiB）返回 413。仅最新 user 轮保留像素；历史轮占位。
+            // 落盘 UIMessage 不变；generate_image edit 仍从原始消息读最新粘贴图。
+            if (acceptsImageInput && isLatestUser) {
               return part;
             }
             const currentIndex = imageIndex++;
@@ -197,8 +199,14 @@ function imageFilePartToPlaceholder(
   const name = filename?.trim();
   const seq = total > 1 ? `（第 ${index + 1}/${total} 张）` : '';
   const label = name ? `「${name}」` : '';
+  if (!isLatestUser) {
+    return {
+      type: 'text',
+      text: `历史消息含图片附件${seq}${label}（像素未传入本轮请求）；请结合当时对话上下文理解，勿假设仍可看见该图`,
+    };
+  }
   // pastedImageIndexes 仅对最新用户轮的粘贴图生效；跨轮/单张不提示，避免主模型索引到错图或误用
-  const indexHint = isLatestUser && total > 1 ? '；多张时可用 pastedImageIndexes 指定某几张' : '';
+  const indexHint = total > 1 ? '；多张时可用 pastedImageIndexes 指定某几张' : '';
   return {
     type: 'text',
     text: `本轮含图片附件${seq}${label}，主模型当前无法直接看见像素；请结合用户文字意图，或在改图时通过 generate_image 引用附件${indexHint}`,
