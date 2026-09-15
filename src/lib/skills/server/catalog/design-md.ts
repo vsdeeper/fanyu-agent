@@ -3,8 +3,7 @@ import type { Skill } from '../../types';
 
 /**
  * design-md：语义化 DESIGN.md 设计系统文档 skill（主模型知识库）。
- * 内容源自本地 Claude Code skill `stitch-design-taste`，整理为面向后续实现的
- * 单一事实来源；用户不可从菜单或 /id 调用，随移动端/Web 端设计 skill 一并注入。
+ * 面向后续实现的单一事实来源；用户不可从菜单或 /id 调用，随移动端/Web 端设计 skill 一并注入。
  */
 export const designMd: Skill = {
   ...designMdSummary,

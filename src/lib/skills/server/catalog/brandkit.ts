@@ -3,8 +3,7 @@ import type { Skill } from '../../types';
 
 /**
  * brandkit：高端品牌视觉规范板生图 skill；规范板交付后可按需输出商店 App Icon / 反转 App Icon。
- * 内容源自本地 Claude Code skill `C:\Users\como\.agents\skills\brandkit\SKILL.md`，
- * 保留其操作性约束、去掉重复表述后整理为指令正文；名称/描述面向中文菜单。
+ * 名称/描述面向中文菜单。
  */
 export const brandkit: Skill = {
   ...brandkitSummary,

@@ -3,8 +3,7 @@ import type { Skill } from '../../types';
 
 /**
  * mobile-design：高端移动端 App 界面概念图 skill。
- * 内容源自本地 Claude Code skill `imagegen-frontend-mobile`，
- * 保留操作性约束与流程引导、去掉重复表述后整理为指令正文；名称/描述面向中文菜单。
+ * 名称/描述面向中文菜单。
  */
 export const mobileDesign: Skill = {
   ...mobileDesignSummary,
