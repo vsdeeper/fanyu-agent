@@ -17,13 +17,21 @@ export type ToolCallBlockProps = {
 };
 
 /**
- * 工具调用块：折叠时一行「工具名 · 关键入参」，点开看全量入参（如生图 prompt 全文）。
- * 调用中转圈，失败时标题追加「失败」并在正文给出原因；展开态由用户自己控制，不跟随状态自动开合。
+ * 工具调用块：折叠时一行工具名，点开看全量入参（如生图 prompt 全文）。
+ * 调用中转圈并自动展开；完成后收起；失败时展开以便查看原因（与思考块同模式）。
  */
 export default function ToolCallBlock({ part }: ToolCallBlockProps) {
-  const [expanded, setExpanded] = useState(false);
   const status = getToolStatus(part);
   const pending = status === 'pending';
+  // 进行中 / 失败默认展开（失败便于看原因）；完成后收起。用户仍可手动开合。
+  const [expanded, setExpanded] = useState(pending || status === 'failed');
+  const [prevStatus, setPrevStatus] = useState(status);
+
+  if (status !== prevStatus) {
+    setPrevStatus(status);
+    setExpanded(pending || status === 'failed');
+  }
+
   const title = getToolTitle(part);
   const Icon =
     status === 'failed' ? FAILED_ICON : (TOOL_ICONS[getToolName(part)] ?? FALLBACK_TOOL_ICON);
