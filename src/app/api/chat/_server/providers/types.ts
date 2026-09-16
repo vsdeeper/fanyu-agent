@@ -19,7 +19,7 @@ export type ChatProviderInstructionsOptions = {
 export type ChatProviderCapabilities = {
   /** true = 图片 file part 原样透传直达主模型；false = 转占位符（供将来盲主模型 Provider） */
   acceptsImageInput: boolean;
-  /** true = 注册 OpenAI 风格 client.tools.webSearch() SDK 工具；false = Provider 自行处理联网搜索 */
+  /** true = 注册 OpenAI 风格 client.tools.webSearch() SDK 工具；false = 本地 catalog web_search */
   usesSdkWebSearchTool: boolean;
   /** true = providerOptions.openai 发送 store:false（Responses 端点防 item_reference） */
   needsOpenaiStoreFalse: boolean;
@@ -35,7 +35,7 @@ export type ChatProviderRuntime = {
   getMainModel(modelId: string): LanguageModel;
   /** 主对话模型能力声明 */
   getCapabilities(): ChatProviderCapabilities;
-  /** web_search tool 构造参数（Ark 透传 userLocation，DeepSeek 为空） */
+  /** web_search tool 构造参数（仅 ark 原生路径用：透传 userLocation；deepseek/zhipu 返回空） */
   getWebSearchArgs(userLocation: UserLocation | undefined): { userLocation?: UserLocation };
   /** 合并 Provider 专属 instructions（含 DeepSeek reasoning passback 编码） */
   getInstructions(options: ChatProviderInstructionsOptions): string;

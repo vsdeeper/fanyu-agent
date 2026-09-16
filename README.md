@@ -161,7 +161,7 @@ drizzle/               # SQL migrations
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `generate_image` | 文生图（`generate`）与改图（`edit`，支持多参考图）；按所选模型路由 Provider                                                                          |
 | `save_design_md` | 将会话 DESIGN.md 落盘，对话里只展示下载卡片                                                                                                          |
-| `web_search`     | 联网搜索：方舟在 Provider 侧透传（可带高德逆地理近似位置）；智谱经独立 Web Search API 由本地工具调用；DeepSeek 走 Responses API 原生搜索，无需该工具 |
+| `web_search`     | 联网搜索：方舟在 Provider 侧透传（可带高德逆地理近似位置）；DeepSeek / 智谱经智谱独立 Web Search API 由本地工具调用 |
 
 生图模型由 `resolveImageModelId` 按优先级决定：
 

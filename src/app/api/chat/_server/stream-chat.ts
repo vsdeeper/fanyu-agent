@@ -123,8 +123,8 @@ export async function streamChatResponse({
   const activatedIds = new Set(turnActivatedIds);
   const allSkillIds = new Set(listSkills().map((skill) => skill.id));
 
-  // 联网搜索构造权在 Provider：usesSdkWebSearchTool=true（deepseek/ark）注册 SDK 原生
-  // server tool；否则（zhipu）由本地 web_search 工具经独立 API 显式检索
+  // 联网搜索构造权在 Provider：usesSdkWebSearchTool=true（ark）注册 SDK 原生
+  // server tool；否则（deepseek/zhipu）由本地 web_search 工具经智谱独立 API 显式检索
   const catalogTools = createCatalogTools({
     chatId,
     pastedImageDataUrls,

@@ -9,8 +9,8 @@ import type { AgentToolDefinition } from '../types';
 
 /**
  * web_search 工具：调智谱独立 Web Search API 联网检索，结果回喂主模型作答。
- * 仅「主模型无原生联网搜索」的 Provider 链路注册（deepseek/ark 走 SDK 原生
- * server tool，见 stream-chat 的 usesSdkWebSearchTool gating）。
+ * 仅「主模型无原生联网搜索」的 Provider 链路注册（ark 走 SDK 原生 server tool；
+ * deepseek/zhipu 走本工具，见 stream-chat 的 usesSdkWebSearchTool gating）。
  */
 
 export type WebSearchToolResult =
@@ -62,7 +62,7 @@ function createWebSearchTool() {
 
 export const webSearch: AgentToolDefinition = {
   id: 'web_search',
-  // 主模型自带原生联网的 Provider（deepseek/ark）已由 SDK server tool 提供同等能力，本地工具与之互斥
+  // 主模型自带原生联网的 Provider（ark）已由 SDK server tool 提供同等能力，本地工具与之互斥
   requiresNoNativeWebSearch: true,
   create: () => createWebSearchTool(),
   getHint: getWebSearchHint,

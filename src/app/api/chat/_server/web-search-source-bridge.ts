@@ -8,7 +8,7 @@ import type { TextStreamPart, ToolSet } from 'ai';
  * 拦不到）；在 toUIMessageStream 之前把工具 output 合成 source part，
  * 由 sendSources 转 UIMessage source-url part → 前端 Sources 列表渲染并随消息持久化。
  *
- * 仅「无原生联网搜索」的 Provider 链路使用；deepseek/ark 的原生 server tool
+ * 仅「无原生联网搜索」的 Provider 链路使用；ark 的原生 server tool
  * 自带注解产物，再走本桥接会重复来源。
  */
 

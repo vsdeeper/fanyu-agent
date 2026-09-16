@@ -17,7 +17,7 @@ const TOOLS: AgentToolDefinition[] = [generateImage, webSearch, saveDesignMd];
  * | 维度                     | 成立时的业务含义                       |
  * | ------------------------ | -------------------------------------- |
  * | acceptBlindOnly          | 主模型看不见图时，「代客识图」类工具才有价值；当前三家主模型均自带视觉，此类工具默认不注册 |
- * | acceptNoNativeWebSearch  | Provider 没有原生联网搜索（zhipu），本地 web_search 才上场；deepseek/ark 已有 SDK 原生 server tool，同职责的工具与之重叠、必须剔除 |
+ * | acceptNoNativeWebSearch  | Provider 没有原生联网搜索（deepseek/zhipu），本地 web_search 才上场；ark 已有 SDK 原生 server tool，同职责的工具与之重叠、必须剔除 |
  */
 function pickVisibleTools(
   ctx: Pick<AgentToolContext, 'mainModelAcceptsImage' | 'providerHasNativeWebSearch'>,
