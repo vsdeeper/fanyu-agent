@@ -1,0 +1,218 @@
+import 'server-only';
+
+import { stepCountIs, streamText } from 'ai';
+import { getChatProvider, getModelId } from '@/app/api/chat/_server/providers/config';
+import { getChatProviderRuntimeFor } from '@/app/api/chat/_server/providers/resolve';
+import { webSearch } from '@/app/api/chat/_server/tools/catalog/web-search';
+import { INVALID_FORM, INVALID_JSON } from '@/app/api/studio/_server/constants';
+import {
+  createPushStreamResponse,
+  encodeSseEvent,
+  encodeSsePrelude,
+  SSE_STREAM_HEADERS,
+} from '@/app/api/studio/_server/stream-encode';
+import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { WECHAT_ARTICLE_SSE_EVENT } from '../_shared/constants';
+import type { WechatArticleSseTextEvent } from '../_shared/types';
+import { DRAFT_FAILED, MISSING_IDEA, PLAN_FAILED, RESEARCH_FAILED } from './constants';
+import { DRAFT_INSTRUCTIONS, PLAN_INSTRUCTIONS, RESEARCH_INSTRUCTIONS } from './instructions';
+import { parseDraftBody, parsePlanBody, parseResearchBody } from './parse-request';
+import { buildDraftPrompt, buildPlanPrompt, buildResearchPrompt } from './prompt';
+
+type SseSend = (event: string, data: unknown) => Promise<void>;
+
+/** 推送 streamText 文本流到 SSE。 */
+async function pipeTextStream(
+  result: { textStream: AsyncIterable<string>; text: PromiseLike<string> },
+  signal: AbortSignal,
+  send: SseSend,
+  emptyErrorMessage: string,
+): Promise<void> {
+  for await (const delta of result.textStream) {
+    if (signal.aborted) return;
+    if (!delta) continue;
+    const payload: WechatArticleSseTextEvent = { delta };
+    await send(WECHAT_ARTICLE_SSE_EVENT.text, payload);
+  }
+  if (signal.aborted) return;
+  const fullText = ((await result.text) || '').trim();
+  if (!fullText) {
+    await send(WECHAT_ARTICLE_SSE_EVENT.error, { message: emptyErrorMessage });
+    return;
+  }
+  await send(WECHAT_ARTICLE_SSE_EVENT.done, {});
+}
+
+/** 构造主模型 OpenAI providerOptions（沿用 Provider 默认 reasoning，勿用标题档 none）。 */
+function buildOpenaiOptions() {
+  const provider = getChatProvider();
+  const runtime = getChatProviderRuntimeFor(provider);
+  const capabilities = runtime.getCapabilities();
+  return {
+    provider,
+    runtime,
+    openaiOptions: {
+      ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
+      ...runtime.getOpenAIOptions(),
+    },
+  };
+}
+
+/**
+ * POST /api/studio/wechat-article/research：联网调研并流式输出简报、参考来源与角度卡。
+ */
+export async function handleWechatArticleResearch(req: Request): Promise<Response> {
+  let json: unknown;
+  try {
+    json = await req.json();
+  } catch {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
+  }
+
+  const body = parseResearchBody(json);
+  if (!body) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
+  }
+  if (!body.idea.trim()) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_IDEA, 400);
+  }
+
+  return createPushStreamResponse(
+    SSE_STREAM_HEADERS,
+    async (write) => {
+      const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
+      try {
+        const { provider, runtime, openaiOptions } = buildOpenaiOptions();
+        const usesSdkWebSearch = runtime.getCapabilities().usesSdkWebSearchTool;
+        const result = streamText({
+          model: runtime.getMainModel(getModelId(provider, 'pro')),
+          instructions:
+            RESEARCH_INSTRUCTIONS + (usesSdkWebSearch ? '' : `\n\n${webSearch.getHint()}`),
+          prompt: buildResearchPrompt(body),
+          abortSignal: req.signal,
+          providerOptions: { openai: openaiOptions },
+          tools: usesSdkWebSearch
+            ? {
+                web_search: runtime
+                  .getClient()
+                  .tools.webSearch(runtime.getWebSearchArgs(undefined)),
+              }
+            : {
+                web_search: webSearch.create({ chatId: 'wechat-article-research' }),
+              },
+          // 首步强制联网，避免跳过 tool 用训练记忆编造「今日热点」
+          prepareStep: ({ steps }) =>
+            steps.length === 0
+              ? { toolChoice: { type: 'tool' as const, toolName: 'web_search' as const } }
+              : {},
+          stopWhen: stepCountIs(10),
+        });
+        await pipeTextStream(result, req.signal, send, RESEARCH_FAILED);
+        try {
+          const steps = await result.steps;
+          const toolNames = steps.flatMap((step) => step.toolCalls.map((call) => call.toolName));
+          console.info('[wechat-article/research] toolCalls', toolNames);
+        } catch (err) {
+          console.warn('[wechat-article/research] steps log failed', err);
+        }
+      } catch (err) {
+        if (req.signal.aborted) return;
+        console.error('[wechat-article/research]', err);
+        try {
+          await send(WECHAT_ARTICLE_SSE_EVENT.error, { message: RESEARCH_FAILED });
+        } catch {
+          /* 流已关闭 */
+        }
+      }
+    },
+    encodeSsePrelude(),
+  );
+}
+
+/**
+ * POST /api/studio/wechat-article/plan：根据角度与参考来源生成轻量内容思路。
+ */
+export async function handleWechatArticlePlan(req: Request): Promise<Response> {
+  let json: unknown;
+  try {
+    json = await req.json();
+  } catch {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
+  }
+
+  const body = parsePlanBody(json);
+  if (!body) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
+  }
+
+  return createPushStreamResponse(
+    SSE_STREAM_HEADERS,
+    async (write) => {
+      const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
+      try {
+        const { provider, runtime, openaiOptions } = buildOpenaiOptions();
+        const result = streamText({
+          model: runtime.getMainModel(getModelId(provider, 'pro')),
+          instructions: PLAN_INSTRUCTIONS,
+          prompt: buildPlanPrompt(body),
+          abortSignal: req.signal,
+          providerOptions: { openai: openaiOptions },
+        });
+        await pipeTextStream(result, req.signal, send, PLAN_FAILED);
+      } catch (err) {
+        if (req.signal.aborted) return;
+        console.error('[wechat-article/plan]', err);
+        try {
+          await send(WECHAT_ARTICLE_SSE_EVENT.error, { message: PLAN_FAILED });
+        } catch {
+          /* 流已关闭 */
+        }
+      }
+    },
+    encodeSsePrelude(),
+  );
+}
+
+/**
+ * POST /api/studio/wechat-article/draft：按思路与可选风格样本流式成稿。
+ */
+export async function handleWechatArticleDraft(req: Request): Promise<Response> {
+  let json: unknown;
+  try {
+    json = await req.json();
+  } catch {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
+  }
+
+  const body = parseDraftBody(json);
+  if (!body) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
+  }
+
+  return createPushStreamResponse(
+    SSE_STREAM_HEADERS,
+    async (write) => {
+      const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
+      try {
+        const { provider, runtime, openaiOptions } = buildOpenaiOptions();
+        const result = streamText({
+          model: runtime.getMainModel(getModelId(provider, 'pro')),
+          instructions: DRAFT_INSTRUCTIONS,
+          prompt: buildDraftPrompt(body),
+          abortSignal: req.signal,
+          providerOptions: { openai: openaiOptions },
+        });
+        await pipeTextStream(result, req.signal, send, DRAFT_FAILED);
+      } catch (err) {
+        if (req.signal.aborted) return;
+        console.error('[wechat-article/draft]', err);
+        try {
+          await send(WECHAT_ARTICLE_SSE_EVENT.error, { message: DRAFT_FAILED });
+        } catch {
+          /* 流已关闭 */
+        }
+      }
+    },
+    encodeSsePrelude(),
+  );
+}

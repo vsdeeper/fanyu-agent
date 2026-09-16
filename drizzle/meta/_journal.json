@@ -50,6 +50,13 @@
       "when": 1789036857612,
       "tag": "0006_flawless_quicksilver",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789545600000,
+      "tag": "0007_wechat_article_tasks",
+      "breakpoints": true
     }
   ]
 }

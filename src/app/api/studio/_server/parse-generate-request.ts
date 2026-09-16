@@ -134,6 +134,12 @@ const designGenerateSchema = specFieldsSchema.extend({
   modelImages: z.array(imageInputSchema).max(MAX_STUDIO_MODEL_IMAGES).optional(),
 });
 
+const wechatInlineGenerateSchema = specFieldsSchema.extend({
+  kind: z.literal('wechatInline'),
+  count: z.literal(1),
+  prompt: z.string().trim().min(1),
+});
+
 const generateBodySchema = z
   .discriminatedUnion('kind', [
     productRefineGenerateSchema,
@@ -144,6 +150,7 @@ const generateBodySchema = z
     designGenerateSchema,
     mainImageGenerateSchema,
     detailImageGenerateSchema,
+    wechatInlineGenerateSchema,
   ])
   .superRefine((value, context) => {
     if (value.kind !== 'design') return;

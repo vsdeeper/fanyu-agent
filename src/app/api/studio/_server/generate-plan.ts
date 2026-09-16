@@ -10,6 +10,7 @@ import {
   buildProductRefinePrompt,
   buildProductViewPrompt,
   buildVisualPrompt,
+  buildWechatInlinePrompt,
 } from './generate-instructions';
 
 /** 单张出图任务：已算好的 prompt 与参考图。 */
@@ -112,6 +113,9 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
       ...body.images.map((image) => image.dataUrl),
       ...(body.modelImages?.map((image) => image.dataUrl) ?? []),
     ];
+  } else if (body.kind === 'wechatInline') {
+    prompt = buildWechatInlinePrompt(body.prompt);
+    referenceImageDataUrls = [];
   } else if (body.kind === 'visual') {
     // 参考图数组顺序固定为「产品精修图 → 品牌 Logo」，两者都可缺省，prompt 按真实张数点名序号
     prompt = buildVisualPrompt({

@@ -11,3 +11,5 @@ export const BUSINESS_ANALYSIS_PATH = '/studio/business-analysis';
 export const PRODUCT_MODEL_PATH = '/studio/product-model';
 
 export const ECOMMERCE_PATH = '/studio/ecommerce';
+
+export const WECHAT_ARTICLE_PATH = '/studio/wechat-article';

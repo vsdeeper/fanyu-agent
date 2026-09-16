@@ -1,5 +1,6 @@
 import {
   BgColorsOutlined,
+  EditOutlined,
   FileSearchOutlined,
   ShoppingOutlined,
   UserOutlined,
@@ -9,6 +10,7 @@ import {
   ECOMMERCE_PATH,
   PRODUCT_MODEL_PATH,
   PRODUCT_RETOUCH_PATH,
+  WECHAT_ARTICLE_PATH,
 } from '@/components/AppLayout/constants';
 import type { StudioEntry } from './types';
 
@@ -42,5 +44,12 @@ export const STUDIO_ENTRIES: StudioEntry[] = [
     description: '主图、详情图、营销海报一站式设计',
     path: ECOMMERCE_PATH,
     icon: ShoppingOutlined,
+  },
+  {
+    key: 'wechat-article',
+    title: '公众号',
+    description: '想法驱动：选题调研、内容思路与成稿',
+    path: WECHAT_ARTICLE_PATH,
+    icon: EditOutlined,
   },
 ];

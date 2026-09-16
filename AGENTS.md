@@ -83,7 +83,7 @@ src/
     studio/                # 工作室产品面（前端）
       _utils/ / _hooks/ / _components/  # 工作室共用：流式生图、任务列表壳、规格表单等
       ecommerce/            # 电商设计：主图 / 详情图（主题规划）与营销海报；不跑商业分析
-      business-analysis/ / product-model/ / product-retouch/
+      business-analysis/ / product-model/ / product-retouch/ / wechat-article/
     api/
       chat/                # POST /api/chat
         route.ts           # HTTP 薄壳
@@ -99,6 +99,7 @@ src/
         ecommerce/            # 主图 / 详情图（主题规划）与营销海报；另有 analyze / rewrite-card，不跑商业分析
         business-analysis/    # 商业分析工作室；另有 analyze
         product-model/ / product-retouch/  # 产品差异 tasks
+        wechat-article/       # 公众号：research / plan / draft SSE；配图槽手动触发生图
       geo/regeo/route.ts + _server/ + _shared/types.ts
       images/[assetId]/route.ts + _server/   # assets / router / providers / registry
       docs/[chatId]/[assetId]/route.ts + _server/ + _shared/
@@ -155,18 +156,18 @@ lib/db、shared、theme、skills  →  禁止依赖 app/ 与任何产品实现
 src/hooks           →  禁止依赖 app/ 与任何产品实现
 ```
 
-工作室共用放 `api/studio/_server` + `_shared`；产品差异放 `api/studio/{ecommerce,business-analysis,product-model,product-retouch}/_server` 与 `_shared`。禁止把共用层与子域实现混进同一个 barrel `index.ts`。
+工作室共用放 `api/studio/_server` + `_shared`；产品差异放 `api/studio/{ecommerce,business-analysis,product-model,product-retouch,wechat-article}/_server` 与 `_shared`。禁止把共用层与子域实现混进同一个 barrel `index.ts`。
 
 允许的跨域服务端调用（应用层编排）：`api/chat/_server/stream-chat` → images / docs / geo；`api/studio/_server` 生图可调用 `api/images/_server`。
 
-| API Route                               | 实现目录                  | 说明                                                                                                                                                                                                                  |
-| --------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app/api/chat/`                         | `app/api/chat/_server/`   | 流式对话、会话提交、tools                                                                                                                                                                                             |
-| `app/api/chats/`、`app/api/chats/[id]/` | `app/api/chats/_server/`  | 会话列表 / 新建 / 读取 / 删除                                                                                                                                                                                         |
-| `app/api/studio/`                       | `app/api/studio/_server/` | 工作室共用生图与任务引擎；子路由 `generate`、`{ecommerce,business-analysis,product-model,product-retouch}/tasks`；商业分析工作室另有 `analyze`，电商另有 `analyze` / `rewrite-card`（主题规划），**电商不跑商业分析** |
-| `app/api/geo/`                          | `app/api/geo/_server/`    | 逆地理、UserLocation                                                                                                                                                                                                  |
-| `app/api/images/`                       | `app/api/images/_server/` | 生图资源、Provider                                                                                                                                                                                                    |
-| `app/api/docs/`                         | `app/api/docs/_server/`   | DESIGN.md 等会话文档下载                                                                                                                                                                                              |
+| API Route                               | 实现目录                  | 说明                                                                                                                                                                                                                                                                           |
+| --------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `app/api/chat/`                         | `app/api/chat/_server/`   | 流式对话、会话提交、tools                                                                                                                                                                                                                                                      |
+| `app/api/chats/`、`app/api/chats/[id]/` | `app/api/chats/_server/`  | 会话列表 / 新建 / 读取 / 删除                                                                                                                                                                                                                                                  |
+| `app/api/studio/`                       | `app/api/studio/_server/` | 工作室共用生图与任务引擎；子路由 `generate`、`{ecommerce,business-analysis,product-model,product-retouch,wechat-article}/tasks`；商业分析工作室另有 `analyze`，电商另有 `analyze` / `rewrite-card`（主题规划），公众号另有 `research` / `plan` / `draft`，**电商不跑商业分析** |
+| `app/api/geo/`                          | `app/api/geo/_server/`    | 逆地理、UserLocation                                                                                                                                                                                                                                                           |
+| `app/api/images/`                       | `app/api/images/_server/` | 生图资源、Provider                                                                                                                                                                                                                                                             |
+| `app/api/docs/`                         | `app/api/docs/_server/`   | DESIGN.md 等会话文档下载                                                                                                                                                                                                                                                       |
 
 **Route Handler（`route.ts`）职责上限：**
 
@@ -265,7 +266,7 @@ Button/
 ## 会话持久化约定
 
 - 存储目录由环境变量 **`CHAT_STORE_DIR`** 指定（默认项目内 `./data/chats`，git 忽略）：`images/`、`docs/` 在该目录下；**`chats.db` 落在其上一级**（默认 `./data/chats.db`，Drizzle + better-sqlite3，`journal_mode=WAL`，运行中可能另有 `chats.db-wal` / `chats.db-shm`）。启动时若仅发现旧路径 `CHAT_STORE_DIR/chats.db` 会改名迁到上一级
-- 工作室任务资产落盘于 `dirname(CHAT_STORE_DIR)/studio/{product}/{taskId}/`（默认 `./data/studio/{product}/`，`product` 为 `ecommerce` / `business-analysis` / `product-model` / `product-retouch`）；与会话资产目录、`chats.db` 平级
+- 工作室任务资产落盘于 `dirname(CHAT_STORE_DIR)/studio/{product}/{taskId}/`（默认 `./data/studio/{product}/`，`product` 为 `ecommerce` / `business-analysis` / `product-model` / `product-retouch` / `wechat-article`）；与会话资产目录、`chats.db` 平级
 - 云盘备份路径 **`CHAT_SYNC_REMOTE_DIR`**（须在 `.env.local` 配置，无代码内默认绝对路径）仅作手动同步对端，应指向 `.../chats` 以便对端出现同级 `.../studio` 与上一级 `.../chats.db`；非运行时目录。`pnpm sync:data:push` 本地→云盘，`pnpm sync:data:pull` 云盘→本地（镜像 chats、同级 studio 与上一级 chats.db，pull 会覆盖本地）
 - 表：`chats` + `messages`（`messages.data` 存完整 **`UIMessage` JSON**，含 reasoning / source-url）；刷新可还原 Think 与引用
 - 同步前建议先关闭应用，便于 WAL checkpoint 回主库

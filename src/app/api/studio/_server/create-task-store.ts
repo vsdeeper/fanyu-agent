@@ -11,6 +11,8 @@ import {
   productModelTasks,
   productRetouchTaskSteps,
   productRetouchTasks,
+  wechatArticleTaskSteps,
+  wechatArticleTasks,
 } from '@/lib/db/schema';
 import { getDb } from '@/lib/db/client';
 import { rewriteLegacyStudioAssetUrls } from './rewrite-legacy-asset-urls';
@@ -25,13 +27,15 @@ export type StudioTasksTable =
   | typeof ecommerceTasks
   | typeof productModelTasks
   | typeof productRetouchTasks
-  | typeof businessAnalysisTasks;
+  | typeof businessAnalysisTasks
+  | typeof wechatArticleTasks;
 
 export type StudioStepsTable =
   | typeof ecommerceTaskSteps
   | typeof productModelTaskSteps
   | typeof productRetouchTaskSteps
-  | typeof businessAnalysisTaskSteps;
+  | typeof businessAnalysisTaskSteps
+  | typeof wechatArticleTaskSteps;
 
 type TaskRow = {
   id: string;

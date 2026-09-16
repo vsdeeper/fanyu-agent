@@ -1,0 +1,187 @@
+.panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--one-color-bg-container);
+  border: 1px solid var(--one-color-border-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  height: 50px;
+  border-bottom: 1px solid var(--one-color-border-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--one-color-text);
+}
+
+.star {
+  color: var(--one-color-primary);
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--one-color-text-tertiary);
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  text-align: center;
+}
+
+.packingHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--one-color-text-tertiary);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+  /* 关闭浏览器滚动锚定，避免与流式贴底跟随互相抢 scrollTop */
+  overflow-anchor: none;
+}
+
+.scrollContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--one-color-text-secondary);
+}
+
+.sourceList,
+.angleList,
+.beatList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sourceList {
+  gap: 10px;
+}
+
+.angleSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.sourceItem {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--one-color-text);
+}
+
+.sourceKind {
+  margin-inline-end: 6px !important;
+}
+
+.sourceDate {
+  margin-inline-start: 8px;
+  font-size: 12px;
+  color: var(--one-color-text-tertiary);
+}
+
+.sourceBlurb {
+  color: var(--one-color-text-secondary);
+}
+
+.angleCard {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  padding: 12px;
+  border: 1px solid var(--one-color-border-secondary);
+  border-radius: 8px;
+  background: var(--one-color-bg-layout);
+  color: inherit;
+  font: inherit;
+}
+
+.angleCardSelected {
+  border-color: var(--one-color-primary);
+  box-shadow: 0 0 0 1px var(--one-color-primary);
+}
+
+.angleClaim {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.angleMeta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--one-color-text-secondary);
+}
+
+.markdown {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--one-color-border-secondary);
+}
+
+.slotList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.slotCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--one-color-border-secondary);
+  border-radius: 8px;
+}
+
+.slotActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.slotPreview {
+  max-width: 100%;
+  border-radius: 6px;
+}

@@ -9,6 +9,7 @@ import {
   ecommerceTaskAssets,
   productModelTaskAssets,
   productRetouchTaskAssets,
+  wechatArticleTaskAssets,
 } from '@/lib/db/schema';
 import { getChatDir, getDb } from '@/lib/db/client';
 import { rewriteLegacyStudioAssetUrls } from './rewrite-legacy-asset-urls';
@@ -17,7 +18,8 @@ export type StudioAssetsTable =
   | typeof ecommerceTaskAssets
   | typeof productModelTaskAssets
   | typeof productRetouchTaskAssets
-  | typeof businessAnalysisTaskAssets;
+  | typeof businessAnalysisTaskAssets
+  | typeof wechatArticleTaskAssets;
 
 export type StudioTaskAssetRecord = {
   id: string;

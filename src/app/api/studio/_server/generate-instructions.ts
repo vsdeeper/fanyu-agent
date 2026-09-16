@@ -448,3 +448,13 @@ export function buildProductModelPrompt(
     viewRequirement.trim(),
   ].join('\n');
 }
+
+/** 公众号配图：用户槽位 prompt 直出文生图。 */
+export function buildWechatInlinePrompt(prompt: string): string {
+  return [
+    '生成恰好一张适合微信公众号的配图，不要输出说明文字。',
+    '画面干净、信息层级清晰，避免杂乱文字墙；若提示词要求画面内文字，保持可读。',
+    '【配图要求】',
+    prompt.trim(),
+  ].join('\n');
+}

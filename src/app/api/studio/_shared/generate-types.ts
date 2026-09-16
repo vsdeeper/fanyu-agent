@@ -12,7 +12,8 @@ export type StudioGenerateKind =
   | 'visual'
   | 'design'
   | 'mainImage'
-  | 'detailImage';
+  | 'detailImage'
+  | 'wechatInline';
 
 type StudioGenerateBase = {
   model: string;
@@ -150,6 +151,13 @@ export type StudioDetailImageGenerateRequest = StudioGenerateBase & {
   brandLogoDataUrl?: string;
 };
 
+/** 公众号配图：纯文生图，由用户主动点击槽位触发。 */
+export type StudioWechatInlineGenerateRequest = StudioGenerateBase & {
+  kind: 'wechatInline';
+  count: 1;
+  prompt: string;
+};
+
 export type StudioGenerateRequest =
   | StudioProductRefineGenerateRequest
   | StudioProductMultiviewGenerateRequest
@@ -158,7 +166,8 @@ export type StudioGenerateRequest =
   | StudioVisualGenerateRequest
   | StudioDesignGenerateRequest
   | StudioMainImageGenerateRequest
-  | StudioDetailImageGenerateRequest;
+  | StudioDetailImageGenerateRequest
+  | StudioWechatInlineGenerateRequest;
 
 /** 单张出图结果事件：以占位槽 id 寻址，客户端无需知道批次内位置。 */
 export type StudioGenerateImageEvent = {
