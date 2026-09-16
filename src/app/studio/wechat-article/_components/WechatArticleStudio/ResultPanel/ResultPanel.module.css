@@ -97,9 +97,18 @@
 }
 
 .sourceItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   font-size: 13px;
   line-height: 1.65;
   color: var(--one-color-text);
+}
+
+.sourceBody {
+  flex: 1;
+  min-width: 0;
 }
 
 .sourceKind {
@@ -114,6 +123,21 @@
 
 .sourceBlurb {
   color: var(--one-color-text-secondary);
+}
+
+.sourceIndex {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--one-color-fill-secondary);
+  color: var(--one-color-text-secondary);
+  font-size: 12px;
+  line-height: 1;
 }
 
 .angleCard {

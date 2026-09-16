@@ -14,7 +14,14 @@ import {
 import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 import { WECHAT_ARTICLE_SSE_EVENT } from '../_shared/constants';
 import type { WechatArticleSseTextEvent } from '../_shared/types';
-import { DRAFT_FAILED, MISSING_IDEA, PLAN_FAILED, RESEARCH_FAILED } from './constants';
+import {
+  DRAFT_FAILED,
+  MISSING_IDEA,
+  PLAN_FAILED,
+  RESEARCH_FAILED,
+  RESEARCH_MAX_SEARCH_ROUNDS,
+  RESEARCH_MAX_STEPS,
+} from './constants';
 import { DRAFT_INSTRUCTIONS, PLAN_INSTRUCTIONS, RESEARCH_INSTRUCTIONS } from './instructions';
 import { parseDraftBody, parsePlanBody, parseResearchBody } from './parse-request';
 import { buildDraftPrompt, buildPlanPrompt, buildResearchPrompt } from './prompt';
@@ -37,6 +44,7 @@ async function pipeTextStream(
   if (signal.aborted) return;
   const fullText = ((await result.text) || '').trim();
   if (!fullText) {
+    console.warn('[wechat-article] empty text after stream', emptyErrorMessage);
     await send(WECHAT_ARTICLE_SSE_EVENT.error, { message: emptyErrorMessage });
     return;
   }
@@ -87,7 +95,10 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
         const result = streamText({
           model: runtime.getMainModel(getModelId(provider, 'pro')),
           instructions:
-            RESEARCH_INSTRUCTIONS + (usesSdkWebSearch ? '' : `\n\n${webSearch.getHint()}`),
+            RESEARCH_INSTRUCTIONS +
+            (usesSdkWebSearch
+              ? ''
+              : `\n\n${webSearch.getHint()}\n选题调研额外约束：web_search 最多 3 轮，随后必须输出简报与 JSON，禁止继续检索。`),
           prompt: buildResearchPrompt(body),
           abortSignal: req.signal,
           providerOptions: { openai: openaiOptions },
@@ -100,12 +111,18 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
             : {
                 web_search: webSearch.create({ chatId: 'wechat-article-research' }),
               },
-          // 首步强制联网，避免跳过 tool 用训练记忆编造「今日热点」
-          prepareStep: ({ steps }) =>
-            steps.length === 0
-              ? { toolChoice: { type: 'tool' as const, toolName: 'web_search' as const } }
-              : {},
-          stopWhen: stepCountIs(10),
+          // 首步强制联网；搜满轮次后关掉工具，避免只搜不写导致空正文失败
+          prepareStep: ({ steps }) => {
+            if (steps.length === 0) {
+              return { toolChoice: { type: 'tool' as const, toolName: 'web_search' as const } };
+            }
+            const searchRounds = steps.filter((step) => step.toolCalls.length > 0).length;
+            if (searchRounds >= RESEARCH_MAX_SEARCH_ROUNDS) {
+              return { toolChoice: 'none' as const };
+            }
+            return {};
+          },
+          stopWhen: stepCountIs(RESEARCH_MAX_STEPS),
         });
         await pipeTextStream(result, req.signal, send, RESEARCH_FAILED);
         try {

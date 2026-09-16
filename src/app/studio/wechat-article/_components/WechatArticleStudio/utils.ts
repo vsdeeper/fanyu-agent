@@ -38,6 +38,23 @@ export function stripTrailingJsonFenceForDisplay(text: string): string {
   return text;
 }
 
+/** 模型常把工具预告写成正文首句（中英皆有） */
+const SEARCH_PREAMBLE_SENTENCE =
+  /^(?:I(?:['’]ll|\s+will|\s+am\s+going\s+to)\s+search\b|Let\s+me\s+(?:search|look\s+up)\b|Searching\s+for\b|我先(?:联网)?(?:检索|搜索|搜)|让我(?:先)?(?:联网)?(?:检索|搜索|搜)|接下来(?:我)?(?:会|将)(?:联网)?(?:检索|搜索))[^\n。.!！]*[。.!?！]?\s*/i;
+
+/**
+ * 去掉「检索简报」标题，以及调用搜索前的口头预告，避免糊在简报开头。
+ */
+export function cleanResearchBrief(text: string): string {
+  let remaining = stripTrailingJsonFenceForDisplay(text).replace(/#{1,6}\s*检索简报\s*/g, '\n');
+  for (let i = 0; i < 4; i += 1) {
+    const next = remaining.replace(SEARCH_PREAMBLE_SENTENCE, '').trimStart();
+    if (next === remaining) break;
+    remaining = next;
+  }
+  return remaining.trim();
+}
+
 /** 从模型回复中拆出末尾 JSON 代码块。 */
 export function extractTrailingJsonBlock(text: string): {
   prose: string;

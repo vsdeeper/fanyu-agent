@@ -47,6 +47,7 @@ export const RESEARCH_PACKING_HINT = '正在整理参考来源与角度卡…';
 export const EMPTY_PLAN_HINT = '确认角度后点击「生成思路」，产出轻量写作要点';
 export const EMPTY_DRAFT_HINT = '确认思路后点击「生成正文」；配图槽需手动触发生成';
 
+export const RESEARCH_BRIEF_TITLE = '检索简报';
 export const RESEARCH_SOURCES_TITLE = '参考来源';
 export const RESEARCH_ANGLES_TITLE = '角度卡（点选一张）';
 

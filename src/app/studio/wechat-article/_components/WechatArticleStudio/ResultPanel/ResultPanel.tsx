@@ -15,12 +15,13 @@ import {
   NEXT_BUTTON,
   PREV_BUTTON,
   RESEARCH_ANGLES_TITLE,
+  RESEARCH_BRIEF_TITLE,
   RESEARCH_PACKING_HINT,
   RESEARCH_SOURCES_TITLE,
   SOURCE_KIND_LABEL,
 } from '../constants';
 import type { AngleCard, ImageSlot, PlanStepSnapshot, ResearchSource, StudioPhase } from '../types';
-import { stripTrailingJsonFenceForDisplay } from '../utils';
+import { cleanResearchBrief } from '../utils';
 import { useStreamScroll } from './hooks/useStreamScroll';
 import styles from './ResultPanel.module.css';
 
@@ -102,7 +103,7 @@ export default function ResultPanel({
     (phase === 'drafted' && Boolean(markdown.trim()));
 
   const title = researchView ? '选题调研' : planView ? '内容思路' : '成稿写作';
-  const researchBrief = stripTrailingJsonFenceForDisplay(researchStream);
+  const researchBrief = cleanResearchBrief(researchStream);
   const researchDone = phase === 'researched';
   const researchPacking =
     phase === 'researching' &&
@@ -149,36 +150,44 @@ export default function ResultPanel({
             ) : (
               <>
                 {researchBrief ? (
-                  hydrated ? (
-                    <XMarkdown
-                      className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
-                      content={researchBrief}
-                      paragraphTag="div"
-                      openLinksInNewTab
-                      escapeRawHtml
-                    />
-                  ) : null
+                  <>
+                    <p className={styles.sectionTitle}>{RESEARCH_BRIEF_TITLE}</p>
+                    {hydrated ? (
+                      <XMarkdown
+                        className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
+                        content={researchBrief}
+                        paragraphTag="div"
+                        openLinksInNewTab
+                        escapeRawHtml
+                      />
+                    ) : null}
+                  </>
                 ) : null}
                 {researchPacking ? (
-                  <p className={styles.packingHint}>
+                  <div className={styles.packingHint}>
                     <Spin size="small" />
                     <span>{RESEARCH_PACKING_HINT}</span>
-                  </p>
+                  </div>
                 ) : null}
                 {sources.length > 0 ? (
                   <>
                     <p className={styles.sectionTitle}>{RESEARCH_SOURCES_TITLE}</p>
                     <ul className={styles.sourceList}>
-                      {sources.map((item) => (
+                      {sources.map((item, index) => (
                         <li key={`${item.url}-${item.title}`} className={styles.sourceItem}>
-                          <Tag className={styles.sourceKind}>{SOURCE_KIND_LABEL[item.kind]}</Tag>
-                          <Typography.Link href={item.url} target="_blank" rel="noreferrer">
-                            {item.title}
-                          </Typography.Link>
-                          {item.publishedAt ? (
-                            <span className={styles.sourceDate}>{item.publishedAt}</span>
-                          ) : null}
-                          <span className={styles.sourceBlurb}> — {item.blurb}</span>
+                          <div className={styles.sourceBody}>
+                            <Tag className={styles.sourceKind}>{SOURCE_KIND_LABEL[item.kind]}</Tag>
+                            <Typography.Link href={item.url} target="_blank" rel="noreferrer">
+                              {item.title}
+                            </Typography.Link>
+                            {item.publishedAt ? (
+                              <span className={styles.sourceDate}>{item.publishedAt}</span>
+                            ) : null}
+                            <span className={styles.sourceBlurb}> — {item.blurb}</span>
+                          </div>
+                          <span className={styles.sourceIndex} aria-hidden>
+                            {index + 1}
+                          </span>
                         </li>
                       ))}
                     </ul>

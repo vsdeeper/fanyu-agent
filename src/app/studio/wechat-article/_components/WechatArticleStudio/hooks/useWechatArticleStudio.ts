@@ -31,6 +31,7 @@ import {
   copyText,
   createRafTextBuffer,
   defaultImageSpec,
+  cleanResearchBrief,
   extractTrailingJsonBlock,
   isAbortError,
   isSameDraftSnapshot,
@@ -145,7 +146,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       angles,
       ...(audience.trim() ? { audience: audience.trim() } : {}),
       ...(stance.trim() ? { stance: stance.trim() } : {}),
-      ...(researchStream.trim() ? { streamText: researchStream.trim() } : {}),
+      ...(researchStream.trim() ? { streamText: cleanResearchBrief(researchStream) } : {}),
       ...(selectedAngleId ? { selectedAngleId } : {}),
     };
     if (isSameResearchSnapshot(next, lastResearchRef.current)) return next;
@@ -270,12 +271,13 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       async (fullText) => {
         const { prose, json } = extractTrailingJsonBlock(fullText);
         const parsed = parseResearchPayload(json);
+        const brief = cleanResearchBrief(prose || fullText);
         const prevSelected = selectedAngleIdRef.current;
         const selected =
           prevSelected && parsed.angles.some((item) => item.id === prevSelected)
             ? prevSelected
             : parsed.angles[0]?.id;
-        setResearchStream(prose || fullText);
+        setResearchStream(brief);
         setSources(parsed.sources);
         setAngles(parsed.angles);
         setSelectedAngleId(selected);
@@ -285,7 +287,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
             idea: idea.trim(),
             sources: parsed.sources,
             angles: parsed.angles,
-            streamText: prose || fullText,
+            streamText: brief,
             ...(audience.trim() ? { audience: audience.trim() } : {}),
             ...(stance.trim() ? { stance: stance.trim() } : {}),
             ...(selected ? { selectedAngleId: selected } : {}),

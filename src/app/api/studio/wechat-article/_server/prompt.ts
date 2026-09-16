@@ -20,7 +20,7 @@ export function buildResearchPrompt(body: WechatArticleResearchRequest): string 
     '【今天日期】',
     todayIso,
     '',
-    '请先调用 web_search 联网检索（不限国内外；权威可核对并兼顾时效），再输出：检索简报 + 带真实链接与日期的参考来源 + 角度卡。涉及「今天/新鲜事」时必须以检索结果为准，禁止用记忆编造。简报只写结论与可用线索，不要写检索过程或关键词复盘。',
+    '请先调用 web_search 联网检索（不限国内外；权威可核对并兼顾时效），再输出：简报正文 + 带真实链接与日期的参考来源 + 角度卡。涉及「今天/新鲜事」时必须以检索结果为准，禁止用记忆编造。简报第一句就是结论；不要写 I will search / 我先搜 等预告，不要写「检索简报」标题，不要写检索过程。',
   ];
   return lines.join('\n');
 }
