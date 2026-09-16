@@ -46,7 +46,7 @@ export function buildPlanPrompt(body: WechatArticlePlanRequest): string {
     ...(body.bannedWords?.trim() ? ['【禁词】', body.bannedWords.trim()] : []),
     ...(body.mustUseDetails?.trim() ? ['【必用细节】', body.mustUseDetails.trim()] : []),
     '',
-    '请输出轻量内容思路（不是大纲树）。',
+    '请输出轻量内容思路：JSON 外最多两句导语，随即附完整 JSON（含 angleSummary 与 beats）；不要写长文或分节大纲。',
   ].join('\n');
 }
 

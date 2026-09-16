@@ -16,11 +16,14 @@ import { WECHAT_ARTICLE_SSE_EVENT } from '../_shared/constants';
 import type { WechatArticleSseTextEvent } from '../_shared/types';
 import {
   DRAFT_FAILED,
+  DRAFT_TRUNCATED,
   MISSING_IDEA,
   PLAN_FAILED,
+  PLAN_TRUNCATED,
   RESEARCH_FAILED,
   RESEARCH_MAX_SEARCH_ROUNDS,
   RESEARCH_MAX_STEPS,
+  WECHAT_ARTICLE_MAX_OUTPUT_TOKENS,
 } from './constants';
 import { DRAFT_INSTRUCTIONS, PLAN_INSTRUCTIONS, RESEARCH_INSTRUCTIONS } from './instructions';
 import { parseDraftBody, parsePlanBody, parseResearchBody } from './parse-request';
@@ -28,12 +31,19 @@ import { buildDraftPrompt, buildPlanPrompt, buildResearchPrompt } from './prompt
 
 type SseSend = (event: string, data: unknown) => Promise<void>;
 
-/** 推送 streamText 文本流到 SSE。 */
+type TextStreamResult = {
+  textStream: AsyncIterable<string>;
+  text: PromiseLike<string>;
+  finishReason: PromiseLike<string | undefined>;
+};
+
+/** 推送 streamText 文本流到 SSE；length 截断时返回错误事件而非假成功。 */
 async function pipeTextStream(
-  result: { textStream: AsyncIterable<string>; text: PromiseLike<string> },
+  result: TextStreamResult,
   signal: AbortSignal,
   send: SseSend,
   emptyErrorMessage: string,
+  truncatedErrorMessage?: string,
 ): Promise<void> {
   for await (const delta of result.textStream) {
     if (signal.aborted) return;
@@ -42,7 +52,20 @@ async function pipeTextStream(
     await send(WECHAT_ARTICLE_SSE_EVENT.text, payload);
   }
   if (signal.aborted) return;
-  const fullText = ((await result.text) || '').trim();
+  const [fullText, finishReason] = await Promise.all([
+    Promise.resolve(result.text).then((text) => (text || '').trim()),
+    Promise.resolve(result.finishReason).catch(() => undefined),
+  ]);
+  if (finishReason === 'length') {
+    console.warn('[wechat-article] output truncated by length', {
+      chars: fullText.length,
+      message: truncatedErrorMessage ?? emptyErrorMessage,
+    });
+    await send(WECHAT_ARTICLE_SSE_EVENT.error, {
+      message: truncatedErrorMessage ?? emptyErrorMessage,
+    });
+    return;
+  }
   if (!fullText) {
     console.warn('[wechat-article] empty text after stream', emptyErrorMessage);
     await send(WECHAT_ARTICLE_SSE_EVENT.error, { message: emptyErrorMessage });
@@ -173,9 +196,10 @@ export async function handleWechatArticlePlan(req: Request): Promise<Response> {
           instructions: PLAN_INSTRUCTIONS,
           prompt: buildPlanPrompt(body),
           abortSignal: req.signal,
+          maxOutputTokens: WECHAT_ARTICLE_MAX_OUTPUT_TOKENS,
           providerOptions: { openai: openaiOptions },
         });
-        await pipeTextStream(result, req.signal, send, PLAN_FAILED);
+        await pipeTextStream(result, req.signal, send, PLAN_FAILED, PLAN_TRUNCATED);
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[wechat-article/plan]', err);
@@ -217,9 +241,10 @@ export async function handleWechatArticleDraft(req: Request): Promise<Response> 
           instructions: DRAFT_INSTRUCTIONS,
           prompt: buildDraftPrompt(body),
           abortSignal: req.signal,
+          maxOutputTokens: WECHAT_ARTICLE_MAX_OUTPUT_TOKENS,
           providerOptions: { openai: openaiOptions },
         });
-        await pipeTextStream(result, req.signal, send, DRAFT_FAILED);
+        await pipeTextStream(result, req.signal, send, DRAFT_FAILED, DRAFT_TRUNCATED);
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[wechat-article/draft]', err);
