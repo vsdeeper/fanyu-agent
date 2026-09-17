@@ -1,0 +1,34 @@
+.body {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0 12px 30px;
+}
+
+.group + .group {
+  margin-top: 20px;
+}
+
+.groupTitle {
+  margin: 0 0 12px !important;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  cursor: pointer;
+}
+
+.selected {
+  border-color: var(--one-color-primary) !important;
+}
+
+.desc {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--one-color-text-secondary);
+}

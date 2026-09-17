@@ -1,0 +1,43 @@
+/* 与相邻 Input.TextArea 同款描边，让 5 个维度读起来是一个整体控件 */
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px 11px;
+  border: 1px solid var(--one-color-border);
+  border-radius: var(--one-border-radius);
+  background: var(--one-color-bg-container);
+}
+
+.dimension {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.label {
+  font-size: 13px;
+}
+
+.pick {
+  padding-inline: 0;
+  height: auto;
+}
+
+.unselected {
+  font-size: 13px;
+  color: var(--one-color-text-tertiary);
+}
+
+.emptyHint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--one-color-text-tertiary);
+}

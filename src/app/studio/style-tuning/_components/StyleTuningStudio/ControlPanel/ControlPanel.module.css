@@ -34,14 +34,3 @@
 .actionBtn {
   height: 40px !important;
 }
-
-.assistLink {
-  padding-inline: 0;
-  height: auto;
-}
-
-.stylePromptLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}

@@ -53,11 +53,11 @@ export default function StyleTuningStudio({ task }: StyleTuningStudioProps) {
             phase={studio.phase}
             publishScene={studio.publishScene}
             topicContent={studio.topicContent}
-            stylePrompt={studio.stylePrompt}
+            styleSelections={studio.styleSelections}
             contentOutline={studio.contentOutline}
             onPublishSceneChange={studio.setPublishScene}
             onTopicContentChange={studio.setTopicContent}
-            onStylePromptChange={studio.setStylePrompt}
+            onStyleSelectionsChange={studio.setStyleSelections}
             onContentOutlineChange={studio.setContentOutline}
             onSoftTune={studio.handleSoftTune}
             onTrialWrite={studio.handleTrialWrite}

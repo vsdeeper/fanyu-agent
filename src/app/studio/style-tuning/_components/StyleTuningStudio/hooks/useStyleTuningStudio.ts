@@ -5,7 +5,7 @@ import type { StyleTuningTaskDetail } from '@/app/api/studio/style-tuning/_share
 import {
   MISSING_SCENE_WARNING,
   MISSING_SOFT_PARAMS_WARNING,
-  MISSING_STYLE_PROMPT_WARNING,
+  MISSING_STYLE_WARNING,
   MISSING_TOPIC_CONTENT_WARNING,
   SOFT_PARAMS_PARSE_FAILED,
   SOFT_TUNE_FAILED,
@@ -15,6 +15,7 @@ import type {
   SoftParamFieldKey,
   SoftTuneStepSnapshot,
   StudioPhase,
+  StyleDimensionSelections,
   TrialWriteStepSnapshot,
 } from '../types';
 import {
@@ -24,7 +25,9 @@ import {
   createRafTextBuffer,
   extractTrailingJsonBlock,
   formatSoftParamsAsMarkdown,
+  formatStyleSelections,
   hasCompleteSoftParams,
+  hasStyleSelection,
   isAbortError,
   isSameSoftTuneSnapshot,
   isSameTrialWriteSnapshot,
@@ -48,7 +51,9 @@ export function useStyleTuningStudio(task: StyleTuningTaskDetail) {
     initialSoft?.publishScene,
   );
   const [topicContent, setTopicContent] = useState(initialSoft?.topicContent ?? '');
-  const [stylePrompt, setStylePrompt] = useState(initialSoft?.stylePrompt ?? '');
+  const [styleSelections, setStyleSelections] = useState<StyleDimensionSelections>(
+    initialSoft?.styleSelections ?? {},
+  );
   const [softTuneStream, setSoftTuneStream] = useState(initialSoft?.streamText ?? '');
   const [softParams, setSoftParams] = useState(initialSoft?.softParams ?? createEmptySoftParams());
 
@@ -85,7 +90,7 @@ export function useStyleTuningStudio(task: StyleTuningTaskDetail) {
     const next: SoftTuneStepSnapshot = {
       publishScene,
       topicContent: topicContent.trim(),
-      stylePrompt: stylePrompt.trim(),
+      ...(hasStyleSelection(styleSelections) ? { styleSelections } : {}),
       ...(hasCompleteSoftParams(softParams) ? { softParams } : {}),
       ...(softTuneStream.trim()
         ? { streamText: stripTrailingJsonFenceForDisplay(softTuneStream) }
@@ -169,8 +174,9 @@ export function useStyleTuningStudio(task: StyleTuningTaskDetail) {
       message.warning(MISSING_TOPIC_CONTENT_WARNING);
       return;
     }
-    if (!stylePrompt.trim()) {
-      message.warning(MISSING_STYLE_PROMPT_WARNING);
+    const styleText = formatStyleSelections(styleSelections);
+    if (!styleText) {
+      message.warning(MISSING_STYLE_WARNING);
       return;
     }
     setSoftParams(createEmptySoftParams());
@@ -179,7 +185,7 @@ export function useStyleTuningStudio(task: StyleTuningTaskDetail) {
       {
         publishScene,
         topicContent: topicContent.trim(),
-        stylePrompt: stylePrompt.trim(),
+        stylePrompt: styleText,
       },
       softTuneBuffer,
       SOFT_TUNE_FAILED,
@@ -199,7 +205,7 @@ export function useStyleTuningStudio(task: StyleTuningTaskDetail) {
           const next: SoftTuneStepSnapshot = {
             publishScene,
             topicContent: topicContent.trim(),
-            stylePrompt: stylePrompt.trim(),
+            ...(hasStyleSelection(styleSelections) ? { styleSelections } : {}),
             softParams: parsed,
             streamText: display,
           };
@@ -311,8 +317,8 @@ export function useStyleTuningStudio(task: StyleTuningTaskDetail) {
     setPublishScene,
     topicContent,
     setTopicContent,
-    stylePrompt,
-    setStylePrompt,
+    styleSelections,
+    setStyleSelections,
     softTuneStream,
     softParams,
     saveSoftParam,

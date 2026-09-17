@@ -14,7 +14,7 @@ import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 import { STYLE_TUNING_SSE_EVENT } from '../_shared/constants';
 import type { StyleTuningSseTextEvent } from '../_shared/types';
 import {
-  MISSING_STYLE_PROMPT,
+  MISSING_STYLE,
   MISSING_TOPIC_CONTENT,
   SOFT_TUNE_FAILED,
   SOFT_TUNE_TRUNCATED,
@@ -120,7 +120,7 @@ export async function handleStyleTuningSoftTune(req: Request): Promise<Response>
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_TOPIC_CONTENT, 400);
   }
   if (!body.stylePrompt.trim()) {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_STYLE_PROMPT, 400);
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_STYLE, 400);
   }
 
   return createPushStreamResponse(

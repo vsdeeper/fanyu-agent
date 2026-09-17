@@ -20,7 +20,7 @@ export function buildSoftTunePrompt(body: StyleTuningSoftTuneRequest): string {
   return [
     `## 发布场景\n${SCENE_LABEL[body.publishScene]}（${body.publishScene}）`,
     `## 主题内容\n${body.topicContent.trim()}`,
-    `## 文风提示词\n${body.stylePrompt.trim()}`,
+    `## 文风\n${body.stylePrompt.trim()}`,
     '',
     '请按 instructions 输出六维软参数 Markdown，并以 JSON 代码块收尾。',
   ]
