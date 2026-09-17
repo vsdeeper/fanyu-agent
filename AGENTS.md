@@ -10,15 +10,29 @@
 
 > AI 对话语言默认使用中文简体。
 
-## 项目概述
+## 目录
+
+1. [入门](#入门)
+2. [目录与分层约定](#目录与分层约定)
+3. [领域约定](#领域约定)
+4. [编码约定](#编码约定)
+5. [应做与不应做](#应做与不应做)
+
+---
+
+## 入门
+
+### 项目概述
 
 基于 **Next.js App Router + TypeScript + Vercel AI SDK + @ant-design/x** 的 AI 对话前端脚手架。样式使用 CSS Modules / Ant Design（**不使用 Tailwind**）。
 
-- **应用名称**: 凡域
-- **包管理器**: pnpm
-- **Node 版本**: 未在 package.json 中指定（建议 Node.js 22+）
+| 项         | 值                          |
+| ---------- | --------------------------- |
+| 应用名称   | 凡域                        |
+| 包管理器   | pnpm                        |
+| Node 版本  | 未在 package.json 指定（建议 22+） |
 
-## 技术栈
+### 技术栈
 
 | 依赖包                      | 版本 | 使用场景                                     |
 | --------------------------- | ---- | -------------------------------------------- |
@@ -33,7 +47,7 @@
 | @ant-design/nextjs-registry | 1.x  | App Router SSR 样式注入                      |
 | zod                         | 4.x  | Schema 校验（工具调用等）                    |
 
-## 开发命令
+### 开发命令
 
 ```bash
 pnpm install
@@ -43,21 +57,21 @@ pnpm run format
 pnpm run build
 ```
 
-本地对话前复制环境变量并填入密钥：
+本地对话前：
 
 ```bash
 cp .env.example .env.local
 ```
 
-## 提交规范
+### 提交规范
 
-本项目采用 [Conventional Commits](https://www.conventionalcommits.org/)，**description 使用中文简体**。
+采用 [Conventional Commits](https://www.conventionalcommits.org/)，**description 使用中文简体**。
 
-格式：`<type>[optional scope]: <中文描述>`
+```text
+<type>[optional scope]: <中文描述>
+```
 
 常用 type：`feat` / `fix` / `docs` / `style` / `refactor` / `perf` / `test` / `chore` / `ci` / `build`
-
-**示例：**
 
 ```text
 feat(chat): 新增流式对话与停止生成
@@ -67,9 +81,20 @@ refactor(ui): 抽离 Chat 组件
 chore(deps): 升级 eslint 与 prettier
 ```
 
-commit-msg 由 commitlint（`@commitlint/config-conventional`）校验；pre-commit 通过 husky + lint-staged 对暂存文件执行 ESLint / Prettier。
+- commit-msg：commitlint（`@commitlint/config-conventional`）
+- pre-commit：husky + lint-staged（ESLint / Prettier）
 
-## 项目结构
+---
+
+## 目录与分层约定
+
+实现**跟路由走**：前端在 `app/<页面域>/`，服务端在 `app/api/<域>/`。`src/lib/` 只放无独立产品面的平台内核（`db` / `shared` / `theme` / `skills`）。
+
+skills 同时被 Sender UI 与 `stream-chat` 使用，故留在 `lib/`。本地 tool 是 chat 这一轮 `streamText` 的适配器，放在 `app/api/chat/_server/tools/`，`execute` 再调 `app/api/images/_server`、`app/api/docs/_server` 等。
+
+无独立页面的能力（images / docs / geo）只出现在 `app/api/<域>/`，不建空的 `app/images` 等页面。
+
+### 目录树
 
 ```
 src/
@@ -78,298 +103,409 @@ src/
       layout.tsx
       [[...id]]/page.tsx
       _hooks/              # 页面级共享 Hook；勿放 Node 代码
-      _utils/              # 页面级共享工具与常量（如 chat-id.ts、constants.ts）；勿放 Node 代码
-      _components/         # 对话页私有 UI：ChatShell / ChatSidebar / Chat / AuxiliaryPanel
+      _utils/              # 页面级共享工具与常量；勿放 Node 代码
+      _components/         # ChatShell / ChatSidebar / Chat / AuxiliaryPanel
     studio/                # 工作室产品面（前端）
-      _utils/ / _hooks/ / _components/  # 工作室共用：流式生图、任务列表壳、规格表单、页面级常量等
-      ecommerce/            # 电商设计：主图 / 详情图（主题规划）与营销海报；不跑商业分析
+      _utils/ / _hooks/ / _components/
+      ecommerce/
       business-analysis/ / product-model/ / product-retouch/ / wechat-article/
     api/
       chat/                # POST /api/chat
         route.ts           # HTTP 薄壳
-        _shared/           # Client 也要对齐的契约（如 tool-errors.ts）
+        _shared/           # Client 也要对齐的契约
         _server/           # handle-post / stream-chat / providers / tools
       chats/               # 会话 CRUD
         route.ts / [id]/route.ts
-        _shared/types.ts   # ChatRecord / ChatListItem
-        _server/           # store / handle-chats / handle-chat-by-id
-      studio/              # 工作室 API：共用 generate + 各产品 tasks
-        generate/route.ts  # POST /api/studio/generate
-        _shared/ / _server/  # 任务工厂、生图；禁止与子域混合 barrel
-        ecommerce/            # 主图 / 详情图（主题规划）与营销海报；另有 analyze / rewrite-card，不跑商业分析
-        business-analysis/    # 商业分析工作室；另有 analyze
-        product-model/ / product-retouch/  # 产品差异 tasks
-        wechat-article/       # 公众号：research / plan / draft SSE；配图槽手动触发生图
-      geo/regeo/route.ts + _server/ + _shared/types.ts
-      images/[assetId]/route.ts + _server/   # assets / router / providers / registry
-      docs/[chatId]/[assetId]/route.ts + _server/ + _shared/
-    page.tsx
-    layout.tsx
-    global.css
-  components/              # 全局通用 UI：theme / CustomIcon / ModeSwitch / Providers / FileCard
-  business-components/     # 跨产品页面复用的业务 UI：StudioImageUpload / ProductDocsUpload
-  hooks/                   # 全局通用 Hook（无业务耦合，可跨路由复用）
-  lib/                     # 无独立产品面的平台内核
-    db/
-      client.ts            # better-sqlite3 连接、WAL、migrate；import 'server-only'
-      schema.ts            # chats / messages 表
-    skills/
-      types.ts / summaries.ts / parse-tokens.ts / context.ts / format-tag-label.ts  # 同构（无指令正文）
-      server/              # catalog / registry / expand / context / catalog-prompt / match-intent / resolve-turn（含 instructions）；新增 skill 时复制 catalog/_template.ts，summaries.ts 追加摘要，catalog 填写 activationKeywords；知识库 skill 设 userInvocable: false 并可用 coActivateWith
-    shared/
-      client/api-client.ts      # 浏览器 fetch 信封；import 'client-only'
-      server/env.ts / api-response.ts   # env 供 Next 服务端与 drizzle-kit CLI 共用，故不加 server-only
-    theme/
+        _shared/types.ts
+        _server/           # store / handle-*
+      studio/              # 共用 generate + 各产品 tasks
+        generate/route.ts
+        _shared/ / _server/
+        ecommerce/ / business-analysis/ / product-model/
+        product-retouch/ / wechat-article/
+      geo/ / images/ / docs/
+    page.tsx / layout.tsx / global.css
+  components/              # 全局通用 UI（无业务耦合）
+  business-components/     # 跨产品业务 UI
+  hooks/                   # 全局通用 Hook
+  lib/                     # 平台内核：db / skills / shared / theme
 public/
-drizzle/                   # SQL migrations（drizzle-kit generate）
+drizzle/                   # SQL migrations
 ```
 
-无独立页面的能力（images / docs / geo）只出现在 `app/api/<域>/`，不建空的 `app/images` 等页面。
+### 落点规则一览
 
-### App Router 分层约定
+| # | 场景 | 落点 |
+| - | ---- | ---- |
+| 1 | 组件专属（store / 纯函数 / 类型 / 常量 / Hook） | `app/<页面域>/_components/<Component>/`（`utils.ts` / `constants.ts` / `hooks/`） |
+| 2 | 页面级共享工具与常量（同路由多个**顶层**组件或 page） | `app/<页面域>/_utils/`（勿叫 `_lib`；勿在页面根平铺 `constants.ts`） |
+| 3 | 页面级共享 Hook | `app/<页面域>/_hooks/`（勿叫 `hooks/`，否则成 URL 段） |
+| 4 | 仅 Node / Route | `app/api/<域>/_server/`（`import 'server-only'`） |
+| 5 | Client + Server 共用类型 / 纯函数 / 常量 | 该 API 域 `_shared/`（Client **只允许** import `_shared`） |
+| 6 | 无独立产品面 | `src/lib/` |
+| 7 | 跨路由、无业务耦合 UI / Hook | `src/components/` / `src/hooks/` |
+| 8 | 跨产品、带业务语义 UI | `src/business-components/`（专属 Hook/常量仍放该组件目录） |
 
-实现跟路由走：前端在 `app/<页面域>/`，服务端在 `app/api/<域>/`。**`src/lib/` 只放没有独立产品面的平台内核**（`db` / `shared` / `theme` / `skills`）。skills 同时被 Sender UI 与 `stream-chat` 使用，故留在 `lib/`，不塞进单一 route。本地 tool 是 chat 这一轮 `streamText` 的适配器，放在 `app/api/chat/_server/tools/`，`execute` 再调 `app/api/images/_server`、`app/api/docs/_server` 等。
+**命名约束：**
 
-**落点规则：**
+- `_` 前缀沿用 `_components`：不是 URL 段
+- 页面域**不设** `_lib` / `_server`
+- API 域**不设** `_utils` / `_hooks`
+- `_utils/` 内文件避免 App Router 保留名（不可用 `route.ts`）
 
-1. **组件专属**（仅该组件用的 store、纯函数、类型、常量）→ `app/<页面域>/_components/<Component>/`（沿用 `utils.ts` / `constants.ts`）；专属 Hook → 同目录 `hooks/`（见「Hook 目录约定」「常量目录约定」）
-2. **页面级共享工具与常量**（同路由段内多个**顶层**组件或 page 共用、无 Node）→ `app/<页面域>/_utils/`（工具方法按主题命名如 `chat-id.ts`；共享常量用 `constants.ts` 或按主题拆分）。不要叫 `_lib`，**不要**在页面根平铺 `constants.ts`。文件避免 App Router 保留名（不可用 `route.ts`）
-3. **页面级共享 Hook**（同路由段内多个组件或 page 共用）→ `app/<页面域>/_hooks/`。不要叫 `hooks/`（会成为 URL 段）
-4. **只有 Node / Route 用** → `app/api/<域>/_server/`，入口 `import 'server-only'`。不要叫 `_utils` / `_hooks`
-5. **Client 与 Server 都要用的纯类型/纯函数/常量** → 该 API 域的 `_shared/`（无 `server-only`）。Client **只允许** import `_shared`，禁止 import `_server`
-6. **无独立产品面** → `src/lib/`（db / shared / theme / skills）
-7. **跨路由、无业务耦合的 UI** → `src/components/`；**同类 Hook** → `src/hooks/`
-8. **跨产品页面复用、带业务语义的 UI** → `src/business-components/`（其专属 Hook / 常量仍放该组件自己的 `hooks/` / `constants.ts`）
+**禁止：**
 
-`_` 前缀沿用 `_components`：不是 URL 段。页面域**不设 `_lib` / `_server`**；API 域**不设 `_utils` / `_hooks`**。
+- Client import `_server`
+- `_server` barrel 把 `_shared` 与 server 实现混进同一个 `index.ts`
+- 页面 import 另一页面的 `_components` / `_hooks` / `_utils`
+- 把 store / Provider / stream-chat 放进 `_utils` 或 `_hooks`
+- 把页面/组件私有 Hook 放进 `src/hooks`
 
-**禁止：** Client 组件 import `_server`；`_server` barrel 再导出 `_shared` 与 server 实现到同一个 `index.ts`；页面 import 另一个页面的 `_components` / `_hooks` / `_utils`；把 store / Provider / stream-chat 放进任何 `_utils` 或 `_hooks`；把页面/组件私有 Hook 放进 `src/hooks`。
-
-**依赖方向：**
+### 依赖方向
 
 ```text
-app/chat Client     →  _hooks、_utils、_components、lib/skills、lib/shared/client、api/*/ _shared、components、business-components、hooks
-app/chat RSC        →  同上 + app/api/chats/_server/store
-app/studio Client   →  studio/_hooks、_utils、_components、api/studio/_shared、api/studio/{product}/_shared、components、business-components
+app/chat Client      →  _hooks、_utils、_components、lib/skills、lib/shared/client、
+                        api/*/ _shared、components、business-components、hooks
+app/chat RSC         →  同上 + app/api/chats/_server/store
+app/studio Client    →  studio/_hooks、_utils、_components、
+                        api/studio/_shared、api/studio/{product}/_shared、
+                        components、business-components
 app/api/<域>/_server →  本域 _shared、lib/db、lib/shared/server、其他域 _server（仅能力调用）
-lib/db、shared、theme、skills  →  禁止依赖 app/ 与任何产品实现
-src/hooks           →  禁止依赖 app/ 与任何产品实现
+lib/*、src/hooks     →  禁止依赖 app/ 与任何产品实现
 ```
 
-工作室共用放 `api/studio/_server` + `_shared`；产品差异放 `api/studio/{ecommerce,business-analysis,product-model,product-retouch,wechat-article}/_server` 与 `_shared`。禁止把共用层与子域实现混进同一个 barrel `index.ts`。
+工作室：共用放 `api/studio/_server` + `_shared`；产品差异放 `api/studio/{product}/_server` 与 `_shared`。禁止共用层与子域混进同一 barrel `index.ts`。
 
-允许的跨域服务端调用（应用层编排）：`api/chat/_server/stream-chat` → images / docs / geo；`api/studio/_server` 生图可调用 `api/images/_server`。
+允许的跨域服务端调用：`api/chat/_server/stream-chat` → images / docs / geo；`api/studio/_server` 生图 → `api/images/_server`。
 
-| API Route                               | 实现目录                  | 说明                                                                                                                                                                                                                                                                           |
-| --------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `app/api/chat/`                         | `app/api/chat/_server/`   | 流式对话、会话提交、tools                                                                                                                                                                                                                                                      |
-| `app/api/chats/`、`app/api/chats/[id]/` | `app/api/chats/_server/`  | 会话列表 / 新建 / 读取 / 删除                                                                                                                                                                                                                                                  |
-| `app/api/studio/`                       | `app/api/studio/_server/` | 工作室共用生图与任务引擎；子路由 `generate`、`{ecommerce,business-analysis,product-model,product-retouch,wechat-article}/tasks`；商业分析工作室另有 `analyze`，电商另有 `analyze` / `rewrite-card`（主题规划），公众号另有 `research` / `plan` / `draft`，**电商不跑商业分析** |
-| `app/api/geo/`                          | `app/api/geo/_server/`    | 逆地理、UserLocation                                                                                                                                                                                                                                                           |
-| `app/api/images/`                       | `app/api/images/_server/` | 生图资源、Provider                                                                                                                                                                                                                                                             |
-| `app/api/docs/`                         | `app/api/docs/_server/`   | DESIGN.md 等会话文档下载                                                                                                                                                                                                                                                       |
+### API 域约定
 
-**Route Handler（`route.ts`）职责上限：**
+#### Route 一览
+
+| API Route | 实现目录 | 说明 |
+| --------- | -------- | ---- |
+| `app/api/chat/` | `_server/` | 流式对话、会话提交、tools |
+| `app/api/chats/`、`[id]/` | `_server/` | 会话列表 / 新建 / 读取 / 删除 |
+| `app/api/studio/` | `_server/` + 各产品子域 | 共用生图与任务；子路由见下 |
+| `app/api/geo/` | `_server/` | 逆地理、UserLocation |
+| `app/api/images/` | `_server/` | 生图资源、Provider |
+| `app/api/docs/` | `_server/` | DESIGN.md 等会话文档下载 |
+
+工作室子路由要点：
+
+- 共用：`generate`
+- 各产品：`{ecommerce,business-analysis,product-model,product-retouch,wechat-article}/tasks`
+- 另有：商业分析 `analyze`；电商 `analyze` / `rewrite-card`（主题规划，**不跑商业分析**）；公众号 `research` / `plan` / `draft`
+
+#### `route.ts` 职责上限
 
 - 导出 Route 段配置（`runtime`、`maxDuration`、`dynamic` 等）
 - 读取 `params` / `req` 等 HTTP 边界参数
-- 调用同域 `_server/` 的 `handle-*` / `serve-*` 并 `return` 其结果
+- 调用同域 `_server/` 的 `handle-*` / `serve-*` 并 `return`
 - 最外层 `try/catch` 与统一错误信封（若领域层未包）
 
 业务不写进 `route.ts`，实现放同目录 `_server`。
 
-**域内典型文件命名：**
+#### 域内典型文件命名
 
-- `handle-<动作>.ts` — 对应 HTTP 方法或 Route 入口，放在 **`_server/`**
-- `parse-request.ts` — 请求体解析与 zod/手工校验（服务端校验放 `_server/`）
-- `store.ts` / `assets.ts` — 持久化与领域存储（DAL，`import 'server-only'`）
-- `_server/providers/<name>/` — 第三方模型/SDK 适配（出站 client、request-patch、sse 等）；`providers/*/client.ts` 是 SDK 客户端，**不是**浏览器模块
-- `_shared/types.ts` — **仅**类型；**勿**在此放运行时常量；Client 需要的会话类型从 `app/api/chats/_shared/types.ts` 导入，**勿**从 `store.ts` 再导出
-- `_shared/` 或 `_server/constants.ts` — 运行时常量（错误文案、魔法字符串、配置默认值）；与 types 分离
+| 文件 | 位置 | 说明 |
+| ---- | ---- | ---- |
+| `handle-<动作>.ts` | `_server/` | HTTP 方法或 Route 入口 |
+| `parse-request.ts` | `_server/` | 请求体解析与校验 |
+| `store.ts` / `assets.ts` | `_server/` | DAL（`import 'server-only'`） |
+| `providers/<name>/` | `_server/` | 第三方 SDK 适配；`client.ts` **不是**浏览器模块 |
+| `types.ts` | `_shared/` | **仅**类型；勿放运行时常量 |
+| `constants.ts` | `_shared/` 或 `_server/` | 运行时常量；与 types 分离 |
 
-**跨域复用：**
+Client 需要的会话类型从 `app/api/chats/_shared/types.ts` 导入，**勿**从 `store.ts` 再导出。
 
-- 横切工具放 `lib/shared/`：浏览器走 `shared/client/`，服务端走 `shared/server/`（`env`、`api-response`）
-- Agent skill 注册表放 `lib/skills`（UI Discovery + 服务端 Activation）
-- 某域类型/纯函数被 Client 与 Server 共用时放该 API 域 **`_shared/`**；仅 Node 用的放 **`_server/`**；勿再塞回 `lib/shared/` 除非 truly 全局
+#### 跨域复用
 
-**页面路由（非 API）：**
+- 横切工具 → `lib/shared/`（浏览器 `shared/client/`，服务端 `shared/server/`）
+- Agent skill 注册表 → `lib/skills`
+- 某域 Client+Server 共用 → 该 API 域 `_shared/`；仅 Node → `_server/`
+- 勿塞回 `lib/shared/`，除非 truly 全局
 
-- `page.tsx` / `layout.tsx` 作为 RSC 可直调 `app/api/chats/_server/store`（如 `listChats()`）；路由 id 归一化放 `app/chat/_utils/chat-id.ts`
-- UI 分层：无业务耦合的全局通用组件放 `src/components/`；跨页面业务组件放 `src/business-components/`；页面私有组件放 `app/<route>/_components/`（见「组件目录约定」）。Hook 分层见「Hook 目录约定」
-- **`'use client'` 只打在被 Server Component 直接 import 的入口**（当前为 `src/components/Providers`、`app/chat/_components/ChatShell`）。子树内组件不要重复标注。
+#### 新增 API checklist
 
-**新增 API 时 checklist：**
-
-1. 在 `app/api/<域>/.../route.ts` 建薄壳
+1. `app/api/<域>/.../route.ts` 建薄壳
 2. Node 实现放同域 `_server/`（DAL 加 `server-only`）；两端契约放 `_shared/`
-3. 多 Provider 时放 `app/api/<域>/_server/providers/<name>/`
+3. 多 Provider 时放 `_server/providers/<name>/`
 4. 页面域不设 `_server`；API 域不设 `_utils` / `_hooks`
 5. 不要加跨 `_server` / `_shared` 的域级 barrel `index.ts`
 
+### 页面路由约定
+
+- `page.tsx` / `layout.tsx`（RSC）可直调 `app/api/chats/_server/store`（如 `listChats()`）
+- 路由 id 归一化放 `app/chat/_utils/chat-id.ts`
+- UI 分层见下方「组件 / Hook / 常量」；跨页领域逻辑仍放对应 `api/<域>/_server` 或 `_shared`
+- **`'use client'` 只打在被 Server Component 直接 import 的入口**（当前：`src/components/Providers`、`app/chat/_components/ChatShell`）。子树内勿重复标注
+
 ### 组件目录约定
 
-| 层级     | 路径                       | 判定                                 | 现状示例                                                  |
-| -------- | -------------------------- | ------------------------------------ | --------------------------------------------------------- |
-| 全局通用 | `src/components/`          | 无业务耦合，可跨路由复用             | `theme/`、`CustomIcon/`、`ModeSwitch/`、`Providers.tsx`   |
-| 业务通用 | `src/business-components/` | 带业务语义，供产品页面复用           | `StudioImageUpload/`、`ProductDocsUpload/`                |
-| 页面级   | `app/<route>/_components/` | 仅该路由段使用；`_` 前缀不成为路由段 | `app/chat/_components/`（ChatShell / ChatSidebar / Chat） |
+| 层级 | 路径 | 判定 | 示例 |
+| ---- | ---- | ---- | ---- |
+| 全局通用 | `src/components/` | 无业务耦合，可跨路由 | `theme/`、`ModeSwitch/` |
+| 业务通用 | `src/business-components/` | 带业务语义，跨产品页 | `StudioImageUpload/` |
+| 页面级 | `app/<route>/_components/` | 仅该路由段；`_` 非 URL | `app/chat/_components/` |
 
-页面级可引用全局通用与业务通用组件（如 Chat 用 `useThemeMode`）；反向禁止。跨页领域服务端逻辑仍放对应 `app/api/<域>/_server` 或 `_shared`，不放 UI 目录。
+页面级可引用全局 / 业务通用；反向禁止。
 
-有样式 / 测试 / 子文件时，**一个公开组件一个目录**（PascalCase，与主组件同名）；相关文件 colocation，勿单独堆 `styles/`：
+#### 单组件目录结构
+
+有样式 / 测试 / 子文件时，**一个公开组件一个目录**（PascalCase）；colocation，勿单独堆 `styles/`：
 
 ```text
 Button/
-  Button.tsx          # 或 index.tsx
-  Button.module.css   # 勿用 index.module.css（IDE 标签难辨认）
+  Button.tsx              # 或 index.tsx
+  Button.module.css       # 勿用 index.module.css
   Button.test.tsx
-  constants.ts        # 组件专属常量（可选）
-  utils.ts            # 组件级纯函数 / 数据处理（可选）
-  hooks/              # 组件专属 Hook（可选；勿与主文件平铺）
-    useButton.ts
-  SubButton/          # 子组件拆离（勿在主文件内定义）
+  constants.ts            # 组件专属常量（可选）
+  utils.ts                # 组件级纯函数（可选）
+  hooks/
+    useButton.ts          # 组件专属 Hook（可选；勿与主文件平铺）
+  SubButton/              # 子组件拆离
     SubButton.tsx
-    SubButton.module.css  # 抽离时同步带走专属样式
-    constants.ts          # 抽离时同步带走专属常量（可选）
-    utils.ts              # 抽离时同步带走专属方法（可选）
-    hooks/                # 抽离时同步带走专属 Hook（可选）
-      useSubButton.ts
-    index.ts              # 再导出
-  index.ts            # 再导出（可选）
+    SubButton.module.css
+    constants.ts / utils.ts / hooks/
+    index.ts
+  index.ts                # 仅再导出，勿塞业务逻辑
 ```
 
-- 仅单文件且无样式时可暂平铺：`components/Foo.tsx`
-- `index.ts` 只做对外导出，勿塞业务逻辑
-- **不在主组件文件内定义子组件**：抽到同级子目录（如 `Button/SubButton/`），由 `index.ts` 再导出后供主组件引用
-- **不在主组件文件内定义方法**：解析、归一化、memo 比较、事件处理等一律抽到同目录 `utils.ts`；主文件只保留组件函数与 JSX 组装
-- **不在主组件文件内定义专属常量**：枚举值、文案映射、默认配置等一律抽到同目录 `constants.ts`
-- **不在主组件文件内定义 Hook**：仅该组件使用的自定义 Hook 抽到同目录 `hooks/useXxx.ts`；勿与主组件平铺，也勿写入 `utils.ts`（`utils.ts` 只放纯函数）。跨组件/跨页面的 Hook 见「Hook 目录约定」。Context 配套的 `useXxx` 与 Provider 同文件/同目录，不进三级 `hooks/`
-- **抽离子组件时同步抽离样式、方法、常量与 Hook**：专属样式迁入子目录同名样式文件；专属方法迁入子目录 `utils.ts`；专属常量迁入子目录 `constants.ts`；专属 Hook 迁入子目录 `hooks/`；勿继续依赖父级样式/utils/constants/hooks 中的专属部分（**同一组件树内**跨子组件共享类型/工具/常量/Hook 可留在父级对应文件；**同页多个顶层组件**共用则按「常量目录约定」「Hook 目录约定」上提到 `_utils/` / `_hooks/`）
+仅单文件且无样式时可暂平铺：`components/Foo.tsx`。
+
+#### 主文件约束
+
+- **不在主文件内**定义子组件 / 方法 / 专属常量 / Hook → 分别进子目录、`utils.ts`、`constants.ts`、`hooks/`
+- `utils.ts` 只放纯函数；Hook 勿写入 `utils.ts`
+- Context 配套的 `useXxx` 与 Provider 同目录，不进三级 `hooks/`
+- 抽离子组件时**同步带走**样式 / 方法 / 常量 / Hook
+- **同一组件树内**跨子组件共享 → 可留父级对应文件
+- **同页多个顶层组件**共用 → 上提到 `_utils/` / `_hooks/`（见下）
 
 ### Hook 目录约定
 
-| 层级     | 路径                  | 判定                                       | 示例                                              |
-| -------- | --------------------- | ------------------------------------------ | ------------------------------------------------- |
-| 全局     | `src/hooks/`          | 无业务耦合，可跨路由复用                   | 按需创建；勿预先建空目录                          |
-| 页面私有 | `app/<route>/_hooks/` | 同路由段内多个组件或 page 共用；`_` 非 URL | 按需创建；勿预先建空目录                          |
-| 组件私有 | `<Component>/hooks/`  | 仅该组件（含子组件拆离后的专属 Hook）使用  | `EcommerceTaskList/hooks/useEcommerceTaskList.ts` |
+| 层级 | 路径 | 判定 | 示例 |
+| ---- | ---- | ---- | ---- |
+| 全局 | `src/hooks/` | 无业务耦合，可跨路由 | 按需创建 |
+| 页面私有 | `app/<route>/_hooks/` | 同路由多个组件或 page 共用 | 按需创建 |
+| 组件私有 | `<Component>/hooks/` | 仅该组件使用 | `EcommerceTaskList/hooks/…` |
 
-- 目录按需创建，勿为空目录占位；文件名 `useXxx.ts`
-- **就近放置、按需上提**：只有一个调用方时放组件 `hooks/`；同页多个组件共用再升到 `_hooks/`；跨路由且无业务耦合再升到 `src/hooks/`
-- **不要叫错目录**：页面级必须是 `_hooks/`（否则会成为 URL 段）；组件级与全局是 `hooks/`（不在 App Router 页面段下）
-- **与 `_utils/` / `utils.ts` 分离**：Hook 不是纯函数，禁止互相塞错目录
-- **带业务语义、随业务组件复用**的 Hook 放该 `src/business-components/<Component>/hooks/`，不进 `src/hooks/`
-- **禁止**页面 import 另一个页面的 `_hooks`；**禁止**把页面/组件私有逻辑放进 `src/hooks/`
-- Context 配套的 `useXxx`（如 `useThemeMode`、`useWorkspace`）与 Provider 同文件/同目录，不进上述三级 `hooks/`
+- 文件名 `useXxx.ts`；勿为空目录占位
+- **就近上提**：单调用方 → 组件 `hooks/` → 同页多组件 → `_hooks/` → 跨路由无业务耦合 → `src/hooks/`
+- 页面级必须 `_hooks/`；组件级 / 全局是 `hooks/`
+- Hook ≠ 纯函数：禁止与 `_utils/` / `utils.ts` 互塞
+- 带业务语义、随业务组件复用 → `src/business-components/<Component>/hooks/`
+- **禁止**跨页面 import `_hooks`；**禁止**把页面/组件私有逻辑放进 `src/hooks`
 
 ### 常量目录约定
 
-| 层级     | 路径                                              | 判定                                                                 | 示例 |
-| -------- | ------------------------------------------------- | -------------------------------------------------------------------- | ---- |
-| 组件专属 | `<Component>/constants.ts`                        | 仅该组件使用；同树子组件共用可留父级                                 | `EcommerceStudio/constants.ts` |
-| 页面私有 | `app/<route>/_utils/constants.ts`（或按主题拆分） | 同路由段内多个**顶层**组件或 page 共用，且彼此无合理共同父组件       | `app/studio/style-tuning/_utils/constants.ts` |
-| API 契约 | `api/<域>/_shared/constants.ts` 或 `_server/constants.ts` | Client+Server 契约 → `_shared`；仅 Node → `_server`                 | `api/docs/_shared/constants.ts` |
+| 层级 | 路径 | 判定 | 示例 |
+| ---- | ---- | ---- | ---- |
+| 组件专属 | `<Component>/constants.ts` | 仅该组件；同树子组件可留父级 | `EcommerceStudio/constants.ts` |
+| 页面私有 | `app/<route>/_utils/constants.ts`（或按主题拆分） | 同路由多个**顶层**组件或 page 共用 | `app/studio/ecommerce/_utils/constants.ts` |
+| API 契约 | `api/<域>/_shared/constants.ts` 或 `_server/constants.ts` | Client+Server → `_shared`；仅 Node → `_server` | `api/docs/_shared/constants.ts` |
 
-- **就近放置、按需上提**：只有一个调用方 → 组件 `constants.ts`；同树多子组件 → 父级 `constants.ts`；同页多个顶层组件共用 → `_utils/constants.ts`（或 `_utils/<主题>.ts`，与现有 `model-options.ts` 一类文件并列）；跨页契约 → API `_shared`；跨路由且无业务耦合的 UI 常量 → 对应 `src/components/<Component>/constants.ts`
-- **不要**在页面根平铺 `constants.ts`（与 `_utils` / `_hooks` 的 `_` 前缀分层不一致）；**不要**为「共享」伪造无关父组件依赖；**不要** Client import `_server/constants.ts`
-- **禁止**页面 import 另一个页面的 `_utils`（含其中的常量）；API 运行时常量勿塞进页面 `_utils`
-- 与「域内 `types.ts` 与 `constants.ts` 分离」一致：`types.ts` 只导出类型，勿写 `export const`
+**就近上提：**
 
-## 会话持久化约定
+1. 单调用方 → 组件 `constants.ts`
+2. 同树多子组件 → 父级 `constants.ts`
+3. 同页多个顶层组件 → `_utils/constants.ts` 或 `_utils/<主题>.ts`
+4. 跨页契约 → API `_shared`
+5. 跨路由无业务耦合 UI 常量 → `src/components/<Component>/constants.ts`
 
-- 存储目录由环境变量 **`CHAT_STORE_DIR`** 指定（默认项目内 `./data/chats`，git 忽略）：`images/`、`docs/` 在该目录下；**`chats.db` 落在其上一级**（默认 `./data/chats.db`，Drizzle + better-sqlite3，`journal_mode=WAL`，运行中可能另有 `chats.db-wal` / `chats.db-shm`）。启动时若仅发现旧路径 `CHAT_STORE_DIR/chats.db` 会改名迁到上一级
-- 工作室任务资产落盘于 `dirname(CHAT_STORE_DIR)/studio/{product}/{taskId}/`（默认 `./data/studio/{product}/`，`product` 为 `ecommerce` / `business-analysis` / `product-model` / `product-retouch` / `wechat-article`）；与会话资产目录、`chats.db` 平级
-- 云盘备份路径 **`CHAT_SYNC_REMOTE_DIR`**（须在 `.env.local` 配置，无代码内默认绝对路径）仅作手动同步对端，应指向 `.../chats` 以便对端出现同级 `.../studio` 与上一级 `.../chats.db`；非运行时目录。`pnpm sync:data:push` 本地→云盘，`pnpm sync:data:pull` 云盘→本地（镜像 chats、同级 studio 与上一级 chats.db，pull 会覆盖本地）
-- 表：`chats` + `messages`（`messages.data` 存完整 **`UIMessage` JSON**，含 reasoning / source-url）；刷新可还原 Think 与引用
-- 同步前建议先关闭应用，便于 WAL checkpoint 回主库
-- **修复**：调方舟前仍用 `pruneMessages` 去掉历史 reasoning；持久化与模型入参解耦，勿把落盘也 prune 掉
-- 路由：`/` 有历史则进最近会话，否则 `/chat`；`chat/[[...id]]` 单页承载 `/chat`（草稿欢迎态不写库）与 `/chat/[id]`（多段路径 `notFound`）；侧栏「开启新对话」→ `/chat`；首条发送 → `replace('/chat/[id]')` 并侧栏锚定；Chat 在 `ChatShell` 渲染以免首条发送 remount 丢流；侧栏在 `chat/layout`，切换 id 不卸载
+**禁止：**
+
+- 页面根平铺 `constants.ts`（与 `_utils` / `_hooks` 分层不一致）
+- 为「共享」伪造无关父组件依赖
+- Client import `_server/constants.ts`
+- 跨页面 import `_utils`；API 运行时常量勿塞进页面 `_utils`
+- 在 `types.ts` 写 `export const`（types 只导出类型）
+
+---
+
+## 领域约定
+
+### 会话持久化
+
+#### 存储路径
+
+| 用途 | 路径规则 | 默认 |
+| ---- | -------- | ---- |
+| 会话图片 / 文档 | `CHAT_STORE_DIR` 下 `images/`、`docs/` | `./data/chats/` |
+| 会话库 | `dirname(CHAT_STORE_DIR)/chats.db`（WAL） | `./data/chats.db` |
+| 工作室任务资产 | `dirname(CHAT_STORE_DIR)/studio/{product}/{taskId}/` | `./data/studio/{product}/` |
+| 云盘同步对端 | `CHAT_SYNC_REMOTE_DIR`（须 `.env.local`，无代码默认） | 应指向 `.../chats` |
+
+- 启动时若仅发现旧路径 `CHAT_STORE_DIR/chats.db`，会改名迁到上一级
+- `pnpm sync:data:push` 本地→云盘；`pnpm sync:data:pull` 云盘→本地（镜像 chats、同级 studio、上一级 chats.db；pull 覆盖本地）
+- 同步前建议先关应用，便于 WAL checkpoint
 - 明文落盘 + 云盘同步不适合高敏感内容
 
-## 生图与主 Agent 约定
+#### 数据模型与路由
 
-- 主对话模型在 [`src/app/api/chat/route.ts`](src/app/api/chat/route.ts) 通过 `generate_image` tool 出图/改图；`stopWhen` 由 `isLoopFinished()` 自然终止 + `stepCountIs(40)` 兜底（`MAX_TOOL_LOOP_STEPS`，见 `stream-chat.ts`），跑至主模型不再发 tool call 时即可汇总说明
-- 生图模型按 env `IMAGE_MODEL_ID` 驱动：**设置则绝对优先**（主模型自选不再覆盖）；**未设置则主模型自动选型**（经 `generate_image` 的 `model` 参数回传，`resolveImageModelId` 依此路由）。未设置且主模型未自选、也无父图时兜底 `FALLBACK_IMAGE_MODEL_ID`。老张 Gemini 走 `LAOZHANG_API_KEY`、`LAOZHANG_BASE_URL=https://api2.laozhang.ai/v1`（`POST /v1/models/{modelId}:generateContent`）；方舟 Seedream 为另一 provider（`ARK_*`，按所选模型自动路由）。model id 清单与能力描述见 `registry.ts`（`listImageModels` / `describeImageModels`），尺寸规格见 `IMAGE_SPEC_BY_MODEL_ID`
-- 图片文件落盘于 `CHAT_STORE_DIR/images/{chatId}/`；元数据表 `image_assets`；`chats.working_image_asset_id` 为多轮改图默认源图
-- DESIGN.md 落盘于 `CHAT_STORE_DIR/docs/{chatId}/`；经 `save_design_md` 写入，前端展示下载卡片，不在对话正文贴全文
-- 前端经 `GET /api/images/[assetId]` 展示；气泡内使用 antd `Image`，勿用临时上游 CDN URL 直接渲染
-- 改图时 Provider 入参使用本地 data URL/base64，避免方舟返回 URL 过期导致下一轮 edit 失败
-- `generate_image` 的 `execute` 返回完整 output（含 `assetId`/`url`）供 `tool-generate_image` part 落盘与 `GenerateImageBlock` 渲染；`toModelOutput` 向主模型返回不含 `url` 的文本摘要，避免汇总正文重复插入 Markdown 图片
-- 历史已落盘消息若正文含 `/api/images/` Markdown，仍可能与 `GenerateImageBlock` 重复展示（未做前端过滤）
+- 表：`chats` + `messages`（`messages.data` 存完整 **UIMessage** JSON，含 reasoning / source-url）
+- 调方舟前仍用 `pruneMessages` 去掉历史 reasoning；**持久化与模型入参解耦**，勿把落盘也 prune 掉
+- `/`：有历史进最近会话，否则 `/chat`
+- `chat/[[...id]]`：承载草稿 `/chat` 与 `/chat/[id]`（多段路径 `notFound`）
+- 侧栏「开启新对话」→ `/chat`；首条发送 → `replace('/chat/[id]')`
+- Chat 挂在 `ChatShell`，避免首条发送 remount 丢流；侧栏在 `chat/layout`，切换 id 不卸载
 
-## Skills 渐进披露与意图加载
+### 生图与主 Agent
 
-Agent Skills 采用 Discovery → Activation 两层注入（Execution / references 预留）：
+#### 主对话循环
 
-- **Discovery**：每轮 `instructions` 常驻 skill 目录（`id` + `name` + `description`），见 `buildSkillCatalogPrompt`；不含指令正文。目录区分「用户可调用」与「主模型知识库」（`userInvocable: false`）
-- **Activation**：仅本轮加载完整 `instructions`。来源为手动 `/<id>`（仅可调用 skill，跳过阈值）、意图匹配达阈值的自动结果、以及 `coActivateWith` 伴随激活（知识库 skill 随相关 skill 一并注入），取并集
-- **不可调用 skill**：`userInvocable: false` 不进 Suggestion 菜单、不识别 `/<id>` 令牌；仍可出现在 Discovery，经意图匹配或伴随激活注入正文（如 `design-md` 随 `mobile-design` / `web-design` 出图后按需引导输出 DESIGN.md）
-- **信度阈值**（`src/lib/skills/server/constants.ts`）：High ≥ 0.70 激活；Medium 0.55–0.69 默认不激活；Low < 0.55 不激活。sticky 短 follow-up（≤40 字且含修订线索、且无其它 skill 达 High）可降阈再激活
-- **粘滞**：`metadata.skillIds` 只增不减，记录本会话曾激活过的 skill，供 Tags 恢复与 follow-up 加权；**不等于**每轮注入正文
-- **去重**：已激活 skill 在用户文本 `/token` 处只保留 `【Skill：name】` 短引用；历史消息中的令牌不再展开正文
-- **观测**：服务端日志 `[skills] intent-match`，字段 `{ id, score, band, activated, reason }`，不返回客户端
+- 入口：[`src/app/api/chat/route.ts`](src/app/api/chat/route.ts)，经 `generate_image` tool 出图/改图
+- `stopWhen`：`isLoopFinished()` 自然终止 + `stepCountIs(40)` 兜底（`MAX_TOOL_LOOP_STEPS`）
 
-## 主题系统（浅色/深色）
+#### 模型选型
 
-- 主题状态由 `src/components/theme/` 提供：`ThemeProvider` + `useThemeMode()`；`mode: 'light' | 'dark'` 为**实际生效主题**，`preference: 'light' | 'dark' | 'system'` 为用户选择，`setMode` / `toggle`（三态循环 light→dark→system→light）；`ThemedConfigProvider` 按 `mode === 'dark'` 接入 antd `ConfigProvider`
-- 主题配置在 `src/lib/theme/`：`appTheme`（浅色）与 `darkTheme`（`algorithm: theme.darkAlgorithm` + `darkSeedTokens`，见 `tokens.ts`）；两者共用 `cssVar.prefix: 'one'`，切换 algorithm 时 antd 在 `:root` 重新输出暗色 `--one-*`，走 token 的样式（含 `@ant-design/x` 组件）自动跟随
-- 模式持久化键 **`one-theme`**（localStorage）存**偏好**（可含 `'system'`）；`html[data-theme]` / `color-scheme` 永远写解析后的 `'light' | 'dark'`（`'system'` 由 `matchMedia('(prefers-color-scheme: dark)')` 实时解析，preference 为 `'system'` 时挂 `change` 监听实时跟随、离开即移除）；首次无记录默认跟随系统；`src/app/layout.tsx` 的预挂载内联脚本也内联了该键并先行解析 `'system'` 后设置 `data-theme`（**改键需两处同步**）
-- **SSR 初始主题 cookie `one-theme-resolved`**：存解析后的 `'light' | 'dark'`，由 `utils.applyThemeMode` 在客户端双写（localStorage=偏好、cookie=resolved；`'system'` 的 OS 明暗变化也随 `applyThemeMode` 更新 cookie）；`layout.tsx`（服务端组件）`await cookies()` 读取并作为 `ssrInitialMode` 传给 `ThemeProvider`，在 `hydrated` 前作为 context 的 `mode` 生效 → antd 在 SSR 即输出正确主题 CSS，避免深色模式刷新时的浅→深 FOUC；改键同样需两处同步（constants + layout）
-- CSS Module 引用 `--one-*` 即可自动换肤；**antd 无对应 token 的自定义颜色变量**（滚动条、侧栏边框、侧栏按钮阴影）需在 `src/app/global.css` 的 `html[data-theme='dark']` 下覆盖
-- **布局壳必须用 antd `Layout` 组件**（`ChatShell` 的 `Layout`/`Layout.Header`/`Layout.Content`、`ChatSidebar` 的 `Layout.Sider`）：antd 组件级 token 是惰性输出的，只有组件实际渲染才会把 `--one-layout-*` flush 到 `:root` 并注入 `.ant-layout-*` 规则；若改用原生 `div`/`aside` 布局，`src/lib/theme/components.ts` 里的 `Layout.*` 配置（`siderBg`/`bodyBg`/`headerBg`/`headerHeight` 等）将完全不生效（详见该文件注释）
-- **XMarkdown 双主题规则**：同时引入 `@ant-design/x-markdown/themes/light.css` 与 `dark.css`，在组件内用 `useThemeMode()` 切换 `className` 的 `x-markdown-light` / `x-markdown-dark`（例：`AiBubbleContent.tsx`）；XMarkdown 无 `theme` prop，主题靠 className 作用域下的 CSS 变量驱动
-- **XMarkdown 主题变量覆写层**：XMarkdown 主题色为硬编码默认值，不随应用主题。在全局共用文件 [`src/lib/theme/XMarkdownTheme.css`](src/lib/theme/XMarkdownTheme.css) 里把其主题变量重映射到 antd `--one-*`（如 `--text-color→--one-color-text`、`--heading-color→--one-color-text-base`、`--border-color→--one-color-border`、code 背景 `--light-bg`/`--dark-bg→--one-color-fill-tertiary`，详见该文件注释）；**引入顺序契约**：每个渲染 XMarkdown 的消费组件（`AiBubbleContent.tsx` / `AuxiliaryPanel/FilePreview.tsx` / `EcommerceStudio/ResultPanel.tsx`）必须在自己文件里紧跟 `light.css`/`dark.css` 之后 `import '@/lib/theme/XMarkdownTheme.css'`，**勿放 `global.css`**（根布局先加载，会被深层组件的主题 CSS 以同优先级反压而失效）；浅/深 code 背景变量名不同（`--light-bg`/`--dark-bg`），须在 `.x-markdown-light`/`.x-markdown-dark` 两个作用域分别覆写，code 背景以 `!important` 消费，靠重定义变量接管
-- 切换按钮：`src/components/ModeSwitch/`，置于 `ChatShell` 顶部栏右侧；单按钮三态循环（浅色→深色→跟随系统→浅色），图标随当前偏好切换（SunOutlined/MoonOutlined/MonitorOutlined），Tooltip 与 aria-label 描述下一步
+- env `IMAGE_MODEL_ID`：**设置则绝对优先**；未设置则主模型经 `generate_image` 的 `model` 回传，由 `resolveImageModelId` 路由
+- 未设置且无自选、无父图 → 兜底 `FALLBACK_IMAGE_MODEL_ID`
+- Provider：老张 Gemini（`LAOZHANG_*`）/ 方舟 Seedream（`ARK_*`）
+- 清单与能力：`registry.ts`（`listImageModels` / `describeImageModels`）；尺寸：`IMAGE_SPEC_BY_MODEL_ID`
+
+#### 资产与前端展示
+
+- 图片：`CHAT_STORE_DIR/images/{chatId}/`；表 `image_assets`；`chats.working_image_asset_id` 为多轮改图默认源
+- DESIGN.md：`CHAT_STORE_DIR/docs/{chatId}/`，经 `save_design_md`；前端下载卡片，不贴全文
+- 展示：`GET /api/images/[assetId]` + antd `Image`；勿直接用上游临时 CDN URL
+- 改图入参用本地 data URL/base64，避免 URL 过期导致下一轮 edit 失败
+- `execute` 返回完整 output（含 `assetId`/`url`）供落盘与 `GenerateImageBlock`；`toModelOutput` 返回不含 `url` 的摘要，避免正文重复插图
+- 历史正文若含 `/api/images/` Markdown，仍可能与 `GenerateImageBlock` 重复（未做前端过滤）
+
+### Skills 渐进披露
+
+两层注入（Execution / references 预留）：**Discovery → Activation**。
+
+| 层 | 行为 |
+| -- | ---- |
+| Discovery | 每轮 `instructions` 常驻目录（`id` + `name` + `description`），见 `buildSkillCatalogPrompt`；不含指令正文；区分可调用 vs 知识库（`userInvocable: false`） |
+| Activation | 仅本轮加载完整 `instructions`；来源：手动 `/<id>`（跳过阈值）、意图达阈值、`coActivateWith` 伴随激活；取并集 |
+
+补充规则：
+
+- **不可调用**（`userInvocable: false`）：不进 Suggestion、不识别 `/<id>`；仍可 Discovery + 意图/伴随注入（如 `design-md`）
+- **信度**（`src/lib/skills/server/constants.ts`）：High ≥ 0.70 激活；Medium 0.55–0.69 默认不激活；Low < 0.55 不激活；sticky 短 follow-up 可降阈
+- **粘滞**：`metadata.skillIds` 只增不减，供 Tags / follow-up；**≠** 每轮注入正文
+- **去重**：已激活 skill 在 `/token` 处只保留 `【Skill：name】`；历史令牌不再展开
+- **观测**：服务端日志 `[skills] intent-match`，不返回客户端
+
+### 主题系统
+
+#### 状态与配置
+
+- UI 状态：`src/components/theme/` — `ThemeProvider` + `useThemeMode()`
+  - `mode`：实际生效 `'light' | 'dark'`
+  - `preference`：用户选择 `'light' | 'dark' | 'system'`
+  - `setMode` / `toggle`：三态循环 light → dark → system → light
+- 主题 token：`src/lib/theme/` — `appTheme` / `darkTheme`（`cssVar.prefix: 'one'`）
+- 切换按钮：`src/components/ModeSwitch/`（ChatShell 顶栏右侧）
+
+#### 持久化与 SSR
+
+| 键 | 存储 | 内容 |
+| -- | ---- | ---- |
+| `one-theme` | localStorage | 偏好（可含 `'system'`） |
+| `one-theme-resolved` | cookie | 解析后的 `'light' \| 'dark'`（SSR 防 FOUC） |
+
+- `html[data-theme]` / `color-scheme` 永远写解析后的 light/dark
+- `'system'` 用 `matchMedia` 实时解析；preference 为 system 时挂 `change` 监听
+- 改键须同步：constants、`layout.tsx` 预挂载脚本、cookie 读写
+
+#### 样式与 Layout
+
+- CSS Module 用 `--one-*` 即可换肤；无 antd token 的自定义色在 `global.css` 的 `html[data-theme='dark']` 覆盖
+- **布局壳必须用 antd `Layout`**（否则 `Layout.*` 组件级 token 不 flush）
+
+#### XMarkdown
+
+- 同时引入 `light.css` / `dark.css`，用 `useThemeMode()` 切换 `x-markdown-light` / `x-markdown-dark`
+- 变量覆写：[`src/lib/theme/XMarkdownTheme.css`](src/lib/theme/XMarkdownTheme.css) 映射到 `--one-*`
+- **引入顺序**：消费组件内紧跟 light/dark 之后 import 覆写层；**勿放 `global.css`**
+- 浅/深 code 背景分别覆写 `--light-bg` / `--dark-bg`
+
+---
 
 ## 编码约定
 
+### 通用
+
 - 对话、注释、提交说明默认中文简体
-- 目录与页面/组件开发遵循上文「组件目录约定」「Hook 目录约定」「常量目录约定」「App Router 分层约定」
-- **不引入 Tailwind**；样式优先 CSS Modules 与 Ant Design / Ant Design X
-- 组件目录遵循上文「组件目录约定」（子组件拆离并同步带走样式/方法/常量/Hook、主文件不定义方法与专属常量与 Hook、`utils.ts` / `constants.ts` / `hooks/` 维护、`ComponentName.tsx` + 同名 `.module.css`）
-- **Hook 落点**遵循上文「Hook 目录约定」（`src/hooks/` / `app/<route>/_hooks/` / `<Component>/hooks/`）
-- **常量落点**遵循上文「常量目录约定」（组件 `constants.ts` / 页面 `_utils/constants.ts` / API `_shared`·`_server`）
-- **App Router 分层**遵循上文约定：前端在 `app/<页面域>/`（`_components` + `_utils` + `_hooks`）；服务端在 `app/api/<域>/_server` 与 `_shared`；`lib/` 为平台内核（db / shared / theme / skills）
-- **域内 `types.ts` 与 `constants.ts` 分离**：`types.ts` 只导出类型；运行时常量、错误/提示文案、配置默认值放同域 `constants.ts`（与组件目录、页面 `_utils` 的 `constants.ts` 约定一致）；勿在 `types.ts` 写 `export const`
-- App Router 下避免 `Bubble.List` 这类点号子组件写法，改为从独立路径导入（如 `@ant-design/x/es/bubble/BubbleList`）
-- 完成修改后对改动文件执行格式化（`pnpm run format` 或依赖 lint-staged）
-- 提交前由 lint-staged 检查暂存文件
-- 编写 Next.js 相关代码前先查阅 `node_modules/next/dist/docs/`
-- **AI SDK v7 API 约定**：
-  - `streamText` / `generateText` 使用 **`instructions`**（provider-agnostic），**勿用已废弃的 `system`** 属性；`system` 仅为 OpenAI 兼容层，v7 中已标记 deprecated
-  - 调用方舟 Responses API 时**必须**传 `providerOptions: { openai: { store: false } }`，否则 `store:true`（默认）会发 `item_reference`，方舟报 `<nil>` 错误（详见 `src/app/api/chat/_server/providers/ark/constants.ts`）
-- **代码注释按「目的」分两类，勿混淆**：
-  - **防回归注释（仅限真实修复）**：只在**确实改错了的代码**上打。写明「原现象 / 根因 / 为何现在这样写，勿改回」。**新功能、新文件、从未出错的代码一律不打**——没历史包袱却写「勿再踩」，会误导后来者以为这里有坑
-  - **意图注释（新功能/重构）**：代码反直觉、易被重构误改、或隐藏关键约束时，写一条「为什么」说明取舍；显而易见的代码不注释
-- **判断标准**：删掉这条注释，未来的读者/AI 会不会把代码改坏？会 → 写；不会 → 不写
-- **只注「为什么」，不注「是什么」**：作用说明交给「函数/方法说明注释」；能用一行说清不用两行
-- **词缀即校验锚点**：「修复 / 防回归 / 勿再踩 / 否则会 BUG」这类词只能出现在修复 diff 所改动的行上；新增行出现即视为违规，代码评审据此驳回
-- **函数/方法说明注释**：定义函数、方法时须有基本说明注释，写清职责，以及与调用方相关的入参、返回值要点；显而易见的单行包装或框架生命周期回调（如 React 组件、Next.js Route Handler 入口）可从简，但业务逻辑函数不可省略
+- **不引入 Tailwind**；样式用 CSS Modules + Ant Design / Ant Design X
+- 目录落点遵循上文「目录与分层约定」（组件 / Hook / 常量 / App Router）
+- App Router 下避免 `Bubble.List` 点号子组件，改从独立路径导入（如 `@ant-design/x/es/bubble/BubbleList`）
+- 改完对改动文件执行格式化；提交前由 lint-staged 检查
+- 写 Next.js 相关代码前先查 `node_modules/next/dist/docs/`
+- **`types.ts` 与 `constants.ts` 分离**：types 只导出类型；运行时常量放 `constants.ts`
 
-### 环境变量约定
+### AI SDK v7
 
-- 本地开发须复制 `.env.example` 为 `.env.local`，**其中列出的变量必须填写**；业务代码假定其已配置且有非空值
-- 读取时使用 [`requireEnv(name)`](src/lib/shared/server/env.ts)，**勿**写 `process.env.X ?? 默认值`、`|| 'fallback'` 或 Route 内 `if (!process.env.X)` 判空分支；缺失或空字符串直接 `throw`，排查看服务端日志
-- 面向用户的 JSON API 亦不因「未配置环境变量」单独返回 503 业务码；属部署/本地配置错误，由抛错或外层 catch 处理
+- `streamText` / `generateText` 用 **`instructions`**，**勿用**已废弃的 `system`
+- 调用方舟 Responses API 必须传 `providerOptions: { openai: { store: false } }`，否则默认 `store:true` 会发 `item_reference` 导致方舟 `<nil>` 错误（见 `api/chat/_server/providers/ark/constants.ts`）
 
-### JSON API 响应约定
+### 代码注释
 
-- 所有 JSON Route Handler（`Response.json`）统一返回业务码信封：`{ code: number; message: string; data: T | null }`
-- **成功**：`code === 0`，`message === 'ok'`，`data` 为业务载荷；HTTP 200
-- **失败**：`code !== 0`，`message` 为中文可读描述，`data: null`；HTTP status 保留语义（400/404/502 等）；客户端以 `code === 0` 判业务成功
-- **用户端友好提示语**（`jsonFail` 的 `message` 字段）：
-  - 面向终端用户，勿暴露环境变量名、业务码含义、Provider/SDK 原文、`err.message` 等内部信息；排查细节写服务端日志，勿塞进响应
-  - 上游不可用等运维类问题：用「**XX 服务暂不可用**」等中性表述；环境变量缺失见上文「环境变量约定」，不在 Route 内判空返回友好文案
-  - 用户输入问题：简短说明缺什么或哪里不对（如「缺少会话或消息内容」「无效 JSON」）
-  - 未知/兜底异常：「服务暂时不可用，请稍后重试」；勿把英文 provider 错误直接返回客户端
-- 工具：[`src/lib/shared/server/api-response.ts`](src/lib/shared/server/api-response.ts) — `jsonOk(data)` / `jsonFail(code, message, status)` / `readApiData<T>(res)`
-- 业务码（`ApiErrorCode`）：`40001` 参数无效、`40401` 会话不存在、`50201` 高德上游失败；`50301` / `50302` 保留码位，环境变量缺省改由 `requireEnv` 抛错
-- **例外**：`POST /api/chat` 成功为 AI SDK SSE 流（`createUIMessageStreamResponse`），非 JSON 信封；其 400 错误仍走信封
-- 服务端组件直调 `app/api/chats/_server/store`（如 `chat/layout` 的 `listChats()`）不经 HTTP，无需信封
+按「目的」分两类，勿混淆：
+
+| 类型 | 何时写 | 内容 |
+| ---- | ------ | ---- |
+| 防回归 | **仅**真实修错的代码 | 原现象 / 根因 / 为何这样写、勿改回 |
+| 意图 | 反直觉、易被误改、隐藏约束 | 「为什么」取舍；显而易见不写 |
+
+规则：
+
+- 判断：删掉注释后读者/AI 会不会改坏？会 → 写；不会 → 不写
+- 只注「为什么」，不注「是什么」
+- 「修复 / 防回归 / 勿再踩 / 否则会 BUG」**只能**出现在修复 diff 所改行上；新增行出现即违规
+- 业务逻辑函数须有基本说明注释（职责、入参/返回值要点）；显而易见的单行包装或框架生命周期回调可从简
+
+### 环境变量
+
+- `.env.example` → `.env.local`，所列变量必须填写；业务代码假定已配置且非空
+- 用 [`requireEnv(name)`](src/lib/shared/server/env.ts) 读取；**勿** `?? 默认值` / `|| 'fallback'` / Route 内判空
+- 缺失或空字符串直接 `throw`；面向用户的 JSON API 不因「未配置 env」单独返回 503
+
+### JSON API 响应
+
+统一信封：`{ code: number; message: string; data: T | null }`
+
+| 结果 | `code` | `message` | `data` | HTTP |
+| ---- | ------ | --------- | ------ | ---- |
+| 成功 | `0` | `'ok'` | 业务载荷 | 200 |
+| 失败 | ≠ 0 | 中文可读描述 | `null` | 保留语义（400/404/502…） |
+
+客户端以 `code === 0` 判成功。工具：[`api-response.ts`](src/lib/shared/server/api-response.ts) — `jsonOk` / `jsonFail` / `readApiData`。
+
+**用户端 `message`：**
+
+- 勿暴露 env 名、业务码含义、Provider/SDK 原文、`err.message`
+- 上游不可用：「XX 服务暂不可用」
+- 用户输入问题：简短说明缺什么
+- 兜底：「服务暂时不可用，请稍后重试」
+
+业务码（`ApiErrorCode`）：`40001` 参数无效、`40401` 会话不存在、`50201` 高德上游失败；`50301`/`50302` 保留（env 缺省改由 `requireEnv` 抛错）。
+
+**例外：**
+
+- `POST /api/chat` 成功为 AI SDK SSE 流，非 JSON 信封；其 400 仍走信封
+- RSC 直调 `store` 不经 HTTP，无需信封
+
+---
 
 ## 应做与不应做
 
-**应做**：改动前对齐相邻文件习惯；新功能先判断落点；冲突时先询问再改；新增函数/方法补基本说明注释。
+**应做**
 
-**不应做**：多职责堆单文件或过度抽象；未要求时 commit/push；覆盖更细规范；默认沿用冲突的项目命名；业务函数无说明注释。
+- 改动前对齐相邻文件习惯
+- 新功能先判断落点
+- 冲突时先询问再改
+- 新增函数/方法补基本说明注释
+
+**不应做**
+
+- 多职责堆单文件或过度抽象
+- 未要求时 commit / push
+- 覆盖更细规范
+- 默认沿用冲突的项目命名
+- 业务函数无说明注释
