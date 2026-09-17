@@ -78,10 +78,10 @@ src/
       layout.tsx
       [[...id]]/page.tsx
       _hooks/              # 页面级共享 Hook；勿放 Node 代码
-      _utils/              # 页面级共享工具（如 chat-id.ts）；勿放 Node 代码
+      _utils/              # 页面级共享工具与常量（如 chat-id.ts、constants.ts）；勿放 Node 代码
       _components/         # 对话页私有 UI：ChatShell / ChatSidebar / Chat / AuxiliaryPanel
     studio/                # 工作室产品面（前端）
-      _utils/ / _hooks/ / _components/  # 工作室共用：流式生图、任务列表壳、规格表单等
+      _utils/ / _hooks/ / _components/  # 工作室共用：流式生图、任务列表壳、规格表单、页面级常量等
       ecommerce/            # 电商设计：主图 / 详情图（主题规划）与营销海报；不跑商业分析
       business-analysis/ / product-model/ / product-retouch/ / wechat-article/
     api/
@@ -132,14 +132,14 @@ drizzle/                   # SQL migrations（drizzle-kit generate）
 
 **落点规则：**
 
-1. **组件专属**（仅该组件用的 store、纯函数、类型）→ `app/<页面域>/_components/<Component>/`（沿用 `utils.ts` / `constants.ts`）；专属 Hook → 同目录 `hooks/`（见「Hook 目录约定」）
-2. **页面级共享工具方法**（同路由段内多个组件或 page 共用、无 Node）→ `app/<页面域>/_utils/`。不要叫 `_lib`。文件避免 App Router 保留名（不可用 `route.ts`）
+1. **组件专属**（仅该组件用的 store、纯函数、类型、常量）→ `app/<页面域>/_components/<Component>/`（沿用 `utils.ts` / `constants.ts`）；专属 Hook → 同目录 `hooks/`（见「Hook 目录约定」「常量目录约定」）
+2. **页面级共享工具与常量**（同路由段内多个**顶层**组件或 page 共用、无 Node）→ `app/<页面域>/_utils/`（工具方法按主题命名如 `chat-id.ts`；共享常量用 `constants.ts` 或按主题拆分）。不要叫 `_lib`，**不要**在页面根平铺 `constants.ts`。文件避免 App Router 保留名（不可用 `route.ts`）
 3. **页面级共享 Hook**（同路由段内多个组件或 page 共用）→ `app/<页面域>/_hooks/`。不要叫 `hooks/`（会成为 URL 段）
 4. **只有 Node / Route 用** → `app/api/<域>/_server/`，入口 `import 'server-only'`。不要叫 `_utils` / `_hooks`
-5. **Client 与 Server 都要用的纯类型/纯函数** → 该 API 域的 `_shared/`（无 `server-only`）。Client **只允许** import `_shared`，禁止 import `_server`
+5. **Client 与 Server 都要用的纯类型/纯函数/常量** → 该 API 域的 `_shared/`（无 `server-only`）。Client **只允许** import `_shared`，禁止 import `_server`
 6. **无独立产品面** → `src/lib/`（db / shared / theme / skills）
 7. **跨路由、无业务耦合的 UI** → `src/components/`；**同类 Hook** → `src/hooks/`
-8. **跨产品页面复用、带业务语义的 UI** → `src/business-components/`（其专属 Hook 仍放该组件自己的 `hooks/`）
+8. **跨产品页面复用、带业务语义的 UI** → `src/business-components/`（其专属 Hook / 常量仍放该组件自己的 `hooks/` / `constants.ts`）
 
 `_` 前缀沿用 `_components`：不是 URL 段。页面域**不设 `_lib` / `_server`**；API 域**不设 `_utils` / `_hooks`**。
 
@@ -245,7 +245,7 @@ Button/
 - **不在主组件文件内定义方法**：解析、归一化、memo 比较、事件处理等一律抽到同目录 `utils.ts`；主文件只保留组件函数与 JSX 组装
 - **不在主组件文件内定义专属常量**：枚举值、文案映射、默认配置等一律抽到同目录 `constants.ts`
 - **不在主组件文件内定义 Hook**：仅该组件使用的自定义 Hook 抽到同目录 `hooks/useXxx.ts`；勿与主组件平铺，也勿写入 `utils.ts`（`utils.ts` 只放纯函数）。跨组件/跨页面的 Hook 见「Hook 目录约定」。Context 配套的 `useXxx` 与 Provider 同文件/同目录，不进三级 `hooks/`
-- **抽离子组件时同步抽离样式、方法、常量与 Hook**：专属样式迁入子目录同名样式文件；专属方法迁入子目录 `utils.ts`；专属常量迁入子目录 `constants.ts`；专属 Hook 迁入子目录 `hooks/`；勿继续依赖父级样式/utils/constants/hooks 中的专属部分（跨子组件共享类型/工具/常量/Hook 可留在父级对应文件，或按「Hook 目录约定」上提）
+- **抽离子组件时同步抽离样式、方法、常量与 Hook**：专属样式迁入子目录同名样式文件；专属方法迁入子目录 `utils.ts`；专属常量迁入子目录 `constants.ts`；专属 Hook 迁入子目录 `hooks/`；勿继续依赖父级样式/utils/constants/hooks 中的专属部分（**同一组件树内**跨子组件共享类型/工具/常量/Hook 可留在父级对应文件；**同页多个顶层组件**共用则按「常量目录约定」「Hook 目录约定」上提到 `_utils/` / `_hooks/`）
 
 ### Hook 目录约定
 
@@ -262,6 +262,19 @@ Button/
 - **带业务语义、随业务组件复用**的 Hook 放该 `src/business-components/<Component>/hooks/`，不进 `src/hooks/`
 - **禁止**页面 import 另一个页面的 `_hooks`；**禁止**把页面/组件私有逻辑放进 `src/hooks/`
 - Context 配套的 `useXxx`（如 `useThemeMode`、`useWorkspace`）与 Provider 同文件/同目录，不进上述三级 `hooks/`
+
+### 常量目录约定
+
+| 层级     | 路径                                              | 判定                                                                 | 示例 |
+| -------- | ------------------------------------------------- | -------------------------------------------------------------------- | ---- |
+| 组件专属 | `<Component>/constants.ts`                        | 仅该组件使用；同树子组件共用可留父级                                 | `EcommerceStudio/constants.ts` |
+| 页面私有 | `app/<route>/_utils/constants.ts`（或按主题拆分） | 同路由段内多个**顶层**组件或 page 共用，且彼此无合理共同父组件       | `app/studio/style-tuning/_utils/constants.ts` |
+| API 契约 | `api/<域>/_shared/constants.ts` 或 `_server/constants.ts` | Client+Server 契约 → `_shared`；仅 Node → `_server`                 | `api/docs/_shared/constants.ts` |
+
+- **就近放置、按需上提**：只有一个调用方 → 组件 `constants.ts`；同树多子组件 → 父级 `constants.ts`；同页多个顶层组件共用 → `_utils/constants.ts`（或 `_utils/<主题>.ts`，与现有 `model-options.ts` 一类文件并列）；跨页契约 → API `_shared`；跨路由且无业务耦合的 UI 常量 → 对应 `src/components/<Component>/constants.ts`
+- **不要**在页面根平铺 `constants.ts`（与 `_utils` / `_hooks` 的 `_` 前缀分层不一致）；**不要**为「共享」伪造无关父组件依赖；**不要** Client import `_server/constants.ts`
+- **禁止**页面 import 另一个页面的 `_utils`（含其中的常量）；API 运行时常量勿塞进页面 `_utils`
+- 与「域内 `types.ts` 与 `constants.ts` 分离」一致：`types.ts` 只导出类型，勿写 `export const`
 
 ## 会话持久化约定
 
@@ -312,12 +325,13 @@ Agent Skills 采用 Discovery → Activation 两层注入（Execution / referenc
 ## 编码约定
 
 - 对话、注释、提交说明默认中文简体
-- 目录与页面/组件开发遵循上文「组件目录约定」「Hook 目录约定」「App Router 分层约定」
+- 目录与页面/组件开发遵循上文「组件目录约定」「Hook 目录约定」「常量目录约定」「App Router 分层约定」
 - **不引入 Tailwind**；样式优先 CSS Modules 与 Ant Design / Ant Design X
 - 组件目录遵循上文「组件目录约定」（子组件拆离并同步带走样式/方法/常量/Hook、主文件不定义方法与专属常量与 Hook、`utils.ts` / `constants.ts` / `hooks/` 维护、`ComponentName.tsx` + 同名 `.module.css`）
 - **Hook 落点**遵循上文「Hook 目录约定」（`src/hooks/` / `app/<route>/_hooks/` / `<Component>/hooks/`）
+- **常量落点**遵循上文「常量目录约定」（组件 `constants.ts` / 页面 `_utils/constants.ts` / API `_shared`·`_server`）
 - **App Router 分层**遵循上文约定：前端在 `app/<页面域>/`（`_components` + `_utils` + `_hooks`）；服务端在 `app/api/<域>/_server` 与 `_shared`；`lib/` 为平台内核（db / shared / theme / skills）
-- **域内 `types.ts` 与 `constants.ts` 分离**：`types.ts` 只导出类型；运行时常量、错误/提示文案、配置默认值放同域 `constants.ts`（与组件目录的 `constants.ts` 约定一致）；勿在 `types.ts` 写 `export const`
+- **域内 `types.ts` 与 `constants.ts` 分离**：`types.ts` 只导出类型；运行时常量、错误/提示文案、配置默认值放同域 `constants.ts`（与组件目录、页面 `_utils` 的 `constants.ts` 约定一致）；勿在 `types.ts` 写 `export const`
 - App Router 下避免 `Bubble.List` 这类点号子组件写法，改为从独立路径导入（如 `@ant-design/x/es/bubble/BubbleList`）
 - 完成修改后对改动文件执行格式化（`pnpm run format` 或依赖 lint-staged）
 - 提交前由 lint-staged 检查暂存文件
