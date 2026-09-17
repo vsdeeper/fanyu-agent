@@ -108,7 +108,8 @@ src/
     studio/                # 工作室产品面（前端）
       _utils/ / _hooks/ / _components/
       ecommerce/
-      business-analysis/ / product-model/ / product-retouch/ / wechat-article/
+      business-analysis/ / product-model/ / product-retouch/
+      wechat-article/ / style-tuning/
     api/
       chat/                # POST /api/chat
         route.ts           # HTTP 薄壳
@@ -122,7 +123,7 @@ src/
         generate/route.ts
         _shared/ / _server/
         ecommerce/ / business-analysis/ / product-model/
-        product-retouch/ / wechat-article/
+        product-retouch/ / wechat-article/ / style-tuning/
       geo/ / images/ / docs/
     page.tsx / layout.tsx / global.css
   components/              # 全局通用 UI（无业务耦合）
@@ -194,8 +195,8 @@ lib/*、src/hooks     →  禁止依赖 app/ 与任何产品实现
 工作室子路由要点：
 
 - 共用：`generate`
-- 各产品：`{ecommerce,business-analysis,product-model,product-retouch,wechat-article}/tasks`
-- 另有：商业分析 `analyze`；电商 `analyze` / `rewrite-card`（主题规划，**不跑商业分析**）；公众号 `research` / `plan` / `draft`
+- 各产品：`{ecommerce,business-analysis,product-model,product-retouch,wechat-article,style-tuning}/tasks`
+- 另有：商业分析 `analyze`；电商 `analyze` / `rewrite-card`（主题规划，**不跑商业分析**）；公众号 `research` / `plan` / `draft`；文风调见产品 `_server`
 
 #### `route.ts` 职责上限
 
@@ -339,7 +340,7 @@ Button/
 
 - 启动时若仅发现旧路径 `CHAT_STORE_DIR/chats.db`，会改名迁到上一级
 - `pnpm sync:data:push` 本地→云盘；`pnpm sync:data:pull` 云盘→本地（镜像 chats、同级 studio、上一级 chats.db；pull 覆盖本地）
-- 同步前建议先关应用，便于 WAL checkpoint
+- 同步前先关应用，再跑 `pnpm db:checkpoint`（WAL 合回主库）；若仍残留 `-wal`/`-shm` 导致 sync 风险检测中止，关应用后重跑即可
 - 明文落盘 + 云盘同步不适合高敏感内容
 
 #### 数据模型与路由

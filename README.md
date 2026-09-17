@@ -1,213 +1,199 @@
 # 凡域
 
-基于 **Next.js App Router + TypeScript + Vercel AI SDK + Ant Design X** 的 AI 对话应用。样式使用 CSS Modules 与 Ant Design（不使用 Tailwind）。
+基于 **Next.js App Router + TypeScript + Vercel AI SDK + Ant Design X** 的 AI 对话与工作室应用。样式使用 CSS Modules / Ant Design（**不使用 Tailwind**）。
 
-协作约定、分层规范与编码细则见 [AGENTS.md](./AGENTS.md)。
+协作约定与分层细则见 [AGENTS.md](./AGENTS.md)。
 
-## 功能概览
+## 功能
 
-- **流式对话**：Think 推理、联网搜索引用、停止生成；刷新后可还原思考过程与引用来源
-- **多 Provider**：默认 DeepSeek 直连；可切火山方舟 / 智谱 BigModel。对话与工作室识图走主模型直读，生图按所选模型路由
-- **模型路由**：按消息复杂度自动选择 `pro` / `lite` / `mini` 三档
-- **工具**：文生图 / 改图（支持多参考图）、DESIGN.md 落盘；联网搜索按 Provider 适配
-- **Skills**：品牌规范板、移动端 / Web 端设计；出图后可按需导出语义化 DESIGN.md
-- **附件**：图片（png / jpeg / webp / gif）、PDF、txt / md、docx（最多 5 个，单文件 10MB）
-- **主题**：浅色 / 深色 / 跟随系统，SSR 无闪白
-- **会话持久化**：本地 SQLite（Drizzle + better-sqlite3），支持云盘镜像备份
+- **流式对话**：Think、联网引用、停止生成；刷新可还原思考与来源
+- **多 Provider**：DeepSeek（默认）/ 火山方舟 / 智谱；按消息复杂度路由 `pro` / `lite` / `mini`
+- **工具**：文生图与改图、DESIGN.md 落盘、联网搜索
+- **工作室**：产品精修、商业分析、产品模特、电商设计、公众号、文风调
+- **Skills**：品牌规范板、移动端 / Web 设计；出图后可导出 DESIGN.md
+- **附件**：图片、PDF、txt / md、docx（最多 10 个，单文件 10MB）
+- **主题**：浅色 / 深色 / 跟随系统（SSR 无闪白）
+- **持久化**：本地 SQLite + 可选云盘镜像
 
 ## 技术栈
 
-| 依赖                                                       | 版本      | 用途               |
-| ---------------------------------------------------------- | --------- | ------------------ |
-| Next.js                                                    | 16.x      | App Router         |
-| React                                                      | 19.x      | UI 运行时          |
-| Vercel AI SDK（`ai` / `@ai-sdk/react` / `@ai-sdk/openai`） | 7.x / 4.x | 流式对话、工具调用 |
-| Ant Design X + Ant Design                                  | 2.x / 6.x | 对话 UI 与基础组件 |
-| Drizzle + better-sqlite3                                   | —         | 会话与图片资产存储 |
-| TypeScript、ESLint、Prettier、Husky、Commitlint            | —         | 工程化             |
-
-## 环境要求
-
-- Node.js 22+
-- [pnpm](https://pnpm.io/)
+| 依赖 | 版本 | 用途 |
+| ---- | ---- | ---- |
+| Next.js | 16.x | App Router |
+| React | 19.x | UI |
+| Vercel AI SDK（`ai` / `@ai-sdk/react` / `@ai-sdk/openai`） | 7.x / 4.x | 流式对话、工具 |
+| Ant Design X + Ant Design | 2.x / 6.x | 对话 UI / 基础组件 |
+| Drizzle + better-sqlite3 | — | 会话与资产存储 |
+| TypeScript、ESLint、Prettier、Vitest、Husky、Commitlint | — | 工程化 |
 
 ## 快速开始
+
+需要 **Node.js 22+** 与 [pnpm](https://pnpm.io/)。
 
 ```bash
 pnpm install
 cp .env.example .env.local
-```
-
-在 `.env.local` 中填写密钥。完整列表与注释以 [`.env.example`](./.env.example) 为准；业务代码假定其中列出的变量已配置且非空。
-
-默认对话 Provider 为 DeepSeek；**对话与工作室识图走主模型直读**，生图默认走老张（选用 Seedream 时需方舟）：
-
-```env
-CHAT_PROVIDER=deepseek
-
-DEEPSEEK_API_KEY=your-deepseek-api-key
-DEEPSEEK_BASE_URL=https://your-deepseek-base-url
-# 三档模型 ID（均须配置，缺失启动时报错；按最后一条用户消息复杂度自动路由）
-DEEPSEEK_MODEL_PRO=your-deepseek-model-pro
-DEEPSEEK_MODEL_LITE=your-deepseek-model-lite
-DEEPSEEK_MODEL_MINI=your-deepseek-model-mini
-# 可选：思考强度，默认 high
-# DEEPSEEK_REASONING_EFFORT=high
-
-# 火山方舟（CHAT_PROVIDER=ark 时作为主对话；Seedream 生图亦需下列 ARK_*）
-ARK_API_KEY=your-ark-api-key
-ARK_BASE_URL=https://your-ark-base-url
-ARK_MODEL_PRO=your-ark-model-pro
-ARK_MODEL_LITE=your-ark-model-lite
-ARK_MODEL_MINI=your-ark-model-mini
-
-# 智谱 BigModel（CHAT_PROVIDER=zhipu 时作为主对话；生图选用 Seedream 时仍依赖上方 ARK_*）
-ZHIPU_API_KEY=your-zhipu-api-key
-ZHIPU_BASE_URL=https://open.bigmodel.cn/api/paas/v4
-ZHIPU_MODEL_PRO=your-zhipu-model-pro
-ZHIPU_MODEL_LITE=your-zhipu-model-lite
-ZHIPU_MODEL_MINI=your-zhipu-model-mini
-
-# 老张 API（生图默认模型 gemini-3.1-flash-image，其余老张生图模型亦走此端点）
-LAOZHANG_API_KEY=your-laozhang-api-key
-LAOZHANG_BASE_URL=https://api2.laozhang.ai/v1
-
-AMAP_WEB_KEY=your-amap-web-service-key
-CHAT_STORE_DIR=./data/chats
-CHAT_SYNC_REMOTE_DIR=/path/to/cloud-backup/chats
-```
-
-主对话切到方舟 / 智谱时分别设 `CHAT_PROVIDER=ark` / `zhipu`，并填写对应 `ARK_*` / `ZHIPU_*`。各 Provider 三档模型 ID 均须配置。
-
-启动开发服务：
-
-```bash
+# 按 .env.example 注释填写密钥（所列变量须非空；IMAGE_MODEL_ID 可留空）
 pnpm run dev
 ```
 
-浏览器打开 [http://localhost:3000](http://localhost:3000)。有历史会话则进入最近一条，否则进入草稿欢迎态（`/chat`，不写库）；首条发送后进入 `/chat/[id]`。
+打开 [http://localhost:3000](http://localhost:3000)。有历史则进最近会话，否则进入草稿 `/chat`；首条发送后进入 `/chat/[id]`。工作室入口在 `/studio`。
+
+**环境变量要点**（完整列表以 [`.env.example`](./.env.example) 为准）：
+
+| 变量 | 说明 |
+| ---- | ---- |
+| `CHAT_PROVIDER` | `deepseek`（默认）/ `ark` / `zhipu` |
+| `DEEPSEEK_*` / `ARK_*` / `ZHIPU_*` | 对应 Provider 的 Key、Base URL、三档模型 ID |
+| `LAOZHANG_*` | 生图默认走老张；选用 Seedream 时另需 `ARK_*` |
+| `IMAGE_MODEL_ID` | 可选；设置则生图绝对优先该模型，留空由主模型自选 |
+| `AMAP_WEB_KEY` | 高德 Web 服务（逆地理等） |
+| `CHAT_STORE_DIR` | 会话资产目录（默认 `./data/chats`） |
+| `CHAT_SYNC_REMOTE_DIR` | 云盘备份对端（应指向 `.../chats`） |
+
+说明：
+
+- DeepSeek / 智谱主对话的联网搜索走本地 `web_search` → 智谱 API，故即使用 DeepSeek 也须配置 `ZHIPU_*`
+- `db:generate` / `db:migrate` / `db:checkpoint` / `sync:data:*` 会读 `.env.local`（drizzle-kit 经 `loadEnvLocal`，不依赖 Next 自动注入）
 
 ## 常用命令
 
-| 命令                   | 说明                                     |
-| ---------------------- | ---------------------------------------- |
-| `pnpm run dev`         | 启动开发服务器                           |
-| `pnpm run build`       | 生产构建                                 |
-| `pnpm run start`       | 启动生产服务                             |
-| `pnpm run lint`        | ESLint 检查                              |
-| `pnpm run format`      | Prettier 格式化                          |
-| `pnpm run db:generate` | 根据 schema 生成迁移 SQL                 |
-| `pnpm run db:migrate`  | 用 CLI 将迁移应用到数据库                |
-| `pnpm sync:data:push`  | 将会话与工作室数据镜像同步到云盘备份     |
-| `pnpm sync:data:pull`  | 从云盘备份拉取并覆盖本地 chats 与 studio |
+| 命令 | 说明 |
+| ---- | ---- |
+| `pnpm run dev` / `build` / `start` | 开发 / 构建 / 生产 |
+| `pnpm run lint` / `format` / `test` | ESLint / Prettier / Vitest |
+| `pnpm run db:generate` | 对照 `schema.ts` 生成 `drizzle/` 迁移 SQL（不改库） |
+| `pnpm run db:migrate` | CLI 把未应用迁移写入 `chats.db`（不启动 Next 时用） |
+| `pnpm db:checkpoint` | 将 `chats.db` 的 WAL 合回主库（同步前用） |
+| `pnpm sync:data:push` / `pull` | 本地 ↔ 云盘镜像（pull 会覆盖本地） |
+
+## 数据与备份
+
+| 路径 | 内容 |
+| ---- | ---- |
+| `CHAT_STORE_DIR`（默认 `./data/chats`） | 会话图片、DESIGN.md |
+| `dirname(CHAT_STORE_DIR)/chats.db` | 会话库（WAL） |
+| 同级 `studio/{product}/` | 工作室任务资产 |
+
+```bash
+# 同步前：先停掉 pnpm dev，再把 WAL 合回主库
+pnpm db:checkpoint
+pnpm sync:data:push              # 本地 → 云盘
+pnpm sync:data:pull              # 云盘 → 本地（覆盖）
+pnpm sync:data:pull -- --yes     # 跳过确认
+```
+
+`db:checkpoint` 执行 `PRAGMA wal_checkpoint(TRUNCATE)`，清理残留的 `chats.db-wal` / `-shm`；若 sync 因 WAL 风险检测中止，关应用后跑一次即可。明文落盘不适合高敏感内容。
 
 ## 数据库迁移
 
-会话数据使用 Drizzle + SQLite（`dirname(CHAT_STORE_DIR)/chats.db`，默认 `./data/chats.db`）。**`db:generate` / `db:migrate` 不会随 `dev` / `build` 自动执行**，仅在改表结构或需要单独跑迁移时使用。
+表结构的真相在 `src/lib/db/schema.ts`；可执行的变更脚本在 `drizzle/`（须进 Git）。目标库由 `.env.local` 的 `CHAT_STORE_DIR` 解析（默认 `./data/chats.db`）。`db:generate` / `db:migrate` **不会**随 `dev` / `build` 自动执行。
 
-| 命令          | 何时需要                                                                        |
-| ------------- | ------------------------------------------------------------------------------- |
-| `db:generate` | 修改 `src/lib/db/schema.ts` 后，生成 `drizzle/` 下的新 SQL 与快照，并提交到 Git |
-| `db:migrate`  | 不启动 Next.js、仅想先更新数据库时；或在 CI 中单独应用迁移                      |
+### `pnpm run db:generate` — 生成迁移（不改库）
 
-日常开发不必每次启动前跑 `db:migrate`：应用首次访问数据库时会自动执行 `drizzle/` 中尚未应用的迁移（见 `src/lib/db/client.ts`）。
+对照当前 `schema.ts` 与 `drizzle/meta` 里上一份快照的差异，在 `drizzle/` 写出新文件，例如：
+
+- `0008_xxx.sql` — 待执行的 SQL
+- `meta/0008_snapshot.json` — 新快照
+- 更新 `meta/_journal.json` — 登记本条迁移
+
+**何时跑**：改了 `schema.ts`（加表 / 加列 / 改索引等）之后。不改 schema 不必跑。
+
+**建议步骤**：
 
 ```bash
-# 1. 修改 schema 后生成迁移
+# 1. 改完 schema.ts
 pnpm run db:generate
 
-# 2. 检查 drizzle/ 下新生成的 .sql，确认无误后提交
-
-# 3. 启动应用；首次读写会话时会自动 migrate
-pnpm run dev
+# 2. 打开 drizzle/ 下新生成的 .sql，确认无误后提交整个 drizzle/
+# 3. 继续开发；见下方「如何应用到库」
 ```
 
-`db:generate` 与 `db:migrate` 均读取 `CHAT_STORE_DIR` 并定位其上一级的 `chats.db`（默认 `./data/chats.db`），请与 `.env.local` 保持一致，避免迁错库文件。
+注意：本命令**只写文件、不碰** `chats.db`。没有生成新 SQL，后面怎么 migrate 库结构也不会变。
 
-## 本地数据备份
+### `pnpm run db:migrate` — CLI 应用迁移（改库）
 
-会话图片与 DESIGN.md 默认落在项目内 `data/chats`；会话库为同级的 `data/chats.db`；工作室任务资产在同级 `data/studio/{product}/`（均已 git 忽略）。云盘路径 `CHAT_SYNC_REMOTE_DIR` 仅作手动备份对端，应填 `.../chats`，脚本会同时镜像同级 `studio` 与上一级 `chats.db`：
+把 `drizzle/` 中**尚未应用到当前库**的 SQL 按 journal 顺序执行进 `chats.db`。
 
-```bash
-# 本地 → 云盘（chats、同级 studio、上一级 chats.db）
-pnpm sync:data:push
+**何时跑**：
 
-# 云盘 → 本地（会覆盖本地 data/chats、data/studio 与 data/chats.db，需确认）
-pnpm sync:data:pull
-pnpm sync:data:pull -- --yes   # 跳过确认
+- 不启动 Next，只想先把本地库结构更新好
+- CI / 脚本里单独迁库
+- 拉代码后想立刻对齐，而不等应用首次读库
+
+空跑（没有未应用迁移）一般是安全的 no-op。
+
+### 如何应用到库（二选一）
+
+| 方式 | 说明 |
+| ---- | ---- |
+| 日常开发 | `pnpm run dev` 后，首次访问数据库时 `getDb()` 会自动 `migrate()` |
+| CLI | `pnpm run db:migrate`，立刻写库、无需启动 Next |
+
+两者效果同类：都只执行「还没跑过」的迁移。推荐习惯：
+
+```text
+改 schema.ts → db:generate → 检查并提交 drizzle/ → pnpm run dev
+（需要立刻改库或不跑 Next 时再补 db:migrate）
 ```
-
-同步前建议先关闭应用，避免 WAL 未 checkpoint 导致不一致。明文落盘 + 云盘同步不适合高敏感内容。
 
 ## 目录结构
 
 ```
 src/
-  app/
-    chat/              # 对话页：_components / _utils
-    api/<域>/          # route.ts 薄壳 + _server 实现 + _shared 契约
-  components/          # 全局通用 UI：theme / ModeSwitch / Providers
+  app/chat/            # 对话页（_components / _utils / _hooks）
+  app/studio/          # 工作室页（各产品子路由）
+  app/api/<域>/        # route.ts 薄壳 + _server + _shared
+  components/          # 全局通用 UI
+  business-components/ # 跨产品业务 UI
   lib/                 # 平台内核：db / skills / shared / theme
-drizzle/               # SQL migrations
+drizzle/               # SQL 迁移（db:generate 产出）
+scripts/               # checkpoint / sync-data 等 Node 脚本
 ```
 
-前端跟页面路由走，服务端跟 API 路由走；`lib/` 只放无产品面的平台能力。细节见 [AGENTS.md](./AGENTS.md)。
+前端跟页面路由、服务端跟 API 路由；细节见 [AGENTS.md](./AGENTS.md)。
+
+## 工作室
+
+入口 `/studio`。各产品任务资产落在 `data/studio/{product}/`：
+
+| 产品 | 路径 | 说明 |
+| ---- | ---- | ---- |
+| 产品精修 | `/studio/product-retouch` | 精修 / 多角度出图 |
+| 商业分析 | `/studio/business-analysis` | 定位、卖点与视觉方向 |
+| 产品模特 | `/studio/product-model` | 多角度模特图 |
+| 电商设计 | `/studio/ecommerce` | 主图 / 详情图 / 营销海报（主题规划，不跑商业分析） |
+| 公众号 | `/studio/wechat-article` | 选题调研、思路与成稿 |
+| 文风调 | `/studio/style-tuning` | 软参数调校文风并试写 |
 
 ## 对话与工具
 
-主对话按 `CHAT_PROVIDER` 选择 DeepSeek、方舟或智谱；工具调用完成后主模型会再汇总说明。
+主对话由 `CHAT_PROVIDER` 选择 Provider；工具跑完后主模型再汇总。
 
-| 工具             | 作用                                                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `generate_image` | 文生图（`generate`）与改图（`edit`，支持多参考图）；按所选模型路由 Provider                                         |
-| `save_design_md` | 将会话 DESIGN.md 落盘，对话里只展示下载卡片                                                                         |
-| `web_search`     | 联网搜索：方舟在 Provider 侧透传（可带高德逆地理近似位置）；DeepSeek / 智谱经智谱独立 Web Search API 由本地工具调用 |
+| 工具 | 作用 |
+| ---- | ---- |
+| `generate_image` | 文生图 / 改图（多参考图）；按模型路由 Provider |
+| `save_design_md` | DESIGN.md 落盘，对话内仅下载卡片 |
+| `web_search` | 联网搜索（方舟侧透传；DeepSeek / 智谱走本地工具调智谱 Web Search） |
 
-生图模型由 `resolveImageModelId` 按优先级决定：
-
-1. **全局设置（最高）** — env `IMAGE_MODEL_ID`（将来全局设置写入）设置了则绝对优先，主模型自选不覆盖
-2. **主模型自动选型** — `IMAGE_MODEL_ID` 未设置时，主模型按场景从清单自选（经 `generate_image` 的 `model` 参数回传）
-3. **继承父图模型** — 多轮改图时沿用上一张图，保持风格一致
-4. **兜底** — `FALLBACK_IMAGE_MODEL_ID`（默认 `gemini-3.1-flash-image`）
-
-可选模型清单与各模型能力/擅长场景见 [`src/app/api/images/_server/registry.ts`](src/app/api/images/_server/registry.ts)（`listImageModels` / `describeImageModels`）：方舟 Seedream 4.5 / Seedream 5.0 Lite，老张 Gemini Flash Image / Gemini Flash Lite Image / GPT Image 2 VIP。
-
-图片落盘于 `CHAT_STORE_DIR/images/{chatId}/`；前端经 `GET /api/images/[assetId]` 展示，不直接渲染上游 CDN URL。
+生图模型优先级：`IMAGE_MODEL_ID`（若设置）→ 主模型自选 → 继承父图 → `FALLBACK_IMAGE_MODEL_ID`（`gemini-3.1-flash-image`）。清单见 [`registry.ts`](src/app/api/images/_server/registry.ts)（Seedream 4.5 / 5.0 Lite、Gemini Flash Image / Lite、GPT Image 2 VIP）。图片经 `GET /api/images/[assetId]` 展示，勿直链上游 CDN。
 
 ## Skills
 
-输入框 Suggestion 菜单或对话中的 `/<id>` 可调用用户面向 skill。知识库 skill（`userInvocable: false`）不进菜单，由意图匹配或伴随激活注入。
+`/<id>` 或 Suggestion 调用用户面向 skill；知识库 skill（`userInvocable: false`）由意图 / 伴随激活注入。
 
-| Skill           | 说明                                         |
-| --------------- | -------------------------------------------- |
-| `brandkit`      | 品牌规范板、标志系统与视觉识别               |
-| `mobile-design` | 移动端 App 界面概念图                        |
-| `web-design`    | 网站 / 落地页设计参考图（一区块一图）        |
-| `design-md`     | 知识库：出图后按需落盘 DESIGN.md，不直接出图 |
+| Skill | 说明 |
+| ----- | ---- |
+| `brandkit` | 品牌规范板 |
+| `mobile-design` / `web-design` | 移动端 / Web 设计参考图 |
+| `design-md` | 知识库：出图后按需落盘 DESIGN.md |
 
-Discovery（目录）每轮常驻；Activation（完整指令）仅本轮按意图 / 令牌 / 伴随激活加载。新增 skill 的步骤见 [AGENTS.md](./AGENTS.md)「Skills 渐进披露与意图加载」。
+新增与注入规则见 [AGENTS.md](./AGENTS.md)。
 
-## 提交规范
+## 提交
 
-采用 [Conventional Commits](https://www.conventionalcommits.org/)，description 使用中文简体：
+[Conventional Commits](https://www.conventionalcommits.org/)，description 用中文简体（如 `feat(chat): 新增流式对话`）。commitlint + husky / lint-staged 会校验并格式化暂存文件。
 
-```text
-feat(chat): 新增流式对话与停止生成
-fix(api): 修复消息转换失败导致的 500
-docs(readme): 更新本地启动说明
-```
+## 协议与文档
 
-常用 type：`feat` / `fix` / `docs` / `style` / `refactor` / `perf` / `test` / `chore` / `ci` / `build`。
-
-commit-msg 由 commitlint 校验；pre-commit 通过 husky + lint-staged 对暂存文件执行 ESLint / Prettier。
-
-## 开源协议
-
-本项目采用 [MIT License](./LICENSE)。
-
-## 相关文档
-
-- [AGENTS.md](./AGENTS.md)
-- [Next.js 文档](https://nextjs.org/docs)
-- [Vercel AI SDK](https://ai-sdk.dev/docs)
-- [Ant Design X](https://x.ant.design/docs/react/introduce)
+[MIT License](./LICENSE) · [AGENTS.md](./AGENTS.md) · [Next.js](https://nextjs.org/docs) · [AI SDK](https://ai-sdk.dev/docs) · [Ant Design X](https://x.ant.design/docs/react/introduce)
