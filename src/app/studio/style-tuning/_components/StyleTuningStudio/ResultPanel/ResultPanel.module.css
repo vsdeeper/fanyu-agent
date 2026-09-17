@@ -27,11 +27,6 @@
   min-width: 0;
 }
 
-.headAction {
-  flex-shrink: 0;
-  font-weight: 400;
-}
-
 .star {
   color: var(--one-color-primary);
 }
@@ -65,18 +60,6 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.fieldLabel {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--one-color-text-secondary);
 }
 
 .markdown {

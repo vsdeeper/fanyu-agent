@@ -38,9 +38,6 @@ export const EMPTY_TRIAL_WRITE_HINT =
 
 export const SOFT_TUNE_RESULT_TITLE = '六维软参数';
 export const TRIAL_WRITE_RESULT_TITLE = '试写正文';
-export const EDIT_SOFT_PARAMS_BUTTON = '编辑';
-export const DONE_EDIT_SOFT_PARAMS_BUTTON = '完成';
-
 export const TOPIC_CONTENT_PLACEHOLDER = '本次要写的主题、核心观点或故事主线';
 export const STYLE_PROMPT_PLACEHOLDER =
   '例如：你是一个做了十年情感专栏的编辑，说话像朋友聊天，但每段结尾会轻轻扎一下。也可点「AI 帮写」根据样本生成。';

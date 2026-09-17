@@ -31,6 +31,7 @@ import {
   parseSoftParams,
   readSoftTuneStepSnapshot,
   readTrialWriteStepSnapshot,
+  replaceSoftTuneMarkdownSection,
   resolveInitialPhase,
   saveStyleTuningStep,
   stripTrailingJsonFenceForDisplay,
@@ -289,18 +290,18 @@ export function useStyleTuningStudio(task: StyleTuningTaskDetail) {
     }
   }
 
-  function updateSoftParam(key: SoftParamFieldKey, value: string) {
-    setSoftParams((current) => ({ ...current, [key]: value }));
-  }
-
-  /** 结束编辑：用当前六维回写流式 Markdown 展示文，并落盘。 */
-  async function finishEditSoftParams() {
-    const display = formatSoftParamsAsMarkdown(softParams);
+  /** 保存单维软参数：写回字段，并只替换流式正文对应小节以保留其余维格式。 */
+  async function saveSoftParam(key: SoftParamFieldKey, value: string) {
+    const next = { ...softParams, [key]: value };
+    setSoftParams(next);
+    const base = softTuneStream.trim() || formatSoftParamsAsMarkdown(softParams);
+    const display = replaceSoftTuneMarkdownSection(base, key, value);
     setSoftTuneStream(display);
     try {
-      await persistSoftTune({ softParams, streamText: display });
+      await persistSoftTune({ softParams: next, streamText: display });
     } catch (err) {
-      console.error('[style-tuning-studio] finish edit soft params', err);
+      console.error('[style-tuning-studio] save soft param', err);
+      throw err;
     }
   }
 
@@ -314,8 +315,7 @@ export function useStyleTuningStudio(task: StyleTuningTaskDetail) {
     setStylePrompt,
     softTuneStream,
     softParams,
-    updateSoftParam,
-    finishEditSoftParams,
+    saveSoftParam,
     contentOutline,
     setContentOutline,
     trialStream,

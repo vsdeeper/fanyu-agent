@@ -66,8 +66,7 @@ export default function StyleTuningStudio({ task }: StyleTuningStudioProps) {
             phase={studio.phase}
             softTuneStream={studio.softTuneStream}
             softParams={studio.softParams}
-            onSoftParamChange={studio.updateSoftParam}
-            onFinishEditSoftParams={studio.finishEditSoftParams}
+            onSoftParamSave={studio.saveSoftParam}
             trialStream={studio.trialStream}
             markdown={studio.markdown}
             navLoading={studio.navLoading}

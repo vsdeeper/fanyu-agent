@@ -10,7 +10,12 @@ import type {
 import { STYLE_TUNING_PUBLISH_SCENES } from '@/app/api/studio/style-tuning/_shared/constants';
 import { apiPut } from '@/lib/shared/client/api-client';
 import { EMPTY_SOFT_PARAMS } from './constants';
-import type { SoftTuneStepSnapshot, StudioPhase, TrialWriteStepSnapshot } from './types';
+import type {
+  SoftParamFieldKey,
+  SoftTuneStepSnapshot,
+  StudioPhase,
+  TrialWriteStepSnapshot,
+} from './types';
 
 export { assertOkOrJsonFail, isAbortError } from '@/app/studio/_utils/generate-stream';
 export { createRafTextBuffer, consumeAnalyzeSse } from '@/app/studio/_utils/analyze-stream';
@@ -133,16 +138,97 @@ export function formatSoftParamsAsMarkdown(params: StyleTuningSoftParams): strin
     .trim();
 }
 
-/** 读取软调步快照（兼容旧键 metaPrompt）。 */
+const SOFT_PARAM_HEADING_BY_KEY: Record<SoftParamFieldKey, string> = {
+  rolePersona: '## 1. 角色与人格',
+  viewpointNarration: '## 2. 视角与人称',
+  languageTexture: '## 3. 语言质感',
+  rhythmStructure: '## 4. 节奏与结构',
+  emotionTemperature: '## 5. 情绪温度',
+  goalsConstraints: '## 6. 目标与约束',
+};
+
+const SOFT_PARAM_KEY_BY_INDEX: SoftParamFieldKey[] = [
+  'rolePersona',
+  'viewpointNarration',
+  'languageTexture',
+  'rhythmStructure',
+  'emotionTemperature',
+  'goalsConstraints',
+];
+
+/**
+ * 从流式 Markdown 正文按「## N. …」切出各维正文（保留列表/加粗等格式）。
+ * 切不出时回退到 softParams 字段。
+ */
+export function resolveSoftParamDisplayBodies(
+  streamText: string,
+  softParams: StyleTuningSoftParams,
+): Record<SoftParamFieldKey, string> {
+  const fromStream = splitSoftTuneMarkdownSections(streamText);
+  const result = { ...EMPTY_SOFT_PARAMS } as Record<SoftParamFieldKey, string>;
+  for (const key of SOFT_PARAM_FIELDS_KEYS) {
+    const section = fromStream[key]?.trim();
+    result[key] = section || softParams[key] || '';
+  }
+  return result;
+}
+
+/** 按二级标题拆分流式软调 Markdown。 */
+export function splitSoftTuneMarkdownSections(
+  markdown: string,
+): Partial<Record<SoftParamFieldKey, string>> {
+  const text = markdown.trim();
+  if (!text) return {};
+  const result: Partial<Record<SoftParamFieldKey, string>> = {};
+  const headingRe = /^##\s+(\d+)\.\s*[^\n]*$/gm;
+  const matches = [...text.matchAll(headingRe)];
+  if (matches.length === 0) return {};
+  for (let i = 0; i < matches.length; i += 1) {
+    const match = matches[i]!;
+    const index = Number(match[1]);
+    const key = SOFT_PARAM_KEY_BY_INDEX[index - 1];
+    if (!key || match.index == null) continue;
+    const bodyStart = match.index + match[0].length;
+    const bodyEnd = matches[i + 1]?.index ?? text.length;
+    result[key] = text.slice(bodyStart, bodyEnd).trim();
+  }
+  return result;
+}
+
+/** 替换流式软调 Markdown 中某一维正文，保留其余维格式。 */
+export function replaceSoftTuneMarkdownSection(
+  markdown: string,
+  key: SoftParamFieldKey,
+  body: string,
+): string {
+  const heading = SOFT_PARAM_HEADING_BY_KEY[key];
+  const nextBody = body.trim();
+  const text = markdown.trim();
+  if (!text) {
+    return formatSoftParamsAsMarkdown({ ...EMPTY_SOFT_PARAMS, [key]: nextBody });
+  }
+  const headingRe = new RegExp(`^${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
+  const match = headingRe.exec(text);
+  if (!match || match.index == null) {
+    // 无对应标题时整篇重拼，避免丢维
+    const sections = splitSoftTuneMarkdownSections(text);
+    const merged = { ...EMPTY_SOFT_PARAMS, ...sections, [key]: nextBody } as StyleTuningSoftParams;
+    return formatSoftParamsAsMarkdown(merged);
+  }
+  const afterHeading = match.index + match[0].length;
+  const rest = text.slice(afterHeading);
+  const nextHeading = /^##\s+\d+\.\s*/m.exec(rest);
+  const before = text.slice(0, afterHeading).replace(/\s*$/, '\n\n');
+  const after =
+    nextHeading?.index != null ? rest.slice(nextHeading.index).replace(/^\s*/, '\n\n') : '';
+  return `${before}${nextBody}${after}`.trim();
+}
+
+/** 读取软调步快照。 */
 export function readSoftTuneStepSnapshot(data: unknown): SoftTuneStepSnapshot | undefined {
   if (!isRecord(data)) return undefined;
   if (!isPublishScene(data.publishScene)) return undefined;
-  const stylePrompt =
-    typeof data.stylePrompt === 'string'
-      ? data.stylePrompt
-      : typeof data.metaPrompt === 'string'
-        ? data.metaPrompt
-        : '';
+  const stylePrompt = typeof data.stylePrompt === 'string' ? data.stylePrompt : '';
   const topicContent = typeof data.topicContent === 'string' ? data.topicContent : '';
   const softParams = parseSoftParams(data.softParams) ?? undefined;
   return {
@@ -154,15 +240,11 @@ export function readSoftTuneStepSnapshot(data: unknown): SoftTuneStepSnapshot | 
   };
 }
 
-/** 读取试写步快照（兼容旧键 requirement）。 */
+/** 读取试写步快照。 */
 export function readTrialWriteStepSnapshot(data: unknown): TrialWriteStepSnapshot | undefined {
   if (!isRecord(data)) return undefined;
   const contentOutlineRaw =
-    typeof data.contentOutline === 'string'
-      ? data.contentOutline
-      : typeof data.requirement === 'string'
-        ? data.requirement
-        : '';
+    typeof data.contentOutline === 'string' ? data.contentOutline : '';
   const contentOutline = contentOutlineRaw.trim() ? contentOutlineRaw : undefined;
   const markdown = typeof data.markdown === 'string' ? data.markdown : '';
   return {
