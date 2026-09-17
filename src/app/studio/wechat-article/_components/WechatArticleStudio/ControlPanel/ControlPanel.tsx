@@ -116,11 +116,6 @@ export default function ControlPanel({
                 onChange={(event) => onMustUseDetailsChange(event.target.value)}
               />
             </Form.Item>
-            {plan?.angleSummary ? (
-              <Form.Item label="当前思路摘要">
-                <Input.TextArea rows={2} value={plan.angleSummary} disabled />
-              </Form.Item>
-            ) : null}
           </Form>
         ) : null}
 

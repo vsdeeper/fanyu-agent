@@ -96,7 +96,8 @@ export default function ResultPanel({
   const streaming = phase === 'researching' || phase === 'planning' || phase === 'drafting';
   const researchView = phase === 'research' || phase === 'researching' || phase === 'researched';
   const planView = phase === 'plan' || phase === 'planning' || phase === 'planned';
-  const canPrev = phase !== 'research' && phase !== 'researching';
+  // 选题调研是第一步，无上一步可退（含 researched 结果态）
+  const canPrev = !researchView;
   const canNext =
     (phase === 'researched' && Boolean(selectedAngleId)) ||
     (phase === 'planned' && Boolean(plan)) ||
@@ -232,7 +233,7 @@ export default function ResultPanel({
             ) : plan ? (
               <>
                 <label>
-                  <p className={styles.sectionTitle}>切入判断</p>
+                  <p className={styles.sectionTitle}>角度摘要</p>
                   <Input.TextArea
                     rows={2}
                     value={plan.angleSummary}
