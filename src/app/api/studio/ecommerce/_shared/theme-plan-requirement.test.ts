@@ -70,13 +70,9 @@ describe('formatThemePlanRequirement', () => {
   });
 
   it('includeCopy: false 时丢弃画面文案节', () => {
-    const raw = [
-      '设计目标：建立印象',
-      '画面文案：',
-      '- 清新一夏',
-      '展示重点：',
-      '- 中景全貌',
-    ].join('\n');
+    const raw = ['设计目标：建立印象', '画面文案：', '- 清新一夏', '展示重点：', '- 中景全貌'].join(
+      '\n',
+    );
     expect(formatThemePlanRequirement(raw, { includeCopy: false })).toBe(
       ['设计目标：建立印象', '展示重点：', '- 中景全貌'].join('\n'),
     );

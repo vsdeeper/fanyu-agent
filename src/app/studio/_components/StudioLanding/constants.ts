@@ -2,6 +2,7 @@ import {
   BgColorsOutlined,
   EditOutlined,
   FileSearchOutlined,
+  FontColorsOutlined,
   ShoppingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -10,6 +11,7 @@ import {
   ECOMMERCE_PATH,
   PRODUCT_MODEL_PATH,
   PRODUCT_RETOUCH_PATH,
+  STYLE_TUNING_PATH,
   WECHAT_ARTICLE_PATH,
 } from '@/components/AppLayout/constants';
 import type { StudioEntry } from './types';
@@ -51,5 +53,12 @@ export const STUDIO_ENTRIES: StudioEntry[] = [
     description: '想法驱动：选题调研、内容思路与成稿',
     path: WECHAT_ARTICLE_PATH,
     icon: EditOutlined,
+  },
+  {
+    key: 'style-tuning',
+    title: '文风调',
+    description: '软参数调校文风，再试写验证',
+    path: STYLE_TUNING_PATH,
+    icon: FontColorsOutlined,
   },
 ];

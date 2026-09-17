@@ -18,13 +18,9 @@ describe('formatDetailImageRequirement', () => {
   });
 
   it('旧稿含画面文案时丢弃该节', () => {
-    const raw = [
-      '设计目标：建立印象',
-      '画面文案：',
-      '- 清新一夏',
-      '展示重点：',
-      '- 中景全貌',
-    ].join('\n');
+    const raw = ['设计目标：建立印象', '画面文案：', '- 清新一夏', '展示重点：', '- 中景全貌'].join(
+      '\n',
+    );
     expect(formatDetailImageRequirement(raw)).toBe(
       ['设计目标：建立印象', '展示重点：', '- 中景全貌'].join('\n'),
     );

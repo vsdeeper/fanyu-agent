@@ -57,6 +57,13 @@
       "when": 1789545600000,
       "tag": "0007_wechat_article_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789623615418,
+      "tag": "0008_broad_ben_grimm",
+      "breakpoints": true
     }
   ]
 }
