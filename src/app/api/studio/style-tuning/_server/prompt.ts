@@ -6,6 +6,7 @@ import type {
   StyleTuningSoftTuneRequest,
   StyleTuningTrialWriteRequest,
 } from '../_shared/types';
+import { SCENE_WORD_COUNT_BASELINE } from './constants';
 
 const SCENE_LABEL: Record<StyleTuningPublishScene, string> = {
   wechat: '公众号',
@@ -17,8 +18,10 @@ const SCENE_LABEL: Record<StyleTuningPublishScene, string> = {
 
 /** 构造软调用户提示。 */
 export function buildSoftTunePrompt(body: StyleTuningSoftTuneRequest): string {
+  const baseline = SCENE_WORD_COUNT_BASELINE[body.publishScene];
   return [
     `## 发布场景\n${SCENE_LABEL[body.publishScene]}（${body.publishScene}）`,
+    `## 篇幅基线\n正文 ${baseline.min}–${baseline.max} 字，取此区间，不得自行另定`,
     `## 主题内容\n${body.topicContent.trim()}`,
     `## 文风\n${body.stylePrompt.trim()}`,
     '',

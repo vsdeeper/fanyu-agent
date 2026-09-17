@@ -35,7 +35,7 @@ export const TRIAL_WRITE_RESULT_TITLE = '试写正文';
 export const STYLE_LABEL = '文风';
 export const TOPIC_CONTENT_PLACEHOLDER = '本次要写的主题、核心观点或故事主线';
 export const CONTENT_OUTLINE_PLACEHOLDER =
-  '可选：情节走向、必须包含的关键词、目标字数等；留空则围绕主题内容自行展开';
+  '可选：情节走向、必须包含的关键词等；留空则围绕主题内容自行展开';
 
 export const PUBLISH_SCENE_OPTIONS: Array<{ value: StyleTuningPublishScene; label: string }> = [
   { value: 'wechat', label: '公众号' },
