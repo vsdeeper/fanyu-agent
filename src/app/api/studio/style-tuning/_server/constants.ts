@@ -19,5 +19,5 @@ export const STYLE_TUNING_SOFT_TUNE_MAX_OUTPUT_TOKENS = 8192;
  */
 export const STYLE_TUNING_TRIAL_WRITE_MAX_OUTPUT_TOKENS = 32768;
 
-/** 文风提示词帮写输出上限。 */
-export const STYLE_TUNING_ASSIST_STYLE_PROMPT_MAX_OUTPUT_TOKENS = 2048;
+/** 文风提示词帮写输出上限（五行关键词，体量远小于段落片段）。 */
+export const STYLE_TUNING_ASSIST_STYLE_PROMPT_MAX_OUTPUT_TOKENS = 1024;

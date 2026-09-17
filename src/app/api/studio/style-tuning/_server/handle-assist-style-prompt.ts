@@ -26,7 +26,7 @@ function sanitizeAssistStylePromptOutput(text: string): string {
 }
 
 /**
- * POST /api/studio/style-tuning/assist-style-prompt：根据文风样本生成五维格式化文风提示词。
+ * POST /api/studio/style-tuning/assist-style-prompt：根据文风样本提炼五维关键词式文风提示词。
  */
 export async function handleAssistStylePrompt(req: Request): Promise<Response> {
   let json: unknown;
@@ -59,7 +59,7 @@ export async function handleAssistStylePrompt(req: Request): Promise<Response> {
     const result = await generateText({
       model: runtime.getMainModel(getModelId(provider, 'lite')),
       instructions: ASSIST_STYLE_PROMPT_INSTRUCTIONS,
-      prompt: `## 文风样本\n\n${styleSamples}\n\n请按 instructions 输出五维文风提示词。`,
+      prompt: `## 文风样本\n\n${styleSamples}\n\n请按 instructions 输出五行关键词式文风提示词。`,
       temperature: 0.7,
       maxOutputTokens: STYLE_TUNING_ASSIST_STYLE_PROMPT_MAX_OUTPUT_TOKENS,
       abortSignal: req.signal,

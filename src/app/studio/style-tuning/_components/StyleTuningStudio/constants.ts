@@ -17,7 +17,7 @@ export const TRIAL_WRITE_BUTTON = '开始试写';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
 export const AI_ASSIST_BUTTON = 'AI 帮写';
-export const AI_ASSIST_MODAL_TITLE = '根据文风样本生成文风提示词';
+export const AI_ASSIST_MODAL_TITLE = '根据文风样本提炼文风提示词';
 export const AI_ASSIST_GENERATE_BUTTON = '生成';
 export const AI_ASSIST_CANCEL_BUTTON = '取消';
 
@@ -40,11 +40,11 @@ export const SOFT_TUNE_RESULT_TITLE = '六维软参数';
 export const TRIAL_WRITE_RESULT_TITLE = '试写正文';
 export const TOPIC_CONTENT_PLACEHOLDER = '本次要写的主题、核心观点或故事主线';
 export const STYLE_PROMPT_PLACEHOLDER =
-  '例如：你是一个做了十年情感专栏的编辑，说话像朋友聊天，但每段结尾会轻轻扎一下。也可点「AI 帮写」根据样本生成。';
+  '例如：叙事姿态：外聚焦、低调陈述、留白省略… 也可点「AI 帮写」根据样本提炼五维关键词。';
 export const CONTENT_OUTLINE_PLACEHOLDER =
   '可选：情节走向、必须包含的关键词、目标字数等；留空则围绕主题内容自行展开';
 export const STYLE_SAMPLES_MODAL_PLACEHOLDER =
-  '粘贴认可的文风段落，多段可用空行分隔。将据此从叙事姿态、情感质地、语言质地、空间与视角、主题风格五维生成文风提示词。';
+  '粘贴认可的文风段落，多段可用空行分隔。将据此从叙事姿态、情感质地、语言质地、空间与视角、主题风格五维提炼关键词式文风提示词。';
 
 export const PUBLISH_SCENE_OPTIONS: Array<{ value: StyleTuningPublishScene; label: string }> = [
   { value: 'wechat', label: '公众号' },
