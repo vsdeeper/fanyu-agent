@@ -1,5 +1,5 @@
 import { Button, Card, Empty, Modal, Tag, Typography } from 'antd';
-import type { StyleDimension } from '../../../types';
+import type { StyleDimension } from '../types';
 import { CANCEL_BUTTON, CONFIRM_BUTTON, MODAL_WIDTH, NO_CARDS_HINT } from './constants';
 import styles from './StyleDimensionModal.module.css';
 

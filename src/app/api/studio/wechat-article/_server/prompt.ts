@@ -43,13 +43,12 @@ export function buildPlanPrompt(body: WechatArticlePlanRequest): string {
     '【参考来源】',
     sources || '（无）',
     '',
-    '请输出轻量内容思路：JSON 外最多两句导语，随即附完整 JSON（含 beats）；不要写长文或分节大纲。',
+    '请输出轻量内容思路：JSON 外最多两句导语，随即附完整 JSON（含 beats，以及至少 3 条 titleDirections）；不要写长文或分节大纲。',
   ].join('\n');
 }
 
 /** 构建成稿用户提示。 */
 export function buildDraftPrompt(body: WechatArticleDraftRequest): string {
-  const samples = (body.styleSamples ?? []).map((s) => s.trim()).filter(Boolean);
   return [
     '【用户想法】',
     body.idea.trim(),
@@ -61,16 +60,18 @@ export function buildDraftPrompt(body: WechatArticleDraftRequest): string {
     '要点：',
     ...body.plan.beats.map((beat, index) => `${index + 1}. ${beat}`),
     ...(body.plan.title?.trim() ? ['【标题】', body.plan.title.trim()] : []),
-    ...(body.tone?.trim() || body.plan.tone
-      ? ['【语气】', (body.tone ?? body.plan.tone ?? '').trim()]
+    '【文风】',
+    body.stylePrompt.trim(),
+    ...(body.lengthLimit
+      ? [
+          '【篇幅】',
+          `正文去掉空白后不少于 ${body.lengthLimit} 字；写够要点与展开，勿敷衍短写。`,
+        ]
       : []),
     ...(body.plan.audience ? ['【受众】', body.plan.audience] : []),
     body.deAiFlavor === false
       ? ''
       : '【去 AI 味】开启：少空话、少排比、句长参差，避免赋能/闭环等套话。',
-    ...(samples.length
-      ? ['【风格样本——优先对齐句式与用词】', ...samples.map((s, i) => `样本${i + 1}：\n${s}`)]
-      : []),
     '',
     body.plan.title?.trim()
       ? '请按给定标题写公众号正文 Markdown（标题已定，勿另拟标题）；可在文末附配图槽建议 JSON，但不要声称已生成图片。'

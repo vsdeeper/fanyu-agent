@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Button, Flex, Tag } from 'antd';
-import { STYLE_DIMENSIONS } from '../../style-dimensions';
-import type { StyleDimensionKey, StyleDimensionSelections } from '../../types';
-import { applyDimensionSelection, selectCardsByIds, toggleStyleCardId } from '../../utils';
+import { STYLE_DIMENSIONS } from './style-dimensions';
+import type { StyleDimensionKey, StyleDimensionSelections } from './types';
+import { applyDimensionSelection, selectCardsByIds, toggleStyleCardId } from './utils';
 import { LIBRARY_EMPTY_HINT, PICK_BUTTON, UNSELECTED_HINT } from './constants';
 import StyleDimensionModal from './StyleDimensionModal';
 import styles from './StyleDimensionPicker.module.css';

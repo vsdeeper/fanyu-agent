@@ -966,33 +966,34 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '四、按「主题与修行的关系」分',
+        title: '四、按「主题如何被经历」分',
         cards: [
           {
             id: 'practice-daily',
-            tag: '修行即日常',
-            description: '不写打坐念经，写洗碗、走路、喝茶、等地铁。修行不在云端，在厨房。',
+            tag: '落在日常',
+            description:
+              '不写抽象道理，写洗碗、走路、等地铁这类具体动作。主题落在日常里，才站得住。',
           },
           {
             id: 'practice-clumsy',
-            tag: '修行即狼狈',
+            tag: '带着狼狈',
             description:
-              '写修行中的尴尬：打坐腿麻、念经走神、跟人谈放下结果自己先急了。不完美才是修行的现场。',
+              '写过程里的尴尬与失手：说了重话、没做到、自己先急了。不完美才是现场。',
           },
           {
             id: 'practice-recurring',
-            tag: '修行即反复',
-            description: '写「以为自己放下了，结果又梦见了」。修行不是一次性的，是反复的。',
+            tag: '反复折返',
+            description: '写「以为过去了，结果又回来了」。主题不是一次性解决，是反复经历。',
           },
           {
             id: 'practice-no-gain',
-            tag: '修行即无所得',
-            description: '写「什么都没得到，只是继续活着」。不追求开悟，只是与当下共处。',
+            tag: '无所得',
+            description: '写「什么都没换来，只是继续往前」。不追求顿悟式收获，只是把日子过下去。',
           },
           {
             id: 'practice-mismatched',
-            tag: '修行即错位',
-            description: '写「想安慰却说了重话」「想靠近却推开了」。写人与人之间那些差一点的连接。',
+            tag: '差一点',
+            description: '写「想安慰却说重了」「想靠近却推开了」。写人与人之间那些差一点的连接。',
           },
         ],
       },
@@ -1034,7 +1035,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
             id: 'aware-none',
             tag: '未觉察',
             description:
-              '人物不知道自己怎么了。写「他一直在生气，但不知道在气什么」。写「无明」时用。',
+              '人物不知道自己怎么了。写「他一直在生气，但不知道在气什么」。',
           },
           {
             id: 'aware-partial',
@@ -1095,7 +1096,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
           {
             id: 'theme-time-present',
             tag: '当下主题',
-            description: '聚焦此刻。写「觉察」时用。',
+            description: '聚焦此刻正在发生的事与感受。',
           },
           {
             id: 'theme-time-memory',
@@ -1115,7 +1116,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
           {
             id: 'theme-time-none',
             tag: '无时间主题',
-            description: '不指向任何具体时间，像永恒。写「平常心」时用。',
+            description: '不指向任何具体时间，像抽离了钟表的状态。',
           },
         ],
       },

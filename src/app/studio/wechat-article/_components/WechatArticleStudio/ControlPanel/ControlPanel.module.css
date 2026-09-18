@@ -25,6 +25,16 @@
   margin-bottom: 0;
 }
 
+.lengthLimit {
+  width: 100%;
+}
+
+.lengthLimit :global(.ant-input-number) {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
 .angleBlock {
   display: flex;
   flex-direction: column;

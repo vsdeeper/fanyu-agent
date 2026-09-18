@@ -1,27 +1,39 @@
 import { HighlightOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Select, Switch } from 'antd';
+import { Button, Form, Input, InputNumber, Space, Switch } from 'antd';
+import StyleDimensionPicker, {
+  hasStyleSelection,
+  type StyleDimensionSelections,
+} from '@/business-components/StyleDimensionPicker';
 import AngleCardView from '../AngleCardView';
 import {
   DRAFT_BUTTON,
+  DRAFT_TITLE_EMPTY,
+  DRAFT_TITLE_LABEL,
+  LENGTH_LIMIT_LABEL,
+  LENGTH_LIMIT_MAX,
+  LENGTH_LIMIT_MIN,
+  LENGTH_LIMIT_PLACEHOLDER,
+  LENGTH_LIMIT_SUFFIX,
   PLAN_BUTTON,
   RESEARCH_BUTTON,
-  STYLE_SAMPLES_PLACEHOLDER,
+  STYLE_LABEL,
 } from '../constants';
 import type { AngleCard, PlanStepSnapshot, StudioPhase } from '../types';
+import { resolvePlanTitle } from '../utils';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
   phase: StudioPhase;
   idea: string;
   viewpoint: string;
-  draftTone: string;
+  styleSelections: StyleDimensionSelections;
+  lengthLimit?: number;
   deAiFlavor: boolean;
-  styleSamplesText: string;
   onIdeaChange: (value: string) => void;
   onViewpointChange: (value: string) => void;
-  onDraftToneChange: (value: string) => void;
+  onStyleSelectionsChange: (value: StyleDimensionSelections) => void;
+  onLengthLimitChange: (value: number | undefined) => void;
   onDeAiFlavorChange: (value: boolean) => void;
-  onStyleSamplesChange: (value: string) => void;
   onResearch: () => void;
   onPlan: () => void;
   onDraft: () => void;
@@ -29,19 +41,19 @@ type ControlPanelProps = {
   plan?: PlanStepSnapshot;
 };
 
-/** 公众号左栏：按当前步骤展示想法 / 思路参数 / 成稿风格（Ant Design Form）。 */
+/** 公众号左栏：按当前步骤展示想法 / 思路参数 / 成稿文风（Ant Design Form）。 */
 export default function ControlPanel({
   phase,
   idea,
   viewpoint,
-  draftTone,
+  styleSelections,
+  lengthLimit,
   deAiFlavor,
-  styleSamplesText,
   onIdeaChange,
   onViewpointChange,
-  onDraftToneChange,
+  onStyleSelectionsChange,
+  onLengthLimitChange,
   onDeAiFlavorChange,
-  onStyleSamplesChange,
   onResearch,
   onPlan,
   onDraft,
@@ -52,6 +64,7 @@ export default function ControlPanel({
   const researchStep = phase === 'research' || phase === 'researching' || phase === 'researched';
   const planStep = phase === 'plan' || phase === 'planning' || phase === 'planned';
   const draftStep = phase === 'draft' || phase === 'drafting' || phase === 'drafted';
+  const draftTitle = plan ? resolvePlanTitle(plan) : undefined;
 
   return (
     <aside className={styles.panel}>
@@ -89,30 +102,39 @@ export default function ControlPanel({
         ) : null}
 
         {draftStep ? (
-          <Form layout="vertical" disabled={busy} className={styles.form}>
-            <Form.Item label="语气">
-              <Select
-                value={draftTone || undefined}
-                allowClear
-                placeholder="选择语气"
-                options={[
-                  { value: '编辑部口述', label: '编辑部口述' },
-                  { value: '特稿', label: '特稿' },
-                  { value: '口播转写', label: '口播转写' },
-                ]}
-                onChange={(value) => onDraftToneChange(value ?? '')}
+          <Form layout="vertical" requiredMark disabled={busy} className={styles.form}>
+            <Form.Item label={DRAFT_TITLE_LABEL}>
+              <Input.TextArea
+                rows={3}
+                value={draftTitle ?? ''}
+                placeholder={DRAFT_TITLE_EMPTY}
+                readOnly
+              />
+            </Form.Item>
+            <Form.Item label={LENGTH_LIMIT_LABEL}>
+              <Space.Compact className={styles.lengthLimit} block>
+                <InputNumber
+                  min={LENGTH_LIMIT_MIN}
+                  max={LENGTH_LIMIT_MAX}
+                  step={100}
+                  value={lengthLimit}
+                  placeholder={LENGTH_LIMIT_PLACEHOLDER}
+                  onChange={(value) =>
+                    onLengthLimitChange(typeof value === 'number' ? value : undefined)
+                  }
+                />
+                <Space.Addon>{LENGTH_LIMIT_SUFFIX}</Space.Addon>
+              </Space.Compact>
+            </Form.Item>
+            <Form.Item label={STYLE_LABEL} required>
+              <StyleDimensionPicker
+                selections={styleSelections}
+                disabled={busy}
+                onChange={onStyleSelectionsChange}
               />
             </Form.Item>
             <Form.Item label="去 AI 味">
               <Switch checked={deAiFlavor} onChange={onDeAiFlavorChange} />
-            </Form.Item>
-            <Form.Item label="风格样本">
-              <Input.TextArea
-                rows={8}
-                value={styleSamplesText}
-                placeholder={STYLE_SAMPLES_PLACEHOLDER}
-                onChange={(event) => onStyleSamplesChange(event.target.value)}
-              />
             </Form.Item>
           </Form>
         ) : null}
@@ -154,7 +176,7 @@ export default function ControlPanel({
             size="large"
             icon={<HighlightOutlined />}
             loading={phase === 'drafting'}
-            disabled={!plan}
+            disabled={!plan || !hasStyleSelection(styleSelections)}
             onClick={onDraft}
           >
             {DRAFT_BUTTON}

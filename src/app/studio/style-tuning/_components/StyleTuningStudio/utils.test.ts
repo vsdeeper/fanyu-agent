@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { STYLE_DIMENSIONS } from './style-dimensions';
 import {
+  STYLE_DIMENSIONS,
   applyDimensionSelection,
   formatStyleSelections,
   hasStyleSelection,
   parseStyleSelections,
-  readSoftTuneStepSnapshot,
   selectCardsByIds,
   toggleStyleCardId,
-} from './utils';
+} from '@/business-components/StyleDimensionPicker';
+import { readSoftTuneStepSnapshot } from './utils';
 
 const narrative = STYLE_DIMENSIONS[0]!;
 const emotion = STYLE_DIMENSIONS[1]!;
@@ -101,8 +101,8 @@ describe('style selections', () => {
     const snap = readSoftTuneStepSnapshot({
       publishScene: 'wechat',
       topicContent: '主题',
-      styleSelections: { [narrative.key]: narrativeIds },
+      styleSelections: { [narrative.key]: [firstId!] },
     });
-    expect(snap?.styleSelections).toEqual({ [narrative.key]: narrativeIds });
+    expect(snap?.styleSelections).toEqual({ [narrative.key]: [firstId!] });
   });
 });

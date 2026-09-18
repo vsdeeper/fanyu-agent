@@ -11,6 +11,7 @@ import {
   MISSING_ANGLE_WARNING,
   MISSING_IDEA_WARNING,
   MISSING_PLAN_WARNING,
+  MISSING_STYLE_WARNING,
   MISSING_TITLE_WARNING,
   PLAN_FAILED,
   RESEARCH_FAILED,
@@ -38,7 +39,6 @@ import {
   isSameDraftSnapshot,
   isSamePlanSnapshot,
   isSameResearchSnapshot,
-  joinStyleSamples,
   parseDraftMeta,
   parsePlanPayload,
   parseResearchPayload,
@@ -48,8 +48,12 @@ import {
   resolveInitialPhase,
   resolvePlanTitle,
   saveWechatStep,
-  splitStyleSamples,
 } from '../utils';
+import {
+  formatStyleSelections,
+  hasStyleSelection,
+  type StyleDimensionSelections,
+} from '@/business-components/StyleDimensionPicker';
 
 /** 管理公众号四步：调研 → 思路 → 成稿 → 完成；配图仅用户点击生成。 */
 export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
@@ -70,11 +74,11 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   const [planStream, setPlanStream] = useState(initialPlan?.streamText ?? '');
   const [plan, setPlan] = useState<PlanStepSnapshot | undefined>(initialPlan);
 
-  const [draftTone, setDraftTone] = useState(initialDraft?.tone ?? initialPlan?.tone ?? '');
-  const [deAiFlavor, setDeAiFlavor] = useState(initialDraft?.deAiFlavor ?? true);
-  const [styleSamplesText, setStyleSamplesText] = useState(
-    joinStyleSamples(initialDraft?.styleSamples),
+  const [styleSelections, setStyleSelections] = useState<StyleDimensionSelections>(
+    initialDraft?.styleSelections ?? {},
   );
+  const [lengthLimit, setLengthLimit] = useState<number | undefined>(initialDraft?.lengthLimit);
+  const [deAiFlavor, setDeAiFlavor] = useState(initialDraft?.deAiFlavor ?? true);
   const [draftStream, setDraftStream] = useState(initialDraft?.streamText ?? '');
   const [markdown, setMarkdown] = useState(initialDraft?.markdown ?? '');
   const [titles, setTitles] = useState<string[] | undefined>(initialDraft?.titles);
@@ -175,10 +179,8 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       markdown,
       imageSlots: slots,
       ...(titles?.length ? { titles } : {}),
-      ...(splitStyleSamples(styleSamplesText).length
-        ? { styleSamples: splitStyleSamples(styleSamplesText) }
-        : {}),
-      ...(draftTone.trim() ? { tone: draftTone.trim() } : {}),
+      ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
+      ...(lengthLimit !== undefined ? { lengthLimit } : {}),
       deAiFlavor,
       imageModel,
       imageAspectRatio,
@@ -346,6 +348,11 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       message.warning(MISSING_TITLE_WARNING);
       return;
     }
+    if (!hasStyleSelection(styleSelections)) {
+      message.warning(MISSING_STYLE_WARNING);
+      return;
+    }
+    const stylePrompt = formatStyleSelections(styleSelections);
     await runSse(
       '/api/studio/wechat-article/draft',
       {
@@ -353,13 +360,12 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
         angle: selectedAngle,
         plan: {
           beats: plan.beats,
-          ...(plan.tone ? { tone: plan.tone } : {}),
           ...(plan.audience ? { audience: plan.audience } : {}),
           ...(selectedTitle ? { title: selectedTitle } : {}),
         },
-        ...(draftTone.trim() ? { tone: draftTone.trim() } : {}),
+        stylePrompt,
+        ...(lengthLimit !== undefined ? { lengthLimit } : {}),
         deAiFlavor,
-        styleSamples: splitStyleSamples(styleSamplesText),
       },
       draftBuffer,
       DRAFT_FAILED,
@@ -385,10 +391,8 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
             markdown: body,
             imageSlots: toPersistableSlots(nextSlots),
             ...(nextTitles?.length ? { titles: nextTitles } : {}),
-            ...(splitStyleSamples(styleSamplesText).length
-              ? { styleSamples: splitStyleSamples(styleSamplesText) }
-              : {}),
-            ...(draftTone.trim() ? { tone: draftTone.trim() } : {}),
+            ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
+            ...(lengthLimit !== undefined ? { lengthLimit } : {}),
             deAiFlavor,
             imageModel,
             imageAspectRatio,
@@ -540,9 +544,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
 
   function selectTitleDirection(index: number) {
     setPlan((current) =>
-      current?.titleDirections?.length
-        ? { ...current, selectedTitleIndex: index }
-        : current,
+      current?.titleDirections?.length ? { ...current, selectedTitleIndex: index } : current,
     );
   }
 
@@ -583,12 +585,12 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     updatePlanField,
     selectTitleDirection,
     changeTitleDirection,
-    draftTone,
-    setDraftTone,
+    styleSelections,
+    setStyleSelections,
+    lengthLimit,
+    setLengthLimit,
     deAiFlavor,
     setDeAiFlavor,
-    styleSamplesText,
-    setStyleSamplesText,
     draftStream,
     markdown,
     setMarkdown,

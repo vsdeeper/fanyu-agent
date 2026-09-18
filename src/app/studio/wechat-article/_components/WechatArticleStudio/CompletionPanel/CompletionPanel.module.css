@@ -45,6 +45,13 @@
   line-height: 1.7;
 }
 
+.charCount {
+  margin: 0;
+  font-size: 12px;
+  color: var(--one-color-text-tertiary);
+  text-align: right;
+}
+
 .images {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

@@ -39,13 +39,12 @@ const draftSchema = z.object({
   angle: angleSchema,
   plan: z.object({
     beats: z.array(z.string().trim().min(1)).min(1),
-    tone: z.string().trim().optional(),
     audience: z.string().trim().optional(),
     title: z.string().trim().min(1).optional(),
   }),
-  tone: z.string().trim().optional(),
+  stylePrompt: z.string().trim().min(1),
+  lengthLimit: z.number().int().min(100).max(20000).optional(),
   deAiFlavor: z.boolean().optional(),
-  styleSamples: z.array(z.string()).max(3).optional(),
 });
 
 /** 解析选题调研请求体；失败返回 null。 */

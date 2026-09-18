@@ -4,11 +4,14 @@ import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
+import { useState } from 'react';
 import { useThemeMode } from '@/components/theme';
 import { toClarityOptions, toModelOptions } from '@/app/studio/_utils/model-options';
 import AngleCardView from '../AngleCardView';
 import {
+  CANCEL_BUTTON,
   COPY_IMAGE_BUTTON,
+  EDIT_BUTTON,
   EMPTY_DRAFT_HINT,
   EMPTY_PLAN_HINT,
   EMPTY_RESEARCH_HINT,
@@ -19,10 +22,11 @@ import {
   RESEARCH_BRIEF_TITLE,
   RESEARCH_PACKING_HINT,
   RESEARCH_SOURCES_TITLE,
+  SAVE_BUTTON,
   SOURCE_KIND_LABEL,
 } from '../constants';
 import type { AngleCard, ImageSlot, PlanStepSnapshot, ResearchSource, StudioPhase } from '../types';
-import { cleanResearchBrief } from '../utils';
+import { cleanResearchBrief, countTextChars } from '../utils';
 import { useStreamScroll } from './hooks/useStreamScroll';
 import TitleDirectionList from './TitleDirectionList';
 import BeatList from './BeatList';
@@ -98,9 +102,19 @@ export default function ResultPanel({
   onNext,
 }: ResultPanelProps) {
   const { mode, hydrated } = useThemeMode();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
   const streaming = phase === 'researching' || phase === 'planning' || phase === 'drafting';
   const researchView = phase === 'research' || phase === 'researching' || phase === 'researched';
   const planView = phase === 'plan' || phase === 'planning' || phase === 'planned';
+  const draftView = !researchView && !planView;
+  // 离开成稿可编辑态时退出编辑标记，避免用 effect 同步
+  if ((phase === 'drafting' || !draftView) && editing) {
+    setEditing(false);
+  }
+  const isEditing = editing && draftView && phase !== 'drafting';
+  const canEditDraft =
+    draftView && phase !== 'drafting' && Boolean(markdown.trim()) && !editing;
   // 选题调研是第一步，无上一步可退（含 researched 结果态）
   const canPrev = !researchView;
   const canNext =
@@ -116,6 +130,13 @@ export default function ResultPanel({
     Boolean(researchBrief) &&
     sources.length === 0 &&
     angles.length === 0;
+  const draftDisplay = isEditing
+    ? draft
+    : phase === 'drafting'
+      ? draftStream
+      : markdown || draftStream;
+  const draftCharCount = draftDisplay.trim() ? countTextChars(draftDisplay) : 0;
+  const markdownClass = `${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`;
   const followContent = researchView
     ? `${researchBrief}\n${sources.length}\n${angles.length}\n${researchPacking ? '1' : '0'}`
     : planView
@@ -126,16 +147,49 @@ export default function ResultPanel({
     (planView && Boolean(planStream || plan)) ||
     (!researchView && !planView && Boolean(draftStream || markdown));
   const { scrollRef, contentRef, onScroll } = useStreamScroll(
-    scrollFollowEnabled,
+    scrollFollowEnabled && !isEditing,
     streaming,
     followContent,
   );
+
+  function startEdit() {
+    setDraft(markdown);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+  }
+
+  function saveEdit() {
+    const next = draft.trim();
+    if (next && next !== markdown) onMarkdownChange(draft);
+    setEditing(false);
+  }
 
   return (
     <section className={styles.panel}>
       <div className={styles.head}>
         <StarOutlined className={styles.star} />
         {title}
+        {draftView ? (
+          <div className={styles.headActions}>
+            {isEditing ? (
+              <>
+                <Button size="small" onClick={cancelEdit}>
+                  {CANCEL_BUTTON}
+                </Button>
+                <Button size="small" type="primary" onClick={saveEdit}>
+                  {SAVE_BUTTON}
+                </Button>
+              </>
+            ) : canEditDraft ? (
+              <Button size="small" onClick={startEdit}>
+                {EDIT_BUTTON}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {streaming && !researchBrief && !planStream && !draftStream && !markdown ? (
@@ -264,20 +318,24 @@ export default function ResultPanel({
               </div>
             ) : (
               <>
-                {markdown ? (
+                {isEditing ? (
                   <Input.TextArea
+                    className={styles.editor}
                     rows={16}
-                    value={markdown}
-                    onChange={(event) => onMarkdownChange(event.target.value)}
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
                   />
-                ) : draftStream && hydrated ? (
+                ) : draftDisplay.trim() && hydrated ? (
                   <XMarkdown
-                    className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
-                    content={draftStream}
+                    className={markdownClass}
+                    content={draftDisplay}
                     paragraphTag="div"
                     openLinksInNewTab
                     escapeRawHtml
                   />
+                ) : null}
+                {draftDisplay.trim() ? (
+                  <p className={styles.charCount}>共 {draftCharCount} 字</p>
                 ) : null}
 
                 <p className={styles.sectionTitle}>配图槽（手动生成，不会自动出图）</p>
@@ -341,14 +399,14 @@ export default function ResultPanel({
       )}
 
       <div className={styles.footer}>
-        <Button size="large" disabled={!canPrev || streaming} onClick={onPrev}>
+        <Button size="large" disabled={!canPrev || streaming || isEditing} onClick={onPrev}>
           {PREV_BUTTON}
         </Button>
         <Button
           size="large"
           type="primary"
           loading={navLoading}
-          disabled={!canNext || streaming}
+          disabled={!canNext || streaming || isEditing}
           onClick={onNext}
         >
           {NEXT_BUTTON}

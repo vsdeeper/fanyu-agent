@@ -9,9 +9,11 @@ import {
   TOPIC_CONTENT_PLACEHOLDER,
   TRIAL_WRITE_BUTTON,
 } from '../constants';
-import type { StudioPhase, StyleDimensionSelections } from '../types';
-import { hasStyleSelection } from '../utils';
-import StyleDimensionPicker from './StyleDimensionPicker';
+import StyleDimensionPicker, {
+  hasStyleSelection,
+  type StyleDimensionSelections,
+} from '@/business-components/StyleDimensionPicker';
+import type { StudioPhase } from '../types';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {

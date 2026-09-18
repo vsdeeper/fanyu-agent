@@ -35,14 +35,15 @@ export type WechatArticleDraftRequest = {
   };
   plan: {
     beats: string[];
-    tone?: string;
     audience?: string;
     /** 内容思路中选定的成稿标题。 */
     title?: string;
   };
-  tone?: string;
+  /** 文风五维卡片拼成的提示文本。 */
+  stylePrompt: string;
+  /** 正文篇幅下限（去掉空白后的字数）；未传则不限制。 */
+  lengthLimit?: number;
   deAiFlavor?: boolean;
-  styleSamples?: string[];
 };
 
 export type WechatArticleSseTextEvent = {

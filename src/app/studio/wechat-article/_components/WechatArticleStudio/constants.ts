@@ -35,6 +35,15 @@ export const MISSING_IDEA_WARNING = '请先填写我的想法';
 export const MISSING_ANGLE_WARNING = '请先点选一个写作角度';
 export const MISSING_PLAN_WARNING = '请先生成并确认内容思路';
 export const MISSING_TITLE_WARNING = '请先点选一个标题方向作为成稿标题';
+export const MISSING_STYLE_WARNING = '请至少选择一个文风卡片';
+export const STYLE_LABEL = '文风';
+export const DRAFT_TITLE_LABEL = '标题';
+export const DRAFT_TITLE_EMPTY = '尚未选定标题';
+export const LENGTH_LIMIT_LABEL = '篇幅限制';
+export const LENGTH_LIMIT_PLACEHOLDER = '请输入';
+export const LENGTH_LIMIT_SUFFIX = '≥字';
+export const LENGTH_LIMIT_MIN = 1000;
+export const LENGTH_LIMIT_MAX = 5000;
 export const RESEARCH_FAILED = '选题调研失败，请稍后重试';
 export const PLAN_FAILED = '内容思路生成失败，请稍后重试';
 export const DRAFT_FAILED = '成稿失败，请稍后重试';
@@ -42,6 +51,9 @@ export const TITLE_DIRECTIONS_TITLE = '标题方向（点选一条作为成稿�
 export const EDIT_TITLE_BUTTON = '编辑';
 export const SAVE_TITLE_BUTTON = '保存';
 export const CANCEL_TITLE_BUTTON = '取消';
+export const EDIT_BUTTON = '编辑';
+export const SAVE_BUTTON = '保存';
+export const CANCEL_BUTTON = '取消';
 export const COPY_OK = '已复制到剪贴板';
 export const COPY_FAILED = '复制失败，请手动选择文本';
 export const COPY_IMAGE_FAILED = '复制图片失败，请右键另存';
@@ -50,14 +62,12 @@ export const GENERATE_FAILED = '配图生成失败，请稍后重试';
 export const EMPTY_RESEARCH_HINT = '写下想法后点击「开始调研」，将产出检索简报、参考来源与角度卡';
 export const RESEARCH_PACKING_HINT = '正在整理参考来源与角度卡…';
 export const EMPTY_PLAN_HINT = '确认角度后点击「生成思路」，产出轻量写作要点';
-export const EMPTY_DRAFT_HINT = '确认思路后点击「生成正文」；配图槽需手动触发生成';
+export const MIN_TITLE_DIRECTIONS = 3;
+export const EMPTY_DRAFT_HINT = '选定文风后点击「生成正文」；配图槽需手动触发生成';
 
 export const RESEARCH_BRIEF_TITLE = '检索简报';
 export const RESEARCH_SOURCES_TITLE = '参考来源';
 export const RESEARCH_ANGLES_TITLE = '角度卡（点选一张）';
-
-export const STYLE_SAMPLES_PLACEHOLDER =
-  '粘贴你认可的旧文或目标口吻段落，1～3 段。有样本时成稿优先对齐其句式与用词。';
 
 export const DEFAULT_IMAGE_MODEL = 'gpt-image-2-vip';
 export const DEFAULT_IMAGE_ASPECT = '3:2';

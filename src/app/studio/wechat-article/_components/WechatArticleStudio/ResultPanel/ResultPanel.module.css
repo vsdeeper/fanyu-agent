@@ -22,6 +22,21 @@
   color: var(--one-color-text);
 }
 
+.headActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
 .body {
   flex: 1;
   display: flex;
@@ -145,6 +160,13 @@
 .markdown {
   font-size: 14px;
   line-height: 1.7;
+}
+
+.charCount {
+  margin: 0;
+  font-size: 12px;
+  color: var(--one-color-text-tertiary);
+  text-align: right;
 }
 
 .footer {

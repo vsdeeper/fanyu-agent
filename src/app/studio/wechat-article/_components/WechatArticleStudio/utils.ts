@@ -3,6 +3,7 @@ import type {
   WechatArticleStepKey,
   WechatArticleTaskStepRecord,
 } from '@/app/api/studio/wechat-article/_shared/task-types';
+import { parseStyleSelections } from '@/business-components/StyleDimensionPicker';
 import { apiPut } from '@/lib/shared/client/api-client';
 import type {
   AngleCard,
@@ -13,7 +14,7 @@ import type {
   ResearchStepSnapshot,
   StudioPhase,
 } from './types';
-import { DEFAULT_IMAGE_ASPECT, DEFAULT_IMAGE_CLARITY, DEFAULT_IMAGE_MODEL } from './constants';
+import { DEFAULT_IMAGE_ASPECT, DEFAULT_IMAGE_CLARITY, DEFAULT_IMAGE_MODEL, LENGTH_LIMIT_MAX, LENGTH_LIMIT_MIN, MIN_TITLE_DIRECTIONS } from './constants';
 
 export { assertOkOrJsonFail, isAbortError } from '@/app/studio/_utils/generate-stream';
 export { createRafTextBuffer, consumeAnalyzeSse } from '@/app/studio/_utils/analyze-stream';
@@ -163,13 +164,12 @@ export function parsePlanPayload(json: unknown): PlanStepSnapshot | null {
   const beats = asStringArray(record.beats);
   if (!beats?.length) return null;
   const titleDirections = asStringArray(record.titleDirections);
+  if (!titleDirections || titleDirections.length < MIN_TITLE_DIRECTIONS) return null;
   return {
     beats,
-    ...(asString(record.tone) ? { tone: asString(record.tone) } : {}),
     ...(asString(record.audience) ? { audience: asString(record.audience) } : {}),
-    ...(titleDirections
-      ? { titleDirections, selectedTitleIndex: 0 }
-      : {}),
+    titleDirections,
+    selectedTitleIndex: 0,
   };
 }
 
@@ -267,7 +267,6 @@ export function readPlanStepSnapshot(data: unknown): PlanStepSnapshot | undefine
         : undefined;
   return {
     beats,
-    ...(asString(data.tone) ? { tone: asString(data.tone) } : {}),
     ...(asString(data.audience) ? { audience: asString(data.audience) } : {}),
     ...(titleDirections ? { titleDirections } : {}),
     ...(selectedTitleIndex !== undefined ? { selectedTitleIndex } : {}),
@@ -283,12 +282,20 @@ export function readDraftStepSnapshot(data: unknown): DraftStepSnapshot | undefi
     titles: data.titles,
     imageSlots: data.imageSlots,
   });
+  const styleSelections = parseStyleSelections(data.styleSelections);
+  const lengthLimit =
+    typeof data.lengthLimit === 'number' &&
+    Number.isInteger(data.lengthLimit) &&
+    data.lengthLimit >= LENGTH_LIMIT_MIN &&
+    data.lengthLimit <= LENGTH_LIMIT_MAX
+      ? data.lengthLimit
+      : undefined;
   return {
     markdown,
     imageSlots: meta.imageSlots,
     ...(meta.titles ? { titles: meta.titles } : {}),
-    ...(asStringArray(data.styleSamples) ? { styleSamples: asStringArray(data.styleSamples) } : {}),
-    ...(asString(data.tone) ? { tone: asString(data.tone) } : {}),
+    ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
+    ...(lengthLimit !== undefined ? { lengthLimit } : {}),
     ...(typeof data.deAiFlavor === 'boolean' ? { deAiFlavor: data.deAiFlavor } : {}),
     ...(asString(data.imageModel) ? { imageModel: asString(data.imageModel) } : {}),
     ...(asString(data.imageAspectRatio)
@@ -345,20 +352,6 @@ export async function saveWechatStep<T>(
   return record.data as T;
 }
 
-/** 将风格样本文本拆成最多 3 段。 */
-export function splitStyleSamples(text: string): string[] {
-  return text
-    .split(/\n{2,}/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, 3);
-}
-
-/** 组装风格样本文本框内容。 */
-export function joinStyleSamples(samples: string[] | undefined): string {
-  return (samples ?? []).join('\n\n');
-}
-
 /** 默认成稿生图规格。 */
 export function defaultImageSpec() {
   return {
@@ -366,6 +359,11 @@ export function defaultImageSpec() {
     imageAspectRatio: DEFAULT_IMAGE_ASPECT,
     imageClarity: DEFAULT_IMAGE_CLARITY,
   };
+}
+
+/** 统计正文「字数」：去掉空白后的字符数。 */
+export function countTextChars(text: string): number {
+  return text.replace(/\s/g, '').length;
 }
 
 /** 复制纯文本到剪贴板。 */

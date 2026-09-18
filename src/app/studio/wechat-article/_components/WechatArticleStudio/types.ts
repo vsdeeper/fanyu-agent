@@ -1,3 +1,5 @@
+import type { StyleDimensionSelections } from '@/business-components/StyleDimensionPicker';
+
 export type StudioPhase =
   | 'research'
   | 'researching'
@@ -38,7 +40,6 @@ export type ResearchStepSnapshot = {
 
 export type PlanStepSnapshot = {
   beats: string[];
-  tone?: string;
   audience?: string;
   titleDirections?: string[];
   /** 选定的标题方向下标，成稿时作为正文标题。 */
@@ -57,8 +58,9 @@ export type ImageSlot = {
 export type DraftStepSnapshot = {
   markdown: string;
   titles?: string[];
-  styleSamples?: string[];
-  tone?: string;
+  styleSelections?: StyleDimensionSelections;
+  /** 正文篇幅下限（去掉空白后的字数）。 */
+  lengthLimit?: number;
   deAiFlavor?: boolean;
   imageSlots: ImageSlot[];
   imageModel?: string;

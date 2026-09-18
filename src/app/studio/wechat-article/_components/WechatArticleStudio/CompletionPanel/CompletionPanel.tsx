@@ -7,6 +7,7 @@ import '@/lib/theme/XMarkdownTheme.css';
 import { useThemeMode } from '@/components/theme';
 import { COPY_ARTICLE_BUTTON, COPY_IMAGE_BUTTON, PREV_BUTTON } from '../constants';
 import type { ImageSlot } from '../types';
+import { countTextChars } from '../utils';
 import styles from './CompletionPanel.module.css';
 
 type CompletionPanelProps = {
@@ -29,6 +30,7 @@ export default function CompletionPanel({
 }: CompletionPanelProps) {
   const { mode, hydrated } = useThemeMode();
   const readyImages = imageSlots.filter((slot) => slot.assetUrl);
+  const charCount = markdown.trim() ? countTextChars(markdown) : 0;
 
   return (
     <section className={styles.panel}>
@@ -61,6 +63,7 @@ export default function CompletionPanel({
                 escapeRawHtml
               />
             ) : null}
+            <p className={styles.charCount}>共 {charCount} 字</p>
             {readyImages.length ? (
               <>
                 <Typography.Title level={5}>配图</Typography.Title>
