@@ -9,7 +9,7 @@
 - **流式对话**：Think、联网引用、停止生成；刷新可还原思考与来源
 - **多 Provider**：DeepSeek（默认）/ 火山方舟 / 智谱；按消息复杂度路由 `pro` / `lite` / `mini`
 - **工具**：文生图与改图、DESIGN.md 落盘、联网搜索
-- **工作室**：产品精修、商业分析、产品模特、电商设计、公众号、文风调
+- **工作室**：产品精修、商业分析、产品模特、电商设计、公众号
 - **Skills**：品牌规范板、移动端 / Web 设计；出图后可导出 DESIGN.md
 - **附件**：图片、PDF、txt / md、docx（最多 10 个，单文件 10MB）
 - **主题**：浅色 / 深色 / 跟随系统（SSR 无闪白）
@@ -164,7 +164,6 @@ scripts/               # checkpoint / sync-data 等 Node 脚本
 | 产品模特 | `/studio/product-model` | 多角度模特图 |
 | 电商设计 | `/studio/ecommerce` | 主图 / 详情图 / 营销海报（主题规划，不跑商业分析） |
 | 公众号 | `/studio/wechat-article` | 选题调研、思路与成稿 |
-| 文风调 | `/studio/style-tuning` | 软参数调校文风并试写 |
 
 ## 对话与工具
 

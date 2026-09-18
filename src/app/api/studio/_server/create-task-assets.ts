@@ -9,7 +9,6 @@ import {
   ecommerceTaskAssets,
   productModelTaskAssets,
   productRetouchTaskAssets,
-  styleTuningTaskAssets,
   wechatArticleTaskAssets,
 } from '@/lib/db/schema';
 import { getChatDir, getDb } from '@/lib/db/client';
@@ -20,8 +19,7 @@ export type StudioAssetsTable =
   | typeof productModelTaskAssets
   | typeof productRetouchTaskAssets
   | typeof businessAnalysisTaskAssets
-  | typeof wechatArticleTaskAssets
-  | typeof styleTuningTaskAssets;
+  | typeof wechatArticleTaskAssets;
 
 export type StudioTaskAssetRecord = {
   id: string;

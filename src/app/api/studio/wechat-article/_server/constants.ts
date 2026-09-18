@@ -20,7 +20,7 @@ export const RESEARCH_MAX_STEPS = 6;
 export const WECHAT_ARTICLE_PLAN_MAX_OUTPUT_TOKENS = 8192;
 /**
  * draft 默认输出上限。公众号正文远长于思路 JSON，且 reasoning 占同一预算；
- * 对齐文风调「试写」档，避免长文 finishReason=length。
+ * 取较大档避免长文 finishReason=length。
  */
 export const WECHAT_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS = 32768;
 /** draft 输出硬顶：有篇幅下限时按字数上调，但不超过此值。 */

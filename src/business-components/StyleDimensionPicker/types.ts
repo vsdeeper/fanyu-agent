@@ -1,7 +1,4 @@
-/**
- * 文风五维键。与 StyleTuningSoftParams（六维软参数）无任何对应关系，
- * 尤其 languageTexture 同名不同义，勿把两者互相赋值。
- */
+/** 文风五维键（叙事立场 / 情绪质感 / 语言质感 / 空间视角 / 主题风格）。 */
 export type StyleDimensionKey =
   'narrativeStance' | 'emotionTexture' | 'languageTexture' | 'spacePerspective' | 'themeStyle';
 
