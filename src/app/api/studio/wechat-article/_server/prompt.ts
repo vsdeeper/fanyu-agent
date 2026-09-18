@@ -1,5 +1,6 @@
 import type {
   WechatArticleDraftRequest,
+  WechatArticleImagesRequest,
   WechatArticlePlanRequest,
   WechatArticleResearchRequest,
 } from '../_shared/types';
@@ -71,7 +72,25 @@ export function buildDraftPrompt(body: WechatArticleDraftRequest): string {
     ...(body.plan.audience ? ['【受众】', body.plan.audience] : []),
     '',
     body.plan.title?.trim()
-      ? `请写公众号正文 Markdown：第一行必须是 \`# ${body.plan.title.trim()}\`（标题已定，勿改写），空一行后写正文；可在文末附配图槽建议 JSON，但不要声称已生成图片。`
-      : '请写公众号正文 Markdown；可在文末附配图槽建议 JSON，但不要声称已生成图片。',
+      ? `请写公众号正文 Markdown：第一行必须是 \`# ${body.plan.title.trim()}\`（标题已定，勿改写），空一行后写正文；正文须含若干 \`## \` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。`
+      : '请写公众号正文 Markdown；正文须含若干 `## ` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。',
+  ].join('\n');
+}
+
+/** 构建成稿配图规划用户提示。 */
+export function buildImagesPrompt(body: WechatArticleImagesRequest): string {
+  const hasStyleRef = Boolean(body.styleReferenceDataUrl?.trim());
+  return [
+    '【正文 Markdown】',
+    body.markdown.trim(),
+    ...(body.title?.trim() ? ['【标题】', body.title.trim()] : []),
+    ...(hasStyleRef
+      ? [
+          '【风格参考图】',
+          '消息中附带一张风格参考图：请据此锁定 visualStyle（媒介/画风、色调、光影、质感；有人物则统一人物形象），各槽 promptDraft 服从之，禁止另起冲突风格。',
+        ]
+      : []),
+    '',
+    '请按正文需要自行决定配图数量（建议 2～6，含封面），在合适位置插入独立成行的【配图：标签】标注（必须含「封面」）；正文后附 JSON（必含 visualStyle：统一画风 + 若有人物则锁定统一东亚/中国语境人物形象，禁止中西混用；以及 imageSlots）；各槽 promptDraft 服从同一风格与人物设定；不要声称已出图。',
   ].join('\n');
 }

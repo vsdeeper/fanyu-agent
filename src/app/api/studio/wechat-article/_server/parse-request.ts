@@ -3,6 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 import type {
   WechatArticleDraftRequest,
+  WechatArticleImagesRequest,
   WechatArticlePlanRequest,
   WechatArticleResearchRequest,
 } from '../_shared/types';
@@ -58,8 +59,20 @@ export function parsePlanBody(json: unknown): WechatArticlePlanRequest | null {
   return parsed.success ? parsed.data : null;
 }
 
+const imagesSchema = z.object({
+  markdown: z.string().trim().min(1),
+  title: z.string().trim().min(1).optional(),
+  styleReferenceDataUrl: z.string().startsWith('data:image/').optional(),
+});
+
 /** 解析成稿请求体；失败返回 null。 */
 export function parseDraftBody(json: unknown): WechatArticleDraftRequest | null {
   const parsed = draftSchema.safeParse(json);
+  return parsed.success ? parsed.data : null;
+}
+
+/** 解析成稿配图规划请求体；失败返回 null。 */
+export function parseImagesBody(json: unknown): WechatArticleImagesRequest | null {
+  const parsed = imagesSchema.safeParse(json);
   return parsed.success ? parsed.data : null;
 }

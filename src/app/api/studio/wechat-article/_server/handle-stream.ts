@@ -5,6 +5,7 @@ import { getChatProvider, getModelId } from '@/app/api/chat/_server/providers/co
 import { getChatProviderRuntimeFor } from '@/app/api/chat/_server/providers/resolve';
 import { webSearch } from '@/app/api/chat/_server/tools/catalog/web-search';
 import { INVALID_FORM, INVALID_JSON } from '@/app/api/studio/_server/constants';
+import { parseImageDataUrlToFilePart } from '@/app/api/studio/_server/parse-image-data-url';
 import {
   createPushStreamResponse,
   encodeSseEvent,
@@ -17,18 +18,36 @@ import type { WechatArticleSseTextEvent } from '../_shared/types';
 import {
   DRAFT_FAILED,
   DRAFT_TRUNCATED,
+  IMAGES_FAILED,
+  IMAGES_TRUNCATED,
   MISSING_IDEA,
   PLAN_FAILED,
   PLAN_TRUNCATED,
   RESEARCH_FAILED,
   RESEARCH_MAX_SEARCH_ROUNDS,
   RESEARCH_MAX_STEPS,
+  WECHAT_ARTICLE_IMAGES_MAX_OUTPUT_TOKENS,
   WECHAT_ARTICLE_PLAN_MAX_OUTPUT_TOKENS,
   resolveDraftMaxOutputTokens,
 } from './constants';
-import { DRAFT_INSTRUCTIONS, PLAN_INSTRUCTIONS, RESEARCH_INSTRUCTIONS } from './instructions';
-import { parseDraftBody, parsePlanBody, parseResearchBody } from './parse-request';
-import { buildDraftPrompt, buildPlanPrompt, buildResearchPrompt } from './prompt';
+import {
+  DRAFT_INSTRUCTIONS,
+  IMAGES_INSTRUCTIONS,
+  PLAN_INSTRUCTIONS,
+  RESEARCH_INSTRUCTIONS,
+} from './instructions';
+import {
+  parseDraftBody,
+  parseImagesBody,
+  parsePlanBody,
+  parseResearchBody,
+} from './parse-request';
+import {
+  buildDraftPrompt,
+  buildImagesPrompt,
+  buildPlanPrompt,
+  buildResearchPrompt,
+} from './prompt';
 
 type SseSend = (event: string, data: unknown) => Promise<void>;
 
@@ -251,6 +270,71 @@ export async function handleWechatArticleDraft(req: Request): Promise<Response> 
         console.error('[wechat-article/draft]', err);
         try {
           await send(WECHAT_ARTICLE_SSE_EVENT.error, { message: DRAFT_FAILED });
+        } catch {
+          /* 流已关闭 */
+        }
+      }
+    },
+    encodeSsePrelude(),
+  );
+}
+
+/**
+ * POST /api/studio/wechat-article/images：在成稿正文中规划配图标注与槽位。
+ */
+export async function handleWechatArticleImages(req: Request): Promise<Response> {
+  let json: unknown;
+  try {
+    json = await req.json();
+  } catch {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
+  }
+
+  const body = parseImagesBody(json);
+  if (!body) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
+  }
+
+  return createPushStreamResponse(
+    SSE_STREAM_HEADERS,
+    async (write) => {
+      const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
+      try {
+        const { provider, runtime, openaiOptions } = buildOpenaiOptions();
+        const promptText = buildImagesPrompt(body);
+        const stylePart = body.styleReferenceDataUrl
+          ? parseImageDataUrlToFilePart(body.styleReferenceDataUrl)
+          : null;
+        const result = streamText({
+          model: runtime.getMainModel(getModelId(provider, 'pro')),
+          instructions: IMAGES_INSTRUCTIONS,
+          ...(stylePart
+            ? {
+                messages: [
+                  {
+                    role: 'user' as const,
+                    content: [
+                      { type: 'text' as const, text: promptText },
+                      {
+                        type: 'text' as const,
+                        text: '以下附件是【风格参考图】，请据此提炼 visualStyle：',
+                      },
+                      stylePart,
+                    ],
+                  },
+                ],
+              }
+            : { prompt: promptText }),
+          abortSignal: req.signal,
+          maxOutputTokens: WECHAT_ARTICLE_IMAGES_MAX_OUTPUT_TOKENS,
+          providerOptions: { openai: openaiOptions },
+        });
+        await pipeTextStream(result, req.signal, send, IMAGES_FAILED, IMAGES_TRUNCATED);
+      } catch (err) {
+        if (req.signal.aborted) return;
+        console.error('[wechat-article/images]', err);
+        try {
+          await send(WECHAT_ARTICLE_SSE_EVENT.error, { message: IMAGES_FAILED });
         } catch {
           /* 流已关闭 */
         }

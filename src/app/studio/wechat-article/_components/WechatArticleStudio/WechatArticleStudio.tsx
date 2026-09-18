@@ -17,7 +17,7 @@ type WechatArticleStudioProps = {
   task: WechatArticleTaskDetail;
 };
 
-/** 公众号写作工作台：选题调研 → 内容思路 → 成稿 → 预览复制。 */
+/** 公众号写作工作台：选题调研 → 内容思路 → 成稿 → 成稿配图 → 预览。 */
 export default function WechatArticleStudio({ task }: WechatArticleStudioProps) {
   const router = useRouter();
   const studio = useWechatArticleStudio(task);
@@ -52,12 +52,10 @@ export default function WechatArticleStudio({ task }: WechatArticleStudioProps) 
         <div className={styles.workspace}>
           {studio.phase === 'complete' ? (
             <CompletionPanel
-              titles={studio.titles}
               markdown={studio.markdown}
               imageSlots={studio.imageSlots}
               onPrev={studio.handlePrev}
               onCopyArticle={studio.handleCopyArticle}
-              onCopyImage={studio.handleCopyImage}
             />
           ) : (
             <>
@@ -67,15 +65,20 @@ export default function WechatArticleStudio({ task }: WechatArticleStudioProps) 
                 viewpoint={studio.viewpoint}
                 styleSelections={studio.styleSelections}
                 lengthLimit={studio.lengthLimit}
+                styleReferenceImages={studio.styleReferenceImages}
                 onIdeaChange={studio.setIdea}
                 onViewpointChange={studio.setViewpoint}
                 onStyleSelectionsChange={studio.setStyleSelections}
                 onLengthLimitChange={studio.setLengthLimit}
+                onStyleReferenceAppend={studio.handleStyleReferenceAppend}
+                onStyleReferenceRemove={studio.handleStyleReferenceRemove}
                 onResearch={studio.handleResearch}
                 onPlan={studio.handlePlan}
                 onDraft={studio.handleDraft}
+                onPlanImages={studio.handlePlanImages}
                 selectedAngle={studio.selectedAngle}
                 plan={studio.plan}
+                hasMarkdown={Boolean(studio.markdown.trim())}
               />
               <ResultPanel
                 phase={studio.phase}
@@ -92,17 +95,24 @@ export default function WechatArticleStudio({ task }: WechatArticleStudioProps) 
                 draftStream={studio.draftStream}
                 markdown={studio.markdown}
                 onMarkdownChange={studio.setMarkdown}
+                imagesStream={studio.imagesStream}
                 imageSlots={studio.imageSlots}
-                imageModel={studio.imageModel}
-                imageAspectRatio={studio.imageAspectRatio}
-                imageClarity={studio.imageClarity}
-                onImageModelChange={studio.setImageModel}
-                onImageAspectRatioChange={studio.setImageAspectRatio}
-                onImageClarityChange={studio.setImageClarity}
+                imageHistory={studio.imageHistory}
+                imageVisualStyle={studio.imageVisualStyle}
+                slotDrawerOpen={studio.slotDrawerOpen}
+                activeSlotId={studio.activeSlotId}
+                onOpenSlotDrawer={studio.openSlotDrawer}
+                onCloseSlotDrawer={studio.closeSlotDrawer}
+                onSelectSlot={studio.selectSlot}
+                onVisualStyleChange={studio.updateImageVisualStyle}
                 onSlotPromptChange={studio.updateSlotPrompt}
+                onSlotAspectRatioChange={studio.updateSlotAspectRatio}
+                onSlotModelChange={studio.updateSlotModel}
+                onSlotClarityChange={studio.updateSlotClarity}
                 onGenerateSlot={studio.handleGenerateSlot}
+                onUploadSlot={studio.handleUploadSlot}
+                onApplyHistory={studio.handleApplyHistory}
                 onCopyImage={studio.handleCopyImage}
-                onAddSlot={studio.addEmptySlot}
                 navLoading={studio.navLoading}
                 onPrev={studio.handlePrev}
                 onNext={studio.handleNext}

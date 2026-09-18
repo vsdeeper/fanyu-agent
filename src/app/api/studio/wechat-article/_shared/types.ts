@@ -45,6 +45,14 @@ export type WechatArticleDraftRequest = {
   lengthLimit?: number;
 };
 
+/** 成稿配图规划请求。 */
+export type WechatArticleImagesRequest = {
+  markdown: string;
+  title?: string;
+  /** 可选风格参考图 data URL；有则多模态注入，用于提炼 visualStyle。 */
+  styleReferenceDataUrl?: string;
+};
+
 export type WechatArticleSseTextEvent = {
   delta: string;
 };

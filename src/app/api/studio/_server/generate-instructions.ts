@@ -449,12 +449,23 @@ export function buildProductModelPrompt(
   ].join('\n');
 }
 
-/** 公众号配图：用户槽位 prompt 直出文生图。 */
-export function buildWechatInlinePrompt(prompt: string): string {
-  return [
+/** 公众号配图：槽位画面描述 + 可选整套视觉约束，文生图。 */
+export function buildWechatInlinePrompt(prompt: string, visualStyle?: string): string {
+  const lines = [
     '生成恰好一张适合微信公众号的配图，不要输出说明文字。',
     '画面干净、信息层级清晰，避免杂乱文字墙；若提示词要求画面内文字，保持可读。',
-    '【配图要求】',
-    prompt.trim(),
-  ].join('\n');
+    '若画面有人物：默认中国大陆语境（东亚面孔、自然妆发与着装）；同一套配图人物形象须统一，禁止中西面孔或国内外气质混用。',
+  ];
+  const style = visualStyle?.trim();
+  if (style) {
+    lines.push(
+      '【整套配图视觉约束】以下对本张强制生效，不得改用其它媒介、画风、光影气质或人物外貌设定：',
+      style,
+      '【本张画面】只描述本张主体、构图与情节；媒介、画风、色调、光影与人物形象须服从上方整套约束。',
+    );
+  } else {
+    lines.push('【配图要求】');
+  }
+  lines.push(prompt.trim());
+  return lines.join('\n');
 }

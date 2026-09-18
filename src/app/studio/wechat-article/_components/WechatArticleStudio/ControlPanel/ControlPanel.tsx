@@ -4,6 +4,8 @@ import StyleDimensionPicker, {
   hasStyleSelection,
   type StyleDimensionSelections,
 } from '@/business-components/StyleDimensionPicker';
+import StudioImageUpload from '@/business-components/StudioImageUpload';
+import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload/types';
 import AngleCardView from '../AngleCardView';
 import {
   DRAFT_BUTTON,
@@ -15,8 +17,12 @@ import {
   LENGTH_LIMIT_PLACEHOLDER,
   LENGTH_LIMIT_SUFFIX,
   PLAN_BUTTON,
+  PLAN_IMAGES_BUTTON,
   RESEARCH_BUTTON,
   STYLE_LABEL,
+  STYLE_REFERENCE_HINT,
+  STYLE_REFERENCE_LABEL,
+  STYLE_REFERENCE_SUBTITLE,
 } from '../constants';
 import type { AngleCard, PlanStepSnapshot, StudioPhase } from '../types';
 import { resolvePlanTitle } from '../utils';
@@ -28,38 +34,53 @@ type ControlPanelProps = {
   viewpoint: string;
   styleSelections: StyleDimensionSelections;
   lengthLimit?: number;
+  styleReferenceImages: StudioImageUploadItem[];
   onIdeaChange: (value: string) => void;
   onViewpointChange: (value: string) => void;
   onStyleSelectionsChange: (value: StyleDimensionSelections) => void;
   onLengthLimitChange: (value: number | undefined) => void;
+  onStyleReferenceAppend: (files: File[]) => void;
+  onStyleReferenceRemove: (uid: string) => void;
   onResearch: () => void;
   onPlan: () => void;
   onDraft: () => void;
+  onPlanImages: () => void;
   selectedAngle?: AngleCard;
   plan?: PlanStepSnapshot;
+  hasMarkdown: boolean;
 };
 
-/** 公众号左栏：按当前步骤展示想法 / 思路参数 / 成稿文风（Ant Design Form）。 */
+/** 公众号左栏：按当前步骤展示想法 / 思路参数 / 成稿文风 / 配图风格参考。 */
 export default function ControlPanel({
   phase,
   idea,
   viewpoint,
   styleSelections,
   lengthLimit,
+  styleReferenceImages,
   onIdeaChange,
   onViewpointChange,
   onStyleSelectionsChange,
   onLengthLimitChange,
+  onStyleReferenceAppend,
+  onStyleReferenceRemove,
   onResearch,
   onPlan,
   onDraft,
+  onPlanImages,
   selectedAngle,
   plan,
+  hasMarkdown,
 }: ControlPanelProps) {
-  const busy = phase === 'researching' || phase === 'planning' || phase === 'drafting';
+  const busy =
+    phase === 'researching' ||
+    phase === 'planning' ||
+    phase === 'drafting' ||
+    phase === 'illustrating';
   const researchStep = phase === 'research' || phase === 'researching' || phase === 'researched';
   const planStep = phase === 'plan' || phase === 'planning' || phase === 'planned';
   const draftStep = phase === 'draft' || phase === 'drafting' || phase === 'drafted';
+  const imagesStep = phase === 'images' || phase === 'illustrating' || phase === 'illustrated';
   const draftTitle = plan ? resolvePlanTitle(plan) : undefined;
 
   return (
@@ -100,12 +121,7 @@ export default function ControlPanel({
         {draftStep ? (
           <Form layout="vertical" requiredMark disabled={busy} className={styles.form}>
             <Form.Item label={DRAFT_TITLE_LABEL}>
-              <Input.TextArea
-                rows={3}
-                value={draftTitle ?? ''}
-                placeholder={DRAFT_TITLE_EMPTY}
-                readOnly
-              />
+              <Input value={draftTitle ?? ''} placeholder={DRAFT_TITLE_EMPTY} readOnly />
             </Form.Item>
             <Form.Item label={LENGTH_LIMIT_LABEL}>
               <Space.Compact className={styles.lengthLimit} block>
@@ -130,6 +146,20 @@ export default function ControlPanel({
               />
             </Form.Item>
           </Form>
+        ) : null}
+
+        {imagesStep ? (
+          <StudioImageUpload
+            images={styleReferenceImages}
+            max={1}
+            label={STYLE_REFERENCE_LABEL}
+            subtitle={STYLE_REFERENCE_SUBTITLE}
+            hint={STYLE_REFERENCE_HINT}
+            ariaLabel={STYLE_REFERENCE_LABEL}
+            disabled={busy}
+            onAppend={onStyleReferenceAppend}
+            onRemove={onStyleReferenceRemove}
+          />
         ) : null}
       </div>
       <div className={styles.footer}>
@@ -173,6 +203,20 @@ export default function ControlPanel({
             onClick={onDraft}
           >
             {DRAFT_BUTTON}
+          </Button>
+        ) : null}
+        {imagesStep ? (
+          <Button
+            className={styles.actionBtn}
+            type="primary"
+            block
+            size="large"
+            icon={<HighlightOutlined />}
+            loading={phase === 'illustrating'}
+            disabled={!hasMarkdown}
+            onClick={onPlanImages}
+          >
+            {PLAN_IMAGES_BUTTON}
           </Button>
         ) : null}
       </div>

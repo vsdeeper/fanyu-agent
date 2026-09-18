@@ -10,6 +10,9 @@ export type StudioPhase =
   | 'draft'
   | 'drafting'
   | 'drafted'
+  | 'images'
+  | 'illustrating'
+  | 'illustrated'
   | 'complete';
 
 export type AngleCard = {
@@ -49,10 +52,25 @@ export type PlanStepSnapshot = {
 
 export type ImageSlot = {
   id: string;
+  label: string;
   role: 'cover' | 'inline';
   promptDraft: string;
+  /** 本槽生图比例；缺省时用默认 3:2。 */
+  aspectRatio?: string;
+  /** 本槽生图模型；缺省时用工作室默认。 */
+  model?: string;
+  /** 本槽清晰度；缺省时跟模型能力回落。 */
+  clarity?: string;
   assetUrl?: string;
   generating?: boolean;
+};
+
+/** 重新规划后保留的已出图（仅有图项）。 */
+export type ImageHistoryItem = {
+  id: string;
+  assetUrl: string;
+  label?: string;
+  promptDraft?: string;
 };
 
 export type DraftStepSnapshot = {
@@ -62,6 +80,11 @@ export type DraftStepSnapshot = {
   /** 正文篇幅下限（去掉空白后的字数）。 */
   lengthLimit?: number;
   imageSlots: ImageSlot[];
+  imageHistory?: ImageHistoryItem[];
+  /** 规划配图产出的整套视觉约束；生图时注入。 */
+  imageVisualStyle?: string;
+  /** 可选风格参考图（data URL 或任务资产 URL）；规划 visualStyle 时纳入。 */
+  styleReferenceUrl?: string;
   imageModel?: string;
   imageAspectRatio?: string;
   imageClarity?: string;

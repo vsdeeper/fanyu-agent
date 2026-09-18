@@ -156,6 +156,8 @@ export type StudioWechatInlineGenerateRequest = StudioGenerateBase & {
   kind: 'wechatInline';
   count: 1;
   prompt: string;
+  /** 规划配图产出的整套视觉约束；有则生图时强制注入。 */
+  visualStyle?: string;
 };
 
 export type StudioGenerateRequest =

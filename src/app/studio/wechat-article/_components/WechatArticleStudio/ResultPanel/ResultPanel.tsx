@@ -1,21 +1,21 @@
-import { PlusOutlined, StarOutlined } from '@ant-design/icons';
-import { Button, Image, Input, Select, Spin, Tag, Typography } from 'antd';
+import { StarOutlined } from '@ant-design/icons';
+import { Button, Input, Spin, Tag, Typography } from 'antd';
 import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
 import { useState } from 'react';
 import { useThemeMode } from '@/components/theme';
-import { toClarityOptions, toModelOptions } from '@/app/studio/_utils/model-options';
+import AnnotatedMarkdown from '../AnnotatedMarkdown';
 import AngleCardView from '../AngleCardView';
+import ImageSlotDrawer from '../ImageSlotDrawer';
 import {
   CANCEL_BUTTON,
-  COPY_IMAGE_BUTTON,
   EDIT_BUTTON,
   EMPTY_DRAFT_HINT,
+  EMPTY_IMAGES_HINT,
   EMPTY_PLAN_HINT,
   EMPTY_RESEARCH_HINT,
-  GENERATE_SLOT_BUTTON,
   NEXT_BUTTON,
   PREV_BUTTON,
   RESEARCH_ANGLES_TITLE,
@@ -25,19 +25,19 @@ import {
   SAVE_BUTTON,
   SOURCE_KIND_LABEL,
 } from '../constants';
-import type { AngleCard, ImageSlot, PlanStepSnapshot, ResearchSource, StudioPhase } from '../types';
-import { cleanResearchBrief, countTextChars } from '../utils';
+import type {
+  AngleCard,
+  ImageHistoryItem,
+  ImageSlot,
+  PlanStepSnapshot,
+  ResearchSource,
+  StudioPhase,
+} from '../types';
+import { cleanResearchBrief, countTextChars, stripTrailingJsonFenceForDisplay } from '../utils';
 import { useStreamScroll } from './hooks/useStreamScroll';
 import TitleDirectionList from './TitleDirectionList';
 import BeatList from './BeatList';
 import styles from './ResultPanel.module.css';
-
-const ASPECT_RATIO_OPTIONS = [
-  { value: '1:1', label: '1:1' },
-  { value: '3:2', label: '3:2' },
-  { value: '2:3', label: '2:3' },
-  { value: '16:9', label: '16:9' },
-];
 
 type ResultPanelProps = {
   phase: StudioPhase;
@@ -54,23 +54,30 @@ type ResultPanelProps = {
   draftStream: string;
   markdown: string;
   onMarkdownChange: (value: string) => void;
+  imagesStream: string;
   imageSlots: ImageSlot[];
-  imageModel: string;
-  imageAspectRatio: string;
-  imageClarity: string;
-  onImageModelChange: (value: string) => void;
-  onImageAspectRatioChange: (value: string) => void;
-  onImageClarityChange: (value: string) => void;
+  imageHistory: ImageHistoryItem[];
+  imageVisualStyle: string;
+  slotDrawerOpen: boolean;
+  activeSlotId?: string;
+  onOpenSlotDrawer: (slotId?: string) => void;
+  onCloseSlotDrawer: () => void;
+  onSelectSlot: (slotId: string) => void;
+  onVisualStyleChange: (value: string) => void;
   onSlotPromptChange: (slotId: string, prompt: string) => void;
+  onSlotAspectRatioChange: (slotId: string, aspectRatio: string) => void;
+  onSlotModelChange: (slotId: string, model: string) => void;
+  onSlotClarityChange: (slotId: string, clarity: string) => void;
   onGenerateSlot: (slotId: string) => void;
+  onUploadSlot: (slotId: string, file: File) => void;
+  onApplyHistory: (historyId: string) => void;
   onCopyImage: (url: string) => void;
-  onAddSlot: () => void;
   navLoading: boolean;
   onPrev: () => void;
   onNext: () => void;
 };
 
-/** 右侧结果区：检索简报 / 参考来源 / 角度卡、可编辑思路、正文与配图槽。 */
+/** 右侧结果区：调研 / 思路 / 成稿 / 成稿配图（标注可点开槽位抽屉）。 */
 export default function ResultPanel({
   phase,
   researchStream,
@@ -86,17 +93,24 @@ export default function ResultPanel({
   draftStream,
   markdown,
   onMarkdownChange,
+  imagesStream,
   imageSlots,
-  imageModel,
-  imageAspectRatio,
-  imageClarity,
-  onImageModelChange,
-  onImageAspectRatioChange,
-  onImageClarityChange,
+  imageHistory,
+  imageVisualStyle,
+  slotDrawerOpen,
+  activeSlotId,
+  onOpenSlotDrawer,
+  onCloseSlotDrawer,
+  onSelectSlot,
+  onVisualStyleChange,
   onSlotPromptChange,
+  onSlotAspectRatioChange,
+  onSlotModelChange,
+  onSlotClarityChange,
   onGenerateSlot,
+  onUploadSlot,
+  onApplyHistory,
   onCopyImage,
-  onAddSlot,
   navLoading,
   onPrev,
   onNext,
@@ -104,25 +118,36 @@ export default function ResultPanel({
   const { mode, hydrated } = useThemeMode();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const streaming = phase === 'researching' || phase === 'planning' || phase === 'drafting';
+  const streaming =
+    phase === 'researching' ||
+    phase === 'planning' ||
+    phase === 'drafting' ||
+    phase === 'illustrating';
   const researchView = phase === 'research' || phase === 'researching' || phase === 'researched';
   const planView = phase === 'plan' || phase === 'planning' || phase === 'planned';
-  const draftView = !researchView && !planView;
-  // 离开成稿可编辑态时退出编辑标记，避免用 effect 同步
+  const draftView = phase === 'draft' || phase === 'drafting' || phase === 'drafted';
+  const imagesView = phase === 'images' || phase === 'illustrating' || phase === 'illustrated';
+
   if ((phase === 'drafting' || !draftView) && editing) {
     setEditing(false);
   }
   const isEditing = editing && draftView && phase !== 'drafting';
   const canEditDraft =
     draftView && phase !== 'drafting' && Boolean(markdown.trim()) && !editing;
-  // 选题调研是第一步，无上一步可退（含 researched 结果态）
   const canPrev = !researchView;
   const canNext =
     (phase === 'researched' && Boolean(selectedAngleId)) ||
     (phase === 'planned' && Boolean(plan)) ||
-    (phase === 'drafted' && Boolean(markdown.trim()));
+    (phase === 'drafted' && Boolean(markdown.trim())) ||
+    (phase === 'illustrated' && Boolean(markdown.trim()));
 
-  const title = researchView ? '选题调研' : planView ? '内容思路' : '成稿写作';
+  const title = researchView
+    ? '选题调研'
+    : planView
+      ? '内容思路'
+      : draftView
+        ? '成稿写作'
+        : '成稿配图';
   const researchBrief = cleanResearchBrief(researchStream);
   const researchDone = phase === 'researched';
   const researchPacking =
@@ -133,19 +158,28 @@ export default function ResultPanel({
   const draftDisplay = isEditing
     ? draft
     : phase === 'drafting'
-      ? draftStream
+      ? draftStream || markdown
       : markdown || draftStream;
+  const imagesDisplay =
+    phase === 'illustrating'
+      ? stripTrailingJsonFenceForDisplay(imagesStream || markdown)
+      : markdown;
   const draftCharCount = draftDisplay.trim() ? countTextChars(draftDisplay) : 0;
+  const imagesCharCount = imagesDisplay.trim() ? countTextChars(imagesDisplay) : 0;
   const markdownClass = `${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`;
+  const activeLabel = imageSlots.find((slot) => slot.id === activeSlotId)?.label;
   const followContent = researchView
     ? `${researchBrief}\n${sources.length}\n${angles.length}\n${researchPacking ? '1' : '0'}`
     : planView
       ? planStream
-      : draftStream;
+      : draftView
+        ? draftStream
+        : imagesStream;
   const scrollFollowEnabled =
     (researchView && (Boolean(researchBrief) || researchDone || sources.length > 0)) ||
     (planView && Boolean(planStream || plan)) ||
-    (!researchView && !planView && Boolean(draftStream || markdown));
+    (draftView && Boolean(draftStream || markdown)) ||
+    (imagesView && Boolean(imagesStream || markdown));
   const { scrollRef, contentRef, onScroll } = useStreamScroll(
     scrollFollowEnabled && !isEditing,
     streaming,
@@ -165,6 +199,11 @@ export default function ResultPanel({
     const next = draft.trim();
     if (next && next !== markdown) onMarkdownChange(draft);
     setEditing(false);
+  }
+
+  function handleMarkerClick(label: string) {
+    const slot = imageSlots.find((item) => item.label === label);
+    onOpenSlotDrawer(slot?.id);
   }
 
   return (
@@ -192,7 +231,12 @@ export default function ResultPanel({
         ) : null}
       </div>
 
-      {streaming && !researchBrief && !planStream && !draftStream && !markdown ? (
+      {streaming &&
+      !researchBrief &&
+      !planStream &&
+      !draftStream &&
+      !imagesStream &&
+      !markdown ? (
         <div className={styles.body}>
           <Spin />
         </div>
@@ -309,6 +353,31 @@ export default function ResultPanel({
             ) : null}
           </div>
         </div>
+      ) : imagesView ? (
+        <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
+          <div ref={contentRef} className={styles.scrollContent}>
+            {!imagesDisplay.trim() ? (
+              <div className={styles.body}>
+                {phase === 'illustrating' ? (
+                  <Spin />
+                ) : (
+                  <p className={styles.hint}>{EMPTY_IMAGES_HINT}</p>
+                )}
+              </div>
+            ) : hydrated ? (
+              <>
+                <AnnotatedMarkdown
+                  markdown={imagesDisplay}
+                  markdownClassName={markdownClass}
+                  imageSlots={imageSlots}
+                  activeLabel={activeLabel}
+                  onMarkerClick={handleMarkerClick}
+                />
+                <p className={styles.charCount}>共 {imagesCharCount} 字</p>
+              </>
+            ) : null}
+          </div>
+        </div>
       ) : (
         <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
           <div ref={contentRef} className={styles.scrollContent}>
@@ -321,7 +390,7 @@ export default function ResultPanel({
                 {isEditing ? (
                   <Input.TextArea
                     className={styles.editor}
-                    rows={16}
+                    autoSize={{ minRows: 6 }}
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
                   />
@@ -337,61 +406,6 @@ export default function ResultPanel({
                 {draftDisplay.trim() ? (
                   <p className={styles.charCount}>共 {draftCharCount} 字</p>
                 ) : null}
-
-                <p className={styles.sectionTitle}>配图槽（手动生成，不会自动出图）</p>
-                <div className={styles.slotActions}>
-                  <Select
-                    style={{ minWidth: 180 }}
-                    value={imageModel}
-                    options={toModelOptions()}
-                    onChange={onImageModelChange}
-                  />
-                  <Select
-                    style={{ minWidth: 100 }}
-                    value={imageAspectRatio}
-                    options={ASPECT_RATIO_OPTIONS}
-                    onChange={onImageAspectRatioChange}
-                  />
-                  <Select
-                    style={{ minWidth: 120 }}
-                    value={imageClarity}
-                    options={toClarityOptions(imageModel)}
-                    onChange={onImageClarityChange}
-                  />
-                  <Button icon={<PlusOutlined />} onClick={onAddSlot}>
-                    添加槽位
-                  </Button>
-                </div>
-                <div className={styles.slotList}>
-                  {imageSlots.map((slot) => (
-                    <div key={slot.id} className={styles.slotCard}>
-                      <Tag>{slot.role === 'cover' ? '封面' : '文中'}</Tag>
-                      <Input.TextArea
-                        rows={3}
-                        value={slot.promptDraft}
-                        placeholder="配图提示词"
-                        onChange={(event) => onSlotPromptChange(slot.id, event.target.value)}
-                      />
-                      {slot.assetUrl ? (
-                        <Image src={slot.assetUrl} alt={slot.id} className={styles.slotPreview} />
-                      ) : null}
-                      <div className={styles.slotActions}>
-                        <Button
-                          type="primary"
-                          loading={slot.generating}
-                          onClick={() => onGenerateSlot(slot.id)}
-                        >
-                          {GENERATE_SLOT_BUTTON}
-                        </Button>
-                        {slot.assetUrl ? (
-                          <Button onClick={() => onCopyImage(slot.assetUrl!)}>
-                            {COPY_IMAGE_BUTTON}
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </>
             )}
           </div>
@@ -412,6 +426,27 @@ export default function ResultPanel({
           {NEXT_BUTTON}
         </Button>
       </div>
+
+      {imagesView ? (
+        <ImageSlotDrawer
+          open={slotDrawerOpen}
+          imageSlots={imageSlots}
+          imageHistory={imageHistory}
+          imageVisualStyle={imageVisualStyle}
+          activeSlotId={activeSlotId}
+          onClose={onCloseSlotDrawer}
+          onSelectSlot={onSelectSlot}
+          onVisualStyleChange={onVisualStyleChange}
+          onSlotPromptChange={onSlotPromptChange}
+          onSlotAspectRatioChange={onSlotAspectRatioChange}
+          onSlotModelChange={onSlotModelChange}
+          onSlotClarityChange={onSlotClarityChange}
+          onGenerateSlot={onGenerateSlot}
+          onUploadSlot={onUploadSlot}
+          onApplyHistory={onApplyHistory}
+          onCopyImage={onCopyImage}
+        />
+      ) : null}
     </section>
   );
 }

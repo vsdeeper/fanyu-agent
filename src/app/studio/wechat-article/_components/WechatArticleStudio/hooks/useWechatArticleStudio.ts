@@ -1,24 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 import { App } from 'antd';
 import type { WechatArticleTaskDetail } from '@/app/api/studio/wechat-article/_shared/task-types';
-import { getModelCapability } from '@/app/studio/_utils/model-options';
+import { getModelCapability, resolveClarityForModel } from '@/app/studio/_utils/model-options';
 import {
   COPY_FAILED,
   COPY_IMAGE_FAILED,
   COPY_OK,
+  DEFAULT_IMAGE_ASPECT,
+  DEFAULT_IMAGE_CLARITY,
+  DEFAULT_IMAGE_MODEL,
   DRAFT_FAILED,
   GENERATE_FAILED,
+  IMAGES_FAILED,
+  MISSING_ACTIVE_SLOT_WARNING,
   MISSING_ANGLE_WARNING,
   MISSING_IDEA_WARNING,
+  MISSING_MARKDOWN_WARNING,
   MISSING_PLAN_WARNING,
   MISSING_STYLE_WARNING,
   MISSING_TITLE_WARNING,
   PLAN_FAILED,
   RESEARCH_FAILED,
+  UPLOAD_FAILED,
 } from '../constants';
 import type {
   AngleCard,
   DraftStepSnapshot,
+  ImageHistoryItem,
   ImageSlot,
   PlanStepSnapshot,
   ResearchStepSnapshot,
@@ -40,12 +48,16 @@ import {
   isSameDraftSnapshot,
   isSamePlanSnapshot,
   isSameResearchSnapshot,
-  parseDraftMeta,
+  mergeSlotsIntoHistory,
+  parseImageSlots,
+  parseImageVisualStyle,
   parsePlanPayload,
   parseResearchPayload,
   readDraftStepSnapshot,
+  readFileAsDataUrl,
   readPlanStepSnapshot,
   readResearchStepSnapshot,
+  resolveImageDataUrl,
   resolveInitialPhase,
   resolvePlanTitle,
   saveWechatStep,
@@ -55,8 +67,11 @@ import {
   hasStyleSelection,
   type StyleDimensionSelections,
 } from '@/business-components/StyleDimensionPicker';
+import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload/types';
 
-/** 管理公众号四步：调研 → 思路 → 成稿 → 完成；配图仅用户点击生成。 */
+const STYLE_REFERENCE_UID = 'style-reference';
+
+/** 管理公众号五步：调研 → 思路 → 成稿 → 成稿配图 → 完成。 */
 export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   const { message } = App.useApp();
   const initialResearch = readResearchStepSnapshot(task.steps.research?.data);
@@ -80,9 +95,17 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   );
   const [lengthLimit, setLengthLimit] = useState<number | undefined>(initialDraft?.lengthLimit);
   const [draftStream, setDraftStream] = useState(initialDraft?.streamText ?? '');
+  const [imagesStream, setImagesStream] = useState('');
   const [markdown, setMarkdown] = useState(initialDraft?.markdown ?? '');
   const [titles, setTitles] = useState<string[] | undefined>(initialDraft?.titles);
   const [imageSlots, setImageSlots] = useState<ImageSlot[]>(initialDraft?.imageSlots ?? []);
+  const [imageHistory, setImageHistory] = useState<ImageHistoryItem[]>(
+    initialDraft?.imageHistory ?? [],
+  );
+  const [imageVisualStyle, setImageVisualStyle] = useState(initialDraft?.imageVisualStyle ?? '');
+  const [styleReferenceUrl, setStyleReferenceUrl] = useState(
+    initialDraft?.styleReferenceUrl ?? '',
+  );
   const [imageModel, setImageModel] = useState(
     initialDraft?.imageModel ?? imageDefaults.imageModel,
   );
@@ -92,6 +115,8 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   const [imageClarity, setImageClarity] = useState(
     initialDraft?.imageClarity ?? imageDefaults.imageClarity,
   );
+  const [slotDrawerOpen, setSlotDrawerOpen] = useState(false);
+  const [activeSlotId, setActiveSlotId] = useState<string | undefined>();
 
   const [navLoading, setNavLoading] = useState(false);
   const [researchBuffer] = useState(() =>
@@ -109,16 +134,27 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   );
   const [planBuffer] = useState(() => createRafTextBuffer(setPlanStream));
   const [draftBuffer] = useState(() => createRafTextBuffer(setDraftStream));
+  const [imagesBuffer] = useState(() => createRafTextBuffer(setImagesStream));
   const abortRef = useRef<AbortController | null>(null);
   const lastResearchRef = useRef(initialResearch);
   const lastPlanRef = useRef(initialPlan);
   const lastDraftRef = useRef(initialDraft);
   const imageSlotsRef = useRef(imageSlots);
+  const imageHistoryRef = useRef(imageHistory);
+  const activeSlotIdRef = useRef(activeSlotId);
   const selectedAngleIdRef = useRef(selectedAngleId);
 
   useEffect(() => {
     imageSlotsRef.current = imageSlots;
   }, [imageSlots]);
+
+  useEffect(() => {
+    imageHistoryRef.current = imageHistory;
+  }, [imageHistory]);
+
+  useEffect(() => {
+    activeSlotIdRef.current = activeSlotId;
+  }, [activeSlotId]);
 
   useEffect(() => {
     selectedAngleIdRef.current = selectedAngleId;
@@ -130,8 +166,9 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       researchBuffer.dispose();
       planBuffer.dispose();
       draftBuffer.dispose();
+      imagesBuffer.dispose();
     },
-    [draftBuffer, planBuffer, researchBuffer],
+    [draftBuffer, imagesBuffer, planBuffer, researchBuffer],
   );
 
   const selectedAngle: AngleCard | undefined = angles.find((item) => item.id === selectedAngleId);
@@ -165,19 +202,44 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   }
 
   function toPersistableSlots(slots: ImageSlot[]): ImageSlot[] {
-    return slots.map(({ id, role, promptDraft, assetUrl }) => ({
+    return slots.map(({ id, label, role, promptDraft, aspectRatio, model, clarity, assetUrl }) => ({
       id,
+      label,
       role,
       promptDraft,
+      aspectRatio: aspectRatio?.trim() || DEFAULT_IMAGE_ASPECT,
+      model: model?.trim() || DEFAULT_IMAGE_MODEL,
+      clarity: clarity?.trim() || DEFAULT_IMAGE_CLARITY,
       ...(assetUrl ? { assetUrl } : {}),
     }));
   }
 
-  async function persistDraft(overrideSlots?: ImageSlot[]) {
-    const slots = toPersistableSlots(overrideSlots ?? imageSlots);
+  function toPersistableHistory(history: ImageHistoryItem[]): ImageHistoryItem[] {
+    return history.map(({ id, assetUrl, label, promptDraft }) => ({
+      id,
+      assetUrl,
+      ...(label ? { label } : {}),
+      ...(promptDraft ? { promptDraft } : {}),
+    }));
+  }
+
+  async function persistDraft(overrides?: {
+    markdown?: string;
+    slots?: ImageSlot[];
+    history?: ImageHistoryItem[];
+    imageVisualStyle?: string;
+    styleReferenceUrl?: string;
+  }) {
+    const slots = toPersistableSlots(overrides?.slots ?? imageSlots);
+    const history = toPersistableHistory(overrides?.history ?? imageHistory);
+    const visualStyle = (overrides?.imageVisualStyle ?? imageVisualStyle).trim();
+    const styleRef = (overrides?.styleReferenceUrl ?? styleReferenceUrl).trim();
     const next: DraftStepSnapshot = {
-      markdown,
+      markdown: overrides?.markdown ?? markdown,
       imageSlots: slots,
+      ...(history.length ? { imageHistory: history } : {}),
+      ...(visualStyle ? { imageVisualStyle: visualStyle } : {}),
+      ...(styleRef ? { styleReferenceUrl: styleRef } : {}),
       ...(titles?.length ? { titles } : {}),
       ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
       ...(lengthLimit !== undefined ? { lengthLimit } : {}),
@@ -192,6 +254,9 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     setMarkdown(saved.markdown);
     setTitles(saved.titles);
     setImageSlots(saved.imageSlots);
+    setImageHistory(saved.imageHistory ?? []);
+    setImageVisualStyle(saved.imageVisualStyle ?? '');
+    setStyleReferenceUrl(saved.styleReferenceUrl ?? '');
     return saved;
   }
 
@@ -368,27 +433,28 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       draftBuffer,
       DRAFT_FAILED,
       async (fullText) => {
-        const { prose, json } = extractTrailingJsonBlock(fullText);
-        const meta = parseDraftMeta(json);
+        const { prose } = extractTrailingJsonBlock(fullText);
         const rawBody = prose || fullText;
-        const nextTitles = selectedTitle ? [selectedTitle] : meta.titles;
+        const nextTitles = selectedTitle ? [selectedTitle] : titles;
         const body = ensureMarkdownLeadingTitle(nextTitles?.[0], rawBody);
-        const prevSlots = imageSlotsRef.current;
-        const nextSlots = meta.imageSlots.length
-          ? meta.imageSlots.map((slot) => ({
-              ...slot,
-              assetUrl: prevSlots.find((item) => item.id === slot.id)?.assetUrl,
-            }))
-          : prevSlots;
+        const nextHistory = mergeSlotsIntoHistory(
+          imageHistoryRef.current,
+          imageSlotsRef.current,
+        );
         setDraftStream(fullText);
         setMarkdown(body);
         setTitles(nextTitles);
-        setImageSlots(nextSlots);
+        setImageSlots([]);
+        setImageHistory(nextHistory);
+        setImageVisualStyle('');
+        setActiveSlotId(undefined);
+        setSlotDrawerOpen(false);
         setPhase('drafted');
         try {
           const next: DraftStepSnapshot = {
             markdown: body,
-            imageSlots: toPersistableSlots(nextSlots),
+            imageSlots: [],
+            ...(nextHistory.length ? { imageHistory: toPersistableHistory(nextHistory) } : {}),
             ...(nextTitles?.length ? { titles: nextTitles } : {}),
             ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
             ...(lengthLimit !== undefined ? { lengthLimit } : {}),
@@ -399,13 +465,88 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
           };
           const saved = await saveWechatStep(task.id, 'draft', next);
           lastDraftRef.current = saved;
-          setImageSlots(saved.imageSlots);
+          setImageHistory(saved.imageHistory ?? []);
+          setImageVisualStyle(saved.imageVisualStyle ?? '');
         } catch (err) {
           console.error('[wechat-article-studio] persist draft', err);
         }
       },
       'drafting',
       'draft',
+    );
+  }
+
+  async function handlePlanImages() {
+    if (!markdown.trim()) {
+      message.warning(MISSING_MARKDOWN_WARNING);
+      return;
+    }
+    const selectedTitle = titles?.[0] ?? (plan ? resolvePlanTitle(plan) : undefined);
+    let styleReferenceDataUrl: string | undefined;
+    if (styleReferenceUrl.trim()) {
+      try {
+        styleReferenceDataUrl = await resolveImageDataUrl(styleReferenceUrl.trim());
+      } catch (err) {
+        console.error('[wechat-article-studio] style reference', err);
+        message.error('风格参考图读取失败，请重新上传');
+        return;
+      }
+    }
+    await runSse(
+      '/api/studio/wechat-article/images',
+      {
+        markdown: markdown.trim(),
+        ...(selectedTitle ? { title: selectedTitle } : {}),
+        ...(styleReferenceDataUrl ? { styleReferenceDataUrl } : {}),
+      },
+      imagesBuffer,
+      IMAGES_FAILED,
+      async (fullText) => {
+        const { prose, json } = extractTrailingJsonBlock(fullText);
+        const prevById = new Map(imageSlotsRef.current.map((item) => [item.id, item] as const));
+        const nextSlots = parseImageSlots(json).map((slot) => {
+          const prev = prevById.get(slot.id);
+          const model = prev?.model ?? slot.model ?? DEFAULT_IMAGE_MODEL;
+          return {
+            ...slot,
+            aspectRatio: prev?.aspectRatio ?? slot.aspectRatio ?? DEFAULT_IMAGE_ASPECT,
+            model,
+            clarity:
+              prev?.clarity ??
+              slot.clarity ??
+              resolveClarityForModel(model, DEFAULT_IMAGE_CLARITY),
+          };
+        });
+        if (!nextSlots.length) {
+          message.error(IMAGES_FAILED);
+          setPhase('images');
+          return;
+        }
+        const nextVisualStyle = parseImageVisualStyle(json) ?? '';
+        const nextHistory = mergeSlotsIntoHistory(
+          imageHistoryRef.current,
+          imageSlotsRef.current,
+        );
+        const body = (prose || fullText).trim();
+        setImagesStream(fullText);
+        setMarkdown(body);
+        setImageSlots(nextSlots);
+        setImageVisualStyle(nextVisualStyle);
+        setImageHistory(nextHistory);
+        setPhase('illustrated');
+        try {
+          await persistDraft({
+            markdown: body,
+            slots: nextSlots,
+            history: nextHistory,
+            imageVisualStyle: nextVisualStyle,
+          });
+        } catch (err) {
+          console.error('[wechat-article-studio] persist images', err);
+        }
+      },
+      'illustrating',
+      'images',
     );
   }
 
@@ -419,18 +560,22 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       current.map((item) => (item.id === slotId ? { ...item, generating: true } : item)),
     );
     try {
-      const quality = getModelCapability(imageModel)?.qualityDefault ?? 'high';
+      const model = slot.model?.trim() || DEFAULT_IMAGE_MODEL;
+      const clarity =
+        slot.clarity?.trim() || resolveClarityForModel(model, DEFAULT_IMAGE_CLARITY);
+      const quality = getModelCapability(model)?.qualityDefault ?? 'high';
       const res = await fetch('/api/studio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           kind: 'wechatInline',
           count: 1,
-          model: imageModel,
-          aspectRatio: imageAspectRatio,
+          model,
+          aspectRatio: slot.aspectRatio?.trim() || DEFAULT_IMAGE_ASPECT,
           quality,
-          clarity: imageClarity,
+          clarity,
           prompt: slot.promptDraft.trim(),
+          ...(imageVisualStyle.trim() ? { visualStyle: imageVisualStyle.trim() } : {}),
           slotIds: [slotId],
         }),
       });
@@ -452,7 +597,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       setImageSlots(nextSlots);
       if (nextUrl) {
         try {
-          await persistDraft(nextSlots);
+          await persistDraft({ slots: nextSlots });
         } catch (err) {
           console.error('[wechat-article-studio] persist after generate', err);
         }
@@ -465,6 +610,49 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       setImageSlots((current) =>
         current.map((item) => (item.id === slotId ? { ...item, generating: false } : item)),
       );
+    }
+  }
+
+  async function handleUploadSlot(slotId: string, file: File) {
+    try {
+      if (!file.type.startsWith('image/')) {
+        message.warning('请选择图片文件');
+        return;
+      }
+      const dataUrl = await readFileAsDataUrl(file);
+      const nextSlots = imageSlotsRef.current.map((item) =>
+        item.id === slotId ? { ...item, assetUrl: dataUrl } : item,
+      );
+      setImageSlots(nextSlots);
+      setActiveSlotId(slotId);
+      try {
+        await persistDraft({ slots: nextSlots });
+      } catch (err) {
+        console.error('[wechat-article-studio] persist after upload', err);
+        message.warning('图片已填入槽位，但保存失败，请稍后重试');
+      }
+    } catch (err) {
+      console.error('[wechat-article-studio] upload slot', err);
+      message.error(UPLOAD_FAILED);
+    }
+  }
+
+  async function handleApplyHistory(historyId: string) {
+    const targetId = activeSlotIdRef.current;
+    if (!targetId) {
+      message.warning(MISSING_ACTIVE_SLOT_WARNING);
+      return;
+    }
+    const historyItem = imageHistoryRef.current.find((item) => item.id === historyId);
+    if (!historyItem) return;
+    const nextSlots = imageSlotsRef.current.map((item) =>
+      item.id === targetId ? { ...item, assetUrl: historyItem.assetUrl } : item,
+    );
+    setImageSlots(nextSlots);
+    try {
+      await persistDraft({ slots: nextSlots });
+    } catch (err) {
+      console.error('[wechat-article-studio] apply history', err);
     }
   }
 
@@ -513,6 +701,11 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       }
       if (phase === 'drafted') {
         await persistDraft();
+        setPhase(imageSlots.length ? 'illustrated' : 'images');
+        return;
+      }
+      if (phase === 'illustrated') {
+        await persistDraft();
         setPhase('complete');
       }
     } catch (err) {
@@ -524,6 +717,10 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
 
   function handlePrev() {
     if (phase === 'complete') {
+      setPhase(imageSlots.length ? 'illustrated' : 'images');
+      return;
+    }
+    if (phase === 'images' || phase === 'illustrated') {
       setPhase('drafted');
       return;
     }
@@ -561,9 +758,78 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     );
   }
 
-  function addEmptySlot() {
-    const id = `inline-${crypto.randomUUID().slice(0, 8)}`;
-    setImageSlots((current) => [...current, { id, role: 'inline', promptDraft: '' }]);
+  function updateSlotAspectRatio(slotId: string, aspectRatio: string) {
+    setImageSlots((current) =>
+      current.map((item) => (item.id === slotId ? { ...item, aspectRatio } : item)),
+    );
+  }
+
+  function updateSlotModel(slotId: string, model: string) {
+    setImageSlots((current) =>
+      current.map((item) => (item.id === slotId ? { ...item, model } : item)),
+    );
+  }
+
+  function updateSlotClarity(slotId: string, clarity: string) {
+    setImageSlots((current) =>
+      current.map((item) => (item.id === slotId ? { ...item, clarity } : item)),
+    );
+  }
+
+  function updateImageVisualStyle(value: string) {
+    setImageVisualStyle(value);
+  }
+
+  async function handleStyleReferenceAppend(files: File[]) {
+    const first = files[0];
+    if (!first) return;
+    try {
+      const dataUrl = await readFileAsDataUrl(first);
+      setStyleReferenceUrl(dataUrl);
+      try {
+        await persistDraft({ styleReferenceUrl: dataUrl });
+      } catch (err) {
+        console.error('[wechat-article-studio] persist style reference', err);
+      }
+    } catch (err) {
+      console.error('[wechat-article-studio] style reference upload', err);
+      message.error(UPLOAD_FAILED);
+    }
+  }
+
+  async function handleStyleReferenceRemove(_uid: string) {
+    setStyleReferenceUrl('');
+    try {
+      await persistDraft({ styleReferenceUrl: '' });
+    } catch (err) {
+      console.error('[wechat-article-studio] clear style reference', err);
+    }
+  }
+
+  const styleReferenceImages: StudioImageUploadItem[] = styleReferenceUrl.trim()
+    ? [{ uid: STYLE_REFERENCE_UID, previewUrl: styleReferenceUrl.trim() }]
+    : [];
+
+  function openSlotDrawer(slotId?: string) {
+    const nextId = slotId ?? imageSlots[0]?.id;
+    setActiveSlotId(nextId);
+    setSlotDrawerOpen(true);
+    if (nextId) {
+      requestAnimationFrame(() => {
+        document.getElementById(`wechat-slot-${nextId}`)?.scrollIntoView({
+          block: 'nearest',
+          behavior: 'smooth',
+        });
+      });
+    }
+  }
+
+  function closeSlotDrawer() {
+    setSlotDrawerOpen(false);
+  }
+
+  function selectSlot(slotId: string) {
+    setActiveSlotId(slotId);
   }
 
   return {
@@ -588,26 +854,43 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     lengthLimit,
     setLengthLimit,
     draftStream,
+    imagesStream,
     markdown,
     setMarkdown,
     titles,
     imageSlots,
+    imageHistory,
+    imageVisualStyle,
+    styleReferenceImages,
     imageModel,
     setImageModel,
     imageAspectRatio,
     setImageAspectRatio,
     imageClarity,
     setImageClarity,
+    slotDrawerOpen,
+    activeSlotId,
+    openSlotDrawer,
+    closeSlotDrawer,
+    selectSlot,
     navLoading,
     handleResearch,
     handlePlan,
     handleDraft,
+    handlePlanImages,
     handleGenerateSlot,
+    handleUploadSlot,
+    handleApplyHistory,
     handleCopyArticle,
     handleCopyImage,
     handleNext,
     handlePrev,
     updateSlotPrompt,
-    addEmptySlot,
+    updateSlotAspectRatio,
+    updateSlotModel,
+    updateSlotClarity,
+    updateImageVisualStyle,
+    handleStyleReferenceAppend,
+    handleStyleReferenceRemove,
   };
 }

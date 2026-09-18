@@ -1,85 +1,51 @@
 import { CopyOutlined, StarOutlined } from '@ant-design/icons';
-import { Button, Empty, Image, Typography } from 'antd';
-import { XMarkdown } from '@ant-design/x-markdown';
+import { Button, Empty } from 'antd';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
 import { useThemeMode } from '@/components/theme';
-import { COPY_ARTICLE_BUTTON, COPY_IMAGE_BUTTON, PREV_BUTTON } from '../constants';
+import AnnotatedMarkdown from '../AnnotatedMarkdown';
+import { COPY_ARTICLE_BUTTON, PREV_BUTTON } from '../constants';
 import type { ImageSlot } from '../types';
-import { countTextChars } from '../utils';
 import styles from './CompletionPanel.module.css';
 
 type CompletionPanelProps = {
-  titles?: string[];
   markdown: string;
   imageSlots: ImageSlot[];
   onPrev: () => void;
   onCopyArticle: () => void;
-  onCopyImage: (url: string) => void;
 };
 
-/** 预览发布物料：一键复制正文；单张复制图片；不提供导出。 */
+/** 预览：手机宽度真实排版预览（正文内联已出图，无分区标题与配图标注）。 */
 export default function CompletionPanel({
-  titles,
   markdown,
   imageSlots,
   onPrev,
   onCopyArticle,
-  onCopyImage,
 }: CompletionPanelProps) {
   const { mode, hydrated } = useThemeMode();
-  const readyImages = imageSlots.filter((slot) => slot.assetUrl);
-  const charCount = markdown.trim() ? countTextChars(markdown) : 0;
+  const markdownClass = `${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`;
 
   return (
     <section className={styles.panel}>
       <div className={styles.head}>
         <StarOutlined className={styles.star} />
-        预览发布物料
+        预览
       </div>
       <div className={styles.scroll}>
         {!markdown.trim() ? (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无正文" />
         ) : (
-          <>
-            {titles?.length ? (
-              <>
-                <Typography.Title level={5}>标题</Typography.Title>
-                <ul className={styles.titleList}>
-                  {titles.map((title) => (
-                    <li key={title}>{title}</li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-            <Typography.Title level={5}>正文</Typography.Title>
+          <div className={styles.phone} aria-label="公众号手机预览">
             {hydrated ? (
-              <XMarkdown
-                className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
-                content={markdown}
-                paragraphTag="div"
-                openLinksInNewTab
-                escapeRawHtml
+              <AnnotatedMarkdown
+                markdown={markdown}
+                markdownClassName={markdownClass}
+                imageSlots={imageSlots}
+                hideMarkerLabels
               />
             ) : null}
-            <p className={styles.charCount}>共 {charCount} 字</p>
-            {readyImages.length ? (
-              <>
-                <Typography.Title level={5}>配图</Typography.Title>
-                <div className={styles.images}>
-                  {readyImages.map((slot) => (
-                    <div key={slot.id} className={styles.imageCard}>
-                      <Image src={slot.assetUrl} alt={slot.id} className={styles.image} />
-                      <Button onClick={() => onCopyImage(slot.assetUrl!)}>
-                        {COPY_IMAGE_BUTTON}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : null}
-          </>
+          </div>
         )}
       </div>
       <div className={styles.footer}>

@@ -138,6 +138,7 @@ const wechatInlineGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('wechatInline'),
   count: z.literal(1),
   prompt: z.string().trim().min(1),
+  visualStyle: z.string().trim().min(1).optional(),
 });
 
 const generateBodySchema = z

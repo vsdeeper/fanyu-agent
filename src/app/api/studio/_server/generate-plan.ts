@@ -114,7 +114,7 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
       ...(body.modelImages?.map((image) => image.dataUrl) ?? []),
     ];
   } else if (body.kind === 'wechatInline') {
-    prompt = buildWechatInlinePrompt(body.prompt);
+    prompt = buildWechatInlinePrompt(body.prompt, body.visualStyle);
     referenceImageDataUrls = [];
   } else if (body.kind === 'visual') {
     // 参考图数组顺序固定为「产品精修图 → 品牌 Logo」，两者都可缺省，prompt 按真实张数点名序号

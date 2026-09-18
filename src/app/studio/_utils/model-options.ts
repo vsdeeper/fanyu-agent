@@ -121,6 +121,15 @@ type GenerateSpecFields = {
   quality: string;
 };
 
+/** 切换模型时优先保留当前清晰度；不可用则回落 1K，再回落模型默认。 */
+export function resolveClarityForModel(model: string, clarity: string): string {
+  const capability = getModelCapability(model);
+  if (!capability) return clarity;
+  if (capability.clarityOptions.includes(clarity)) return clarity;
+  if (capability.clarityOptions.includes('1K')) return '1K';
+  return capability.clarityDefault;
+}
+
 /** 切换模型：当前清晰度仍在新模型选项内则保留，否则回该模型默认档。 */
 export function patchModel<T extends GenerateSpecFields>(form: T, model: string): T {
   const capability = getModelCapability(model);
@@ -128,9 +137,7 @@ export function patchModel<T extends GenerateSpecFields>(form: T, model: string)
   return {
     ...form,
     model,
-    clarity: capability.clarityOptions.includes(form.clarity)
-      ? form.clarity
-      : capability.clarityDefault,
+    clarity: resolveClarityForModel(model, form.clarity),
     quality: capability.qualityDefault ?? form.quality,
   };
 }
