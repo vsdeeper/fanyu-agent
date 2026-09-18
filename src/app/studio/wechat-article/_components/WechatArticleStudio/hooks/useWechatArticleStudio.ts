@@ -11,6 +11,7 @@ import {
   MISSING_ANGLE_WARNING,
   MISSING_IDEA_WARNING,
   MISSING_PLAN_WARNING,
+  MISSING_TITLE_WARNING,
   PLAN_FAILED,
   RESEARCH_FAILED,
 } from '../constants';
@@ -45,6 +46,7 @@ import {
   readPlanStepSnapshot,
   readResearchStepSnapshot,
   resolveInitialPhase,
+  resolvePlanTitle,
   saveWechatStep,
   splitStyleSamples,
 } from '../utils';
@@ -57,23 +59,14 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   const initialDraft = readDraftStepSnapshot(task.steps.draft?.data);
   const imageDefaults = defaultImageSpec();
 
-  const [phase, setPhase] = useState<StudioPhase>(
-    resolveInitialPhase({
-      research: initialResearch,
-      plan: initialPlan,
-      draft: initialDraft,
-    }),
-  );
+  const [phase, setPhase] = useState<StudioPhase>(resolveInitialPhase(initialResearch));
   const [idea, setIdea] = useState(initialResearch?.idea ?? '');
-  const [audience, setAudience] = useState(initialResearch?.audience ?? '');
-  const [stance, setStance] = useState(initialResearch?.stance ?? '');
+  const [viewpoint, setViewpoint] = useState(initialResearch?.viewpoint ?? '');
   const [researchStream, setResearchStream] = useState(initialResearch?.streamText ?? '');
   const [sources, setSources] = useState(initialResearch?.sources ?? []);
   const [angles, setAngles] = useState(initialResearch?.angles ?? []);
   const [selectedAngleId, setSelectedAngleId] = useState(initialResearch?.selectedAngleId);
 
-  const [bannedWords, setBannedWords] = useState(initialPlan?.bannedWords ?? '');
-  const [mustUseDetails, setMustUseDetails] = useState(initialPlan?.mustUseDetails ?? '');
   const [planStream, setPlanStream] = useState(initialPlan?.streamText ?? '');
   const [plan, setPlan] = useState<PlanStepSnapshot | undefined>(initialPlan);
 
@@ -144,8 +137,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       idea: idea.trim(),
       sources,
       angles,
-      ...(audience.trim() ? { audience: audience.trim() } : {}),
-      ...(stance.trim() ? { stance: stance.trim() } : {}),
+      ...(viewpoint.trim() ? { viewpoint: viewpoint.trim() } : {}),
       ...(researchStream.trim() ? { streamText: cleanResearchBrief(researchStream) } : {}),
       ...(selectedAngleId ? { selectedAngleId } : {}),
     };
@@ -159,8 +151,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     if (!plan) return undefined;
     const next: PlanStepSnapshot = {
       ...plan,
-      ...(bannedWords.trim() ? { bannedWords: bannedWords.trim() } : {}),
-      ...(mustUseDetails.trim() ? { mustUseDetails: mustUseDetails.trim() } : {}),
       ...(planStream.trim() ? { streamText: planStream.trim() } : {}),
     };
     if (isSamePlanSnapshot(next, lastPlanRef.current)) return next;
@@ -263,8 +253,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       '/api/studio/wechat-article/research',
       {
         idea: idea.trim(),
-        ...(audience.trim() ? { audience: audience.trim() } : {}),
-        ...(stance.trim() ? { stance: stance.trim() } : {}),
+        ...(viewpoint.trim() ? { viewpoint: viewpoint.trim() } : {}),
       },
       researchBuffer,
       RESEARCH_FAILED,
@@ -288,8 +277,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
             sources: parsed.sources,
             angles: parsed.angles,
             streamText: brief,
-            ...(audience.trim() ? { audience: audience.trim() } : {}),
-            ...(stance.trim() ? { stance: stance.trim() } : {}),
+            ...(viewpoint.trim() ? { viewpoint: viewpoint.trim() } : {}),
             ...(selected ? { selectedAngleId: selected } : {}),
           };
           const saved = await saveWechatStep(task.id, 'research', next);
@@ -314,8 +302,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
         idea: idea.trim(),
         angle: selectedAngle,
         sources,
-        ...(bannedWords.trim() ? { bannedWords: bannedWords.trim() } : {}),
-        ...(mustUseDetails.trim() ? { mustUseDetails: mustUseDetails.trim() } : {}),
       },
       planBuffer,
       PLAN_FAILED,
@@ -326,8 +312,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
         if (parsed) {
           const nextPlan: PlanStepSnapshot = {
             ...parsed,
-            ...(bannedWords.trim() ? { bannedWords: bannedWords.trim() } : {}),
-            ...(mustUseDetails.trim() ? { mustUseDetails: mustUseDetails.trim() } : {}),
             streamText: prose || fullText,
           };
           setPlan(nextPlan);
@@ -357,17 +341,21 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       message.warning(MISSING_PLAN_WARNING);
       return;
     }
+    const selectedTitle = resolvePlanTitle(plan);
+    if (plan.titleDirections?.length && !selectedTitle) {
+      message.warning(MISSING_TITLE_WARNING);
+      return;
+    }
     await runSse(
       '/api/studio/wechat-article/draft',
       {
         idea: idea.trim(),
         angle: selectedAngle,
         plan: {
-          angleSummary: plan.angleSummary,
           beats: plan.beats,
           ...(plan.tone ? { tone: plan.tone } : {}),
           ...(plan.audience ? { audience: plan.audience } : {}),
-          ...(plan.titleDirections ? { titleDirections: plan.titleDirections } : {}),
+          ...(selectedTitle ? { title: selectedTitle } : {}),
         },
         ...(draftTone.trim() ? { tone: draftTone.trim() } : {}),
         deAiFlavor,
@@ -386,16 +374,17 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
               assetUrl: prevSlots.find((item) => item.id === slot.id)?.assetUrl,
             }))
           : prevSlots;
+        const nextTitles = selectedTitle ? [selectedTitle] : meta.titles;
         setDraftStream(fullText);
         setMarkdown(body);
-        setTitles(meta.titles);
+        setTitles(nextTitles);
         setImageSlots(nextSlots);
         setPhase('drafted');
         try {
           const next: DraftStepSnapshot = {
             markdown: body,
             imageSlots: toPersistableSlots(nextSlots),
-            ...(meta.titles ? { titles: meta.titles } : {}),
+            ...(nextTitles?.length ? { titles: nextTitles } : {}),
             ...(splitStyleSamples(styleSamplesText).length
               ? { styleSamples: splitStyleSamples(styleSamplesText) }
               : {}),
@@ -512,6 +501,10 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
           message.warning(MISSING_PLAN_WARNING);
           return;
         }
+        if (plan.titleDirections?.length && !resolvePlanTitle(plan)) {
+          message.warning(MISSING_TITLE_WARNING);
+          return;
+        }
         await persistPlan();
         setPhase(markdown.trim() ? 'drafted' : 'draft');
         return;
@@ -545,6 +538,23 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     setPlan((current) => (current ? { ...current, [key]: value } : current));
   }
 
+  function selectTitleDirection(index: number) {
+    setPlan((current) =>
+      current?.titleDirections?.length
+        ? { ...current, selectedTitleIndex: index }
+        : current,
+    );
+  }
+
+  function changeTitleDirection(index: number, value: string) {
+    setPlan((current) => {
+      if (!current?.titleDirections?.length) return current;
+      const nextTitles = [...current.titleDirections];
+      nextTitles[index] = value;
+      return { ...current, titleDirections: nextTitles };
+    });
+  }
+
   function updateSlotPrompt(slotId: string, promptDraft: string) {
     setImageSlots((current) =>
       current.map((item) => (item.id === slotId ? { ...item, promptDraft } : item)),
@@ -560,23 +570,19 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     phase,
     idea,
     setIdea,
-    audience,
-    setAudience,
-    stance,
-    setStance,
+    viewpoint,
+    setViewpoint,
     researchStream,
     sources,
     angles,
     selectedAngleId,
     setSelectedAngleId,
     selectedAngle,
-    bannedWords,
-    setBannedWords,
-    mustUseDetails,
-    setMustUseDetails,
     planStream,
     plan,
     updatePlanField,
+    selectTitleDirection,
+    changeTitleDirection,
     draftTone,
     setDraftTone,
     deAiFlavor,

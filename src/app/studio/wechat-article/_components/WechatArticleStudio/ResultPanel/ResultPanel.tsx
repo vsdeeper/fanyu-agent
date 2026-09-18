@@ -6,6 +6,7 @@ import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
 import { useThemeMode } from '@/components/theme';
 import { toClarityOptions, toModelOptions } from '@/app/studio/_utils/model-options';
+import AngleCardView from '../AngleCardView';
 import {
   COPY_IMAGE_BUTTON,
   EMPTY_DRAFT_HINT,
@@ -23,6 +24,8 @@ import {
 import type { AngleCard, ImageSlot, PlanStepSnapshot, ResearchSource, StudioPhase } from '../types';
 import { cleanResearchBrief } from '../utils';
 import { useStreamScroll } from './hooks/useStreamScroll';
+import TitleDirectionList from './TitleDirectionList';
+import BeatList from './BeatList';
 import styles from './ResultPanel.module.css';
 
 const ASPECT_RATIO_OPTIONS = [
@@ -42,7 +45,8 @@ type ResultPanelProps = {
   planStream: string;
   plan?: PlanStepSnapshot;
   onPlanBeatsChange: (beats: string[]) => void;
-  onPlanSummaryChange: (value: string) => void;
+  onSelectTitleDirection: (index: number) => void;
+  onChangeTitleDirection: (index: number, value: string) => void;
   draftStream: string;
   markdown: string;
   onMarkdownChange: (value: string) => void;
@@ -73,7 +77,8 @@ export default function ResultPanel({
   planStream,
   plan,
   onPlanBeatsChange,
-  onPlanSummaryChange,
+  onSelectTitleDirection,
+  onChangeTitleDirection,
   draftStream,
   markdown,
   onMarkdownChange,
@@ -197,26 +202,16 @@ export default function ResultPanel({
                 {angles.length > 0 ? (
                   <div className={styles.angleSection}>
                     <p className={styles.sectionTitle}>{RESEARCH_ANGLES_TITLE}</p>
-                    <ul className={styles.angleList}>
+                    <div className={styles.angleList}>
                       {angles.map((angle) => (
-                        <li key={angle.id}>
-                          <button
-                            type="button"
-                            className={`${styles.angleCard} ${
-                              selectedAngleId === angle.id ? styles.angleCardSelected : ''
-                            }`}
-                            onClick={() => onSelectAngle(angle.id)}
-                          >
-                            <p className={styles.angleClaim}>{angle.claim}</p>
-                            <p className={styles.angleMeta}>冲突：{angle.conflict}</p>
-                            <p className={styles.angleMeta}>为何现在：{angle.whyNow}</p>
-                            {angle.risk ? (
-                              <p className={styles.angleMeta}>风险：{angle.risk}</p>
-                            ) : null}
-                          </button>
-                        </li>
+                        <AngleCardView
+                          key={angle.id}
+                          angle={angle}
+                          selected={selectedAngleId === angle.id}
+                          onSelect={() => onSelectAngle(angle.id)}
+                        />
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 ) : null}
               </>
@@ -232,40 +227,22 @@ export default function ResultPanel({
               </div>
             ) : plan ? (
               <>
-                <label>
-                  <p className={styles.sectionTitle}>角度摘要</p>
-                  <Input.TextArea
-                    rows={2}
-                    value={plan.angleSummary}
-                    onChange={(event) => onPlanSummaryChange(event.target.value)}
-                  />
-                </label>
-                <p className={styles.sectionTitle}>写作要点</p>
-                <ul className={styles.beatList}>
-                  {plan.beats.map((beat, index) => (
-                    <li key={`beat-${index}`}>
-                      <Input.TextArea
-                        rows={2}
-                        value={beat}
-                        onChange={(event) => {
-                          const next = [...plan.beats];
-                          next[index] = event.target.value;
-                          onPlanBeatsChange(next);
-                        }}
-                      />
-                    </li>
-                  ))}
-                </ul>
                 {plan.titleDirections?.length ? (
-                  <>
-                    <p className={styles.sectionTitle}>标题方向</p>
-                    <ul className={styles.beatList}>
-                      {plan.titleDirections.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </>
+                  <TitleDirectionList
+                    titles={plan.titleDirections}
+                    selectedIndex={plan.selectedTitleIndex}
+                    onSelect={onSelectTitleDirection}
+                    onChangeTitle={onChangeTitleDirection}
+                  />
                 ) : null}
+                <BeatList
+                  beats={plan.beats}
+                  onChangeBeat={(index, value) => {
+                    const next = [...plan.beats];
+                    next[index] = value;
+                    onPlanBeatsChange(next);
+                  }}
+                />
               </>
             ) : planStream && hydrated ? (
               <XMarkdown

@@ -25,27 +25,23 @@ const sourceSchema = z.object({
 
 const researchSchema = z.object({
   idea: z.string().trim().min(1),
-  audience: z.string().trim().optional(),
-  stance: z.string().trim().optional(),
+  viewpoint: z.string().trim().optional(),
 });
 
 const planSchema = z.object({
   idea: z.string().trim().min(1),
   angle: angleSchema,
   sources: z.array(sourceSchema),
-  bannedWords: z.string().trim().optional(),
-  mustUseDetails: z.string().trim().optional(),
 });
 
 const draftSchema = z.object({
   idea: z.string().trim().min(1),
   angle: angleSchema,
   plan: z.object({
-    angleSummary: z.string().trim().min(1),
     beats: z.array(z.string().trim().min(1)).min(1),
     tone: z.string().trim().optional(),
     audience: z.string().trim().optional(),
-    titleDirections: z.array(z.string().trim().min(1)).optional(),
+    title: z.string().trim().min(1).optional(),
   }),
   tone: z.string().trim().optional(),
   deAiFlavor: z.boolean().optional(),

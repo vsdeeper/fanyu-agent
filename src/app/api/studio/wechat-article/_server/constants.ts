@@ -3,7 +3,7 @@ export const PLAN_FAILED = '内容思路生成失败，请稍后重试';
 export const PLAN_TRUNCATED = '内容思路输出被截断，请重试生成';
 export const DRAFT_FAILED = '成稿失败，请稍后重试';
 export const DRAFT_TRUNCATED = '成稿输出被截断，请重试生成';
-export const MISSING_IDEA = '请先填写一句话想法';
+export const MISSING_IDEA = '请先填写我的想法';
 
 /** 选题调研允许的检索轮数（每轮可并行多次 web_search）；超过后强制只写简报 */
 export const RESEARCH_MAX_SEARCH_ROUNDS = 3;

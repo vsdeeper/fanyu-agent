@@ -27,10 +27,6 @@
   min-width: 0;
 }
 
-.star {
-  color: var(--one-color-primary);
-}
-
 .body {
   flex: 1;
   display: flex;

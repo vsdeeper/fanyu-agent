@@ -160,18 +160,31 @@ export function parseResearchPayload(json: unknown): {
 export function parsePlanPayload(json: unknown): PlanStepSnapshot | null {
   if (!json || typeof json !== 'object') return null;
   const record = json as Record<string, unknown>;
-  const angleSummary = asString(record.angleSummary);
   const beats = asStringArray(record.beats);
-  if (!angleSummary || !beats?.length) return null;
+  if (!beats?.length) return null;
+  const titleDirections = asStringArray(record.titleDirections);
   return {
-    angleSummary,
     beats,
     ...(asString(record.tone) ? { tone: asString(record.tone) } : {}),
     ...(asString(record.audience) ? { audience: asString(record.audience) } : {}),
-    ...(asStringArray(record.titleDirections)
-      ? { titleDirections: asStringArray(record.titleDirections) }
+    ...(titleDirections
+      ? { titleDirections, selectedTitleIndex: 0 }
       : {}),
   };
+}
+
+/** 取出内容思路中已选定的成稿标题。 */
+export function resolvePlanTitle(plan: PlanStepSnapshot): string | undefined {
+  const list = plan.titleDirections;
+  if (!list?.length) return undefined;
+  const index =
+    typeof plan.selectedTitleIndex === 'number' &&
+    plan.selectedTitleIndex >= 0 &&
+    plan.selectedTitleIndex < list.length
+      ? plan.selectedTitleIndex
+      : 0;
+  const title = list[index]?.trim();
+  return title || undefined;
 }
 
 /** 解析成稿末尾元数据（标题与配图槽）。 */
@@ -219,12 +232,13 @@ export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | 
   const angles = Array.isArray(data.angles)
     ? parseResearchPayload({ sources: [], angles: data.angles }).angles
     : [];
+  // 旧快照把观点写在 stance；新字段为 viewpoint，读取时兼容旧键。
+  const viewpoint = asString(data.viewpoint) || asString(data.stance);
   return {
     idea,
     sources,
     angles,
-    ...(asString(data.audience) ? { audience: asString(data.audience) } : {}),
-    ...(asString(data.stance) ? { stance: asString(data.stance) } : {}),
+    ...(viewpoint ? { viewpoint } : {}),
     ...(asString(data.streamText) ? { streamText: asString(data.streamText) } : {}),
     ...(asString(data.selectedAngleId) ? { selectedAngleId: asString(data.selectedAngleId) } : {}),
   };
@@ -233,22 +247,30 @@ export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | 
 /** 读取思路步快照。 */
 export function readPlanStepSnapshot(data: unknown): PlanStepSnapshot | undefined {
   if (!isRecord(data)) return undefined;
-  const angleSummary = asString(data.angleSummary);
   const beats = asStringArray(data.beats);
-  if (!angleSummary || !beats?.length) {
+  if (!beats?.length) {
     const parsed = parsePlanPayload(data);
     return parsed ?? undefined;
   }
+  const titleDirections = asStringArray(data.titleDirections);
+  const selectedFromData =
+    typeof data.selectedTitleIndex === 'number' &&
+    Number.isInteger(data.selectedTitleIndex) &&
+    data.selectedTitleIndex >= 0
+      ? data.selectedTitleIndex
+      : undefined;
+  const selectedTitleIndex =
+    titleDirections && selectedFromData !== undefined && selectedFromData < titleDirections.length
+      ? selectedFromData
+      : titleDirections
+        ? 0
+        : undefined;
   return {
-    angleSummary,
     beats,
     ...(asString(data.tone) ? { tone: asString(data.tone) } : {}),
     ...(asString(data.audience) ? { audience: asString(data.audience) } : {}),
-    ...(asStringArray(data.titleDirections)
-      ? { titleDirections: asStringArray(data.titleDirections) }
-      : {}),
-    ...(asString(data.bannedWords) ? { bannedWords: asString(data.bannedWords) } : {}),
-    ...(asString(data.mustUseDetails) ? { mustUseDetails: asString(data.mustUseDetails) } : {}),
+    ...(titleDirections ? { titleDirections } : {}),
+    ...(selectedTitleIndex !== undefined ? { selectedTitleIndex } : {}),
     ...(asString(data.streamText) ? { streamText: asString(data.streamText) } : {}),
   };
 }
@@ -277,15 +299,9 @@ export function readDraftStepSnapshot(data: unknown): DraftStepSnapshot | undefi
   };
 }
 
-/** 根据已有快照推断初始 phase。 */
-export function resolveInitialPhase(input: {
-  research?: ResearchStepSnapshot;
-  plan?: PlanStepSnapshot;
-  draft?: DraftStepSnapshot;
-}): StudioPhase {
-  if (input.draft?.markdown.trim()) return 'drafted';
-  if (input.plan?.beats.length) return 'planned';
-  if (input.research?.angles.length) return 'researched';
+/** 首次进入/刷新默认停在第一步选题调研；有角度卡则进入 researched 结果态。 */
+export function resolveInitialPhase(research?: ResearchStepSnapshot): StudioPhase {
+  if (research?.angles.length) return 'researched';
   return 'research';
 }
 

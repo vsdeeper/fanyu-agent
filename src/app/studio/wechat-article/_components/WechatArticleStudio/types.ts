@@ -29,8 +29,7 @@ export type ResearchSource = {
 
 export type ResearchStepSnapshot = {
   idea: string;
-  audience?: string;
-  stance?: string;
+  viewpoint?: string;
   streamText?: string;
   sources: ResearchSource[];
   angles: AngleCard[];
@@ -38,13 +37,12 @@ export type ResearchStepSnapshot = {
 };
 
 export type PlanStepSnapshot = {
-  angleSummary: string;
   beats: string[];
   tone?: string;
   audience?: string;
   titleDirections?: string[];
-  bannedWords?: string;
-  mustUseDetails?: string;
+  /** 选定的标题方向下标，成稿时作为正文标题。 */
+  selectedTitleIndex?: number;
   streamText?: string;
 };
 

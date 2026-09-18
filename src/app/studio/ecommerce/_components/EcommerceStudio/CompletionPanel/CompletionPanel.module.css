@@ -23,10 +23,6 @@
   font-weight: 600;
 }
 
-.star {
-  color: var(--one-color-primary);
-}
-
 /* head 栏右侧操作区：主图导出全选 */
 .headActions {
   margin-left: auto;

@@ -25,6 +25,24 @@
   margin-bottom: 0;
 }
 
+.angleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.angleLabel {
+  color: var(--one-color-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.angleEmpty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--one-color-text-tertiary);
+}
+
 .footer {
   flex-shrink: 0;
   padding: 12px 16px 16px;

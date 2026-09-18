@@ -15,8 +15,7 @@ export function buildResearchPrompt(body: WechatArticleResearchRequest): string 
   const lines = [
     '【用户想法】',
     body.idea.trim(),
-    ...(body.audience?.trim() ? ['【目标受众】', body.audience.trim()] : []),
-    ...(body.stance?.trim() ? ['【立场/倾向】', body.stance.trim()] : []),
+    ...(body.viewpoint?.trim() ? ['【我的观点】', body.viewpoint.trim()] : []),
     '【今天日期】',
     todayIso,
     '',
@@ -43,10 +42,8 @@ export function buildPlanPrompt(body: WechatArticlePlanRequest): string {
     ...(body.angle.risk ? [`风险：${body.angle.risk}`] : []),
     '【参考来源】',
     sources || '（无）',
-    ...(body.bannedWords?.trim() ? ['【禁词】', body.bannedWords.trim()] : []),
-    ...(body.mustUseDetails?.trim() ? ['【必用细节】', body.mustUseDetails.trim()] : []),
     '',
-    '请输出轻量内容思路：JSON 外最多两句导语，随即附完整 JSON（含 angleSummary 与 beats）；不要写长文或分节大纲。',
+    '请输出轻量内容思路：JSON 外最多两句导语，随即附完整 JSON（含 beats）；不要写长文或分节大纲。',
   ].join('\n');
 }
 
@@ -61,12 +58,9 @@ export function buildDraftPrompt(body: WechatArticleDraftRequest): string {
     `冲突：${body.angle.conflict}`,
     `为何现在写：${body.angle.whyNow}`,
     '【内容思路】',
-    `切入：${body.plan.angleSummary}`,
     '要点：',
     ...body.plan.beats.map((beat, index) => `${index + 1}. ${beat}`),
-    ...(body.plan.titleDirections?.length
-      ? ['标题方向：', ...body.plan.titleDirections.map((t) => `- ${t}`)]
-      : []),
+    ...(body.plan.title?.trim() ? ['【标题】', body.plan.title.trim()] : []),
     ...(body.tone?.trim() || body.plan.tone
       ? ['【语气】', (body.tone ?? body.plan.tone ?? '').trim()]
       : []),
@@ -78,7 +72,9 @@ export function buildDraftPrompt(body: WechatArticleDraftRequest): string {
       ? ['【风格样本——优先对齐句式与用词】', ...samples.map((s, i) => `样本${i + 1}：\n${s}`)]
       : []),
     '',
-    '请写公众号正文 Markdown；可在文末附配图槽建议 JSON，但不要声称已生成图片。',
+    body.plan.title?.trim()
+      ? '请按给定标题写公众号正文 Markdown（标题已定，勿另拟标题）；可在文末附配图槽建议 JSON，但不要声称已生成图片。'
+      : '请写公众号正文 Markdown；可在文末附配图槽建议 JSON，但不要声称已生成图片。',
   ]
     .filter((line) => line !== '')
     .join('\n');

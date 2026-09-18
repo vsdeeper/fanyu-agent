@@ -64,25 +64,19 @@ export default function WechatArticleStudio({ task }: WechatArticleStudioProps) 
               <ControlPanel
                 phase={studio.phase}
                 idea={studio.idea}
-                audience={studio.audience}
-                stance={studio.stance}
-                bannedWords={studio.bannedWords}
-                mustUseDetails={studio.mustUseDetails}
+                viewpoint={studio.viewpoint}
                 draftTone={studio.draftTone}
                 deAiFlavor={studio.deAiFlavor}
                 styleSamplesText={studio.styleSamplesText}
                 onIdeaChange={studio.setIdea}
-                onAudienceChange={studio.setAudience}
-                onStanceChange={studio.setStance}
-                onBannedWordsChange={studio.setBannedWords}
-                onMustUseDetailsChange={studio.setMustUseDetails}
+                onViewpointChange={studio.setViewpoint}
                 onDraftToneChange={studio.setDraftTone}
                 onDeAiFlavorChange={studio.setDeAiFlavor}
                 onStyleSamplesChange={studio.setStyleSamplesText}
                 onResearch={studio.handleResearch}
                 onPlan={studio.handlePlan}
                 onDraft={studio.handleDraft}
-                selectedAngleClaim={studio.selectedAngle?.claim}
+                selectedAngle={studio.selectedAngle}
                 plan={studio.plan}
               />
               <ResultPanel
@@ -95,7 +89,8 @@ export default function WechatArticleStudio({ task }: WechatArticleStudioProps) 
                 planStream={studio.planStream}
                 plan={studio.plan}
                 onPlanBeatsChange={(beats) => studio.updatePlanField('beats', beats)}
-                onPlanSummaryChange={(value) => studio.updatePlanField('angleSummary', value)}
+                onSelectTitleDirection={studio.selectTitleDirection}
+                onChangeTitleDirection={studio.changeTitleDirection}
                 draftStream={studio.draftStream}
                 markdown={studio.markdown}
                 onMarkdownChange={studio.setMarkdown}

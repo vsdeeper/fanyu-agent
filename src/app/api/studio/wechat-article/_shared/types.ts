@@ -1,8 +1,7 @@
 /** 选题调研请求：想法驱动，无补充资料上传。 */
 export type WechatArticleResearchRequest = {
   idea: string;
-  audience?: string;
-  stance?: string;
+  viewpoint?: string;
 };
 
 /** 内容思路请求。 */
@@ -22,8 +21,6 @@ export type WechatArticlePlanRequest = {
     kind: 'fact' | 'view' | 'case';
     publishedAt?: string;
   }>;
-  bannedWords?: string;
-  mustUseDetails?: string;
 };
 
 /** 成稿请求。 */
@@ -37,11 +34,11 @@ export type WechatArticleDraftRequest = {
     risk?: string;
   };
   plan: {
-    angleSummary: string;
     beats: string[];
     tone?: string;
     audience?: string;
-    titleDirections?: string[];
+    /** 内容思路中选定的成稿标题。 */
+    title?: string;
   };
   tone?: string;
   deAiFlavor?: boolean;

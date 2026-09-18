@@ -22,10 +22,6 @@
   color: var(--one-color-text);
 }
 
-.star {
-  color: var(--one-color-primary);
-}
-
 .body {
   flex: 1;
   display: flex;
@@ -80,19 +76,13 @@
   color: var(--one-color-text-secondary);
 }
 
-.sourceList,
-.angleList,
-.beatList {
+.sourceList {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.sourceList {
-  gap: 10px;
 }
 
 .angleSection {
@@ -100,6 +90,12 @@
   flex-direction: column;
   gap: 8px;
   margin-top: 16px;
+}
+
+.angleList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .sourceItem {
@@ -144,36 +140,6 @@
   color: var(--one-color-text-secondary);
   font-size: 12px;
   line-height: 1;
-}
-
-.angleCard {
-  display: block;
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  padding: 12px;
-  border: 1px solid var(--one-color-border-secondary);
-  border-radius: 8px;
-  background: var(--one-color-bg-layout);
-  color: inherit;
-  font: inherit;
-}
-
-.angleCardSelected {
-  border-color: var(--one-color-primary);
-  box-shadow: 0 0 0 1px var(--one-color-primary);
-}
-
-.angleClaim {
-  margin: 0 0 6px;
-  font-weight: 600;
-}
-
-.angleMeta {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--one-color-text-secondary);
 }
 
 .markdown {

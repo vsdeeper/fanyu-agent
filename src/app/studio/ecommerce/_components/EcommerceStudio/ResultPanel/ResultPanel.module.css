@@ -22,10 +22,6 @@
   color: var(--one-color-text);
 }
 
-.star {
-  color: var(--one-color-primary);
-}
-
 /* head 栏右侧操作区：编辑/保存/取消 */
 .headActions {
   margin-left: auto;

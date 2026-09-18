@@ -1,36 +1,31 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button, Form, Input, Select, Switch } from 'antd';
+import AngleCardView from '../AngleCardView';
 import {
   DRAFT_BUTTON,
   PLAN_BUTTON,
   RESEARCH_BUTTON,
   STYLE_SAMPLES_PLACEHOLDER,
 } from '../constants';
-import type { PlanStepSnapshot, StudioPhase } from '../types';
+import type { AngleCard, PlanStepSnapshot, StudioPhase } from '../types';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
   phase: StudioPhase;
   idea: string;
-  audience: string;
-  stance: string;
-  bannedWords: string;
-  mustUseDetails: string;
+  viewpoint: string;
   draftTone: string;
   deAiFlavor: boolean;
   styleSamplesText: string;
   onIdeaChange: (value: string) => void;
-  onAudienceChange: (value: string) => void;
-  onStanceChange: (value: string) => void;
-  onBannedWordsChange: (value: string) => void;
-  onMustUseDetailsChange: (value: string) => void;
+  onViewpointChange: (value: string) => void;
   onDraftToneChange: (value: string) => void;
   onDeAiFlavorChange: (value: boolean) => void;
   onStyleSamplesChange: (value: string) => void;
   onResearch: () => void;
   onPlan: () => void;
   onDraft: () => void;
-  selectedAngleClaim?: string;
+  selectedAngle?: AngleCard;
   plan?: PlanStepSnapshot;
 };
 
@@ -38,25 +33,19 @@ type ControlPanelProps = {
 export default function ControlPanel({
   phase,
   idea,
-  audience,
-  stance,
-  bannedWords,
-  mustUseDetails,
+  viewpoint,
   draftTone,
   deAiFlavor,
   styleSamplesText,
   onIdeaChange,
-  onAudienceChange,
-  onStanceChange,
-  onBannedWordsChange,
-  onMustUseDetailsChange,
+  onViewpointChange,
   onDraftToneChange,
   onDeAiFlavorChange,
   onStyleSamplesChange,
   onResearch,
   onPlan,
   onDraft,
-  selectedAngleClaim,
+  selectedAngle,
   plan,
 }: ControlPanelProps) {
   const busy = phase === 'researching' || phase === 'planning' || phase === 'drafting';
@@ -69,7 +58,7 @@ export default function ControlPanel({
       <div className={styles.scroll}>
         {researchStep ? (
           <Form layout="vertical" requiredMark disabled={busy} className={styles.form}>
-            <Form.Item label="一句话想法" required>
+            <Form.Item label="我的想法" required>
               <Input.TextArea
                 rows={4}
                 value={idea}
@@ -77,46 +66,26 @@ export default function ControlPanel({
                 onChange={(event) => onIdeaChange(event.target.value)}
               />
             </Form.Item>
-            <Form.Item label="目标受众">
-              <Input
-                value={audience}
-                placeholder="例如：25–35 岁产品经理"
-                onChange={(event) => onAudienceChange(event.target.value)}
-              />
-            </Form.Item>
-            <Form.Item label="立场 / 倾向">
+            <Form.Item label="我的观点">
               <Input.TextArea
-                rows={3}
-                value={stance}
+                rows={4}
+                value={viewpoint}
                 placeholder="例如：国外已经在落地，国内还在聊概念"
-                onChange={(event) => onStanceChange(event.target.value)}
+                onChange={(event) => onViewpointChange(event.target.value)}
               />
             </Form.Item>
           </Form>
         ) : null}
 
         {planStep ? (
-          <Form layout="vertical" disabled={busy} className={styles.form}>
-            <Form.Item label="锁定角度">
-              <Input.TextArea rows={3} value={selectedAngleClaim ?? ''} disabled />
-            </Form.Item>
-            <Form.Item label="禁词">
-              <Input.TextArea
-                rows={2}
-                value={bannedWords}
-                placeholder="赋能、闭环、值得关注…"
-                onChange={(event) => onBannedWordsChange(event.target.value)}
-              />
-            </Form.Item>
-            <Form.Item label="必用细节">
-              <Input.TextArea
-                rows={3}
-                value={mustUseDetails}
-                placeholder="必须写进思路的数字、原话、产品名"
-                onChange={(event) => onMustUseDetailsChange(event.target.value)}
-              />
-            </Form.Item>
-          </Form>
+          <div className={styles.angleBlock}>
+            <div className={styles.angleLabel}>选定角度</div>
+            {selectedAngle ? (
+              <AngleCardView angle={selectedAngle} />
+            ) : (
+              <p className={styles.angleEmpty}>尚未选择角度</p>
+            )}
+          </div>
         ) : null}
 
         {draftStep ? (
@@ -171,7 +140,7 @@ export default function ControlPanel({
             size="large"
             icon={<HighlightOutlined />}
             loading={phase === 'planning'}
-            disabled={!selectedAngleClaim}
+            disabled={!selectedAngle}
             onClick={onPlan}
           >
             {PLAN_BUTTON}

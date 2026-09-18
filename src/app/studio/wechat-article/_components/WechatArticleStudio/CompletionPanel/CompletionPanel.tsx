@@ -43,7 +43,7 @@ export default function CompletionPanel({
           <>
             {titles?.length ? (
               <>
-                <Typography.Title level={5}>标题备选</Typography.Title>
+                <Typography.Title level={5}>标题</Typography.Title>
                 <ul className={styles.titleList}>
                   {titles.map((title) => (
                     <li key={title}>{title}</li>

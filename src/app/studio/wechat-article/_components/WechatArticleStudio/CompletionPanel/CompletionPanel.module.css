@@ -21,10 +21,6 @@
   font-weight: 600;
 }
 
-.star {
-  color: var(--one-color-primary);
-}
-
 .scroll {
   flex: 1;
   min-height: 0;
