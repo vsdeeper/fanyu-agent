@@ -1,5 +1,5 @@
 import { HighlightOutlined } from '@ant-design/icons';
-import { Button, Form, Input, InputNumber, Space, Switch } from 'antd';
+import { Button, Form, Input, InputNumber, Space } from 'antd';
 import StyleDimensionPicker, {
   hasStyleSelection,
   type StyleDimensionSelections,
@@ -28,12 +28,10 @@ type ControlPanelProps = {
   viewpoint: string;
   styleSelections: StyleDimensionSelections;
   lengthLimit?: number;
-  deAiFlavor: boolean;
   onIdeaChange: (value: string) => void;
   onViewpointChange: (value: string) => void;
   onStyleSelectionsChange: (value: StyleDimensionSelections) => void;
   onLengthLimitChange: (value: number | undefined) => void;
-  onDeAiFlavorChange: (value: boolean) => void;
   onResearch: () => void;
   onPlan: () => void;
   onDraft: () => void;
@@ -48,12 +46,10 @@ export default function ControlPanel({
   viewpoint,
   styleSelections,
   lengthLimit,
-  deAiFlavor,
   onIdeaChange,
   onViewpointChange,
   onStyleSelectionsChange,
   onLengthLimitChange,
-  onDeAiFlavorChange,
   onResearch,
   onPlan,
   onDraft,
@@ -132,9 +128,6 @@ export default function ControlPanel({
                 disabled={busy}
                 onChange={onStyleSelectionsChange}
               />
-            </Form.Item>
-            <Form.Item label="去 AI 味">
-              <Switch checked={deAiFlavor} onChange={onDeAiFlavorChange} />
             </Form.Item>
           </Form>
         ) : null}

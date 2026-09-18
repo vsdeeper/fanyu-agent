@@ -61,7 +61,6 @@ export type DraftStepSnapshot = {
   styleSelections?: StyleDimensionSelections;
   /** 正文篇幅下限（去掉空白后的字数）。 */
   lengthLimit?: number;
-  deAiFlavor?: boolean;
   imageSlots: ImageSlot[];
   imageModel?: string;
   imageAspectRatio?: string;

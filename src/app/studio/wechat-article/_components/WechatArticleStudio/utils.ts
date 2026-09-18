@@ -296,7 +296,6 @@ export function readDraftStepSnapshot(data: unknown): DraftStepSnapshot | undefi
     ...(meta.titles ? { titles: meta.titles } : {}),
     ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
     ...(lengthLimit !== undefined ? { lengthLimit } : {}),
-    ...(typeof data.deAiFlavor === 'boolean' ? { deAiFlavor: data.deAiFlavor } : {}),
     ...(asString(data.imageModel) ? { imageModel: asString(data.imageModel) } : {}),
     ...(asString(data.imageAspectRatio)
       ? { imageAspectRatio: asString(data.imageAspectRatio) }
@@ -381,9 +380,18 @@ export async function copyImageFromUrl(url: string): Promise<void> {
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
 }
 
-/** 构建一键复制的正文（含可选标题）。 */
+/** 若正文尚未以给定标题开头，则前置一级 Markdown 标题。 */
+export function ensureMarkdownLeadingTitle(title: string | undefined, markdown: string): string {
+  const trimmedTitle = title?.trim();
+  const body = markdown.trim();
+  if (!trimmedTitle || !body) return body;
+  const firstLine = body.split(/\r?\n/, 1)[0]?.trim() ?? '';
+  const headingText = firstLine.replace(/^#{1,6}\s+/, '').trim();
+  if (headingText === trimmedTitle || firstLine === trimmedTitle) return body;
+  return `# ${trimmedTitle}\n\n${body}`;
+}
+
+/** 构建一键复制的正文（含可选标题；正文已含同标题时不重复）。 */
 export function buildCopyArticleText(titles: string[] | undefined, markdown: string): string {
-  const title = titles?.[0]?.trim();
-  if (title) return `${title}\n\n${markdown}`.trim();
-  return markdown.trim();
+  return ensureMarkdownLeadingTitle(titles?.[0], markdown);
 }

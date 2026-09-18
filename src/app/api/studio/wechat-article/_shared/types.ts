@@ -43,7 +43,6 @@ export type WechatArticleDraftRequest = {
   stylePrompt: string;
   /** 正文篇幅下限（去掉空白后的字数）；未传则不限制。 */
   lengthLimit?: number;
-  deAiFlavor?: boolean;
 };
 
 export type WechatArticleSseTextEvent = {

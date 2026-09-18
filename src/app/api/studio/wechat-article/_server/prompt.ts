@@ -69,14 +69,9 @@ export function buildDraftPrompt(body: WechatArticleDraftRequest): string {
         ]
       : []),
     ...(body.plan.audience ? ['【受众】', body.plan.audience] : []),
-    body.deAiFlavor === false
-      ? ''
-      : '【去 AI 味】开启：少空话、少排比、句长参差，避免赋能/闭环等套话。',
     '',
     body.plan.title?.trim()
-      ? '请按给定标题写公众号正文 Markdown（标题已定，勿另拟标题）；可在文末附配图槽建议 JSON，但不要声称已生成图片。'
+      ? `请写公众号正文 Markdown：第一行必须是 \`# ${body.plan.title.trim()}\`（标题已定，勿改写），空一行后写正文；可在文末附配图槽建议 JSON，但不要声称已生成图片。`
       : '请写公众号正文 Markdown；可在文末附配图槽建议 JSON，但不要声称已生成图片。',
-  ]
-    .filter((line) => line !== '')
-    .join('\n');
+  ].join('\n');
 }

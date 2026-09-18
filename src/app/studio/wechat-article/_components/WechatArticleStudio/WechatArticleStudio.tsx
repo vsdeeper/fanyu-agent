@@ -67,12 +67,10 @@ export default function WechatArticleStudio({ task }: WechatArticleStudioProps) 
                 viewpoint={studio.viewpoint}
                 styleSelections={studio.styleSelections}
                 lengthLimit={studio.lengthLimit}
-                deAiFlavor={studio.deAiFlavor}
                 onIdeaChange={studio.setIdea}
                 onViewpointChange={studio.setViewpoint}
                 onStyleSelectionsChange={studio.setStyleSelections}
                 onLengthLimitChange={studio.setLengthLimit}
-                onDeAiFlavorChange={studio.setDeAiFlavor}
                 onResearch={studio.handleResearch}
                 onPlan={studio.handlePlan}
                 onDraft={studio.handleDraft}

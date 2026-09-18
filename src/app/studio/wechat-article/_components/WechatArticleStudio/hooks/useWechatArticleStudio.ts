@@ -34,6 +34,7 @@ import {
   createRafTextBuffer,
   defaultImageSpec,
   cleanResearchBrief,
+  ensureMarkdownLeadingTitle,
   extractTrailingJsonBlock,
   isAbortError,
   isSameDraftSnapshot,
@@ -78,7 +79,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     initialDraft?.styleSelections ?? {},
   );
   const [lengthLimit, setLengthLimit] = useState<number | undefined>(initialDraft?.lengthLimit);
-  const [deAiFlavor, setDeAiFlavor] = useState(initialDraft?.deAiFlavor ?? true);
   const [draftStream, setDraftStream] = useState(initialDraft?.streamText ?? '');
   const [markdown, setMarkdown] = useState(initialDraft?.markdown ?? '');
   const [titles, setTitles] = useState<string[] | undefined>(initialDraft?.titles);
@@ -181,7 +181,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       ...(titles?.length ? { titles } : {}),
       ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
       ...(lengthLimit !== undefined ? { lengthLimit } : {}),
-      deAiFlavor,
       imageModel,
       imageAspectRatio,
       imageClarity,
@@ -365,14 +364,15 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
         },
         stylePrompt,
         ...(lengthLimit !== undefined ? { lengthLimit } : {}),
-        deAiFlavor,
       },
       draftBuffer,
       DRAFT_FAILED,
       async (fullText) => {
         const { prose, json } = extractTrailingJsonBlock(fullText);
         const meta = parseDraftMeta(json);
-        const body = prose || fullText;
+        const rawBody = prose || fullText;
+        const nextTitles = selectedTitle ? [selectedTitle] : meta.titles;
+        const body = ensureMarkdownLeadingTitle(nextTitles?.[0], rawBody);
         const prevSlots = imageSlotsRef.current;
         const nextSlots = meta.imageSlots.length
           ? meta.imageSlots.map((slot) => ({
@@ -380,7 +380,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
               assetUrl: prevSlots.find((item) => item.id === slot.id)?.assetUrl,
             }))
           : prevSlots;
-        const nextTitles = selectedTitle ? [selectedTitle] : meta.titles;
         setDraftStream(fullText);
         setMarkdown(body);
         setTitles(nextTitles);
@@ -393,7 +392,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
             ...(nextTitles?.length ? { titles: nextTitles } : {}),
             ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
             ...(lengthLimit !== undefined ? { lengthLimit } : {}),
-            deAiFlavor,
             imageModel,
             imageAspectRatio,
             imageClarity,
@@ -589,8 +587,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     setStyleSelections,
     lengthLimit,
     setLengthLimit,
-    deAiFlavor,
-    setDeAiFlavor,
     draftStream,
     markdown,
     setMarkdown,

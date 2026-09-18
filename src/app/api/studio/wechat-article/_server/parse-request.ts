@@ -44,7 +44,6 @@ const draftSchema = z.object({
   }),
   stylePrompt: z.string().trim().min(1),
   lengthLimit: z.number().int().min(100).max(20000).optional(),
-  deAiFlavor: z.boolean().optional(),
 });
 
 /** 解析选题调研请求体；失败返回 null。 */
