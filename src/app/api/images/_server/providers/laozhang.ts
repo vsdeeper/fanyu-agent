@@ -12,6 +12,8 @@ import {
   getImageSpec,
   IMAGE_ASPECT_RATIO_AUTO,
   IMAGE_ASPECT_RATIOS,
+  nearestSupportedAspectRatio,
+  parseAspectRatio,
   resolveImageQuality,
   resolveOutboundImageSize,
 } from '../image-spec';
@@ -20,8 +22,20 @@ import { extractGeminiImage, type GeminiGenerateResponse } from './gemini-respon
 /** Gemini generateContent 图片段：请求用 snake `inline_data`，响应可能回 camel `inlineData`，两种都认。 */
 type GeminiRequestPart = { text?: string; inline_data?: { mime_type?: string; data?: string } };
 
-/** Gemini imageConfig.aspectRatio 支持的枚举（白名单），非枚举比例直接不发送以免 400。 */
+/** Gemini imageConfig.aspectRatio 支持的枚举（白名单），枚举外的比例直接发送会 400。 */
 const SUPPORTED_ASPECT_RATIOS = IMAGE_ASPECT_RATIOS as readonly string[];
+
+/**
+ * 请求比例 → Gemini 可接受的比例：枚举内直传；枚举外（如公众号头图 2.35:1）吸附到最近的枚举值，
+ * 因为省略 aspectRatio 会让模型自选，出图比例就与用户所选无关了。'auto' / 非法值返回 undefined（交模型自选）。
+ */
+function toGeminiAspectRatio(requested: string | undefined): string | undefined {
+  const value = requested?.trim();
+  if (!value || value === IMAGE_ASPECT_RATIO_AUTO) return undefined;
+  if (SUPPORTED_ASPECT_RATIOS.includes(value)) return value;
+  const parsed = parseAspectRatio(value);
+  return parsed ? nearestSupportedAspectRatio(parsed.w / parsed.h) : undefined;
+}
 
 /**
  * 参考图源 → Gemini inline_data 载荷。
@@ -240,13 +254,7 @@ export const laozhangProvider: ImageProvider = {
     }
 
     // Gemini native generateContent 支持 imageSize 档位串（1K/2K/4K），按模型声明直传而非换算 WxH。
-    // 仅发送白名单内的比例；'auto' / 未指定 / 非枚举比例 → 省略 aspectRatio，交由模型自选。
-    const ratio =
-      req.aspectRatio &&
-      req.aspectRatio !== IMAGE_ASPECT_RATIO_AUTO &&
-      SUPPORTED_ASPECT_RATIOS.includes(req.aspectRatio)
-        ? req.aspectRatio
-        : undefined;
+    const ratio = toGeminiAspectRatio(req.aspectRatio);
 
     // imageSize 仅认模型登记的档位串；WxH 或未知值回退到模型默认档位。
     const imageSize = resolveOutboundImageSize(req.size, undefined, spec);

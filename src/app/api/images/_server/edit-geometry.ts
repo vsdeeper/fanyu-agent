@@ -3,8 +3,8 @@ import 'server-only';
 import {
   getImageSpec,
   IMAGE_ASPECT_RATIO_AUTO,
-  IMAGE_ASPECT_RATIOS,
   isValidImageSize,
+  nearestSupportedAspectRatio,
 } from './image-spec';
 import { readDataUrlDimensions } from './image-utils';
 import type { ImageGenerateRequest, ImageSpec } from './types';
@@ -30,25 +30,6 @@ function toAspectRatio(width: number, height: number): string | undefined {
 }
 
 /**
- * 取 IMAGE_ASPECT_RATIOS 中与源图比值最接近的一项（按对数距离，1:2 与 2:1 等距）。
- * 只认枚举比例的模型（Gemini native 的 imageConfig.aspectRatio）需要它，非枚举值会被上游拒绝。
- */
-function snapToSupportedAspectRatio(width: number, height: number): string {
-  const target = Math.log(width / height);
-  let best: string = IMAGE_ASPECT_RATIOS[0];
-  let bestDistance = Number.POSITIVE_INFINITY;
-  for (const candidate of IMAGE_ASPECT_RATIOS) {
-    const [candidateWidth, candidateHeight] = candidate.split(':').map(Number);
-    const distance = Math.abs(Math.log(candidateWidth / candidateHeight) - target);
-    if (distance < bestDistance) {
-      best = candidate;
-      bestDistance = distance;
-    }
-  }
-  return best;
-}
-
-/**
  * 按源图反推改图可出站的几何参数：源图尺寸合法（落在模型像素区间内、符合对齐步长与最长边比例上限）
  * 时原样沿用其像素尺寸，否则只沿用宽高比、尺寸仍走模型默认档位。
  * 只认档位串的模型（Gemini native）无法按像素出图，故仅返回比例（吸附到最近的可选比例）。
@@ -61,7 +42,7 @@ export function resolveInheritedEditGeometry(
   const ratio = toAspectRatio(source.width, source.height);
   if (!ratio) return undefined;
   if (spec.sizeInput === 'tier') {
-    return { aspectRatio: snapToSupportedAspectRatio(source.width, source.height) };
+    return { aspectRatio: nearestSupportedAspectRatio(source.width / source.height) };
   }
 
   const multiple = spec.dimensionMultiple ?? 2;

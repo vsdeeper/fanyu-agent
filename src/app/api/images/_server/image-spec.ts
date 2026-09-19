@@ -74,15 +74,37 @@ export const K_SIZE_BY_TIER: Record<string, string> = {
   '4K': '4096x4096',
 };
 
-/** 解析宽高比；auto 或非法值返回 null，由调用方决定是否回退默认比例。 */
-function parseAspectRatio(value: string | undefined): { w: number; h: number } | null {
+/**
+ * 解析宽高比；auto 或非法值返回 null，由调用方决定是否回退默认比例。
+ * 分子分母接受小数：2.35:1（公众号头图）这类比例不是整数比，仍要能换算成像素尺寸。
+ */
+export function parseAspectRatio(value: string | undefined): { w: number; h: number } | null {
   if (!value || value === IMAGE_ASPECT_RATIO_AUTO) return null;
-  const m = /^(\d+):(\d+)$/.exec(value.trim());
+  const m = /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(value.trim());
   if (!m) return null;
   const w = Number(m[1]);
   const h = Number(m[2]);
-  if (w <= 0 || h <= 0) return null;
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
   return { w, h };
+}
+
+/**
+ * 取 IMAGE_ASPECT_RATIOS 中与给定比值最接近的一项（按对数距离，1:2 与 2:1 等距）。
+ * 只认枚举比例的模型（Gemini native 的 imageConfig.aspectRatio）需要它，非枚举值会被上游拒绝。
+ */
+export function nearestSupportedAspectRatio(ratio: number): string {
+  const target = Math.log(ratio);
+  let best: string = IMAGE_ASPECT_RATIOS[0];
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const candidate of IMAGE_ASPECT_RATIOS) {
+    const [candidateWidth, candidateHeight] = candidate.split(':').map(Number);
+    const distance = Math.abs(Math.log(candidateWidth! / candidateHeight!) - target);
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
 
 /** 将尺寸向下对齐到模型要求的倍数，最小保留一个步长。 */
@@ -134,11 +156,11 @@ export function aspectRatioToSize(
   spec: ImageSpec,
   targetArea = spec.minPixels ?? 3_686_400,
 ): string | undefined {
-  const m = /^(\d+):(\d+)$/.exec(ratio.trim());
+  const m = /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(ratio.trim());
   if (!m) return undefined;
   const w = Number(m[1]);
   const h = Number(m[2]);
-  if (w <= 0 || h <= 0) return undefined;
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return undefined;
   const minArea = spec.minPixels ?? 0;
   const maxArea = spec.maxPixels ?? Number.MAX_SAFE_INTEGER;
   const area = Math.min(Math.max(targetArea, minArea), maxArea);
