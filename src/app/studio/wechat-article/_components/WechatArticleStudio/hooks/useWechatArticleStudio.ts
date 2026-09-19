@@ -11,6 +11,7 @@ import {
   DEFAULT_IMAGE_MODEL,
   DRAFT_FAILED,
   GENERATE_FAILED,
+  HISTORY_DELETE_FAILED,
   IMAGES_FAILED,
   MISSING_ACTIVE_SLOT_WARNING,
   MISSING_ANGLE_WARNING,
@@ -103,9 +104,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     initialDraft?.imageHistory ?? [],
   );
   const [imageVisualStyle, setImageVisualStyle] = useState(initialDraft?.imageVisualStyle ?? '');
-  const [styleReferenceUrl, setStyleReferenceUrl] = useState(
-    initialDraft?.styleReferenceUrl ?? '',
-  );
+  const [styleReferenceUrl, setStyleReferenceUrl] = useState(initialDraft?.styleReferenceUrl ?? '');
   const [imageModel, setImageModel] = useState(
     initialDraft?.imageModel ?? imageDefaults.imageModel,
   );
@@ -437,10 +436,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
         const rawBody = prose || fullText;
         const nextTitles = selectedTitle ? [selectedTitle] : titles;
         const body = ensureMarkdownLeadingTitle(nextTitles?.[0], rawBody);
-        const nextHistory = mergeSlotsIntoHistory(
-          imageHistoryRef.current,
-          imageSlotsRef.current,
-        );
+        const nextHistory = mergeSlotsIntoHistory(imageHistoryRef.current, imageSlotsRef.current);
         setDraftStream(fullText);
         setMarkdown(body);
         setTitles(nextTitles);
@@ -512,9 +508,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
             aspectRatio: prev?.aspectRatio ?? slot.aspectRatio ?? DEFAULT_IMAGE_ASPECT,
             model,
             clarity:
-              prev?.clarity ??
-              slot.clarity ??
-              resolveClarityForModel(model, DEFAULT_IMAGE_CLARITY),
+              prev?.clarity ?? slot.clarity ?? resolveClarityForModel(model, DEFAULT_IMAGE_CLARITY),
           };
         });
         if (!nextSlots.length) {
@@ -523,10 +517,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
           return;
         }
         const nextVisualStyle = parseImageVisualStyle(json) ?? '';
-        const nextHistory = mergeSlotsIntoHistory(
-          imageHistoryRef.current,
-          imageSlotsRef.current,
-        );
+        const nextHistory = mergeSlotsIntoHistory(imageHistoryRef.current, imageSlotsRef.current);
         const body = (prose || fullText).trim();
         setImagesStream(fullText);
         setMarkdown(body);
@@ -561,8 +552,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     );
     try {
       const model = slot.model?.trim() || DEFAULT_IMAGE_MODEL;
-      const clarity =
-        slot.clarity?.trim() || resolveClarityForModel(model, DEFAULT_IMAGE_CLARITY);
+      const clarity = slot.clarity?.trim() || resolveClarityForModel(model, DEFAULT_IMAGE_CLARITY);
       const quality = getModelCapability(model)?.qualityDefault ?? 'high';
       const res = await fetch('/api/studio/generate', {
         method: 'POST',
@@ -653,6 +643,19 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       await persistDraft({ slots: nextSlots });
     } catch (err) {
       console.error('[wechat-article-studio] apply history', err);
+    }
+  }
+
+  /** 删除一条旧槽位图：立即落盘（不等「下一步」）。 */
+  async function handleRemoveHistory(historyId: string) {
+    const nextHistory = imageHistoryRef.current.filter((item) => item.id !== historyId);
+    if (nextHistory.length === imageHistoryRef.current.length) return;
+    setImageHistory(nextHistory);
+    try {
+      await persistDraft({ history: nextHistory });
+    } catch (err) {
+      console.error('[wechat-article-studio] remove history', err);
+      message.warning(HISTORY_DELETE_FAILED);
     }
   }
 
@@ -881,6 +884,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     handleGenerateSlot,
     handleUploadSlot,
     handleApplyHistory,
+    handleRemoveHistory,
     handleCopyArticle,
     handleCopyImage,
     handleNext,

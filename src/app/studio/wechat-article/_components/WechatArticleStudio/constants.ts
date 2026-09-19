@@ -79,12 +79,14 @@ export const COPY_FAILED = '复制失败，请手动选择文本';
 export const COPY_IMAGE_FAILED = '复制图片失败，请右键另存';
 export const GENERATE_FAILED = '配图生成失败，请稍后重试';
 export const UPLOAD_FAILED = '图片上传失败，请重试';
+export const HISTORY_DELETE_FAILED = '已删除，但保存失败，刷新后可能恢复';
 
 export const EMPTY_RESEARCH_HINT = '写下想法后点击「开始调研」，将产出检索简报、参考来源与角度卡';
 export const RESEARCH_PACKING_HINT = '正在整理参考来源与角度卡…';
 export const EMPTY_PLAN_HINT = '确认角度后点击「生成思路」，产出轻量写作要点';
 export const PLAN_GENERATING_HINT = '正在生成内容思路…';
 export const BEAT_DELETE_CONFIRM_TITLE = '删除这条写作要点？';
+export const HISTORY_DELETE_CONFIRM_TITLE = '删除这条旧槽位？';
 export const MIN_TITLE_DIRECTIONS = 3;
 export const EMPTY_DRAFT_HINT = '选定文风后点击「生成正文」';
 export const EMPTY_IMAGES_HINT = '点击「规划配图」后，正文会出现可点击的配图标注';

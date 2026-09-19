@@ -111,6 +111,7 @@ export default function WechatArticleStudio({ task }: WechatArticleStudioProps) 
                 onGenerateSlot={studio.handleGenerateSlot}
                 onUploadSlot={studio.handleUploadSlot}
                 onApplyHistory={studio.handleApplyHistory}
+                onRemoveHistory={studio.handleRemoveHistory}
                 onCopyImage={studio.handleCopyImage}
                 navLoading={studio.navLoading}
                 onPrev={studio.handlePrev}

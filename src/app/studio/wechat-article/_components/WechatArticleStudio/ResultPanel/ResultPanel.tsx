@@ -71,6 +71,7 @@ type ResultPanelProps = {
   onGenerateSlot: (slotId: string) => void;
   onUploadSlot: (slotId: string, file: File) => void;
   onApplyHistory: (historyId: string) => void;
+  onRemoveHistory: (historyId: string) => void;
   onCopyImage: (url: string) => void;
   navLoading: boolean;
   onPrev: () => void;
@@ -109,6 +110,7 @@ export default function ResultPanel({
   onGenerateSlot,
   onUploadSlot,
   onApplyHistory,
+  onRemoveHistory,
   onCopyImage,
   navLoading,
   onPrev,
@@ -437,6 +439,7 @@ export default function ResultPanel({
           onGenerateSlot={onGenerateSlot}
           onUploadSlot={onUploadSlot}
           onApplyHistory={onApplyHistory}
+          onRemoveHistory={onRemoveHistory}
           onCopyImage={onCopyImage}
         />
       ) : null}

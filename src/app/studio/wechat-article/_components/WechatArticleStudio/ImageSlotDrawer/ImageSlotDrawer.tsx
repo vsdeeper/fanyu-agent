@@ -1,5 +1,5 @@
 import { UploadOutlined } from '@ant-design/icons';
-import { Button, Drawer, Image, Input, Select, Tag, Upload } from 'antd';
+import { Button, Drawer, Image, Input, Popconfirm, Select, Tag, Upload } from 'antd';
 import {
   resolveClarityForModel,
   toClarityOptions,
@@ -8,12 +8,15 @@ import {
 import { interceptLocalFiles } from '@/business-components/StudioImageUpload/utils';
 import {
   APPLY_HISTORY_BUTTON,
+  CANCEL_BUTTON,
   COPY_IMAGE_BUTTON,
   CURRENT_SLOTS_TITLE,
   DEFAULT_IMAGE_ASPECT,
   DEFAULT_IMAGE_CLARITY,
   DEFAULT_IMAGE_MODEL,
+  DELETE_BUTTON,
   GENERATE_SLOT_BUTTON,
+  HISTORY_DELETE_CONFIRM_TITLE,
   IMAGE_ASPECT_LABEL,
   IMAGE_ASPECT_RATIO_OPTIONS,
   IMAGE_CLARITY_LABEL,
@@ -44,6 +47,7 @@ type ImageSlotDrawerProps = {
   onGenerateSlot: (slotId: string) => void;
   onUploadSlot: (slotId: string, file: File) => void;
   onApplyHistory: (historyId: string) => void;
+  onRemoveHistory: (historyId: string) => void;
   onCopyImage: (url: string) => void;
 };
 
@@ -64,6 +68,7 @@ export default function ImageSlotDrawer({
   onGenerateSlot,
   onUploadSlot,
   onApplyHistory,
+  onRemoveHistory,
   onCopyImage,
 }: ImageSlotDrawerProps) {
   return (
@@ -217,6 +222,17 @@ export default function ImageSlotDrawer({
                     <Button size="small" onClick={() => onCopyImage(item.assetUrl)}>
                       {COPY_IMAGE_BUTTON}
                     </Button>
+                    <Popconfirm
+                      title={HISTORY_DELETE_CONFIRM_TITLE}
+                      okText={DELETE_BUTTON}
+                      cancelText={CANCEL_BUTTON}
+                      okButtonProps={{ danger: true }}
+                      onConfirm={() => onRemoveHistory(item.id)}
+                    >
+                      <Button size="small" danger>
+                        {DELETE_BUTTON}
+                      </Button>
+                    </Popconfirm>
                   </div>
                 </div>
               ))}
