@@ -23,6 +23,7 @@ import {
   PLAN_FAILED,
   RESEARCH_FAILED,
   UPLOAD_FAILED,
+  WATERMARK_FAILED,
 } from '../constants';
 import type {
   AngleCard,
@@ -36,6 +37,7 @@ import type {
 import {
   assertOkOrJsonFail,
   buildCopyArticleText,
+  composeWatermark,
   consumeAnalyzeSse,
   consumeGenerateNdjson,
   copyImageFromUrl,
@@ -71,6 +73,7 @@ import {
 import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload/types';
 
 const STYLE_REFERENCE_UID = 'style-reference';
+const WATERMARK_UID = 'watermark';
 
 /** 管理公众号五步：调研 → 思路 → 成稿 → 成稿配图 → 完成。 */
 export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
@@ -105,6 +108,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   );
   const [imageVisualStyle, setImageVisualStyle] = useState(initialDraft?.imageVisualStyle ?? '');
   const [styleReferenceUrl, setStyleReferenceUrl] = useState(initialDraft?.styleReferenceUrl ?? '');
+  const [watermarkUrl, setWatermarkUrl] = useState(initialDraft?.watermarkUrl ?? '');
   const [imageModel, setImageModel] = useState(
     initialDraft?.imageModel ?? imageDefaults.imageModel,
   );
@@ -228,17 +232,20 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     history?: ImageHistoryItem[];
     imageVisualStyle?: string;
     styleReferenceUrl?: string;
+    watermarkUrl?: string;
   }) {
     const slots = toPersistableSlots(overrides?.slots ?? imageSlots);
     const history = toPersistableHistory(overrides?.history ?? imageHistory);
     const visualStyle = (overrides?.imageVisualStyle ?? imageVisualStyle).trim();
     const styleRef = (overrides?.styleReferenceUrl ?? styleReferenceUrl).trim();
+    const watermark = (overrides?.watermarkUrl ?? watermarkUrl).trim();
     const next: DraftStepSnapshot = {
       markdown: overrides?.markdown ?? markdown,
       imageSlots: slots,
       ...(history.length ? { imageHistory: history } : {}),
       ...(visualStyle ? { imageVisualStyle: visualStyle } : {}),
       ...(styleRef ? { styleReferenceUrl: styleRef } : {}),
+      ...(watermark ? { watermarkUrl: watermark } : {}),
       ...(titles?.length ? { titles } : {}),
       ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
       ...(lengthLimit !== undefined ? { lengthLimit } : {}),
@@ -256,6 +263,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     setImageHistory(saved.imageHistory ?? []);
     setImageVisualStyle(saved.imageVisualStyle ?? '');
     setStyleReferenceUrl(saved.styleReferenceUrl ?? '');
+    setWatermarkUrl(saved.watermarkUrl ?? '');
     return saved;
   }
 
@@ -541,6 +549,19 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     );
   }
 
+  /** 出图后叠加水印：未上传水印图则原样返回；叠加失败只告警，不让整张图白跑。 */
+  async function withWatermark(url: string): Promise<string> {
+    const mark = watermarkUrl.trim();
+    if (!mark) return url;
+    try {
+      return await composeWatermark(url, mark);
+    } catch (err) {
+      console.error('[wechat-article-studio] compose watermark', err);
+      message.warning(WATERMARK_FAILED);
+      return url;
+    }
+  }
+
   async function handleGenerateSlot(slotId: string) {
     const slot = imageSlots.find((item) => item.id === slotId);
     if (!slot?.promptDraft.trim()) {
@@ -579,6 +600,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
         }
         if (event.url) nextUrl = event.url;
       });
+      if (nextUrl) nextUrl = await withWatermark(nextUrl);
       const nextSlots = imageSlotsRef.current.map((item) =>
         item.id === slotId
           ? { ...item, ...(nextUrl ? { assetUrl: nextUrl } : {}), generating: false }
@@ -809,8 +831,38 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     }
   }
 
+  async function handleWatermarkAppend(files: File[]) {
+    const first = files[0];
+    if (!first) return;
+    try {
+      const dataUrl = await readFileAsDataUrl(first);
+      setWatermarkUrl(dataUrl);
+      try {
+        await persistDraft({ watermarkUrl: dataUrl });
+      } catch (err) {
+        console.error('[wechat-article-studio] persist watermark', err);
+      }
+    } catch (err) {
+      console.error('[wechat-article-studio] watermark upload', err);
+      message.error(UPLOAD_FAILED);
+    }
+  }
+
+  async function handleWatermarkRemove(_uid: string) {
+    setWatermarkUrl('');
+    try {
+      await persistDraft({ watermarkUrl: '' });
+    } catch (err) {
+      console.error('[wechat-article-studio] clear watermark', err);
+    }
+  }
+
   const styleReferenceImages: StudioImageUploadItem[] = styleReferenceUrl.trim()
     ? [{ uid: STYLE_REFERENCE_UID, previewUrl: styleReferenceUrl.trim() }]
+    : [];
+
+  const watermarkImages: StudioImageUploadItem[] = watermarkUrl.trim()
+    ? [{ uid: WATERMARK_UID, previewUrl: watermarkUrl.trim() }]
     : [];
 
   function openSlotDrawer(slotId?: string) {
@@ -865,6 +917,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     imageHistory,
     imageVisualStyle,
     styleReferenceImages,
+    watermarkImages,
     imageModel,
     setImageModel,
     imageAspectRatio,
@@ -896,5 +949,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     updateImageVisualStyle,
     handleStyleReferenceAppend,
     handleStyleReferenceRemove,
+    handleWatermarkAppend,
+    handleWatermarkRemove,
   };
 }

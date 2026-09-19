@@ -23,6 +23,10 @@ import {
   STYLE_REFERENCE_HINT,
   STYLE_REFERENCE_LABEL,
   STYLE_REFERENCE_SUBTITLE,
+  WATERMARK_ARIA_LABEL,
+  WATERMARK_HINT,
+  WATERMARK_LABEL,
+  WATERMARK_SUBTITLE,
 } from '../constants';
 import type { AngleCard, PlanStepSnapshot, StudioPhase } from '../types';
 import { resolvePlanTitle } from '../utils';
@@ -35,12 +39,15 @@ type ControlPanelProps = {
   styleSelections: StyleDimensionSelections;
   lengthLimit?: number;
   styleReferenceImages: StudioImageUploadItem[];
+  watermarkImages: StudioImageUploadItem[];
   onIdeaChange: (value: string) => void;
   onViewpointChange: (value: string) => void;
   onStyleSelectionsChange: (value: StyleDimensionSelections) => void;
   onLengthLimitChange: (value: number | undefined) => void;
   onStyleReferenceAppend: (files: File[]) => void;
   onStyleReferenceRemove: (uid: string) => void;
+  onWatermarkAppend: (files: File[]) => void;
+  onWatermarkRemove: (uid: string) => void;
   onResearch: () => void;
   onPlan: () => void;
   onDraft: () => void;
@@ -50,7 +57,7 @@ type ControlPanelProps = {
   hasMarkdown: boolean;
 };
 
-/** 公众号左栏：按当前步骤展示想法 / 思路参数 / 成稿文风 / 配图风格参考。 */
+/** 公众号左栏：按当前步骤展示想法 / 思路参数 / 成稿文风 / 配图水印与风格参考。 */
 export default function ControlPanel({
   phase,
   idea,
@@ -58,12 +65,15 @@ export default function ControlPanel({
   styleSelections,
   lengthLimit,
   styleReferenceImages,
+  watermarkImages,
   onIdeaChange,
   onViewpointChange,
   onStyleSelectionsChange,
   onLengthLimitChange,
   onStyleReferenceAppend,
   onStyleReferenceRemove,
+  onWatermarkAppend,
+  onWatermarkRemove,
   onResearch,
   onPlan,
   onDraft,
@@ -149,17 +159,30 @@ export default function ControlPanel({
         ) : null}
 
         {imagesStep ? (
-          <StudioImageUpload
-            images={styleReferenceImages}
-            max={1}
-            label={STYLE_REFERENCE_LABEL}
-            subtitle={STYLE_REFERENCE_SUBTITLE}
-            hint={STYLE_REFERENCE_HINT}
-            ariaLabel={STYLE_REFERENCE_LABEL}
-            disabled={busy}
-            onAppend={onStyleReferenceAppend}
-            onRemove={onStyleReferenceRemove}
-          />
+          <>
+            <StudioImageUpload
+              images={watermarkImages}
+              max={1}
+              label={WATERMARK_LABEL}
+              subtitle={WATERMARK_SUBTITLE}
+              hint={WATERMARK_HINT}
+              ariaLabel={WATERMARK_ARIA_LABEL}
+              disabled={busy}
+              onAppend={onWatermarkAppend}
+              onRemove={onWatermarkRemove}
+            />
+            <StudioImageUpload
+              images={styleReferenceImages}
+              max={1}
+              label={STYLE_REFERENCE_LABEL}
+              subtitle={STYLE_REFERENCE_SUBTITLE}
+              hint={STYLE_REFERENCE_HINT}
+              ariaLabel={STYLE_REFERENCE_LABEL}
+              disabled={busy}
+              onAppend={onStyleReferenceAppend}
+              onRemove={onStyleReferenceRemove}
+            />
+          </>
         ) : null}
       </div>
       <div className={styles.footer}>

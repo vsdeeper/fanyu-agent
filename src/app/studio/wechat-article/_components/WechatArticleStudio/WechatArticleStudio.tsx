@@ -66,12 +66,15 @@ export default function WechatArticleStudio({ task }: WechatArticleStudioProps) 
                 styleSelections={studio.styleSelections}
                 lengthLimit={studio.lengthLimit}
                 styleReferenceImages={studio.styleReferenceImages}
+                watermarkImages={studio.watermarkImages}
                 onIdeaChange={studio.setIdea}
                 onViewpointChange={studio.setViewpoint}
                 onStyleSelectionsChange={studio.setStyleSelections}
                 onLengthLimitChange={studio.setLengthLimit}
                 onStyleReferenceAppend={studio.handleStyleReferenceAppend}
                 onStyleReferenceRemove={studio.handleStyleReferenceRemove}
+                onWatermarkAppend={studio.handleWatermarkAppend}
+                onWatermarkRemove={studio.handleWatermarkRemove}
                 onResearch={studio.handleResearch}
                 onPlan={studio.handlePlan}
                 onDraft={studio.handleDraft}

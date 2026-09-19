@@ -24,6 +24,19 @@ import {
   LENGTH_LIMIT_MAX,
   LENGTH_LIMIT_MIN,
   MIN_TITLE_DIRECTIONS,
+  WATERMARK_BACKDROP_ALPHA_CUTOFF,
+  WATERMARK_BACKDROP_TOLERANCE,
+  WATERMARK_BOTTOM_RATIO,
+  WATERMARK_BRIGHT_PIXEL_LUMINANCE,
+  WATERMARK_INK_ALPHA_MIN,
+  WATERMARK_INK_ON_DARK,
+  WATERMARK_INK_ON_LIGHT,
+  WATERMARK_JPEG_QUALITY,
+  WATERMARK_LIGHT_BACKDROP_LUMINANCE,
+  WATERMARK_MIN_INK_DISTANCE,
+  WATERMARK_OPACITY,
+  WATERMARK_RIGHT_RATIO,
+  WATERMARK_WIDTH_RATIO,
 } from './constants';
 import { resolveClarityForModel } from '@/app/studio/_utils/model-options';
 
@@ -413,6 +426,9 @@ export function readDraftStepSnapshot(data: unknown): DraftStepSnapshot | undefi
     ...(asString(data.styleReferenceUrl)?.trim()
       ? { styleReferenceUrl: asString(data.styleReferenceUrl)!.trim() }
       : {}),
+    ...(asString(data.watermarkUrl)?.trim()
+      ? { watermarkUrl: asString(data.watermarkUrl)!.trim() }
+      : {}),
     ...(meta.titles ? { titles: meta.titles } : {}),
     ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
     ...(lengthLimit !== undefined ? { lengthLimit } : {}),
@@ -516,6 +532,285 @@ export async function resolveImageDataUrl(url: string): Promise<string> {
     reader.onerror = () => reject(new Error('read image failed'));
     reader.readAsDataURL(blob);
   });
+}
+
+/** 把图片 URL 载入为可绘制元素。 */
+function loadImageElement(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('load image failed'));
+    image.src = src;
+  });
+}
+
+/** 像素是否落在 [0,255]。 */
+function clampByte(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+/** 取某个像素到给定底色的 RGB 欧氏距离。 */
+function distanceToBackground(pixels: Uint8ClampedArray, offset: number, background: number[]) {
+  return Math.hypot(
+    pixels[offset]! - background[0]!,
+    pixels[offset + 1]! - background[1]!,
+    pixels[offset + 2]! - background[2]!,
+  );
+}
+
+/** 已经有透明像素就说明是透明底图（用户要的就是原样），不必抠。 */
+function hasTransparentPixel(pixels: Uint8ClampedArray): boolean {
+  for (let i = 3; i < pixels.length; i += 4) {
+    if (pixels[i]! < 250) return true;
+  }
+  return false;
+}
+
+/**
+ * 取四角像素的平均色当底色。两种情况认作「可抠的底」：四角同色（纯色卡片），
+ * 或四角都亮（棋盘格「伪透明」导出、浅色渐变卡）。四角既不齐又偏暗（整张照片）则返回 null，不抠。
+ */
+function resolveBackdropColor(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+): number[] | null {
+  const offsets = [
+    0,
+    (width - 1) * 4,
+    (height - 1) * width * 4,
+    ((height - 1) * width + width - 1) * 4,
+  ];
+  const colors = offsets.map((offset) => [
+    pixels[offset]!,
+    pixels[offset + 1]!,
+    pixels[offset + 2]!,
+  ]);
+  let uniform = true;
+  for (const a of colors) {
+    for (const b of colors) {
+      if (Math.hypot(a[0]! - b[0]!, a[1]! - b[1]!, a[2]! - b[2]!) > WATERMARK_BACKDROP_TOLERANCE) {
+        uniform = false;
+      }
+    }
+  }
+  const allBright = colors.every(
+    ([r, g, b]) => r! * 0.2126 + g! * 0.7152 + b! * 0.0722 > WATERMARK_LIGHT_BACKDROP_LUMINANCE,
+  );
+  if (!uniform && !allBright) return null;
+  return [0, 1, 2].map((channel) =>
+    clampByte(colors.reduce((sum, color) => sum + color[channel]!, 0) / colors.length),
+  );
+}
+
+/**
+ * 抠掉水印图的纯色底（logo / 署名多为白底卡片，直接贴上去就是一块白板），就地改写像素：
+ * 距底色越远越不透明，并按「C = F·α + 底·(1−α)」反解前景色，抗锯齿边缘才不会发白留边。
+ * 已经是透明底、或四角判断不出纯色底（整张照片）时原样不动。
+ */
+export function stripWatermarkBackdrop(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+): void {
+  if (width <= 0 || height <= 0 || pixels.length < width * height * 4) return;
+  if (hasTransparentPixel(pixels)) return;
+  const background = resolveBackdropColor(pixels, width, height);
+  if (!background) return;
+
+  // 全图距底色最远的像素即墨迹本色，以它作为满不透明的基准，浅色墨迹也不会被抠淡
+  let inkDistance = 0;
+  for (let i = 0; i < pixels.length; i += 4) {
+    const distance = distanceToBackground(pixels, i, background);
+    if (distance > inkDistance) inkDistance = distance;
+  }
+  if (inkDistance < WATERMARK_MIN_INK_DISTANCE) return;
+
+  for (let i = 0; i < pixels.length; i += 4) {
+    const alpha = distanceToBackground(pixels, i, background) / inkDistance;
+    if (alpha < WATERMARK_BACKDROP_ALPHA_CUTOFF) {
+      pixels[i + 3] = 0;
+      continue;
+    }
+    const opacity = Math.min(1, alpha);
+    for (let channel = 0; channel < 3; channel += 1) {
+      pixels[i + channel] = clampByte(
+        (pixels[i + channel]! - background[channel]! * (1 - opacity)) / opacity,
+      );
+    }
+    pixels[i + 3] = clampByte(opacity * 255);
+  }
+}
+
+/** 感知亮度（Rec.709）。 */
+function luminanceOf(pixels: Uint8ClampedArray, offset: number): number {
+  return pixels[offset]! * 0.2126 + pixels[offset + 1]! * 0.7152 + pixels[offset + 2]! * 0.0722;
+}
+
+/**
+ * 按水印将要盖住的那块底图选墨色：偏亮用近黑墨、偏暗用白墨，否则浅色底上的白水印根本认不出来。
+ * 看的是「偏亮像素占比」而不是平均亮度——几处高光不该把大片暗部判成浅底。
+ */
+export function resolveWatermarkInk(
+  backdropPixels: Uint8ClampedArray,
+): readonly [number, number, number] {
+  let bright = 0;
+  let total = 0;
+  for (let i = 0; i < backdropPixels.length; i += 4) {
+    if (luminanceOf(backdropPixels, i) > WATERMARK_BRIGHT_PIXEL_LUMINANCE) bright += 1;
+    total += 1;
+  }
+  const brightFraction = total > 0 ? bright / total : 0;
+  return brightFraction > 0.5 ? WATERMARK_INK_ON_LIGHT : WATERMARK_INK_ON_DARK;
+}
+
+/** 把抠好底的水印统一刷成单色墨（保留 alpha，边缘仍是软的）。 */
+export function recolorWatermarkInk(
+  pixels: Uint8ClampedArray,
+  ink: readonly [number, number, number],
+): void {
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (pixels[i + 3] === 0) continue;
+    pixels[i] = ink[0];
+    pixels[i + 1] = ink[1];
+    pixels[i + 2] = ink[2];
+  }
+}
+
+export type WatermarkRect = { x: number; y: number; width: number; height: number };
+
+/**
+ * 找墨迹（alpha 非 0）的包围盒。水印导出图四周常留大片透明边距，不裁掉的话
+ * 「水印宽 = 成图宽 × 18%」会被边距吃掉一截，落点也被边距推开，不同文件还大小不一。
+ */
+export function findWatermarkInkBox(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+): WatermarkRect | null {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (pixels[(y * width + x) * 4 + 3]! <= WATERMARK_INK_ALPHA_MIN) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < minX || maxY < minY) return null;
+  return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+/**
+ * 算水印在成图上的落点矩形（右下角）。尺寸与留白**只由成图宽度**推出并取整到整像素：
+ * 公众号正文把所有配图按同一栏宽展示，1K / 2K、16:9 / 3:4 混排时页面上水印也就一样大、一样靠角。
+ * 固定像素（小图上显大）或按高度取比例（横竖版忽大忽小）都做不到这一点。
+ * 水印本身等比缩放进「宽 = 成图宽 × WATERMARK_WIDTH_RATIO」的方形盒子，故竖长水印会按高度回收。
+ * 底部留白比右边大，为的是压在微信自带水印带之上（见 WATERMARK_BOTTOM_RATIO）。
+ */
+export function resolveWatermarkRect(input: {
+  imageWidth: number;
+  imageHeight: number;
+  markWidth: number;
+  markHeight: number;
+}): WatermarkRect {
+  const { imageWidth, imageHeight, markWidth, markHeight } = input;
+  if (imageWidth <= 0 || imageHeight <= 0 || markWidth <= 0 || markHeight <= 0) {
+    throw new Error('invalid image size');
+  }
+  const right = Math.round(imageWidth * WATERMARK_RIGHT_RATIO);
+  const bottom = Math.round(imageWidth * WATERMARK_BOTTOM_RATIO);
+  const boxWidth = Math.round(imageWidth * WATERMARK_WIDTH_RATIO);
+  const scale = Math.min(boxWidth / markWidth, boxWidth / markHeight);
+  const width = Math.max(1, Math.round(markWidth * scale));
+  const height = Math.max(1, Math.round(markHeight * scale));
+  return { x: imageWidth - width - right, y: imageHeight - height - bottom, width, height };
+}
+
+/** 抠底并把画布裁到墨迹边界，得到「尺寸即墨迹大小」的透明层（颜色仍为原色，待选墨色后再刷）。 */
+function toWatermarkInkLayer(mark: HTMLImageElement): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = mark.naturalWidth;
+  canvas.height = mark.naturalHeight;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('canvas context unavailable');
+  context.drawImage(mark, 0, 0);
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  stripWatermarkBackdrop(imageData.data, canvas.width, canvas.height);
+  context.putImageData(imageData, 0, 0);
+
+  const box = findWatermarkInkBox(imageData.data, canvas.width, canvas.height);
+  if (!box || (box.width === canvas.width && box.height === canvas.height)) return canvas;
+  const trimmed = document.createElement('canvas');
+  trimmed.width = box.width;
+  trimmed.height = box.height;
+  const trimContext = trimmed.getContext('2d');
+  if (!trimContext) throw new Error('canvas context unavailable');
+  trimContext.drawImage(canvas, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
+  return trimmed;
+}
+
+/** 把整层刷成单色墨（保留 alpha，边缘仍是软的）。 */
+function paintWatermarkLayer(
+  layer: HTMLCanvasElement,
+  ink: readonly [number, number, number],
+): HTMLCanvasElement {
+  const context = layer.getContext('2d');
+  if (!context) throw new Error('canvas context unavailable');
+  const imageData = context.getImageData(0, 0, layer.width, layer.height);
+  recolorWatermarkInk(imageData.data, ink);
+  context.putImageData(imageData, 0, 0);
+  return layer;
+}
+
+/**
+ * 把水印图叠加到成图右下角，返回新 data URL。
+ * 解码或画布不可用时抛错，由调用方决定是否回落原图。
+ */
+export async function composeWatermark(baseUrl: string, watermarkUrl: string): Promise<string> {
+  const baseDataUrl = await resolveImageDataUrl(baseUrl);
+  const [base, mark] = await Promise.all([
+    loadImageElement(baseDataUrl),
+    resolveImageDataUrl(watermarkUrl).then(loadImageElement),
+  ]);
+  const width = base.naturalWidth;
+  const height = base.naturalHeight;
+  if (!width || !height || !mark.naturalWidth || !mark.naturalHeight) {
+    throw new Error('invalid image size');
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('canvas context unavailable');
+  context.drawImage(base, 0, 0, width, height);
+  // 先抠底裁边距，拿到墨迹的真实尺寸，落点才不会被导出图自带的留白带偏
+  const layer = toWatermarkInkLayer(mark);
+  const rect = resolveWatermarkRect({
+    imageWidth: width,
+    imageHeight: height,
+    markWidth: layer.width,
+    markHeight: layer.height,
+  });
+  // 只读水印将要盖住的那块：底图这一块偏亮还是偏暗，决定水印用黑墨还是白墨
+  const backdrop = context.getImageData(rect.x, rect.y, rect.width, rect.height);
+  // 整体降透明度：水印是压印，不能让画面主体退居其次；抗锯齿边缘的软 alpha 一并等比压低
+  context.globalAlpha = WATERMARK_OPACITY;
+  context.drawImage(
+    paintWatermarkLayer(layer, resolveWatermarkInk(backdrop.data)),
+    rect.x,
+    rect.y,
+    rect.width,
+    rect.height,
+  );
+  context.globalAlpha = 1;
+  // 沿用原图 mime，避免 PNG 成图被无谓转成 JPEG；透明水印的通道由画布保留
+  const mimeType = /^data:(image\/[^;,]+)/.exec(baseDataUrl)?.[1] ?? 'image/png';
+  return canvas.toDataURL(mimeType, WATERMARK_JPEG_QUALITY);
 }
 
 /** 若正文尚未以给定标题开头，则前置一级 Markdown 标题。 */

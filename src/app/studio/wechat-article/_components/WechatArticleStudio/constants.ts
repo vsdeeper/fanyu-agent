@@ -43,6 +43,10 @@ export const IMAGE_VISUAL_STYLE_PLACEHOLDER = '规划配图后自动生成；生
 export const STYLE_REFERENCE_LABEL = '风格参考图';
 export const STYLE_REFERENCE_SUBTITLE = '可选，规划配图时纳入视觉约束';
 export const STYLE_REFERENCE_HINT = '上传一张风格参考图';
+export const WATERMARK_LABEL = '水印图';
+export const WATERMARK_SUBTITLE = '可选，生成配图时叠加到右下角';
+export const WATERMARK_HINT = '上传 logo 或署名，白底会自动抠掉';
+export const WATERMARK_ARIA_LABEL = '上传水印图';
 export const IMAGE_MODEL_LABEL = '模型';
 export const IMAGE_ASPECT_LABEL = '比例';
 export const IMAGE_CLARITY_LABEL = '清晰度';
@@ -78,6 +82,7 @@ export const COPY_OK = '已复制到剪贴板';
 export const COPY_FAILED = '复制失败，请手动选择文本';
 export const COPY_IMAGE_FAILED = '复制图片失败，请右键另存';
 export const GENERATE_FAILED = '配图生成失败，请稍后重试';
+export const WATERMARK_FAILED = '水印叠加失败，本张按无水印出图';
 export const UPLOAD_FAILED = '图片上传失败，请重试';
 export const HISTORY_DELETE_FAILED = '已删除，但保存失败，刷新后可能恢复';
 
@@ -96,8 +101,39 @@ export const RESEARCH_SOURCES_TITLE = '参考来源';
 export const RESEARCH_ANGLES_TITLE = '角度卡（点选一张）';
 
 export const DEFAULT_IMAGE_MODEL = 'gpt-image-2-vip';
-export const DEFAULT_IMAGE_ASPECT = '16:9';
+/** 槽位默认比例：公众号头图就是 2.35:1，封面与正文配图统一按它出图。 */
+export const DEFAULT_IMAGE_ASPECT = '2.35:1';
 export const DEFAULT_IMAGE_CLARITY = '1K';
+
+/**
+ * 水印尺寸与离边线的留白都以**成图宽度**为基准，全篇配图才能在同一栏宽下显示成一样大、一样靠角。
+ * 水印等比缩放进「宽 = 成图宽 × WATERMARK_WIDTH_RATIO」的方形盒子。
+ */
+export const WATERMARK_WIDTH_RATIO = 0.09;
+/** 距右边线的留白占成图宽的比例。 */
+export const WATERMARK_RIGHT_RATIO = 0.03;
+/** 距底边线的留白占成图宽的比例：比右边留得多，压在微信自带的「公众号：xxx」水印带之上，两者不叠。 */
+export const WATERMARK_BOTTOM_RATIO = 0.1;
+/** 水印整体不透明度：压印感，不盖住画面主体（墨色本就按底图深浅选过，这里只调轻重）。 */
+export const WATERMARK_OPACITY = 0.3;
+
+/** 水印抠底：四角色差在此以内才算纯色底；距底色近于此比例的像素判为底色。 */
+export const WATERMARK_BACKDROP_TOLERANCE = 24;
+export const WATERMARK_BACKDROP_ALPHA_CUTOFF = 0.08;
+/** 四角都亮于此亮度也认作可抠的浅色底——烤进棋盘格的「伪透明」导出四角并不一致。 */
+export const WATERMARK_LIGHT_BACKDROP_LUMINANCE = 200;
+/** alpha 大于此值才算水印墨迹，用于裁掉画布边距。 */
+export const WATERMARK_INK_ALPHA_MIN = 8;
+/** 全图与底色的最大色差低于此值说明整幅都是底色（抠完等于全透明），放弃抠底。 */
+export const WATERMARK_MIN_INK_DISTANCE = 48;
+
+/** 像素亮度高于此值算「偏亮」；水印盖住那块里偏亮像素过半即判为浅底，改用近黑墨。 */
+export const WATERMARK_BRIGHT_PIXEL_LUMINANCE = 140;
+/** 深底用白墨、浅底用近黑墨（纯黑偏生硬）：同色叠同色等于没叠，故墨色跟着底图走。 */
+export const WATERMARK_INK_ON_DARK: readonly [number, number, number] = [255, 255, 255];
+export const WATERMARK_INK_ON_LIGHT: readonly [number, number, number] = [22, 22, 22];
+/** 水印合成后按原图 mime 导出；JPEG 用该质量重编码。 */
+export const WATERMARK_JPEG_QUALITY = 0.92;
 
 export const IMAGE_ASPECT_RATIO_OPTIONS = [
   { value: '1:1', label: '1:1 方形' },
@@ -106,6 +142,8 @@ export const IMAGE_ASPECT_RATIO_OPTIONS = [
   { value: '4:3', label: '4:3 横版' },
   { value: '9:16', label: '9:16 竖版' },
   { value: '16:9', label: '16:9 横版' },
+  { value: '2.35:1', label: '2.35:1 横版' },
+  { value: '1:2.35', label: '1:2.35 竖版' },
 ];
 
 export const SOURCE_KIND_LABEL = {

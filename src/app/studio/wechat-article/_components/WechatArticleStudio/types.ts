@@ -85,6 +85,8 @@ export type DraftStepSnapshot = {
   imageVisualStyle?: string;
   /** 可选风格参考图（data URL 或任务资产 URL）；规划 visualStyle 时纳入。 */
   styleReferenceUrl?: string;
+  /** 可选水印图（data URL 或任务资产 URL）；槽位生成出图后叠加到右下角。 */
+  watermarkUrl?: string;
   imageModel?: string;
   imageAspectRatio?: string;
   imageClarity?: string;
