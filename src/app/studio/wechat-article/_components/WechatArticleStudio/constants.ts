@@ -39,8 +39,7 @@ export const APPLY_HISTORY_BUTTON = '填入';
 export const IMAGE_HISTORY_TITLE = '旧槽位';
 export const CURRENT_SLOTS_TITLE = '当前槽位';
 export const IMAGE_VISUAL_STYLE_TITLE = '整套视觉约束';
-export const IMAGE_VISUAL_STYLE_PLACEHOLDER =
-  '规划配图后自动生成；生图时注入各槽，保证风格统一';
+export const IMAGE_VISUAL_STYLE_PLACEHOLDER = '规划配图后自动生成；生图时注入各槽，保证风格统一';
 export const STYLE_REFERENCE_LABEL = '风格参考图';
 export const STYLE_REFERENCE_SUBTITLE = '可选，规划配图时纳入视觉约束';
 export const STYLE_REFERENCE_HINT = '上传一张风格参考图';
@@ -83,6 +82,7 @@ export const UPLOAD_FAILED = '图片上传失败，请重试';
 export const EMPTY_RESEARCH_HINT = '写下想法后点击「开始调研」，将产出检索简报、参考来源与角度卡';
 export const RESEARCH_PACKING_HINT = '正在整理参考来源与角度卡…';
 export const EMPTY_PLAN_HINT = '确认角度后点击「生成思路」，产出轻量写作要点';
+export const PLAN_GENERATING_HINT = '正在生成内容思路…';
 export const MIN_TITLE_DIRECTIONS = 3;
 export const EMPTY_DRAFT_HINT = '选定文风后点击「生成正文」';
 export const EMPTY_IMAGES_HINT = '点击「规划配图」后，正文会出现可点击的配图标注';

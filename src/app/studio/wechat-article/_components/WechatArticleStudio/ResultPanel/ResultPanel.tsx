@@ -17,6 +17,7 @@ import {
   EMPTY_PLAN_HINT,
   EMPTY_RESEARCH_HINT,
   NEXT_BUTTON,
+  PLAN_GENERATING_HINT,
   PREV_BUTTON,
   RESEARCH_ANGLES_TITLE,
   RESEARCH_BRIEF_TITLE,
@@ -46,7 +47,6 @@ type ResultPanelProps = {
   angles: AngleCard[];
   selectedAngleId?: string;
   onSelectAngle: (id: string) => void;
-  planStream: string;
   plan?: PlanStepSnapshot;
   onPlanBeatsChange: (beats: string[]) => void;
   onSelectTitleDirection: (index: number) => void;
@@ -85,7 +85,6 @@ export default function ResultPanel({
   angles,
   selectedAngleId,
   onSelectAngle,
-  planStream,
   plan,
   onPlanBeatsChange,
   onSelectTitleDirection,
@@ -132,8 +131,7 @@ export default function ResultPanel({
     setEditing(false);
   }
   const isEditing = editing && draftView && phase !== 'drafting';
-  const canEditDraft =
-    draftView && phase !== 'drafting' && Boolean(markdown.trim()) && !editing;
+  const canEditDraft = draftView && phase !== 'drafting' && Boolean(markdown.trim()) && !editing;
   const canPrev = !researchView;
   const canNext =
     (phase === 'researched' && Boolean(selectedAngleId)) ||
@@ -168,16 +166,16 @@ export default function ResultPanel({
   const imagesCharCount = imagesDisplay.trim() ? countTextChars(imagesDisplay) : 0;
   const markdownClass = `${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`;
   const activeLabel = imageSlots.find((slot) => slot.id === activeSlotId)?.label;
+  // 思路区没有流式正文，加载态一次性换成卡片，不参与贴底跟随
   const followContent = researchView
     ? `${researchBrief}\n${sources.length}\n${angles.length}\n${researchPacking ? '1' : '0'}`
     : planView
-      ? planStream
+      ? ''
       : draftView
         ? draftStream
         : imagesStream;
   const scrollFollowEnabled =
     (researchView && (Boolean(researchBrief) || researchDone || sources.length > 0)) ||
-    (planView && Boolean(planStream || plan)) ||
     (draftView && Boolean(draftStream || markdown)) ||
     (imagesView && Boolean(imagesStream || markdown));
   const { scrollRef, contentRef, onScroll } = useStreamScroll(
@@ -231,12 +229,7 @@ export default function ResultPanel({
         ) : null}
       </div>
 
-      {streaming &&
-      !researchBrief &&
-      !planStream &&
-      !draftStream &&
-      !imagesStream &&
-      !markdown ? (
+      {streaming && !planView && !researchBrief && !draftStream && !imagesStream && !markdown ? (
         <div className={styles.body}>
           <Spin />
         </div>
@@ -317,42 +310,39 @@ export default function ResultPanel({
           </div>
         </div>
       ) : planView ? (
-        <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
-          <div ref={contentRef} className={styles.scrollContent}>
-            {!plan && !planStream ? (
-              <div className={styles.body}>
-                <p className={styles.hint}>{EMPTY_PLAN_HINT}</p>
-              </div>
-            ) : plan ? (
+        phase === 'planning' || !plan ? (
+          <div className={styles.body}>
+            {phase === 'planning' ? (
               <>
-                {plan.titleDirections?.length ? (
-                  <TitleDirectionList
-                    titles={plan.titleDirections}
-                    selectedIndex={plan.selectedTitleIndex}
-                    onSelect={onSelectTitleDirection}
-                    onChangeTitle={onChangeTitleDirection}
-                  />
-                ) : null}
-                <BeatList
-                  beats={plan.beats}
-                  onChangeBeat={(index, value) => {
-                    const next = [...plan.beats];
-                    next[index] = value;
-                    onPlanBeatsChange(next);
-                  }}
-                />
+                <Spin />
+                <p className={styles.hint}>{PLAN_GENERATING_HINT}</p>
               </>
-            ) : planStream && hydrated ? (
-              <XMarkdown
-                className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
-                content={planStream}
-                paragraphTag="div"
-                openLinksInNewTab
-                escapeRawHtml
-              />
-            ) : null}
+            ) : (
+              <p className={styles.hint}>{EMPTY_PLAN_HINT}</p>
+            )}
           </div>
-        </div>
+        ) : (
+          <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
+            <div ref={contentRef} className={styles.scrollContent}>
+              {plan.titleDirections?.length ? (
+                <TitleDirectionList
+                  titles={plan.titleDirections}
+                  selectedIndex={plan.selectedTitleIndex}
+                  onSelect={onSelectTitleDirection}
+                  onChangeTitle={onChangeTitleDirection}
+                />
+              ) : null}
+              <BeatList
+                beats={plan.beats}
+                onChangeBeat={(index, value) => {
+                  const next = [...plan.beats];
+                  next[index] = value;
+                  onPlanBeatsChange(next);
+                }}
+              />
+            </div>
+          </div>
+        )
       ) : imagesView ? (
         <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
           <div ref={contentRef} className={styles.scrollContent}>

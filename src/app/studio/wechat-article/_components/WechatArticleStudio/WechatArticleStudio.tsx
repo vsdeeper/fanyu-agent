@@ -87,7 +87,6 @@ export default function WechatArticleStudio({ task }: WechatArticleStudioProps) 
                 angles={studio.angles}
                 selectedAngleId={studio.selectedAngleId}
                 onSelectAngle={studio.setSelectedAngleId}
-                planStream={studio.planStream}
                 plan={studio.plan}
                 onPlanBeatsChange={(beats) => studio.updatePlanField('beats', beats)}
                 onSelectTitleDirection={studio.selectTitleDirection}
