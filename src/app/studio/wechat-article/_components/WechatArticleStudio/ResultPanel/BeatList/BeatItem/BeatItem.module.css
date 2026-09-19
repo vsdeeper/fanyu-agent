@@ -34,7 +34,7 @@
   word-break: break-word;
 }
 
-.editBtn {
+.actionBtn {
   flex-shrink: 0;
   padding-inline: 0;
   height: auto;

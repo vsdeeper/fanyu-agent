@@ -339,6 +339,9 @@ export default function ResultPanel({
                   next[index] = value;
                   onPlanBeatsChange(next);
                 }}
+                onRemoveBeat={(index) => {
+                  onPlanBeatsChange(plan.beats.filter((_, i) => i !== index));
+                }}
               />
             </div>
           </div>
