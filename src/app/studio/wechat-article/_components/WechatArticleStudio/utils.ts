@@ -36,6 +36,7 @@ import {
   WATERMARK_MIN_INK_DISTANCE,
   WATERMARK_OPACITY,
   WATERMARK_RIGHT_RATIO,
+  WATERMARK_TRANSPARENT_ALPHA_MAX,
   WATERMARK_WIDTH_RATIO,
 } from './constants';
 import { resolveClarityForModel } from '@/app/studio/_utils/model-options';
@@ -558,55 +559,51 @@ function distanceToBackground(pixels: Uint8ClampedArray, offset: number, backgro
   );
 }
 
-/** 已经有透明像素就说明是透明底图（用户要的就是原样），不必抠。 */
-function hasTransparentPixel(pixels: Uint8ClampedArray): boolean {
-  for (let i = 3; i < pixels.length; i += 4) {
-    if (pixels[i]! < 250) return true;
-  }
-  return false;
+/** 取四角像素的 RGBA：底色判定只认这四个点，它们才是「背景」的代表。 */
+function cornerPixels(pixels: Uint8ClampedArray, width: number, height: number): number[][] {
+  return [0, (width - 1) * 4, (height - 1) * width * 4, ((height - 1) * width + width - 1) * 4].map(
+    (offset) => [pixels[offset]!, pixels[offset + 1]!, pixels[offset + 2]!, pixels[offset + 3]!],
+  );
 }
 
 /**
- * 取四角像素的平均色当底色。两种情况认作「可抠的底」：四角同色（纯色卡片），
- * 或四角都亮（棋盘格「伪透明」导出、浅色渐变卡）。四角既不齐又偏暗（整张照片）则返回 null，不抠。
+ * 由四角决定这块背景能不能抠，返回底色：
+ * - 四角都透明 → 图本身就是透明底（用户已抠好），返回 null 表示原样使用；
+ * - 四角同色（纯色卡片）或四角都亮（棋盘格「伪透明」导出、浅色渐变卡）→ 返回四角平均色；
+ * - 其余（整张照片等）→ null，不抠，免得抠坏原图。
+ *
+ * 认「四角全透明」而不是「存在透明像素」：白底 logo 带投影或导出瑕疵时也会有个别半透明像素，
+ * 那类图仍需要抠底；反之墨迹顶到角上时四角不全透明，会落到后面两条判定，安全地不抠。
  */
 function resolveBackdropColor(
   pixels: Uint8ClampedArray,
   width: number,
   height: number,
 ): number[] | null {
-  const offsets = [
-    0,
-    (width - 1) * 4,
-    (height - 1) * width * 4,
-    ((height - 1) * width + width - 1) * 4,
-  ];
-  const colors = offsets.map((offset) => [
-    pixels[offset]!,
-    pixels[offset + 1]!,
-    pixels[offset + 2]!,
-  ]);
+  const corners = cornerPixels(pixels, width, height);
+  if (corners.every((corner) => corner[3]! <= WATERMARK_TRANSPARENT_ALPHA_MAX)) return null;
+
   let uniform = true;
-  for (const a of colors) {
-    for (const b of colors) {
+  for (const a of corners) {
+    for (const b of corners) {
       if (Math.hypot(a[0]! - b[0]!, a[1]! - b[1]!, a[2]! - b[2]!) > WATERMARK_BACKDROP_TOLERANCE) {
         uniform = false;
       }
     }
   }
-  const allBright = colors.every(
+  const allBright = corners.every(
     ([r, g, b]) => r! * 0.2126 + g! * 0.7152 + b! * 0.0722 > WATERMARK_LIGHT_BACKDROP_LUMINANCE,
   );
   if (!uniform && !allBright) return null;
   return [0, 1, 2].map((channel) =>
-    clampByte(colors.reduce((sum, color) => sum + color[channel]!, 0) / colors.length),
+    clampByte(corners.reduce((sum, corner) => sum + corner[channel]!, 0) / corners.length),
   );
 }
 
 /**
  * 抠掉水印图的纯色底（logo / 署名多为白底卡片，直接贴上去就是一块白板），就地改写像素：
  * 距底色越远越不透明，并按「C = F·α + 底·(1−α)」反解前景色，抗锯齿边缘才不会发白留边。
- * 已经是透明底、或四角判断不出纯色底（整张照片）时原样不动。
+ * 判定为透明底图、或四角看不出可抠的底（整张照片）时原样不动。
  */
 export function stripWatermarkBackdrop(
   pixels: Uint8ClampedArray,
@@ -614,7 +611,6 @@ export function stripWatermarkBackdrop(
   height: number,
 ): void {
   if (width <= 0 || height <= 0 || pixels.length < width * height * 4) return;
-  if (hasTransparentPixel(pixels)) return;
   const background = resolveBackdropColor(pixels, width, height);
   if (!background) return;
 

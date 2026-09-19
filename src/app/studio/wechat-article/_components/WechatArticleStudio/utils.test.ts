@@ -154,13 +154,29 @@ describe('水印抠底', () => {
     expect(Math.abs(b - INK[2]), 'B').toBeLessThan(6);
   });
 
-  it('已经是透明底的水印原样保留', () => {
-    const pixels = makePixels(8, 8, (x) => (x < 4 ? [0, 0, 0, 0] : WHITE));
+  it('四角透明的透明底图原样保留，不走抠底', () => {
+    // 透明底 + 中间墨迹：四角 alpha 均为 0，才是真正的「透明底图」
+    const pixels = makePixels(8, 8, (x, y) =>
+      x >= 3 && x <= 4 && y >= 3 && y <= 4 ? INK : [0, 0, 0, 0],
+    );
     const before = [...pixels];
 
     stripWatermarkBackdrop(pixels, 8, 8);
 
     expect([...pixels]).toEqual(before);
+  });
+
+  it('白底卡片上带几处半透明像素（投影 / 导出瑕疵）仍按白底抠', () => {
+    const pixels = makePixels(8, 8, (x, y) => {
+      if (x >= 3 && x <= 4 && y >= 3 && y <= 4) return INK;
+      // 一角留下半透明像素：不能因此把整张图当成透明底
+      return x === 0 && y === 0 ? [255, 255, 255, 120] : WHITE;
+    });
+
+    stripWatermarkBackdrop(pixels, 8, 8);
+
+    expect(pixelAt(pixels, 8, 7, 7)[3], '白底').toBe(0);
+    expect(pixelAt(pixels, 8, 3, 3)).toEqual([...INK.slice(0, 3), 255]);
   });
 
   it('四角不同色（整张照片当水印用）不抠，避免抠坏原图', () => {

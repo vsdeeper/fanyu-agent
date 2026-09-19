@@ -112,14 +112,20 @@ export const DEFAULT_IMAGE_CLARITY = '1K';
 export const WATERMARK_WIDTH_RATIO = 0.09;
 /** 距右边线的留白占成图宽的比例。 */
 export const WATERMARK_RIGHT_RATIO = 0.03;
-/** 距底边线的留白占成图宽的比例：比右边留得多，压在微信自带的「公众号：xxx」水印带之上，两者不叠。 */
-export const WATERMARK_BOTTOM_RATIO = 0.1;
+/**
+ * 距底边线的留白占成图宽的比例：比右边留得多，压在微信自带的「公众号：xxx」水印带之上，两者不叠。
+ * 微信那条水印带顶边约在栏宽 4.3% 处（按 677 栏宽实测约 29px），故这里留 6%——够让开，
+ * 又不会像 10% 那样在小尺寸水印下显得离角太远。
+ */
+export const WATERMARK_BOTTOM_RATIO = 0.06;
 /** 水印整体不透明度：压印感，不盖住画面主体（墨色本就按底图深浅选过，这里只调轻重）。 */
 export const WATERMARK_OPACITY = 0.3;
 
 /** 水印抠底：四角色差在此以内才算纯色底；距底色近于此比例的像素判为底色。 */
 export const WATERMARK_BACKDROP_TOLERANCE = 24;
 export const WATERMARK_BACKDROP_ALPHA_CUTOFF = 0.08;
+/** alpha 不高于此值视为透明像素；四角全透明即认定这张水印本身就是透明底图，不走抠底。 */
+export const WATERMARK_TRANSPARENT_ALPHA_MAX = 250;
 /** 四角都亮于此亮度也认作可抠的浅色底——烤进棋盘格的「伪透明」导出四角并不一致。 */
 export const WATERMARK_LIGHT_BACKDROP_LUMINANCE = 200;
 /** alpha 大于此值才算水印墨迹，用于裁掉画布边距。 */
