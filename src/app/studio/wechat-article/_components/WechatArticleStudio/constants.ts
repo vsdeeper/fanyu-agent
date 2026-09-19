@@ -95,8 +95,8 @@ export const RESEARCH_BRIEF_TITLE = '检索简报';
 export const RESEARCH_SOURCES_TITLE = '参考来源';
 export const RESEARCH_ANGLES_TITLE = '角度卡（点选一张）';
 
-export const DEFAULT_IMAGE_MODEL = 'gemini-3.1-flash-lite-image';
-export const DEFAULT_IMAGE_ASPECT = '3:2';
+export const DEFAULT_IMAGE_MODEL = 'gpt-image-2-vip';
+export const DEFAULT_IMAGE_ASPECT = '16:9';
 export const DEFAULT_IMAGE_CLARITY = '1K';
 
 export const IMAGE_ASPECT_RATIO_OPTIONS = [
