@@ -136,21 +136,26 @@ export default function ControlPanel({
               <Form.Item label={DRAFT_TITLE_LABEL} required>
                 <Input value={draftTitle ?? ''} placeholder={DRAFT_TITLE_EMPTY} readOnly />
               </Form.Item>
-              <Form.Item
-                name="lengthLimit"
-                label={LENGTH_LIMIT_LABEL}
-                // InputNumber 清空时给的是 null，落盘要的是「不写这个键」，故在这里归一成 undefined
-                normalize={(value: number | null) =>
-                  typeof value === 'number' ? value : undefined
-                }
-              >
+              {/* 修复：name 必须挂在 InputNumber 上。Form.Item 只把 value/onChange 注入**直接子元素**，
+                  隔一层 Space.Compact 时它们被透传到外层 div，字段收不到用户输入——
+                  getFieldsValue 里 lengthLimit 恒为 undefined，成稿请求与快照都丢这个键 */}
+              <Form.Item label={LENGTH_LIMIT_LABEL}>
                 <Space.Compact className={styles.lengthLimit} block>
-                  <InputNumber
-                    min={LENGTH_LIMIT_MIN}
-                    max={LENGTH_LIMIT_MAX}
-                    step={100}
-                    placeholder={LENGTH_LIMIT_PLACEHOLDER}
-                  />
+                  <Form.Item
+                    name="lengthLimit"
+                    noStyle
+                    // InputNumber 清空时给的是 null，落盘要的是「不写这个键」，故在这里归一成 undefined
+                    normalize={(value: number | null) =>
+                      typeof value === 'number' ? value : undefined
+                    }
+                  >
+                    <InputNumber
+                      min={LENGTH_LIMIT_MIN}
+                      max={LENGTH_LIMIT_MAX}
+                      step={100}
+                      placeholder={LENGTH_LIMIT_PLACEHOLDER}
+                    />
+                  </Form.Item>
                   <Space.Addon>{LENGTH_LIMIT_SUFFIX}</Space.Addon>
                 </Space.Compact>
               </Form.Item>
