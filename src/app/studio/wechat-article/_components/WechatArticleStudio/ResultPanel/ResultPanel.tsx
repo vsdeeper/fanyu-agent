@@ -34,7 +34,12 @@ import type {
   ResearchSource,
   StudioPhase,
 } from '../types';
-import { cleanResearchBrief, countTextChars, stripTrailingJsonFenceForDisplay } from '../utils';
+import {
+  cleanResearchBrief,
+  countTextChars,
+  hasTrailingJsonFence,
+  stripTrailingJsonFenceForDisplay,
+} from '../utils';
 import { useStreamScroll } from './hooks/useStreamScroll';
 import TitleDirectionList from './TitleDirectionList';
 import BeatList from './BeatList';
@@ -150,9 +155,11 @@ export default function ResultPanel({
         : '成稿配图';
   const researchBrief = cleanResearchBrief(researchStream);
   const researchDone = phase === 'researched';
+  // 简报正文流完（末尾 JSON 围栏出现）才提示「正在整理来源与角度」：正文本身已是在动，
+  // 早于此刻挂加载会让整个流式过程一直顶着同一句提示
   const researchPacking =
     phase === 'researching' &&
-    Boolean(researchBrief) &&
+    hasTrailingJsonFence(researchStream) &&
     sources.length === 0 &&
     angles.length === 0;
   const draftDisplay = isEditing

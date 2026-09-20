@@ -65,6 +65,11 @@ export function stripTrailingJsonFenceForDisplay(text: string): string {
   return text;
 }
 
+/** 流里是否已出现末尾 JSON 围栏：出现即说明简报正文写完，转入来源与角度整理。 */
+export function hasTrailingJsonFence(text: string): boolean {
+  return /```json\b/i.test(text);
+}
+
 /** 模型常把工具预告写成正文首句（中英皆有） */
 const SEARCH_PREAMBLE_SENTENCE =
   /^(?:I(?:['’]ll|\s+will|\s+am\s+going\s+to)\s+search\b|Let\s+me\s+(?:search|look\s+up)\b|Searching\s+for\b|我先(?:联网)?(?:检索|搜索|搜)|让我(?:先)?(?:联网)?(?:检索|搜索|搜)|接下来(?:我)?(?:会|将)(?:联网)?(?:检索|搜索))[^\n。.!！]*[。.!?！]?\s*/i;
