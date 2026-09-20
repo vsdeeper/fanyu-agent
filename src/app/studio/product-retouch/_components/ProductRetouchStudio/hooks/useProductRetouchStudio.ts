@@ -1,30 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { App } from 'antd';
+import { App, Form } from 'antd';
 import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import type { ProductRetouchTaskDetail } from '@/app/api/studio/product-retouch/_shared/task-types';
+import { validateForm } from '@/app/studio/_utils/form-validate';
 import { ApiClientError } from '@/lib/shared/client/api-client';
+import {
+  revokeLocalUploadItemUrls,
+  revokeReplacedLocalUploadItemUrls,
+} from '@/lib/shared/client/upload-items';
 import {
   DEFAULT_MULTIVIEW_FORM,
   DEFAULT_REFINE_FORM,
   GENERATE_FAILED,
   MULTIVIEW_RESULT_MISSING,
-  NO_IMAGE_WARNING,
   REFINE_RESULT_MISSING,
   REFINE_SELECT_MAX,
   REFINE_SELECT_MISSING,
-  REQUIREMENT_MISSING,
 } from '../constants';
 import type {
-  MultiviewFormState,
-  ProductImageItem,
+  ProductRetouchPanelValues,
   ProductRetouchMultiviewStepSnapshot,
   ProductRetouchPhase,
   ProductRetouchRefineStepSnapshot,
-  RefineFormState,
   ResultImage,
 } from '../types';
 import {
-  appendProductImages,
   applyGenerateEvent,
   assertOkOrJsonFail,
   consumeGenerateNdjson,
@@ -38,11 +38,11 @@ import {
   pendingImages,
   phaseAfterNext,
   phaseAfterPrev,
+  pickSpecFields,
   readMultiviewStepSnapshot,
+  readProductRetouchPanelValues,
   readRefineStepSnapshot,
   readUrlAsDataUrl,
-  removeProductImage,
-  revokeProductImageUrls,
   saveProductRetouchStep,
   toMultiviewPayload,
   toRefinePayload,
@@ -54,16 +54,18 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
   const { message } = App.useApp();
   const initialRefine = readRefineStepSnapshot(task.steps.refine?.data);
   const initialMultiview = readMultiviewStepSnapshot(task.steps.multiview?.data);
+  const [panelForm] = Form.useForm<ProductRetouchPanelValues>();
+  // 左栏初值只算一次：Form 二次挂载是 store 赢（只补缺失键），重算只会白白多渲染
+  const [panelInitialValues] = useState<ProductRetouchPanelValues>(() => ({
+    images: initialRefine?.images ?? [],
+    refineRequirement: (initialRefine?.form ?? DEFAULT_REFINE_FORM).requirement,
+    refineSpec: pickSpecFields(initialRefine?.form ?? DEFAULT_REFINE_FORM),
+    needsMultiview: initialRefine?.needsMultiview ?? true,
+    multiviewRequirement: (initialMultiview?.form ?? DEFAULT_MULTIVIEW_FORM).requirement,
+    multiviewSpec: pickSpecFields(initialMultiview?.form ?? DEFAULT_MULTIVIEW_FORM),
+  }));
   const [phase, setPhase] = useState<ProductRetouchPhase>('refine');
   const [persisting, setPersisting] = useState(false);
-  const [needsMultiview, setNeedsMultiview] = useState(initialRefine?.needsMultiview ?? true);
-  const [images, setImages] = useState<ProductImageItem[]>(initialRefine?.images ?? []);
-  const [refineForm, setRefineForm] = useState<RefineFormState>(
-    initialRefine?.form ?? DEFAULT_REFINE_FORM,
-  );
-  const [multiviewForm, setMultiviewForm] = useState<MultiviewFormState>(
-    initialMultiview?.form ?? DEFAULT_MULTIVIEW_FORM,
-  );
   const [refineImages, setRefineImages] = useState<ResultImage[]>(initialRefine?.results ?? []);
   const [multiviewImages, setMultiviewImages] = useState<ResultImage[]>(
     initialMultiview?.results ?? [],
@@ -71,7 +73,6 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
   const [selectedRefineIds, setSelectedRefineIds] = useState<string[]>(
     initialRefine?.selectedIds ?? [],
   );
-  const imagesRef = useRef(images);
   const abortRef = useRef<AbortController | null>(null);
   const lastSnapshotsRef = useRef<{
     refine: ProductRetouchRefineStepSnapshot | undefined;
@@ -80,17 +81,19 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     refine: initialRefine,
     multiview: initialMultiview,
   });
-
-  useEffect(() => {
-    imagesRef.current = images;
-  }, [images]);
+  // 供渲染取用；preserve 让左栏卸载后也读得到，首帧 store 未播种时回落到初值
+  const watched = Form.useWatch([], { form: panelForm, preserve: true });
+  const panelValues: ProductRetouchPanelValues = watched ?? panelInitialValues;
 
   useEffect(
     () => () => {
       abortRef.current?.abort();
-      revokeProductImageUrls(imagesRef.current);
+      // 完成步的 cleanup 也会走到这里：此时面板虽已卸载，store 仍保留本次会话的值，
+      // 故用 getFieldsValue(true) 读整表；重复释放同一个 object URL 是幂等的
+      const { images } = readProductRetouchPanelValues(panelForm.getFieldsValue(true));
+      revokeLocalUploadItemUrls(images);
     },
-    [],
+    [panelForm],
   );
 
   /** 中止当前生图请求。 */
@@ -99,19 +102,12 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     abortRef.current = null;
   }, []);
 
-  /** 追加用户选择的产品图；仅更新内存，不影响已生成结果。 */
-  const handleImagesAppend = useCallback((files: File[]) => {
-    setImages((current) => appendProductImages(current, files));
-  }, []);
-
-  /** 移除指定产品图；仅更新内存，不影响已生成结果。 */
-  const handleImageRemove = useCallback((uid: string) => {
-    setImages((current) => removeProductImage(current, uid));
-  }, []);
-
   // 落盘与下一步/完成共用同一份动作：把当前步左栏 + 右栏整体快照入库（data: URL 由服务端转资产 URL）
   const persistRefineStep = useCallback(
     async (results: ResultImage[]) => {
+      const { refineForm, images, needsMultiview } = readProductRetouchPanelValues(
+        panelForm.getFieldsValue(true),
+      );
       const next = await createRefineStepSnapshot(
         refineForm,
         images,
@@ -122,36 +118,34 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.refine)) return;
       const saved = await saveProductRetouchStep(task.id, 'refine', next);
       lastSnapshotsRef.current.refine = saved;
-      setImages(saved.images);
+      revokeReplacedLocalUploadItemUrls(images, saved.images);
+      // setFieldsValue 只更新 store 并通知 watch，不触发 onValuesChange，故不会与用户输入形成回环
+      panelForm.setFieldsValue({ images: saved.images });
       setRefineImages(saved.results);
     },
-    [task.id, refineForm, images, selectedRefineIds, needsMultiview, setImages, setRefineImages],
+    [task.id, panelForm, selectedRefineIds],
   );
 
   const persistMultiviewStep = useCallback(
     async (results: ResultImage[]) => {
+      const { multiviewForm } = readProductRetouchPanelValues(panelForm.getFieldsValue(true));
       const next = createMultiviewStepSnapshot(multiviewForm, results);
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.multiview)) return;
       const saved = await saveProductRetouchStep(task.id, 'multiview', next);
       lastSnapshotsRef.current.multiview = saved;
       setMultiviewImages(saved.results);
     },
-    [task.id, multiviewForm, setMultiviewImages],
+    [task.id, panelForm],
   );
 
   /** 提交产品精修并消费逐张返回的 NDJSON；生成完成即落库（与下一步/完成同一动作）。 */
   const handleRefine = useCallback(async () => {
-    if (images.length === 0) {
-      message.warning(NO_IMAGE_WARNING);
-      return;
-    }
-    if (!refineForm.requirement.trim()) {
-      message.warning(REQUIREMENT_MISSING);
-      return;
-    }
+    if (!(await validateForm(panelForm))) return;
+
     abortCurrent();
     const controller = new AbortController();
     abortRef.current = controller;
+    const { refineForm, images } = readProductRetouchPanelValues(panelForm.getFieldsValue(true));
     const count = images.length;
     const slots = pendingImages(count, refineForm.aspectRatio);
     let nextRefineImages = [...refineImages, ...slots];
@@ -193,7 +187,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, images, message, persistRefineStep, refineForm, refineImages]);
+  }, [abortCurrent, message, panelForm, persistRefineStep, refineImages]);
 
   /** 以选中的精修标准图生成产品多视角；生成完成即落库（与下一步/完成同一动作）。 */
   const handleMultiview = useCallback(async () => {
@@ -202,13 +196,12 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
       message.warning(REFINE_SELECT_MISSING);
       return;
     }
-    if (!multiviewForm.requirement.trim()) {
-      message.warning(REQUIREMENT_MISSING);
-      return;
-    }
+    if (!(await validateForm(panelForm))) return;
+
     abortCurrent();
     const controller = new AbortController();
     abortRef.current = controller;
+    const { multiviewForm } = readProductRetouchPanelValues(panelForm.getFieldsValue(true));
     const slots = pendingImages(1, multiviewForm.aspectRatio);
     let nextMultiviewImages = [...multiviewImages, ...slots];
     setPhase('multiviewGenerating');
@@ -256,8 +249,8 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
   }, [
     abortCurrent,
     message,
-    multiviewForm,
     multiviewImages,
+    panelForm,
     persistMultiviewStep,
     refineImages,
     selectedRefineIds,
@@ -281,6 +274,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
       message.warning(REFINE_RESULT_MISSING);
       return;
     }
+    const { needsMultiview } = readProductRetouchPanelValues(panelForm.getFieldsValue(true));
     if (needsMultiview && getSelectedImageUrls(refineImages, selectedRefineIds).length === 0) {
       message.warning(REFINE_SELECT_MISSING);
       return;
@@ -297,7 +291,7 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
     } finally {
       setPersisting(false);
     }
-  }, [message, needsMultiview, persistRefineStep, refineImages, selectedRefineIds]);
+  }, [message, panelForm, persistRefineStep, refineImages, selectedRefineIds]);
 
   /** 完成：落盘多视角快照并以加载态呈现，再进入完成页。 */
   const handleComplete = useCallback(async () => {
@@ -323,26 +317,21 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
   const handlePrev = useCallback(() => {
     abortCurrent();
     setMultiviewImages((current) => dropPendingImages(current));
+    const { needsMultiview } = readProductRetouchPanelValues(panelForm.getFieldsValue(true));
     setPhase((current) => phaseAfterPrev(current, needsMultiview));
-  }, [abortCurrent, needsMultiview]);
+  }, [abortCurrent, panelForm]);
 
   return {
     phase,
-    needsMultiview,
-    images,
-    refineForm,
-    multiviewForm,
     refineImages,
     multiviewImages,
     selectedRefineIds,
     persisting,
     locked: phase === 'refineGenerating' || phase === 'multiviewGenerating',
-    setRefineForm,
-    setMultiviewForm,
-    setNeedsMultiview,
+    panelForm,
+    panelInitialValues,
+    panelValues,
     handleSelectRefine,
-    handleImagesAppend,
-    handleImageRemove,
     handleRefine,
     handleMultiview,
     handleNext,

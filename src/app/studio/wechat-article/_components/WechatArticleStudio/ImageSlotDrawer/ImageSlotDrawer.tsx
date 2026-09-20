@@ -5,7 +5,7 @@ import {
   toClarityOptions,
   toModelOptions,
 } from '@/app/studio/_utils/model-options';
-import { interceptLocalFiles } from '@/business-components/StudioImageUpload/utils';
+import { interceptLocalFiles } from '@/lib/shared/client/upload-items';
 import {
   APPLY_HISTORY_BUTTON,
   CANCEL_BUTTON,

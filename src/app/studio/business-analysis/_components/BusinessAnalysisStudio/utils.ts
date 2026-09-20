@@ -8,16 +8,8 @@ import type {
   BusinessAnalysisStepKey,
   BusinessAnalysisTaskStepRecord,
 } from '@/app/api/studio/business-analysis/_shared/task-types';
-import { MAX_PRODUCT_DOCS } from '@/business-components/ProductDocsUpload/constants';
-import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import { apiPut } from '@/lib/shared/client/api-client';
-import {
-  appendUploadItems,
-  readUploadItemAsDataUrl,
-  removeUploadItem,
-  revokeUploadItemUrls,
-  serializeUploadItem,
-} from '@/app/studio/_utils/upload-items';
+import { readUploadItemAsDataUrl, serializeUploadItem } from '@/app/studio/_utils/upload-items';
 import { downloadZipBlob, zipFiles } from '@/app/studio/_utils/export-archive';
 import { EXPORT_ARCHIVE_NAME, ANALYSIS_FILE_NAME } from './constants';
 import type { AnalysisStepSnapshot, ProductDocItem, ProductImageItem, StudioPhase } from './types';
@@ -25,76 +17,13 @@ import type { AnalysisStepSnapshot, ProductDocItem, ProductImageItem, StudioPhas
 export { assertOkOrJsonFail, isAbortError } from '@/app/studio/_utils/generate-stream';
 export { createRafTextBuffer, consumeAnalyzeSse } from '@/app/studio/_utils/analyze-stream';
 
-/**
- * 将选择的文件追加为本地预览项；超出上限的部分丢弃。
- */
-export function appendProductImages(
-  current: ProductImageItem[],
-  files: File[],
-  max = MAX_STUDIO_IMAGES,
-): ProductImageItem[] {
-  return appendUploadItems(current, files, max, (file, previewUrl) => ({
-    uid: crypto.randomUUID(),
-    file,
-    previewUrl,
-    name: file.name,
-    mimeType: file.type || 'image/jpeg',
-    size: file.size,
-  }));
-}
-
-/** 按 uid 移除预览项并释放 object URL */
-export function removeProductImage(current: ProductImageItem[], uid: string): ProductImageItem[] {
-  return removeUploadItem(current, uid);
-}
-
-/** 卸载时释放全部 object URL */
-export function revokeProductImageUrls(items: ProductImageItem[]): void {
-  revokeUploadItemUrls(items);
-}
-
-/** 将选择的资料追加为本地项；超出上限的部分丢弃。 */
-export function appendProductDocs(
-  current: ProductDocItem[],
-  files: File[],
-  max = MAX_PRODUCT_DOCS,
-): ProductDocItem[] {
-  return appendUploadItems(current, files, max, (file, previewUrl) => ({
-    uid: crypto.randomUUID(),
-    file,
-    previewUrl,
-    name: file.name,
-    mimeType: toDocMediaType(file),
-    size: file.size,
-  }));
-}
-
-/** 按 uid 移除资料并释放 object URL */
-export function removeProductDoc(current: ProductDocItem[], uid: string): ProductDocItem[] {
-  return removeUploadItem(current, uid);
-}
-
-/** 卸载时释放资料 object URL */
-export function revokeProductDocUrls(items: ProductDocItem[]): void {
-  revokeUploadItemUrls(items);
-}
-
-/** 本地 txt/md 的 MIME。 */
-export function toDocMediaType(file: File): string {
-  if (file.type) return file.type;
-  const name = file.name.toLowerCase();
-  if (name.endsWith('.txt')) return 'text/plain';
-  if (name.endsWith('.md')) return 'text/markdown';
-  return 'application/octet-stream';
-}
-
 /** 本地产品图转分析接口 images 字段 */
 export async function toAnalyzeImages(
   images: ProductImageItem[],
 ): Promise<BusinessAnalysisImageInput[]> {
   return Promise.all(
     images.map(async (item) => ({
-      filename: item.name,
+      filename: item.name ?? 'product-image',
       mediaType: item.mimeType || 'image/jpeg',
       dataUrl: await readUploadItemAsDataUrl(item),
     })),
@@ -107,8 +36,8 @@ export async function toAnalyzeDocuments(
 ): Promise<BusinessAnalysisDocumentInput[]> {
   return Promise.all(
     documents.map(async (item) => ({
-      filename: item.name,
-      mediaType: item.mimeType,
+      filename: item.name ?? 'product-doc',
+      mediaType: item.mimeType || 'text/plain',
       dataUrl: await readUploadItemAsDataUrl(item),
     })),
   );

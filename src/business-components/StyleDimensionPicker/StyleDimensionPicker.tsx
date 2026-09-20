@@ -8,9 +8,14 @@ import StyleDimensionModal from './StyleDimensionModal';
 import styles from './StyleDimensionPicker.module.css';
 
 export type StyleDimensionPickerProps = {
-  selections: StyleDimensionSelections;
+  /** 受控值；未传按空选择处理（Form.Item 首帧可能注入 undefined） */
+  value?: StyleDimensionSelections;
   disabled?: boolean;
-  onChange: (next: StyleDimensionSelections) => void;
+  /** 与 value 一样由 Form.Item 注入，故可选；独立使用时必须传 */
+  onChange?: (next: StyleDimensionSelections) => void;
+  id?: string;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean;
 };
 
 /**
@@ -18,10 +23,14 @@ export type StyleDimensionPickerProps = {
  * 确定后以 Tag 回显。弹框内改动只落在草稿，取消即丢弃。
  */
 export default function StyleDimensionPicker({
-  selections,
+  value,
   disabled,
   onChange,
+  id,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }: StyleDimensionPickerProps) {
+  const selections: StyleDimensionSelections = value ?? {};
   const [openKey, setOpenKey] = useState<StyleDimensionKey | null>(null);
   const [draftIds, setDraftIds] = useState<readonly string[]>([]);
 
@@ -41,7 +50,7 @@ export default function StyleDimensionPicker({
   }
 
   function handleRemoveCard(dimension: StyleDimension, cardId: string) {
-    onChange(
+    onChange?.(
       applyDimensionSelection(
         selections,
         dimension.key,
@@ -51,7 +60,12 @@ export default function StyleDimensionPicker({
   }
 
   return (
-    <div className={styles.picker}>
+    <div
+      className={styles.picker}
+      id={id}
+      aria-describedby={ariaDescribedBy}
+      aria-invalid={ariaInvalid}
+    >
       {STYLE_DIMENSIONS.map((dimension) => {
         const cards = selectCardsByIds(dimension, selections[dimension.key] ?? []);
         return (
@@ -97,7 +111,7 @@ export default function StyleDimensionPicker({
           onToggle={(cardId) => setDraftIds(toggleStyleCardId(activeDimension, draftIds, cardId))}
           onCancel={closeDimension}
           onConfirm={() => {
-            onChange(applyDimensionSelection(selections, openKey, draftIds));
+            onChange?.(applyDimensionSelection(selections, openKey, draftIds));
             closeDimension();
           }}
         />

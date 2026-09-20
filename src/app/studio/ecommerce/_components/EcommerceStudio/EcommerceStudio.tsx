@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { App, Button, Layout, Steps, Tag, Typography } from 'antd';
+import { App, Button, Form, Layout, Steps, Tag, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import type {
   EcommerceStepKey,
@@ -14,8 +14,13 @@ import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-pla
 import type { RewriteCardResult } from '@/app/api/studio/ecommerce/_shared/rewrite-card';
 import { MAIN_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import { useStudioJob } from '@/app/studio/_hooks/useStudioJob';
+import { validateForm } from '@/app/studio/_utils/form-validate';
 import { ECOMMERCE_PATH } from '@/components/AppLayout/constants';
 import { apiPost } from '@/lib/shared/client/api-client';
+import {
+  revokeLocalUploadItemUrls,
+  revokeReplacedLocalUploadItemUrls,
+} from '@/lib/shared/client/upload-items';
 import ModeSwitch from '@/components/ModeSwitch';
 import CompletionPanel from './CompletionPanel';
 import {
@@ -35,8 +40,6 @@ import {
   ECOMMERCE_API_BASE,
   GENERATE_FAILED,
   MAIN_IMAGE_RESULT_MISSING,
-  MAX_BRAND_LOGOS,
-  MAX_MODEL_IMAGES,
   POSTER_RESULT_MISSING,
   THEME_SELECT_MISSING,
 } from './constants';
@@ -46,7 +49,7 @@ import type {
   DesignFormState,
   DesignResultGroups,
   DesignStepSnapshot,
-  ProductDocItem,
+  EcommercePanelValues,
   ProductImageItem,
   StudioFormState,
   StudioPhase,
@@ -54,8 +57,6 @@ import type {
   VisualStepSnapshot,
 } from './types';
 import {
-  appendProductDocs,
-  appendProductImages,
   appendPendingDesignImages,
   appendPendingThemeImages,
   applyDesignGenerateEvent,
@@ -63,29 +64,27 @@ import {
   assertOkOrJsonFail,
   consumeAnalyzeSse,
   createAnalysisStepSnapshot,
-  createDefaultDesignForm,
   createDesignStepSnapshot,
   createVisualStepSnapshot,
   createRafTextBuffer,
   isAbortError,
   isSameStepSnapshot,
   resolveInitialStudioPhase,
+  resolveDesignForm,
+  resolveVisualForm,
   getSelectedResultImageUrl,
   getGeneratedDesignGroups,
   getGeneratedImages,
   pendingImagesFromCount,
   phaseAfterNext,
   phaseAfterPrev,
-  removeProductDoc,
-  removeProductImage,
   readAnalysisStepSnapshot,
   readBrandLogoDataUrl,
   readDesignStepSnapshot,
+  readEcommercePanelValues,
   readProductDocsAsText,
   readUrlAsDataUrl,
   readVisualStepSnapshot,
-  revokeProductDocUrls,
-  revokeProductImageUrls,
   saveStudioStep,
   toAnalyzeImages,
   toDesignGeneratePayload,
@@ -93,7 +92,6 @@ import {
   toThemeAnalyzePayload,
   toMainImageGeneratePayload,
   toVisualGeneratePayload,
-  withDesignVisualFlags,
 } from './utils';
 import { parseDetailImagePlan } from './_utils/parse-detail-image-plan';
 import { parseMainImagePlan } from './_utils/parse-main-image-plan';
@@ -159,45 +157,29 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     cancel: cancelJob,
     release: releaseJob,
   } = useStudioJob({ apiBase: ECOMMERCE_API_BASE, taskId: task.id, initialJob });
-  const [images, setImages] = useState<ProductImageItem[]>(
-    themePlan
+  const [panelForm] = Form.useForm<EcommercePanelValues>();
+  // 左栏初值只算一次：Form 二次挂载是 store 赢（只补缺失键），重算只会白白多渲染
+  const [panelInitialValues] = useState<EcommercePanelValues>(() => ({
+    images: themePlan
       ? (initialDesign?.images ?? [])
       : poster
         ? (initialVisual?.images ?? [])
         : (initialAnalysis?.images ?? []),
-  );
-  const [documents, setDocuments] = useState<ProductDocItem[]>(
-    themePlan
+    documents: themePlan
       ? (initialAnalysis?.documents ?? initialDesign?.documents ?? [])
       : poster
         ? (initialVisual?.documents ?? [])
         : (initialAnalysis?.documents ?? []),
-  );
-  // 主图 / 详情图任务共用的补充产品资料；documents 恒为商业分析，两组不可混用
-  const [productDocs, setProductDocs] = useState<ProductDocItem[]>(
-    initialAnalysis?.productDocs ?? [],
-  );
-  // 品牌 Logo 在各自流程的第一步录入、出图步复用：主图 / 详情图在分析步，营销海报在主视觉步
-  const [brandLogo, setBrandLogo] = useState<ProductImageItem[]>(
-    themePlan ? (initialAnalysis?.brandLogoImages ?? []) : (initialVisual?.brandLogoImages ?? []),
-  );
-  const [form, setForm] = useState<StudioFormState>(
-    restoredVisualForm ?? initialVisual?.form ?? DEFAULT_FORM_STATE,
-  );
-  const [designForm, setDesignForm] = useState<DesignFormState>(() => {
-    const fallback = createDefaultDesignForm(task.taskType);
-    const raw = restoredDesignForm ?? initialDesign?.form ?? fallback;
-    const base = withDesignVisualFlags({
-      ...fallback,
-      ...raw,
-    });
-    if (mainImage) return { ...base, taskType: '主图' };
-    if (detailImage) return { ...base, taskType: '详情图', aspectRatio: base.aspectRatio || '3:4' };
-    return poster ? { ...base, taskType: '营销海报' } : base;
-  });
-  const [modelImages, setModelImages] = useState<ProductImageItem[]>(
-    initialDesign?.modelImages ?? [],
-  );
+    // 主图 / 详情图任务共用的补充产品资料；documents 恒为商业分析，两组不可混用
+    productDocs: initialAnalysis?.productDocs ?? [],
+    // 品牌 Logo 在各自流程的第一步录入、出图步复用：主图 / 详情图在分析步，营销海报在主视觉步
+    brandLogo: themePlan
+      ? (initialAnalysis?.brandLogoImages ?? [])
+      : (initialVisual?.brandLogoImages ?? []),
+    modelImages: initialDesign?.modelImages ?? [],
+    visualSpec: restoredVisualForm ?? initialVisual?.form ?? DEFAULT_FORM_STATE,
+    designSpec: resolveDesignForm(restoredDesignForm ?? initialDesign?.form, task.taskType),
+  }));
   const [phase, setPhase] = useState<StudioPhase>(() => {
     const restoredPhase =
       restoredJob?.status === 'running' ? jobGeneratingPhase(restoredJob.stepKey) : null;
@@ -248,12 +230,20 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   );
   const [nextLoading, setNextLoading] = useState(false);
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
-  const imagesRef = useRef(images);
-  const documentsRef = useRef(documents);
-  const productDocsRef = useRef(productDocs);
-  const brandLogoRef = useRef(brandLogo);
-  const modelImagesRef = useRef(modelImages);
   const abortRef = useRef<AbortController | null>(null);
+  // 供渲染取用；preserve 让左栏卸载后也读得到，首帧 store 未播种时回落到初值
+  const watched = Form.useWatch([], { form: panelForm, preserve: true });
+  const panelValues: EcommercePanelValues = watched ?? panelInitialValues;
+  // 左栏字段沿用原变量名，下游读点不必逐个改写；写点一律走 panelForm.setFieldsValue
+  const {
+    images,
+    documents,
+    productDocs,
+    brandLogo,
+    modelImages,
+    visualForm: form,
+    designForm,
+  } = readEcommercePanelValues(panelValues, task.taskType);
   /** 当前作业所属的流程步骤；null 表示本会话没在追踪作业 */
   const trackedStepRef = useRef<EcommerceStepKey | null>(
     (restoredJob?.stepKey as EcommerceStepKey | undefined) ?? null,
@@ -273,38 +263,21 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   });
 
   useEffect(() => {
-    imagesRef.current = images;
-  }, [images]);
-
-  useEffect(() => {
-    documentsRef.current = documents;
-  }, [documents]);
-
-  useEffect(() => {
-    productDocsRef.current = productDocs;
-  }, [productDocs]);
-
-  useEffect(() => {
-    brandLogoRef.current = brandLogo;
-  }, [brandLogo]);
-
-  useEffect(() => {
-    modelImagesRef.current = modelImages;
-  }, [modelImages]);
-
-  useEffect(() => {
     return () => {
       // 只中断分析流（它仍是绑定请求的 SSE）。两步出图已是后台作业，
       // 离开页面必须让它继续在服务端跑完，勿在此取消作业。
       abortRef.current?.abort();
       analysisBuffer.dispose();
-      revokeProductImageUrls(imagesRef.current);
-      revokeProductImageUrls(modelImagesRef.current);
-      revokeProductImageUrls(brandLogoRef.current);
-      revokeProductDocUrls(documentsRef.current);
-      revokeProductDocUrls(productDocsRef.current);
+      // 面板卸载后 store 仍保留本次会话的值，故用 getFieldsValue(true) 读整表；
+      // 重复释放同一个 object URL 是幂等的
+      const values = panelForm.getFieldsValue(true);
+      revokeLocalUploadItemUrls(values.images ?? []);
+      revokeLocalUploadItemUrls(values.modelImages ?? []);
+      revokeLocalUploadItemUrls(values.brandLogo ?? []);
+      revokeLocalUploadItemUrls(values.documents ?? []);
+      revokeLocalUploadItemUrls(values.productDocs ?? []);
     };
-  }, [analysisBuffer]);
+  }, [analysisBuffer, panelForm]);
 
   const formLocked =
     phase === 'analyzing' || phase === 'visualGenerating' || phase === 'designGenerating';
@@ -335,8 +308,6 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
   // 分析变更后保留已出图；生成完成即落库不误删已提交结果
   const persistAnalysisStep = useCallback(
     async (
-      imgs: ProductImageItem[],
-      docs: ProductDocItem[],
       text: string,
       extras?: {
         planCards?: ThemePlanCard[];
@@ -344,99 +315,109 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         visualMoodSummary?: string;
       },
     ) => {
+      const values = panelForm.getFieldsValue(true);
       const next = await createAnalysisStepSnapshot(
-        themePlan ? [] : imgs,
-        docs,
+        themePlan ? [] : (values.images ?? []),
+        values.documents ?? [],
         text,
         themePlan
           ? {
               planCards: extras?.planCards ?? planCards,
               selectedThemeIds: extras?.selectedThemeIds ?? selectedThemeIds,
               visualMoodSummary: extras?.visualMoodSummary ?? visualMoodSummary,
-              productDocs: productDocsRef.current,
-              ...(themePlan ? { brandLogoImages: brandLogoRef.current } : {}),
+              productDocs: values.productDocs ?? [],
+              brandLogoImages: values.brandLogo ?? [],
             }
           : undefined,
       );
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.analysis)) return;
       const saved = await saveStudioStep(task.id, 'analysis', next);
       lastSnapshotsRef.current.analysis = saved;
-      if (!themePlan) setImages(saved.images);
-      setDocuments(saved.documents);
-      if (saved.productDocs) setProductDocs(saved.productDocs);
-      if (saved.brandLogoImages) setBrandLogo(saved.brandLogoImages);
+      // themePlan 的分析快照不含 images，写回时也跳过它，回收范围要跟着一致
+      if (!themePlan) revokeReplacedLocalUploadItemUrls(values.images ?? [], saved.images);
+      revokeReplacedLocalUploadItemUrls(values.documents ?? [], saved.documents);
+      revokeReplacedLocalUploadItemUrls(values.productDocs ?? [], saved.productDocs ?? []);
+      revokeReplacedLocalUploadItemUrls(values.brandLogo ?? [], saved.brandLogoImages ?? []);
+      // 服务端已把本地文件换成资产 URL，必须写回 store：漏写回会让基线永远对不上，
+      // 每次「下一步」都重传一遍参考图并多插一行资产。
+      // setFieldsValue 不触发 onValuesChange，不会与用户输入形成回环
+      panelForm.setFieldsValue({
+        ...(themePlan ? {} : { images: saved.images }),
+        documents: saved.documents,
+        ...(saved.productDocs ? { productDocs: saved.productDocs } : {}),
+        ...(saved.brandLogoImages ? { brandLogo: saved.brandLogoImages } : {}),
+      });
       setAnalysisText(saved.analysisText);
       if (saved.planCards) setPlanCards(saved.planCards);
       if (typeof saved.visualMoodSummary === 'string')
         setVisualMoodSummary(saved.visualMoodSummary);
       if (saved.selectedThemeIds) setSelectedThemeIds(saved.selectedThemeIds);
     },
-    [
-      themePlan,
-      planCards,
-      visualMoodSummary,
-      selectedThemeIds,
-      task.id,
-      setImages,
-      setDocuments,
-      setProductDocs,
-      setAnalysisText,
-    ],
+    [panelForm, themePlan, planCards, visualMoodSummary, selectedThemeIds, task.id],
   );
 
   const persistVisualStep = useCallback(
     async (f: StudioFormState, imgs: StudioResultImage[], selectedId: string | null) => {
+      const values = panelForm.getFieldsValue(true);
       const next = await createVisualStepSnapshot(f, imgs, selectedId, {
-        images: imagesRef.current,
-        documents: documentsRef.current,
+        images: values.images ?? [],
+        documents: values.documents ?? [],
         analysisText,
-        brandLogoImages: brandLogoRef.current,
+        brandLogoImages: values.brandLogo ?? [],
       });
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.visual)) return;
       const saved = await saveStudioStep(task.id, 'visual', next);
       lastSnapshotsRef.current.visual = saved;
-      setForm(saved.form);
+      if (saved.images) revokeReplacedLocalUploadItemUrls(values.images ?? [], saved.images);
+      if (saved.documents) {
+        revokeReplacedLocalUploadItemUrls(values.documents ?? [], saved.documents);
+      }
+      if (saved.brandLogoImages) {
+        revokeReplacedLocalUploadItemUrls(values.brandLogo ?? [], saved.brandLogoImages);
+      }
+      panelForm.setFieldsValue({
+        visualSpec: resolveVisualForm(saved.form),
+        ...(saved.images ? { images: saved.images } : {}),
+        ...(saved.documents ? { documents: saved.documents } : {}),
+        ...(saved.brandLogoImages ? { brandLogo: saved.brandLogoImages } : {}),
+      });
       setVisualImages(saved.visualImages);
-      if (saved.images) setImages(saved.images);
-      if (saved.documents) setDocuments(saved.documents);
-      if (saved.brandLogoImages) setBrandLogo(saved.brandLogoImages);
       if (typeof saved.analysisText === 'string') setAnalysisText(saved.analysisText);
     },
-    [
-      analysisText,
-      task.id,
-      setForm,
-      setVisualImages,
-      setImages,
-      setDocuments,
-      setBrandLogo,
-      setAnalysisText,
-    ],
+    [analysisText, panelForm, task.id],
   );
 
   const persistDesignStep = useCallback(
     async (df: DesignFormState, groups: DesignResultGroups, modelImgs: ProductImageItem[]) => {
+      const values = panelForm.getFieldsValue(true);
       const next = await createDesignStepSnapshot(
         df,
         groups,
         modelImgs,
         themePlan
           ? {
-              images: imagesRef.current,
+              images: values.images ?? [],
               // 主图 = 文案标准参考图，详情图 = 上一屏，共用同一字段（至多一张）
               referenceImageId,
-              ...(themePlan ? { selectedExportIds } : {}),
+              selectedExportIds,
             }
           : undefined,
       );
       if (isSameStepSnapshot(next, lastSnapshotsRef.current.design)) return;
       const saved = await saveStudioStep(task.id, 'design', next);
       lastSnapshotsRef.current.design = saved;
-      setDesignForm(withDesignVisualFlags(saved.form));
+      revokeReplacedLocalUploadItemUrls(values.modelImages ?? [], saved.modelImages);
+      if (saved.images) revokeReplacedLocalUploadItemUrls(values.images ?? [], saved.images);
+      if (saved.documents) {
+        revokeReplacedLocalUploadItemUrls(values.documents ?? [], saved.documents);
+      }
+      panelForm.setFieldsValue({
+        designSpec: resolveDesignForm(saved.form, task.taskType),
+        modelImages: saved.modelImages,
+        ...(saved.images ? { images: saved.images } : {}),
+        ...(saved.documents ? { documents: saved.documents } : {}),
+      });
       setDesignResultGroups(saved.designResultGroups);
-      setModelImages(saved.modelImages);
-      if (saved.images) setImages(saved.images);
-      if (saved.documents) setDocuments(saved.documents);
       if (typeof saved.analysisText === 'string' && !themePlan) setAnalysisText(saved.analysisText);
       if (typeof saved.referenceImageId === 'string' || saved.referenceImageId === null) {
         setReferenceImageId(saved.referenceImageId);
@@ -445,18 +426,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         setSelectedExportIds(saved.selectedExportIds);
       }
     },
-    [
-      referenceImageId,
-      selectedExportIds,
-      themePlan,
-      task.id,
-      setDesignForm,
-      setDesignResultGroups,
-      setModelImages,
-      setImages,
-      setDocuments,
-      setAnalysisText,
-    ],
+    [panelForm, referenceImageId, selectedExportIds, themePlan, task.id, task.taskType],
   );
 
   const jobSnapshot = job;
@@ -501,18 +471,21 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
           const jobForm = snap.data.pending.form as StudioFormState;
           const merged = mergeBatchImages(visualImages, batch);
           const images = succeeded ? merged : getGeneratedImages(merged);
-          setForm(jobForm);
+          panelForm.setFieldsValue({ visualSpec: resolveVisualForm(jobForm) });
           setVisualImages(images);
           if (applyPhase) setPhase('visual');
           if (images.length > 0) await persistVisualStep(jobForm, images, selectedVisualId);
           return;
         }
         if (snap.stepKey === 'design') {
-          const jobForm = withDesignVisualFlags(snap.data.pending.form as DesignFormState);
+          const jobForm = resolveDesignForm(
+            snap.data.pending.form as DesignFormState,
+            task.taskType,
+          );
           const taskType = (snap.data.pending.taskType ?? task.taskType) as EcommerceTaskType;
           const merged = mergeBatchGroups(designResultGroups, taskType, batch);
           const groups = succeeded ? merged : getGeneratedDesignGroups(merged);
-          setDesignForm(jobForm);
+          panelForm.setFieldsValue({ designSpec: jobForm });
           setDesignResultGroups(groups);
           if (applyPhase) setPhase('design');
           if (Object.values(groups).some((group) => Boolean(group?.length))) {
@@ -531,6 +504,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       designResultGroups,
       message,
       modelImages,
+      panelForm,
       persistDesignStep,
       persistVisualStep,
       phase,
@@ -562,10 +536,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     : visualMoodSummary;
 
   const handleAnalyze = useCallback(async () => {
-    if (documents.length === 0) {
-      message.warning(ANALYSIS_UPLOAD_MISSING);
-      return;
-    }
+    if (!(await validateForm(panelForm))) return;
     abortCurrent();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -614,7 +585,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         setVisualMoodSummary(parsed.visualMoodSummary ?? '');
         setPhase('analyzed');
         try {
-          await persistAnalysisStep(images, documents, text, {
+          await persistAnalysisStep(text, {
             planCards: parsed.cards,
             selectedThemeIds: [],
             visualMoodSummary: parsed.visualMoodSummary ?? '',
@@ -641,14 +612,15 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     brandLogo,
     detailImage,
     documents,
-    images,
     message,
+    panelForm,
     persistAnalysisStep,
     productDocs,
     setPhase,
   ]);
 
   const handleGenerateVisual = useCallback(async () => {
+    if (!(await validateForm(panelForm))) return;
     if (!analysisText.trim()) {
       message.warning(ANALYSIS_MISSING);
       return;
@@ -688,7 +660,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       setVisualImages(visualImages);
       setPhase('visual');
     }
-  }, [analysisText, brandLogo, form, images, message, setPhase, startJob, visualImages]);
+  }, [analysisText, brandLogo, form, images, message, panelForm, setPhase, startJob, visualImages]);
 
   const handleGenerateDesign = useCallback(async () => {
     // 三类任务的产品精修图都非必填（无参考图时生图侧降级为文生图），故此处不再卡图片张数
@@ -833,80 +805,28 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     visualMoodSummary,
   ]);
 
-  const handleImagesAppend = useCallback(
-    (files: File[]) => {
-      setImages((current) => appendProductImages(current, files));
-    },
-    [setImages],
-  );
-
-  const handleImageRemove = useCallback(
-    (uid: string) => {
-      setImages((current) => removeProductImage(current, uid));
-    },
-    [setImages],
-  );
-
-  const handleDocsAppend = useCallback(
-    (files: File[]) => {
-      const singleDoc = poster || themePlan;
-      setDocuments((current) => appendProductDocs(current, files, singleDoc ? 1 : undefined));
-      if (poster && files[0]) {
-        void files[0].text().then((text) => setAnalysisText(text));
+  /**
+   * 左栏字段变化。
+   *
+   * 营销海报没有分析步，它的「商业分析」文档正文就是右栏的分析正文来源，
+   * 故文档一改就得把正文同步过去；其余字段没有这类联动，不必在这里处理。
+   *
+   * 这份 Form 的 onValuesChange 只在用户改值（内部 trigger）时触发，
+   * 落盘回写用的 setFieldsValue 不会走到这里，无回环。
+   */
+  const handlePanelFieldChange = useCallback(
+    (changed: Partial<EcommercePanelValues>) => {
+      if (!('documents' in changed)) return;
+      const next = changed.documents ?? [];
+      if (next.length === 0) {
+        if (poster) setAnalysisText('');
+        return;
+      }
+      if (poster && next[0]?.file) {
+        void next[0].file.text().then((text) => setAnalysisText(text));
       }
     },
-    [poster, setDocuments, setAnalysisText, themePlan],
-  );
-
-  const handleDocRemove = useCallback(
-    (uid: string) => {
-      setDocuments((current) => removeProductDoc(current, uid));
-      if (poster) setAnalysisText('');
-    },
-    [poster, setDocuments, setAnalysisText],
-  );
-
-  // 主图 / 详情图共用补充资料：不受 singleDoc 限制，用组件默认上限
-  const handleProductDocsAppend = useCallback(
-    (files: File[]) => {
-      setProductDocs((current) => appendProductDocs(current, files));
-    },
-    [setProductDocs],
-  );
-
-  const handleProductDocRemove = useCallback(
-    (uid: string) => {
-      setProductDocs((current) => removeProductDoc(current, uid));
-    },
-    [setProductDocs],
-  );
-
-  const handleBrandLogoAppend = useCallback(
-    (files: File[]) => {
-      setBrandLogo((current) => appendProductImages(current, files, MAX_BRAND_LOGOS));
-    },
-    [setBrandLogo],
-  );
-
-  const handleBrandLogoRemove = useCallback(
-    (uid: string) => {
-      setBrandLogo((current) => removeProductImage(current, uid));
-    },
-    [setBrandLogo],
-  );
-
-  const handleModelImagesAppend = useCallback(
-    (files: File[]) => {
-      setModelImages((current) => appendProductImages(current, files, MAX_MODEL_IMAGES));
-    },
-    [setModelImages],
-  );
-
-  const handleModelImageRemove = useCallback(
-    (uid: string) => {
-      setModelImages((current) => removeProductImage(current, uid));
-    },
-    [setModelImages],
+    [poster],
   );
 
   const handleSelectVisual = useCallback((id: string) => {
@@ -996,7 +916,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     setNextLoading(true);
     try {
       if (phase === 'analyzed') {
-        await persistAnalysisStep(images, documents, analysisText, { selectedThemeIds });
+        await persistAnalysisStep(analysisText, { selectedThemeIds });
       } else if (phase === 'visual') {
         await persistVisualStep(form, visualImages, selectedVisualId);
       } else if (phase === 'design') {
@@ -1012,9 +932,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
     analysisText,
     designForm,
     designResultGroups,
-    documents,
     form,
-    images,
     message,
     modelImages,
     persistAnalysisStep,
@@ -1050,12 +968,12 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         card.themeId === themeId ? { ...card, requirement } : card,
       );
       setPlanCards(nextCards);
-      void persistAnalysisStep(images, documents, analysisText, {
+      void persistAnalysisStep(analysisText, {
         planCards: nextCards,
         selectedThemeIds,
       });
     },
-    [analysisText, documents, images, persistAnalysisStep, planCards, selectedThemeIds],
+    [analysisText, persistAnalysisStep, planCards, selectedThemeIds],
   );
 
   const handlePlanCardAiAssist = useCallback(
@@ -1141,31 +1059,14 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
             <>
               <ControlPanel
                 taskType={task.taskType}
-                images={images}
-                documents={documents}
-                productDocs={productDocs}
-                brandLogo={brandLogo}
-                modelImages={modelImages}
-                form={form}
-                designForm={designForm}
+                form={panelForm}
+                initialValues={panelInitialValues}
                 phase={phase}
                 formLocked={formLocked}
                 jobRunning={jobRunning}
-                canGenerateVisual={Boolean(analysisText.trim())}
                 canGenerateDesign={themePlan ? selectedCards.length > 0 : true}
                 selectedCards={selectedCards}
-                onImagesAppend={handleImagesAppend}
-                onImageRemove={handleImageRemove}
-                onDocsAppend={handleDocsAppend}
-                onDocRemove={handleDocRemove}
-                onProductDocsAppend={handleProductDocsAppend}
-                onProductDocRemove={handleProductDocRemove}
-                onBrandLogoAppend={handleBrandLogoAppend}
-                onBrandLogoRemove={handleBrandLogoRemove}
-                onModelImagesAppend={handleModelImagesAppend}
-                onModelImageRemove={handleModelImageRemove}
-                onFormChange={setForm}
-                onDesignFormChange={setDesignForm}
+                onFieldChange={handlePanelFieldChange}
                 onAnalyze={handleAnalyze}
                 onGenerateVisual={handleGenerateVisual}
                 onGenerateDesign={handleGenerateDesign}

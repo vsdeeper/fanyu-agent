@@ -1,21 +1,17 @@
+import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
+
 export type StudioPhase = 'input' | 'analyzing' | 'analyzed' | 'complete';
 
-export type ProductImageItem = {
-  uid: string;
-  file?: File;
-  previewUrl: string;
-  name: string;
-  mimeType: string;
-  size: number;
-};
+/** 上传项与本地文件生命周期共用同一份定义，见 lib/shared/client/upload-items。 */
+export type ProductImageItem = StudioImageUploadItem;
+export type ProductDocItem = StudioImageUploadItem;
 
-export type ProductDocItem = {
-  uid: string;
-  file?: File;
-  previewUrl: string;
-  name: string;
-  mimeType: string;
-  size: number;
+/** 左栏表单值：与 AnalyzeForm 的 Form.Item name 一一对应，四项皆可空。 */
+export type AnalysisPanelValues = {
+  images: ProductImageItem[];
+  brandLogo: ProductImageItem[];
+  documents: ProductDocItem[];
+  productDescription: string;
 };
 
 export type AnalysisStepSnapshot = {

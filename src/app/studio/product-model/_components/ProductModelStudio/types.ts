@@ -1,12 +1,11 @@
+import type { GenerateSpecFormFields } from '@/app/studio/_components/GenerateSpecForm';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
+import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
 
 export type ProductModelPhase = 'model' | 'modelGenerating' | 'complete';
 
-export type ProductImageItem = {
-  uid: string;
-  file?: File;
-  previewUrl: string;
-};
+/** 上传项与本地文件生命周期共用同一份定义，见 lib/shared/client/upload-items。 */
+export type ProductImageItem = StudioImageUploadItem;
 
 export type ProductModelFormState = {
   viewRequirement: string;
@@ -15,6 +14,14 @@ export type ProductModelFormState = {
   quality: string;
   clarity: string;
   count: string;
+};
+
+/** 左栏表单值：与 ControlPanel 的 Form.Item name 一一对应，出图规格整对象挂在 spec 上。 */
+export type ProductModelPanelValues = {
+  productImages: ProductImageItem[];
+  modelImages: ProductImageItem[];
+  viewRequirement: string;
+  spec: GenerateSpecFormFields;
 };
 
 /** 结果图与工作室共用同一份定义（身份、状态、选中语义都在 result-images 里） */

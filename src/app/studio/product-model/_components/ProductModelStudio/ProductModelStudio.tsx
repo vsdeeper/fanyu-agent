@@ -21,6 +21,7 @@ type ProductModelStudioProps = {
 export default function ProductModelStudio({ task }: ProductModelStudioProps) {
   const router = useRouter();
   const studio = useProductModelStudio(task);
+  const { spec } = studio.panelValues;
   return (
     <Layout className={styles.studio}>
       <Layout.Header className={styles.header}>
@@ -53,21 +54,15 @@ export default function ProductModelStudio({ task }: ProductModelStudioProps) {
         ) : (
           <>
             <ControlPanel
-              productImages={studio.productImages}
-              modelImages={studio.modelImages}
-              form={studio.form}
+              form={studio.panelForm}
+              initialValues={studio.panelInitialValues}
               generating={studio.generating}
-              onProductImagesAppend={studio.handleProductImagesAppend}
-              onProductImageRemove={studio.handleProductImageRemove}
-              onModelImagesAppend={studio.handleModelImagesAppend}
-              onModelImageRemove={studio.handleModelImageRemove}
-              onFormChange={studio.setForm}
               onGenerate={studio.handleGenerate}
             />
             <ResultPanel
               images={studio.results}
-              expectedCount={Number.parseInt(studio.form.count, 10) || 1}
-              aspectRatio={studio.form.aspectRatio}
+              expectedCount={Number.parseInt(spec.count, 10) || 1}
+              aspectRatio={spec.aspectRatio}
               generating={studio.generating}
               persisting={studio.persisting}
               onComplete={studio.handleComplete}

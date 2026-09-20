@@ -22,6 +22,7 @@ type ProductRetouchStudioProps = {
 export default function ProductRetouchStudio({ task }: ProductRetouchStudioProps) {
   const router = useRouter();
   const studio = useProductRetouchStudio(task);
+  const { images, needsMultiview, refineSpec, multiviewSpec } = studio.panelValues;
   return (
     <Layout className={styles.studio}>
       <Layout.Header className={styles.header}>
@@ -58,35 +59,28 @@ export default function ProductRetouchStudio({ task }: ProductRetouchStudioProps
         ) : (
           <>
             <ControlPanel
+              form={studio.panelForm}
+              initialValues={studio.panelInitialValues}
               phase={studio.phase}
-              needsMultiview={studio.needsMultiview}
               hasRefineResult={hasReadyImage(studio.refineImages)}
-              images={studio.images}
-              refineForm={studio.refineForm}
-              multiviewForm={studio.multiviewForm}
               selectedStandardUrls={getSelectedImageUrls(
                 studio.refineImages,
                 studio.selectedRefineIds,
               )}
               locked={studio.locked}
-              onImagesAppend={studio.handleImagesAppend}
-              onImageRemove={studio.handleImageRemove}
-              onNeedsMultiviewChange={studio.setNeedsMultiview}
-              onRefineFormChange={studio.setRefineForm}
-              onMultiviewFormChange={studio.setMultiviewForm}
               onRefine={studio.handleRefine}
               onMultiview={studio.handleMultiview}
             />
             <ResultPanel
               phase={studio.phase}
-              needsMultiview={studio.needsMultiview}
+              needsMultiview={needsMultiview}
               persisting={studio.persisting}
               refineImages={studio.refineImages}
               multiviewImages={studio.multiviewImages}
-              refineExpectedCount={Math.max(1, studio.images.length)}
+              refineExpectedCount={Math.max(1, images.length)}
               multiviewExpectedCount={1}
-              refineAspectRatio={studio.refineForm.aspectRatio}
-              multiviewAspectRatio={studio.multiviewForm.aspectRatio}
+              refineAspectRatio={refineSpec.aspectRatio}
+              multiviewAspectRatio={multiviewSpec.aspectRatio}
               selectedRefineIds={studio.selectedRefineIds}
               onSelectRefine={studio.handleSelectRefine}
               onPrev={studio.handlePrev}

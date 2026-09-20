@@ -44,6 +44,14 @@
   color: var(--one-color-text);
 }
 
+/* 与 antd Form.Item 必填红星对齐（labelRequiredMarkColor = colorError） */
+.requiredMark {
+  margin-inline-end: 4px;
+  color: var(--one-color-error);
+  font-family: sans-serif;
+  line-height: 1;
+}
+
 .sub {
   font-size: 12px;
   color: var(--one-color-text-tertiary);

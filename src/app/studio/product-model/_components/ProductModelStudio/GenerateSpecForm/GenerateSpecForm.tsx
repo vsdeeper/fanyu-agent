@@ -1,23 +1,21 @@
-import GenerateSpecForm from '@/app/studio/_components/GenerateSpecForm';
+import GenerateSpecForm, {
+  type GenerateSpecFormFields,
+} from '@/app/studio/_components/GenerateSpecForm';
 import { ASPECT_RATIO_OPTIONS, MODEL_OPTIONS } from '../constants';
-import type { ProductModelFormState } from '../types';
 
 type ProductGenerateSpecFormProps = {
-  form: ProductModelFormState;
-  disabled: boolean;
-  onChange: (next: ProductModelFormState) => void;
+  value?: GenerateSpecFormFields;
+  onChange?: (next: GenerateSpecFormFields) => void;
 };
 
 /** 产品模特规格：模型、比例、清晰度与生成数量。 */
 export default function ProductModelGenerateSpecForm({
-  form,
-  disabled,
+  value,
   onChange,
 }: ProductGenerateSpecFormProps) {
   return (
     <GenerateSpecForm
-      form={form}
-      disabled={disabled}
+      value={value}
       onChange={onChange}
       modelOptions={MODEL_OPTIONS}
       aspectRatioOptions={ASPECT_RATIO_OPTIONS}

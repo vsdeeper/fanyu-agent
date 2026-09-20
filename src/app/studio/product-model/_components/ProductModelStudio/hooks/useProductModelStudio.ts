@@ -1,25 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { App } from 'antd';
+import { App, Form } from 'antd';
 import type { ProductModelTaskDetail } from '@/app/api/studio/product-model/_shared/task-types';
+import { validateForm } from '@/app/studio/_utils/form-validate';
 import { ApiClientError } from '@/lib/shared/client/api-client';
-import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import {
-  DEFAULT_FORM,
-  GENERATE_FAILED,
-  MAX_MODEL_IMAGES,
-  MODEL_RESULT_MISSING,
-  NO_IMAGE_WARNING,
-  REQUIREMENT_MISSING,
-} from '../constants';
+  revokeLocalUploadItemUrls,
+  revokeReplacedLocalUploadItemUrls,
+} from '@/lib/shared/client/upload-items';
+import { DEFAULT_FORM, GENERATE_FAILED, MODEL_RESULT_MISSING } from '../constants';
 import type {
-  ProductImageItem,
-  ProductModelFormState,
+  ProductModelPanelValues,
   ProductModelPhase,
   ProductModelStepSnapshot,
   ResultImage,
 } from '../types';
 import {
-  appendImages,
   applyGenerateEvent,
   assertOkOrJsonFail,
   consumeGenerateNdjson,
@@ -29,9 +24,9 @@ import {
   isSameStepSnapshot,
   pendingImages,
   phaseAfterPrev,
+  pickSpecFields,
   readModelStepSnapshot,
-  removeImage,
-  revokeImageUrls,
+  readProductModelPanelValues,
   saveProductModelStep,
   toProductModelPayload,
 } from '../utils';
@@ -40,35 +35,39 @@ import {
 export function useProductModelStudio(task: ProductModelTaskDetail) {
   const { message } = App.useApp();
   const initial = readModelStepSnapshot(task.steps.model?.data);
+  const [panelForm] = Form.useForm<ProductModelPanelValues>();
+  // 左栏初值只算一次：Form 二次挂载是 store 赢（只补缺失键），重算只会白白多渲染
+  const [panelInitialValues] = useState<ProductModelPanelValues>(() => {
+    const form = initial?.form ?? DEFAULT_FORM;
+    return {
+      productImages: initial?.productImages ?? [],
+      modelImages: initial?.modelImages ?? [],
+      viewRequirement: form.viewRequirement,
+      spec: pickSpecFields(form),
+    };
+  });
   const [phase, setPhase] = useState<ProductModelPhase>('model');
   const [persisting, setPersisting] = useState(false);
-  const [productImages, setProductImages] = useState<ProductImageItem[]>(
-    initial?.productImages ?? [],
-  );
-  const [modelImages, setModelImages] = useState<ProductImageItem[]>(initial?.modelImages ?? []);
-  const [form, setForm] = useState<ProductModelFormState>(initial?.form ?? DEFAULT_FORM);
   const [results, setResults] = useState<ResultImage[]>(initial?.results ?? []);
-  const productImagesRef = useRef(productImages);
-  const modelImagesRef = useRef(modelImages);
   const abortRef = useRef<AbortController | null>(null);
   const lastSnapshotRef = useRef<ProductModelStepSnapshot | undefined>(initial);
   const generating = phase === 'modelGenerating';
-
-  useEffect(() => {
-    productImagesRef.current = productImages;
-  }, [productImages]);
-
-  useEffect(() => {
-    modelImagesRef.current = modelImages;
-  }, [modelImages]);
+  // 供渲染取用；preserve 让完成步（左栏已卸载）也读得到，首帧 store 未播种时回落到初值
+  const watched = Form.useWatch([], { form: panelForm, preserve: true });
+  const panelValues: ProductModelPanelValues = watched ?? panelInitialValues;
 
   useEffect(
     () => () => {
       abortRef.current?.abort();
-      revokeImageUrls(productImagesRef.current);
-      revokeImageUrls(modelImagesRef.current);
+      // 完成步的 cleanup 也会走到这里：此时面板虽已卸载，store 仍保留本次会话的值，
+      // 故用 getFieldsValue(true) 读整表；重复释放同一个 object URL 是幂等的
+      const { productImages, modelImages } = readProductModelPanelValues(
+        panelForm.getFieldsValue(true),
+      );
+      revokeLocalUploadItemUrls(productImages);
+      revokeLocalUploadItemUrls(modelImages);
     },
-    [],
+    [panelForm],
   );
 
   /** 中止当前生图请求。 */
@@ -77,54 +76,38 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
     abortRef.current = null;
   }, []);
 
-  /** 追加产品事实参考图。 */
-  const handleProductImagesAppend = useCallback((files: File[]) => {
-    setProductImages((current) => appendImages(current, files, MAX_STUDIO_IMAGES));
-  }, []);
-
-  /** 移除指定产品事实参考图。 */
-  const handleProductImageRemove = useCallback((uid: string) => {
-    setProductImages((current) => removeImage(current, uid));
-  }, []);
-
-  /** 追加模特身份参考图。 */
-  const handleModelImagesAppend = useCallback((files: File[]) => {
-    setModelImages((current) => appendImages(current, files, MAX_MODEL_IMAGES));
-  }, []);
-
-  /** 移除指定模特身份参考图。 */
-  const handleModelImageRemove = useCallback((uid: string) => {
-    setModelImages((current) => removeImage(current, uid));
-  }, []);
-
   // 落盘与完成共用同一份动作：把当前步左栏 + 右栏整体快照入库（data: URL 由服务端转资产 URL）
   const persistModelStep = useCallback(
     async (results: ResultImage[]) => {
+      const { form, productImages, modelImages } = readProductModelPanelValues(
+        panelForm.getFieldsValue(true),
+      );
       const next = await createModelStepSnapshot(form, productImages, modelImages, results);
       if (isSameStepSnapshot(next, lastSnapshotRef.current)) return;
       const saved = await saveProductModelStep(task.id, 'model', next);
       lastSnapshotRef.current = saved;
-      setProductImages(saved.productImages);
-      setModelImages(saved.modelImages);
+      revokeReplacedLocalUploadItemUrls(productImages, saved.productImages);
+      revokeReplacedLocalUploadItemUrls(modelImages, saved.modelImages);
+      // setFieldsValue 只更新 store 并通知 watch，不触发 onValuesChange，故不会与用户输入形成回环
+      panelForm.setFieldsValue({
+        productImages: saved.productImages,
+        modelImages: saved.modelImages,
+      });
       setResults(saved.results);
     },
-    [task.id, form, productImages, modelImages, setProductImages, setModelImages, setResults],
+    [task.id, panelForm],
   );
 
   /** 提交产品模特生成并消费逐张返回的 NDJSON；生成完成即落库（与「完成」同一动作）。 */
   const handleGenerate = useCallback(async () => {
-    if (productImages.length === 0) {
-      message.warning(NO_IMAGE_WARNING);
-      return;
-    }
-    if (!form.viewRequirement.trim()) {
-      message.warning(REQUIREMENT_MISSING);
-      return;
-    }
+    if (!(await validateForm(panelForm))) return;
 
     abortCurrent();
     const controller = new AbortController();
     abortRef.current = controller;
+    const { form, productImages, modelImages } = readProductModelPanelValues(
+      panelForm.getFieldsValue(true),
+    );
     const count = Number.parseInt(form.count, 10) || 1;
     const slots = pendingImages(count, form.aspectRatio);
     let nextResults = [...results, ...slots];
@@ -167,7 +150,7 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [abortCurrent, form, message, modelImages, persistModelStep, productImages, results]);
+  }, [abortCurrent, message, panelForm, persistModelStep, results]);
 
   /** 完成：校验有结果后把左右栏内容落盘，再进入「预览生成物料」。 */
   const handleComplete = useCallback(async () => {
@@ -199,15 +182,10 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
     phase,
     persisting,
     generating,
-    productImages,
-    modelImages,
-    form,
     results,
-    setForm,
-    handleProductImagesAppend,
-    handleProductImageRemove,
-    handleModelImagesAppend,
-    handleModelImageRemove,
+    panelForm,
+    panelInitialValues,
+    panelValues,
     handleGenerate,
     handleComplete,
     handlePrev,

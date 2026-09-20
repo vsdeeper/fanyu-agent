@@ -1,29 +1,25 @@
-import GenerateSpecForm from '@/app/studio/_components/GenerateSpecForm';
+import GenerateSpecForm, {
+  type GenerateSpecFormFields,
+} from '@/app/studio/_components/GenerateSpecForm';
 import { ASPECT_RATIO_OPTIONS, MODEL_OPTIONS } from '../constants';
-import type { GenerateSpecFields } from '../types';
 
 type ProductGenerateSpecFormProps = {
-  form: GenerateSpecFields;
-  disabled: boolean;
-  onChange: (next: GenerateSpecFields) => void;
-  showCount?: boolean;
+  value?: GenerateSpecFormFields;
+  onChange?: (next: GenerateSpecFormFields) => void;
 };
 
-/** 产品精修规格：模型、比例、清晰度；传入 showCount=false 时隐藏生成数量。 */
+/** 产品精修规格：模型、比例与清晰度；精修按产品图张数逐张出图，故不展示生成数量。 */
 export default function ProductRetouchGenerateSpecForm({
-  form,
-  disabled,
+  value,
   onChange,
-  showCount = true,
 }: ProductGenerateSpecFormProps) {
   return (
     <GenerateSpecForm
-      form={form}
-      disabled={disabled}
+      value={value}
       onChange={onChange}
       modelOptions={MODEL_OPTIONS}
       aspectRatioOptions={ASPECT_RATIO_OPTIONS}
-      showCount={showCount}
+      showCount={false}
     />
   );
 }

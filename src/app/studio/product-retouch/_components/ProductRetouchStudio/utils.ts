@@ -7,7 +7,6 @@ import type {
   ProductRetouchStepKey,
   ProductRetouchTaskStepRecord,
 } from '@/app/api/studio/product-retouch/_shared/task-types';
-import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import { apiPut } from '@/lib/shared/client/api-client';
 import { patchModel } from '@/app/studio/_utils/model-options';
 import {
@@ -15,17 +14,13 @@ import {
   normalizeResultImages,
   type StudioResultImage,
 } from '@/app/studio/_utils/result-images';
-import {
-  appendUploadItems,
-  readUploadItemAsDataUrl,
-  removeUploadItem,
-  revokeUploadItemUrls,
-  serializeUploadItem,
-} from '@/app/studio/_utils/upload-items';
+import { readUploadItemAsDataUrl, serializeUploadItem } from '@/app/studio/_utils/upload-items';
 import type {
+  GenerateSpecFields,
   MultiviewFormState,
   ProductImageItem,
   ProductRetouchMultiviewStepSnapshot,
+  ProductRetouchPanelValues,
   ProductRetouchPhase,
   ProductRetouchRefineStepSnapshot,
   RefineFormState,
@@ -53,26 +48,45 @@ export {
   readUploadItemAsDataUrl,
 } from '@/app/studio/_utils/upload-items';
 
-/** 按 uid 移除产品图并释放预览 URL。 */
-export function removeProductImage(current: ProductImageItem[], uid: string): ProductImageItem[] {
-  return removeUploadItem(current, uid);
+/** 从表单态里取出出图规格四件套（模型 / 比例 / 清晰度 / 生成数量）。 */
+export function pickSpecFields(form: RefineFormState | MultiviewFormState): GenerateSpecFields {
+  return {
+    model: form.model,
+    aspectRatio: form.aspectRatio,
+    quality: form.quality,
+    clarity: form.clarity,
+    count: form.count,
+  };
 }
 
-/** 释放一组本地产品图的预览 URL。 */
-export function revokeProductImageUrls(items: ProductImageItem[]): void {
-  revokeUploadItemUrls(items);
+/** 左栏表单值 → 精修表单态。 */
+export function toRefineFormState(values: ProductRetouchPanelValues): RefineFormState {
+  return { requirement: values.refineRequirement, ...values.refineSpec };
 }
 
-/** 追加本地产品图并建立预览 URL，最多保留配置上限。 */
-export function appendProductImages(
-  current: ProductImageItem[],
-  files: File[],
-): ProductImageItem[] {
-  return appendUploadItems(current, files, MAX_STUDIO_IMAGES, (file, previewUrl) => ({
-    uid: crypto.randomUUID(),
-    file,
-    previewUrl,
-  }));
+/** 左栏表单值 → 多视角表单态。 */
+export function toMultiviewFormState(values: ProductRetouchPanelValues): MultiviewFormState {
+  return { requirement: values.multiviewRequirement, ...values.multiviewSpec };
+}
+
+/**
+ * 左栏值的唯一读取口。
+ *
+ * `getFieldsValue(true)` 的 `true` 不能省：进入多视角或完成步后精修那批 Form.Item 已卸载，
+ * `getFieldsValue()` 只返回「已注册字段」，那时精修表单与产品图都会被读成空。
+ */
+export function readProductRetouchPanelValues(values: ProductRetouchPanelValues): {
+  images: ProductImageItem[];
+  needsMultiview: boolean;
+  refineForm: RefineFormState;
+  multiviewForm: MultiviewFormState;
+} {
+  return {
+    images: values.images ?? [],
+    needsMultiview: values.needsMultiview ?? true,
+    refineForm: toRefineFormState(values),
+    multiviewForm: toMultiviewFormState(values),
+  };
 }
 
 /** 将产品图转换为生图接口图片输入；恢复的快照无 file 时回退到资产 URL。 */

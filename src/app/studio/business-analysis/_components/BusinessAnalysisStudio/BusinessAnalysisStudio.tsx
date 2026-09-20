@@ -2,25 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { App, Button, Layout, Steps, Typography } from 'antd';
+import { App, Button, Form, Layout, Steps, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import type { BusinessAnalysisTaskDetail } from '@/app/api/studio/business-analysis/_shared/task-types';
 import { BUSINESS_ANALYSIS_PATH } from '@/components/AppLayout/constants';
 import ModeSwitch from '@/components/ModeSwitch';
+import {
+  revokeLocalUploadItemUrls,
+  revokeReplacedLocalUploadItemUrls,
+} from '@/lib/shared/client/upload-items';
 import CompletionPanel from './CompletionPanel';
 import ControlPanel from './ControlPanel';
 import ResultPanel from './ResultPanel';
+import { ANALYZE_FAILED, NO_MATERIAL_WARNING, STUDIO_STEP_INDEX, STUDIO_STEPS } from './constants';
+import type { AnalysisPanelValues, AnalysisStepSnapshot, StudioPhase } from './types';
 import {
-  ANALYZE_FAILED,
-  MAX_BRAND_LOGOS,
-  NO_MATERIAL_WARNING,
-  STUDIO_STEP_INDEX,
-  STUDIO_STEPS,
-} from './constants';
-import type { AnalysisStepSnapshot, ProductDocItem, ProductImageItem, StudioPhase } from './types';
-import {
-  appendProductDocs,
-  appendProductImages,
   assertOkOrJsonFail,
   consumeAnalyzeSse,
   createAnalysisStepSnapshot,
@@ -29,11 +25,7 @@ import {
   isAbortError,
   isSameStepSnapshot,
   readAnalysisStepSnapshot,
-  removeProductDoc,
-  removeProductImage,
   resolveInitialStudioPhase,
-  revokeProductDocUrls,
-  revokeProductImageUrls,
   saveStudioStep,
   toAnalyzePayload,
 } from './utils';
@@ -48,78 +40,70 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
   const { message } = App.useApp();
   const router = useRouter();
   const initialAnalysis = readAnalysisStepSnapshot(task.steps.analysis?.data);
-  const [images, setImages] = useState<ProductImageItem[]>(initialAnalysis?.images ?? []);
-  const [documents, setDocuments] = useState<ProductDocItem[]>(initialAnalysis?.documents ?? []);
-  const [brandLogo, setBrandLogo] = useState<ProductImageItem[]>(
-    initialAnalysis?.brandLogoImages ?? [],
-  );
-  const [productDescription, setProductDescription] = useState(
-    initialAnalysis?.productDescription ?? '',
-  );
+  const [panelForm] = Form.useForm<AnalysisPanelValues>();
+  // 左栏初值只算一次：Form 二次挂载是 store 赢（只补缺失键），重算只会白白多渲染
+  const [panelInitialValues] = useState<AnalysisPanelValues>(() => ({
+    images: initialAnalysis?.images ?? [],
+    brandLogo: initialAnalysis?.brandLogoImages ?? [],
+    documents: initialAnalysis?.documents ?? [],
+    productDescription: initialAnalysis?.productDescription ?? '',
+  }));
   const [phase, setPhase] = useState<StudioPhase>(resolveInitialStudioPhase(initialAnalysis));
   const [analysisText, setAnalysisText] = useState(initialAnalysis?.analysisText ?? '');
   const [nextLoading, setNextLoading] = useState(false);
   const [analysisBuffer] = useState(() => createRafTextBuffer(setAnalysisText));
-  const imagesRef = useRef(images);
-  const documentsRef = useRef(documents);
-  const brandLogoRef = useRef(brandLogo);
   const abortRef = useRef<AbortController | null>(null);
   const lastSnapshotRef = useRef<AnalysisStepSnapshot | undefined>(initialAnalysis);
+  // 供请求与落盘取用；preserve 让完成步（左栏已卸载）也读得到，首帧 store 未播种时回落到初值
+  const watched = Form.useWatch([], { form: panelForm, preserve: true });
+  const panelValues: AnalysisPanelValues = watched ?? panelInitialValues;
 
-  useEffect(() => {
-    imagesRef.current = images;
-  }, [images]);
-
-  useEffect(() => {
-    documentsRef.current = documents;
-  }, [documents]);
-
-  useEffect(() => {
-    brandLogoRef.current = brandLogo;
-  }, [brandLogo]);
-
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       abortRef.current?.abort();
       analysisBuffer.dispose();
-      revokeProductImageUrls(imagesRef.current);
-      revokeProductImageUrls(brandLogoRef.current);
-      revokeProductDocUrls(documentsRef.current);
-    };
-  }, [analysisBuffer]);
+      // 完成步的 cleanup 也会走到这里：此时面板虽已卸载，store 仍保留本次会话的值，
+      // 故用 getFieldsValue(true) 读整表；重复释放同一个 object URL 是幂等的
+      const values = panelForm.getFieldsValue(true);
+      revokeLocalUploadItemUrls(values.images ?? []);
+      revokeLocalUploadItemUrls(values.brandLogo ?? []);
+      revokeLocalUploadItemUrls(values.documents ?? []);
+    },
+    [analysisBuffer, panelForm],
+  );
 
   const persistAnalysisStep = useCallback(
-    async (
-      imgs: ProductImageItem[],
-      docs: ProductDocItem[],
-      logo: ProductImageItem[],
-      description: string,
-      text: string,
-    ) => {
-      const next = await createAnalysisStepSnapshot(imgs, docs, logo, description, text);
+    async (text: string) => {
+      const values = panelForm.getFieldsValue(true);
+      const next = await createAnalysisStepSnapshot(
+        values.images ?? [],
+        values.documents ?? [],
+        values.brandLogo ?? [],
+        values.productDescription ?? '',
+        text,
+      );
       if (isSameStepSnapshot(next, lastSnapshotRef.current)) return;
       const saved = await saveStudioStep(task.id, 'analysis', next);
       lastSnapshotRef.current = saved;
+      revokeReplacedLocalUploadItemUrls(values.images ?? [], saved.images);
+      revokeReplacedLocalUploadItemUrls(values.documents ?? [], saved.documents);
+      revokeReplacedLocalUploadItemUrls(values.brandLogo ?? [], saved.brandLogoImages ?? []);
       // 新字段必须一并写回：服务端已把 blob URL 换成资产 URL，漏写回会让基线永远对不上，
       // 每次「下一步」都重传一次 Logo 并多插一行资产
-      setImages(saved.images);
-      setDocuments(saved.documents);
-      setBrandLogo(saved.brandLogoImages ?? []);
-      setProductDescription(saved.productDescription ?? '');
+      // setFieldsValue 只更新 store 并通知 watch，不触发 onValuesChange，故不会与用户输入形成回环
+      panelForm.setFieldsValue({
+        images: saved.images,
+        documents: saved.documents,
+        brandLogo: saved.brandLogoImages ?? [],
+        productDescription: saved.productDescription ?? '',
+      });
       setAnalysisText(saved.analysisText);
     },
-    // useState 的 setter 恒定，列进来只为满足 react-hooks/preserve-manual-memoization 的依赖推断
-    [task.id, setImages, setDocuments, setBrandLogo, setProductDescription, setAnalysisText],
+    [task.id, panelForm],
   );
 
   const handleAnalyze = useCallback(async () => {
-    const materials = {
-      images,
-      brandLogo,
-      productDescription,
-      documents,
-    };
-    if (!hasAnalyzeMaterials(materials)) {
+    if (!hasAnalyzeMaterials(panelValues)) {
       message.warning(NO_MATERIAL_WARNING);
       return;
     }
@@ -129,9 +113,9 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
     setPhase('analyzing');
     analysisBuffer.reset();
     try {
-      const payload = await toAnalyzePayload(images, documents, {
-        brandLogo,
-        productDescription,
+      const payload = await toAnalyzePayload(panelValues.images, panelValues.documents, {
+        brandLogo: panelValues.brandLogo,
+        productDescription: panelValues.productDescription,
       });
       const res = await fetch('/api/studio/business-analysis/analyze', {
         method: 'POST',
@@ -160,13 +144,7 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
       if (receivedDone) {
         setPhase('analyzed');
         try {
-          await persistAnalysisStep(
-            images,
-            documents,
-            brandLogo,
-            productDescription,
-            analysisBuffer.getText(),
-          );
+          await persistAnalysisStep(analysisBuffer.getText());
         } catch (err) {
           console.error('[business-analysis-studio] persist analysis', err);
         }
@@ -181,27 +159,19 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [
-    analysisBuffer,
-    brandLogo,
-    documents,
-    images,
-    message,
-    persistAnalysisStep,
-    productDescription,
-  ]);
+  }, [analysisBuffer, message, panelValues, persistAnalysisStep]);
 
   const handleNext = useCallback(async () => {
     setNextLoading(true);
     try {
-      await persistAnalysisStep(images, documents, brandLogo, productDescription, analysisText);
+      await persistAnalysisStep(analysisText);
       setPhase('complete');
     } catch (err) {
       console.error('[business-analysis-studio] persist step on next', err);
     } finally {
       setNextLoading(false);
     }
-  }, [analysisText, brandLogo, documents, images, persistAnalysisStep, productDescription]);
+  }, [analysisText, persistAnalysisStep]);
 
   return (
     <Layout className={styles.studio}>
@@ -236,27 +206,10 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
           ) : (
             <>
               <ControlPanel
-                images={images}
-                brandLogo={brandLogo}
-                productDescription={productDescription}
-                documents={documents}
+                form={panelForm}
+                initialValues={panelInitialValues}
                 analyzing={phase === 'analyzing'}
                 formLocked={phase === 'analyzing'}
-                onImagesAppend={(files) =>
-                  setImages((current) => appendProductImages(current, files))
-                }
-                onImageRemove={(uid) => setImages((current) => removeProductImage(current, uid))}
-                onBrandLogoAppend={(files) =>
-                  setBrandLogo((current) => appendProductImages(current, files, MAX_BRAND_LOGOS))
-                }
-                onBrandLogoRemove={(uid) =>
-                  setBrandLogo((current) => removeProductImage(current, uid))
-                }
-                onProductDescriptionChange={setProductDescription}
-                onDocsAppend={(files) =>
-                  setDocuments((current) => appendProductDocs(current, files))
-                }
-                onDocRemove={(uid) => setDocuments((current) => removeProductDoc(current, uid))}
                 onAnalyze={handleAnalyze}
               />
               <ResultPanel

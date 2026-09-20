@@ -20,6 +20,17 @@
   gap: 16px;
 }
 
+/* 字段间距统一由 gap 给，抵消 antd Form.Item 自带的下外边距 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form :global(.ant-form-item) {
+  margin-bottom: 0;
+}
+
 .footer {
   flex-shrink: 0;
   padding: 12px 16px 16px;

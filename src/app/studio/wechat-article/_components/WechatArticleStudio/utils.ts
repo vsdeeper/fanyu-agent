@@ -3,6 +3,7 @@ import type {
   WechatArticleStepKey,
   WechatArticleTaskStepRecord,
 } from '@/app/api/studio/wechat-article/_shared/task-types';
+import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
 import { parseStyleSelections } from '@/business-components/StyleDimensionPicker';
 import { apiPut } from '@/lib/shared/client/api-client';
 import type {
@@ -836,4 +837,23 @@ export function readFileAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error('read failed'));
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * 上传项落盘用的预览地址：本地文件读成 data URL，历史资产原样返回；无图返回 undefined。
+ *
+ * 服务端契约里水印图与风格参考图各只有一张，故只取第一张。
+ * 返回 undefined 而不是空串，是为了让调用方能把「没有图」表达成「不写这个键」。
+ */
+export async function toPersistableImageUrl(
+  images: readonly StudioImageUploadItem[],
+): Promise<string | undefined> {
+  const first = images[0];
+  if (!first) return undefined;
+  return first.file ? readFileAsDataUrl(first.file) : first.previewUrl;
+}
+
+/** 把服务端回的单个资产 URL 还原成上传项；无 URL 返回空数组。 */
+export function toImageItems(url: string | undefined): StudioImageUploadItem[] {
+  return url ? [{ uid: crypto.randomUUID(), previewUrl: url }] : [];
 }

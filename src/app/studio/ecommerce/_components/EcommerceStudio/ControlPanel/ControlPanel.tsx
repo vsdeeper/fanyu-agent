@@ -1,10 +1,11 @@
 import { HighlightOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Form, type FormInstance } from 'antd';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import ProductDocsUpload from '@/business-components/ProductDocsUpload';
 import StudioImageUpload from '@/business-components/StudioImageUpload';
 import {
+  ANALYSIS_UPLOAD_MISSING,
   ANALYZE_BUTTON,
   BRAND_LOGO_ARIA_LABEL,
   BRAND_LOGO_HINT,
@@ -18,14 +19,7 @@ import {
   VISUAL_BUTTON,
   VISUAL_PRODUCT_IMAGE_SUBTITLE,
 } from '../constants';
-import type {
-  DesignFormState,
-  ProductDocItem,
-  ProductImageItem,
-  StudioFormState,
-  StudioPhase,
-  StudioSpecFields,
-} from '../types';
+import type { EcommercePanelValues, StudioPhase } from '../types';
 import { isDetailImageTask, isMainImageTask, isPosterTask, isThemePlanTask } from '../workflow';
 import DesignForm from './DesignForm';
 import GenerateForm from './GenerateForm';
@@ -35,33 +29,16 @@ import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
   taskType: EcommerceTaskType;
-  images: ProductImageItem[];
-  documents: ProductDocItem[];
-  productDocs: ProductDocItem[];
-  /** 品牌 Logo（至多一张）；主图 / 详情图任务在分析步录入，营销海报在主视觉步录入 */
-  brandLogo: ProductImageItem[];
-  modelImages: ProductImageItem[];
-  form: StudioFormState;
-  designForm: DesignFormState;
+  form: FormInstance<EcommercePanelValues>;
+  initialValues: EcommercePanelValues;
   phase: StudioPhase;
   formLocked: boolean;
   /** 是否已有后台生图作业在跑；生成中允许点上一步，故它不能由相位推导 */
   jobRunning: boolean;
-  canGenerateVisual: boolean;
   canGenerateDesign: boolean;
   selectedCards?: ThemePlanCard[];
-  onImagesAppend: (files: File[]) => void;
-  onImageRemove: (uid: string) => void;
-  onDocsAppend: (files: File[]) => void;
-  onDocRemove: (uid: string) => void;
-  onProductDocsAppend: (files: File[]) => void;
-  onProductDocRemove: (uid: string) => void;
-  onBrandLogoAppend: (files: File[]) => void;
-  onBrandLogoRemove: (uid: string) => void;
-  onModelImagesAppend: (files: File[]) => void;
-  onModelImageRemove: (uid: string) => void;
-  onFormChange: (next: StudioFormState) => void;
-  onDesignFormChange: (next: DesignFormState) => void;
+  /** 左栏字段变化；目前只有商业分析文档需要联动右栏正文 */
+  onFieldChange: (changed: Partial<EcommercePanelValues>) => void;
   onAnalyze: () => void;
   onGenerateVisual: () => void;
   onGenerateDesign: () => void;
@@ -72,31 +49,14 @@ type ControlPanelProps = {
  */
 export default function ControlPanel({
   taskType,
-  images,
-  documents,
-  productDocs,
-  brandLogo,
-  modelImages,
   form,
-  designForm,
+  initialValues,
   phase,
   formLocked,
   jobRunning,
-  canGenerateVisual,
   canGenerateDesign,
   selectedCards = [],
-  onImagesAppend,
-  onImageRemove,
-  onDocsAppend,
-  onDocRemove,
-  onProductDocsAppend,
-  onProductDocRemove,
-  onBrandLogoAppend,
-  onBrandLogoRemove,
-  onModelImagesAppend,
-  onModelImageRemove,
-  onFormChange,
-  onDesignFormChange,
+  onFieldChange,
   onAnalyze,
   onGenerateVisual,
   onGenerateDesign,
@@ -118,11 +78,6 @@ export default function ControlPanel({
   const poster = isPosterTask(taskType);
   const themePlan = isThemePlanTask(taskType);
   const mainImage = isMainImageTask(taskType);
-  const analyzeDisabled = documents.length === 0;
-
-  const handleVisualSpecChange = (next: StudioSpecFields) => {
-    onFormChange({ ...form, ...next });
-  };
 
   const designButton = isDetailImageTask(taskType)
     ? DETAIL_IMAGE_BUTTON
@@ -135,102 +90,96 @@ export default function ControlPanel({
   return (
     <aside className={styles.panel}>
       <div className={styles.scroll}>
-        {showAnalyzeForm ? (
-          <>
-            {themePlan ? (
-              <StudioImageUpload
-                label={BRAND_LOGO_LABEL}
-                subtitle={BRAND_LOGO_SUBTITLE}
-                hint={BRAND_LOGO_HINT}
-                ariaLabel={BRAND_LOGO_ARIA_LABEL}
-                images={brandLogo}
-                max={MAX_BRAND_LOGOS}
-                disabled={formLocked}
-                onAppend={onBrandLogoAppend}
-                onRemove={onBrandLogoRemove}
-              />
-            ) : null}
-            <ProductDocsUpload
-              documents={productDocs}
-              disabled={formLocked}
-              onAppend={onProductDocsAppend}
-              onRemove={onProductDocRemove}
-            />
-            <ProductDocsUpload
-              documents={documents}
-              disabled={formLocked}
-              max={1}
-              label="商业分析"
-              hint="上传商业分析 TXT / MD"
-              ariaLabel="上传商业分析"
-              onAppend={onDocsAppend}
-              onRemove={onDocRemove}
-            />
-          </>
-        ) : showVisualForm ? (
-          <>
-            {poster ? (
-              <>
-                <StudioImageUpload
-                  label={BRAND_LOGO_LABEL}
-                  subtitle={BRAND_LOGO_SUBTITLE}
-                  hint={BRAND_LOGO_HINT}
-                  ariaLabel={BRAND_LOGO_ARIA_LABEL}
-                  images={brandLogo}
-                  max={MAX_BRAND_LOGOS}
-                  disabled={formLocked}
-                  onAppend={onBrandLogoAppend}
-                  onRemove={onBrandLogoRemove}
-                />
-                <StudioImageUpload
-                  label="产品精修图"
-                  subtitle={VISUAL_PRODUCT_IMAGE_SUBTITLE}
-                  images={images}
-                  disabled={formLocked}
-                  onAppend={onImagesAppend}
-                  onRemove={onImageRemove}
-                />
+        {/*
+          三步共用一个 Form：切步骤只换注册的 Form.Item 集合（preserve 默认 true，值仍留在 store），
+          几个上传项因此能在互斥分支里复用同一个 name。左栏值的唯一真相是这份 store，
+          读值一律用 getFieldsValue(true)；不要加 clearOnDestroy，也不要改成 component={false}。
+        */}
+        <Form
+          form={form}
+          initialValues={initialValues}
+          layout="vertical"
+          disabled={formLocked}
+          className={styles.form}
+          onValuesChange={onFieldChange}
+        >
+          {showAnalyzeForm ? (
+            <>
+              {themePlan ? (
+                <Form.Item name="brandLogo">
+                  <StudioImageUpload
+                    label={BRAND_LOGO_LABEL}
+                    subtitle={BRAND_LOGO_SUBTITLE}
+                    hint={BRAND_LOGO_HINT}
+                    ariaLabel={BRAND_LOGO_ARIA_LABEL}
+                    max={MAX_BRAND_LOGOS}
+                    disabled={formLocked}
+                  />
+                </Form.Item>
+              ) : null}
+              <Form.Item name="productDocs">
+                <ProductDocsUpload disabled={formLocked} />
+              </Form.Item>
+              <Form.Item
+                name="documents"
+                rules={[{ required: true, message: ANALYSIS_UPLOAD_MISSING }]}
+              >
                 <ProductDocsUpload
-                  documents={documents}
-                  disabled={formLocked}
                   max={1}
                   label="商业分析"
                   hint="上传商业分析 TXT / MD"
                   ariaLabel="上传商业分析"
-                  onAppend={onDocsAppend}
-                  onRemove={onDocRemove}
+                  disabled={formLocked}
+                  required
                 />
-              </>
-            ) : null}
-            <GenerateForm
-              form={form}
-              disabled={formLocked}
-              onFormChange={handleVisualSpecChange}
-              count={form.count}
-              onCountChange={(value) => onFormChange({ ...form, count: value })}
-            />
-          </>
-        ) : showDesignForm && themePlan ? (
-          <ThemeDesignForm
-            form={designForm}
-            images={images}
-            selectedCards={selectedCards}
-            disabled={formLocked}
-            onFormChange={onDesignFormChange}
-            onImagesAppend={onImagesAppend}
-            onImageRemove={onImageRemove}
-          />
-        ) : showDesignForm ? (
-          <DesignForm
-            form={designForm}
-            taskType={taskType}
-            modelImages={modelImages}
-            disabled={formLocked}
-            onFormChange={onDesignFormChange}
-            onModelImagesAppend={onModelImagesAppend}
-            onModelImageRemove={onModelImageRemove}
-          />
-        ) : null}
+              </Form.Item>
+            </>
+          ) : showVisualForm ? (
+            <>
+              {poster ? (
+                <>
+                  <Form.Item name="brandLogo">
+                    <StudioImageUpload
+                      label={BRAND_LOGO_LABEL}
+                      subtitle={BRAND_LOGO_SUBTITLE}
+                      hint={BRAND_LOGO_HINT}
+                      ariaLabel={BRAND_LOGO_ARIA_LABEL}
+                      max={MAX_BRAND_LOGOS}
+                      disabled={formLocked}
+                    />
+                  </Form.Item>
+                  <Form.Item name="images">
+                    <StudioImageUpload
+                      label="产品精修图"
+                      subtitle={VISUAL_PRODUCT_IMAGE_SUBTITLE}
+                      disabled={formLocked}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="documents"
+                    rules={[{ required: true, message: ANALYSIS_UPLOAD_MISSING }]}
+                  >
+                    <ProductDocsUpload
+                      max={1}
+                      label="商业分析"
+                      hint="上传商业分析 TXT / MD"
+                      ariaLabel="上传商业分析"
+                      disabled={formLocked}
+                      required
+                    />
+                  </Form.Item>
+                </>
+              ) : null}
+              <Form.Item name="visualSpec">
+                <GenerateForm />
+              </Form.Item>
+            </>
+          ) : showDesignForm && themePlan ? (
+            <ThemeDesignForm selectedCards={selectedCards} disabled={formLocked} />
+          ) : showDesignForm ? (
+            <DesignForm taskType={taskType} disabled={formLocked} />
+          ) : null}
+        </Form>
       </div>
       {showAnalyzeForm ? (
         <div className={styles.footer}>
@@ -241,7 +190,7 @@ export default function ControlPanel({
             size="large"
             icon={<HighlightOutlined />}
             loading={analyzing}
-            disabled={analyzeDisabled || jobRunning}
+            disabled={jobRunning}
             onClick={onAnalyze}
           >
             {ANALYZE_BUTTON}
@@ -257,7 +206,7 @@ export default function ControlPanel({
             size="large"
             icon={<HighlightOutlined />}
             loading={visualGenerating}
-            disabled={!canGenerateVisual || visualBlocked}
+            disabled={visualBlocked}
             onClick={onGenerateVisual}
           >
             {VISUAL_BUTTON}

@@ -1,4 +1,20 @@
+import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
 import type { StyleDimensionSelections } from '@/business-components/StyleDimensionPicker';
+
+/**
+ * 左栏表单值：与 ControlPanel 的 Form.Item name 一一对应。
+ *
+ * 水印图与风格参考图在服务端契约里仍是单个 URL（`watermarkUrl` / `styleReferenceUrl`），
+ * 这里按上传项整数组持有，落盘时取第一张的预览地址。
+ */
+export type WechatPanelValues = {
+  idea: string;
+  viewpoint: string;
+  styleSelections: StyleDimensionSelections;
+  lengthLimit?: number;
+  watermarkImages: StudioImageUploadItem[];
+  styleReferenceImages: StudioImageUploadItem[];
+};
 
 export type StudioPhase =
   | 'research'

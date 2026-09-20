@@ -19,6 +19,27 @@ export function isAllowedProductDoc(file: Pick<File, 'name' | 'type'>): boolean 
   return file.type === 'text/plain' || file.type === 'text/markdown';
 }
 
+/** 本地 txt/md 的 MIME；浏览器未给出 type 时按扩展名兜底。 */
+export function toDocMediaType(file: File): string {
+  if (file.type) return file.type;
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.txt')) return 'text/plain';
+  if (name.endsWith('.md')) return 'text/markdown';
+  return 'application/octet-stream';
+}
+
+/** 由本地文件建立资料项：预览用 object URL，元信息取自 File 供卡片展示与落盘前序列化。 */
+export function createProductDocUploadItem(file: File, previewUrl: string): ProductDocUploadItem {
+  return {
+    uid: crypto.randomUUID(),
+    file,
+    previewUrl,
+    name: file.name,
+    mimeType: toDocMediaType(file),
+    size: file.size,
+  };
+}
+
 /** 按扩展名返回资料卡片图标。 */
 export function toDocIcon(fileName: string): ReactNode {
   const ext = toDocExt(fileName);

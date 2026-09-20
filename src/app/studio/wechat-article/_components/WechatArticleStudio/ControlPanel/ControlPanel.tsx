@@ -1,12 +1,11 @@
 import { HighlightOutlined } from '@ant-design/icons';
-import { Button, Form, Input, InputNumber, Space } from 'antd';
+import { Button, Form, Input, InputNumber, Space, type FormInstance } from 'antd';
 import StyleDimensionPicker, {
   StyleClipboardActions,
   hasStyleSelection,
   type StyleDimensionSelections,
 } from '@/business-components/StyleDimensionPicker';
 import StudioImageUpload from '@/business-components/StudioImageUpload';
-import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload/types';
 import AngleCardView from '../AngleCardView';
 import {
   DRAFT_BUTTON,
@@ -17,6 +16,8 @@ import {
   LENGTH_LIMIT_MIN,
   LENGTH_LIMIT_PLACEHOLDER,
   LENGTH_LIMIT_SUFFIX,
+  MISSING_IDEA_WARNING,
+  MISSING_STYLE_WARNING,
   PLAN_BUTTON,
   PLAN_IMAGES_BUTTON,
   RESEARCH_BUTTON,
@@ -29,59 +30,38 @@ import {
   WATERMARK_LABEL,
   WATERMARK_SUBTITLE,
 } from '../constants';
-import type { AngleCard, PlanStepSnapshot, StudioPhase } from '../types';
+import type { AngleCard, PlanStepSnapshot, StudioPhase, WechatPanelValues } from '../types';
 import { resolvePlanTitle } from '../utils';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
+  form: FormInstance<WechatPanelValues>;
+  initialValues: WechatPanelValues;
   phase: StudioPhase;
-  idea: string;
-  viewpoint: string;
-  styleSelections: StyleDimensionSelections;
-  lengthLimit?: number;
-  styleReferenceImages: StudioImageUploadItem[];
-  watermarkImages: StudioImageUploadItem[];
-  onIdeaChange: (value: string) => void;
-  onViewpointChange: (value: string) => void;
-  onStyleSelectionsChange: (value: StyleDimensionSelections) => void;
-  onLengthLimitChange: (value: number | undefined) => void;
-  onStyleReferenceAppend: (files: File[]) => void;
-  onStyleReferenceRemove: (uid: string) => void;
-  onWatermarkAppend: (files: File[]) => void;
-  onWatermarkRemove: (uid: string) => void;
+  /** 左栏字段变化；水印图与风格参考图是「改完即落盘」，其余字段等各自步骤的动作统一落盘 */
+  onFieldChange: (changed: Partial<WechatPanelValues>) => void;
+  selectedAngle?: AngleCard;
+  plan?: PlanStepSnapshot;
+  hasMarkdown: boolean;
   onResearch: () => void;
   onPlan: () => void;
   onDraft: () => void;
   onPlanImages: () => void;
-  selectedAngle?: AngleCard;
-  plan?: PlanStepSnapshot;
-  hasMarkdown: boolean;
 };
 
 /** 公众号左栏：按当前步骤展示想法 / 思路参数 / 成稿文风 / 配图水印与风格参考。 */
 export default function ControlPanel({
+  form,
+  initialValues,
   phase,
-  idea,
-  viewpoint,
-  styleSelections,
-  lengthLimit,
-  styleReferenceImages,
-  watermarkImages,
-  onIdeaChange,
-  onViewpointChange,
-  onStyleSelectionsChange,
-  onLengthLimitChange,
-  onStyleReferenceAppend,
-  onStyleReferenceRemove,
-  onWatermarkAppend,
-  onWatermarkRemove,
+  onFieldChange,
+  selectedAngle,
+  plan,
+  hasMarkdown,
   onResearch,
   onPlan,
   onDraft,
   onPlanImages,
-  selectedAngle,
-  plan,
-  hasMarkdown,
 }: ControlPanelProps) {
   const busy =
     phase === 'researching' ||
@@ -93,108 +73,140 @@ export default function ControlPanel({
   const draftStep = phase === 'draft' || phase === 'drafting' || phase === 'drafted';
   const imagesStep = phase === 'images' || phase === 'illustrating' || phase === 'illustrated';
   const draftTitle = plan ? resolvePlanTitle(plan) : undefined;
+  // 复制/粘贴按钮要拿到当前选择，故这里单独订一个字段
+  const styleSelections =
+    Form.useWatch('styleSelections', { form, preserve: true }) ?? initialValues.styleSelections;
+
+  /**
+   * 粘贴整份文风。
+   *
+   * 走 store 直写：`setFieldsValue` 不触发 onValuesChange（也不会自动重校验），
+   * 故随后补一次针对该字段的校验，清掉粘贴前留下的行内报错。
+   */
+  const applyStyleSelections = (next: StyleDimensionSelections) => {
+    form.setFieldsValue({ styleSelections: next });
+    void form.validateFields(['styleSelections']).catch(() => undefined);
+  };
 
   return (
     <aside className={styles.panel}>
       <div className={styles.scroll}>
-        {researchStep ? (
-          <Form layout="vertical" requiredMark disabled={busy} className={styles.form}>
-            <Form.Item label="我的想法" required>
-              <Input.TextArea
-                rows={4}
-                value={idea}
-                placeholder="例如：AI agent 开始替人逛电商"
-                onChange={(event) => onIdeaChange(event.target.value)}
-              />
-            </Form.Item>
-            <Form.Item label="我的观点">
-              <Input.TextArea
-                rows={4}
-                value={viewpoint}
-                placeholder="例如：国外已经在落地，国内还在聊概念"
-                onChange={(event) => onViewpointChange(event.target.value)}
-              />
-            </Form.Item>
-          </Form>
-        ) : null}
+        {/*
+          四个步骤共用一个 Form：切步骤只换注册的 Form.Item 集合（preserve 默认 true，值仍留在 store），
+          不重挂 Form。左栏值的唯一真相是这份 store，读值一律用 getFieldsValue(true)；
+          不要加 clearOnDestroy，也不要改成 component={false}。
+        */}
+        <Form
+          form={form}
+          initialValues={initialValues}
+          layout="vertical"
+          disabled={busy}
+          className={styles.form}
+          onValuesChange={onFieldChange}
+        >
+          {researchStep ? (
+            <>
+              <Form.Item
+                name="idea"
+                label="我的想法"
+                rules={[{ required: true, whitespace: true, message: MISSING_IDEA_WARNING }]}
+              >
+                <Input.TextArea rows={4} placeholder="例如：AI agent 开始替人逛电商" />
+              </Form.Item>
+              <Form.Item name="viewpoint" label="我的观点">
+                <Input.TextArea rows={4} placeholder="例如：国外已经在落地，国内还在聊概念" />
+              </Form.Item>
+            </>
+          ) : null}
 
-        {planStep ? (
-          <div className={styles.angleBlock}>
-            <div className={styles.angleLabel}>选定角度</div>
-            {selectedAngle ? (
-              <AngleCardView angle={selectedAngle} />
-            ) : (
-              <p className={styles.angleEmpty}>尚未选择角度</p>
-            )}
-          </div>
-        ) : null}
+          {planStep ? (
+            <div className={styles.angleBlock}>
+              <div className={styles.angleLabel}>选定角度</div>
+              {selectedAngle ? (
+                <AngleCardView angle={selectedAngle} />
+              ) : (
+                <p className={styles.angleEmpty}>尚未选择角度</p>
+              )}
+            </div>
+          ) : null}
 
-        {draftStep ? (
-          <Form layout="vertical" requiredMark disabled={busy} className={styles.form}>
-            <Form.Item label={DRAFT_TITLE_LABEL}>
-              <Input value={draftTitle ?? ''} placeholder={DRAFT_TITLE_EMPTY} readOnly />
-            </Form.Item>
-            <Form.Item label={LENGTH_LIMIT_LABEL}>
-              <Space.Compact className={styles.lengthLimit} block>
-                <InputNumber
-                  min={LENGTH_LIMIT_MIN}
-                  max={LENGTH_LIMIT_MAX}
-                  step={100}
-                  value={lengthLimit}
-                  placeholder={LENGTH_LIMIT_PLACEHOLDER}
-                  onChange={(value) =>
-                    onLengthLimitChange(typeof value === 'number' ? value : undefined)
-                  }
-                />
-                <Space.Addon>{LENGTH_LIMIT_SUFFIX}</Space.Addon>
-              </Space.Compact>
-            </Form.Item>
-            {/* 复制/粘贴浮在「文风」标签行右侧（见 module.css 的 styleActions）：
-                不进 Form.Item 的 label，否则 `<button>` 会被 label 隐式关联。 */}
-            <div className={styles.styleRow}>
-              <Form.Item label={STYLE_LABEL} required>
-                <StyleDimensionPicker
+          {draftStep ? (
+            <>
+              {/* 标题在右栏点选标题方向时确定，这里只读回显；成稿前必须有，故标为必填 */}
+              <Form.Item label={DRAFT_TITLE_LABEL} required>
+                <Input value={draftTitle ?? ''} placeholder={DRAFT_TITLE_EMPTY} readOnly />
+              </Form.Item>
+              <Form.Item
+                name="lengthLimit"
+                label={LENGTH_LIMIT_LABEL}
+                // InputNumber 清空时给的是 null，落盘要的是「不写这个键」，故在这里归一成 undefined
+                normalize={(value: number | null) =>
+                  typeof value === 'number' ? value : undefined
+                }
+              >
+                <Space.Compact className={styles.lengthLimit} block>
+                  <InputNumber
+                    min={LENGTH_LIMIT_MIN}
+                    max={LENGTH_LIMIT_MAX}
+                    step={100}
+                    placeholder={LENGTH_LIMIT_PLACEHOLDER}
+                  />
+                  <Space.Addon>{LENGTH_LIMIT_SUFFIX}</Space.Addon>
+                </Space.Compact>
+              </Form.Item>
+              {/* 复制/粘贴浮在「文风」标签行右侧（见 module.css 的 styleActions）：
+                  不进 Form.Item 的 label，否则 `<button>` 会被 label 隐式关联。 */}
+              <div className={styles.styleRow}>
+                <Form.Item
+                  name="styleSelections"
+                  label={STYLE_LABEL}
+                  rules={[
+                    {
+                      // 「一张卡片都没选」不能写成 { required: true }：值是对象，空对象会被判成非空
+                      validator: (_rule, value: StyleDimensionSelections | undefined) =>
+                        hasStyleSelection(value ?? {})
+                          ? Promise.resolve()
+                          : Promise.reject(new Error(MISSING_STYLE_WARNING)),
+                    },
+                  ]}
+                >
+                  <StyleDimensionPicker disabled={busy} />
+                </Form.Item>
+                <StyleClipboardActions
+                  className={styles.styleActions}
                   selections={styleSelections}
                   disabled={busy}
-                  onChange={onStyleSelectionsChange}
+                  onPaste={applyStyleSelections}
+                />
+              </div>
+            </>
+          ) : null}
+
+          {imagesStep ? (
+            <>
+              <Form.Item name="watermarkImages">
+                <StudioImageUpload
+                  max={1}
+                  label={WATERMARK_LABEL}
+                  subtitle={WATERMARK_SUBTITLE}
+                  hint={WATERMARK_HINT}
+                  ariaLabel={WATERMARK_ARIA_LABEL}
+                  disabled={busy}
                 />
               </Form.Item>
-              <StyleClipboardActions
-                className={styles.styleActions}
-                selections={styleSelections}
-                disabled={busy}
-                onPaste={onStyleSelectionsChange}
-              />
-            </div>
-          </Form>
-        ) : null}
-
-        {imagesStep ? (
-          <>
-            <StudioImageUpload
-              images={watermarkImages}
-              max={1}
-              label={WATERMARK_LABEL}
-              subtitle={WATERMARK_SUBTITLE}
-              hint={WATERMARK_HINT}
-              ariaLabel={WATERMARK_ARIA_LABEL}
-              disabled={busy}
-              onAppend={onWatermarkAppend}
-              onRemove={onWatermarkRemove}
-            />
-            <StudioImageUpload
-              images={styleReferenceImages}
-              max={1}
-              label={STYLE_REFERENCE_LABEL}
-              subtitle={STYLE_REFERENCE_SUBTITLE}
-              hint={STYLE_REFERENCE_HINT}
-              ariaLabel={STYLE_REFERENCE_LABEL}
-              disabled={busy}
-              onAppend={onStyleReferenceAppend}
-              onRemove={onStyleReferenceRemove}
-            />
-          </>
-        ) : null}
+              <Form.Item name="styleReferenceImages">
+                <StudioImageUpload
+                  max={1}
+                  label={STYLE_REFERENCE_LABEL}
+                  subtitle={STYLE_REFERENCE_SUBTITLE}
+                  hint={STYLE_REFERENCE_HINT}
+                  ariaLabel={STYLE_REFERENCE_LABEL}
+                  disabled={busy}
+                />
+              </Form.Item>
+            </>
+          ) : null}
+        </Form>
       </div>
       <div className={styles.footer}>
         {researchStep ? (
@@ -205,7 +217,6 @@ export default function ControlPanel({
             size="large"
             icon={<HighlightOutlined />}
             loading={phase === 'researching'}
-            disabled={!idea.trim()}
             onClick={onResearch}
           >
             {RESEARCH_BUTTON}
@@ -233,7 +244,7 @@ export default function ControlPanel({
             size="large"
             icon={<HighlightOutlined />}
             loading={phase === 'drafting'}
-            disabled={!plan || !hasStyleSelection(styleSelections)}
+            disabled={!plan}
             onClick={onDraft}
           >
             {DRAFT_BUTTON}

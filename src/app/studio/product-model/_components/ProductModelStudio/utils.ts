@@ -7,7 +7,7 @@ import type {
   ProductModelStepKey,
   ProductModelTaskStepRecord,
 } from '@/app/api/studio/product-model/_shared/task-types';
-import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
+import type { GenerateSpecFormFields } from '@/app/studio/_components/GenerateSpecForm';
 import { apiPut } from '@/lib/shared/client/api-client';
 import { patchModel } from '@/app/studio/_utils/model-options';
 import { normalizeResultImages } from '@/app/studio/_utils/result-images';
@@ -17,17 +17,12 @@ import {
   downloadZipBlob,
   zipFiles,
 } from '@/app/studio/_utils/export-archive';
-import {
-  appendUploadItems,
-  readUploadItemAsDataUrl,
-  removeUploadItem,
-  revokeUploadItemUrls,
-  serializeUploadItem,
-} from '@/app/studio/_utils/upload-items';
-import { EXPORT_ARCHIVE_NAME, MATERIAL_GROUP_TITLE } from './constants';
+import { readUploadItemAsDataUrl, serializeUploadItem } from '@/app/studio/_utils/upload-items';
+import { DEFAULT_FORM, EXPORT_ARCHIVE_NAME, MATERIAL_GROUP_TITLE } from './constants';
 import type {
   ProductImageItem,
   ProductModelFormState,
+  ProductModelPanelValues,
   ProductModelPhase,
   ProductModelStepSnapshot,
   ResultImage,
@@ -54,27 +49,42 @@ export {
   readUploadItemAsDataUrl,
 } from '@/app/studio/_utils/upload-items';
 
-/** 追加本地图片并建立预览 URL，最多保留指定数量。 */
-export function appendImages(
-  current: ProductImageItem[],
-  files: File[],
-  max: number,
-): ProductImageItem[] {
-  return appendUploadItems(current, files, max, (file, previewUrl) => ({
-    uid: crypto.randomUUID(),
-    file,
-    previewUrl,
-  }));
+/** 从表单态里取出出图规格四件套（模型 / 比例 / 清晰度 / 生成数量）。 */
+export function pickSpecFields(form: ProductModelFormState): GenerateSpecFormFields {
+  return {
+    model: form.model,
+    aspectRatio: form.aspectRatio,
+    quality: form.quality,
+    clarity: form.clarity,
+    count: form.count,
+  };
 }
 
-/** 按 uid 移除图片并释放其预览 URL。 */
-export function removeImage(current: ProductImageItem[], uid: string): ProductImageItem[] {
-  return removeUploadItem(current, uid);
+/** 左栏表单值 → 本产品表单态；store 尚未播种时回落到默认表单，避免拼出半截请求体。 */
+export function toProductModelFormState(values: ProductModelPanelValues): ProductModelFormState {
+  const fallback = DEFAULT_FORM;
+  return {
+    viewRequirement: values.viewRequirement ?? fallback.viewRequirement,
+    ...(values.spec ?? pickSpecFields(fallback)),
+  };
 }
 
-/** 释放一组本地图片的预览 URL。 */
-export function revokeImageUrls(items: ProductImageItem[]): void {
-  revokeUploadItemUrls(items);
+/**
+ * 左栏值的唯一读取口。
+ *
+ * `getFieldsValue(true)` 的 `true` 不能省：完成步左栏已卸载，`getFieldsValue()` 只返回「已注册字段」，
+ * 那时会读到空对象，出图请求与落盘快照都会静默丢掉参考图。
+ */
+export function readProductModelPanelValues(values: ProductModelPanelValues): {
+  form: ProductModelFormState;
+  productImages: ProductImageItem[];
+  modelImages: ProductImageItem[];
+} {
+  return {
+    form: toProductModelFormState(values),
+    productImages: values.productImages ?? [],
+    modelImages: values.modelImages ?? [],
+  };
 }
 
 /** 将本地图片转换为生图接口图片输入；恢复的快照无 file 时回退到资产 URL。 */
@@ -189,5 +199,3 @@ export async function saveProductModelStep<T>(
   );
   return record.data as T;
 }
-
-export { MAX_STUDIO_IMAGES };

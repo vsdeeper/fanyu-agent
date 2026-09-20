@@ -1,9 +1,7 @@
-import { Radio } from 'antd';
+import { Form, Radio } from 'antd';
 import StudioImageUpload from '@/business-components/StudioImageUpload';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import GenerateForm from '../GenerateForm';
-import { patchFormState } from '../utils';
-import type { DesignFormState, ProductImageItem, StudioSpecFields } from '../../types';
 import {
   PRODUCT_IMAGE_HINT,
   PRODUCT_IMAGE_LABEL,
@@ -16,13 +14,8 @@ import SelectedPlanCards from './SelectedPlanCards';
 import styles from './ThemeDesignForm.module.css';
 
 type ThemeDesignFormProps = {
-  form: DesignFormState;
-  images: ProductImageItem[];
   selectedCards: ThemePlanCard[];
   disabled: boolean;
-  onFormChange: (next: DesignFormState) => void;
-  onImagesAppend: (files: File[]) => void;
-  onImageRemove: (uid: string) => void;
 };
 
 /**
@@ -30,72 +23,49 @@ type ThemeDesignFormProps = {
  *
  * 两种任务的产品精修图都非必填，所以副标题与提示恒为「可选」口径 ——
  * 本组件只由主题规划类任务渲染，不用再按 taskType 分支。
+ *
+ * 两个出图开关写成 designSpec 的子路径，与同一个对象上的规格 Item 并存：
+ * rc-field-form 写子路径时沿路径克隆，父 Item 拿到新对象引用会照常重渲染，
+ * 规格整对象回写时也会把这两个键带上。
  */
-export default function ThemeDesignForm({
-  form,
-  images,
-  selectedCards,
-  disabled,
-  onFormChange,
-  onImagesAppend,
-  onImageRemove,
-}: ThemeDesignFormProps) {
-  const handleSpecChange = (next: StudioSpecFields) => {
-    onFormChange({ ...form, ...next });
-  };
-
+export default function ThemeDesignForm({ selectedCards, disabled }: ThemeDesignFormProps) {
   return (
     <>
-      <StudioImageUpload
-        label={PRODUCT_IMAGE_LABEL}
-        subtitle={PRODUCT_IMAGE_SUBTITLE}
-        hint={PRODUCT_IMAGE_HINT}
-        images={images}
-        disabled={disabled}
-        onAppend={onImagesAppend}
-        onRemove={onImageRemove}
-      />
+      <Form.Item name="images">
+        <StudioImageUpload
+          label={PRODUCT_IMAGE_LABEL}
+          subtitle={PRODUCT_IMAGE_SUBTITLE}
+          hint={PRODUCT_IMAGE_HINT}
+          disabled={disabled}
+        />
+      </Form.Item>
       {selectedCards.length > 0 ? (
         <div className={styles.field}>
           <span className={styles.label}>已选主题</span>
           <SelectedPlanCards cards={selectedCards} />
         </div>
       ) : null}
-      <label className={styles.field}>
-        <span className={styles.label}>{TEXTLESS_VISUAL_LABEL}</span>
+      <Form.Item name={['designSpec', 'textlessVisual']} label={TEXTLESS_VISUAL_LABEL}>
         <Radio.Group
           block
           optionType="button"
           buttonStyle="solid"
-          value={form.textlessVisual}
           options={YES_NO_OPTIONS}
           disabled={disabled}
-          onChange={(event) =>
-            onFormChange(patchFormState(form, 'textlessVisual', event.target.value as boolean))
-          }
         />
-      </label>
-      <label className={styles.field}>
-        <span className={styles.label}>{UNIFY_VISUAL_MOOD_LABEL}</span>
+      </Form.Item>
+      <Form.Item name={['designSpec', 'unifyVisualMood']} label={UNIFY_VISUAL_MOOD_LABEL}>
         <Radio.Group
           block
           optionType="button"
           buttonStyle="solid"
-          value={form.unifyVisualMood}
           options={YES_NO_OPTIONS}
           disabled={disabled}
-          onChange={(event) =>
-            onFormChange(patchFormState(form, 'unifyVisualMood', event.target.value as boolean))
-          }
         />
-      </label>
-      <GenerateForm
-        form={form}
-        disabled={disabled}
-        onFormChange={handleSpecChange}
-        count={form.count}
-        onCountChange={(value) => onFormChange(patchFormState(form, 'count', value))}
-      />
+      </Form.Item>
+      <Form.Item name="designSpec">
+        <GenerateForm />
+      </Form.Item>
     </>
   );
 }

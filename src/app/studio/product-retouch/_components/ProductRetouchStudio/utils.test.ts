@@ -1,7 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ResultImage } from './types';
 import {
-  appendProductImages,
   applyGenerateEvent,
   dropPendingImages,
   getSelectedImageUrl,
@@ -18,27 +17,6 @@ import {
   toggleSelectedId,
 } from './utils';
 import { DEFAULT_MULTIVIEW_FORM, DEFAULT_REFINE_FORM } from './constants';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-describe('上传项 uid', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it('新项使用 UUID 且不含文件名', () => {
-    vi.stubGlobal('URL', {
-      ...URL,
-      createObjectURL: () => 'blob:test',
-      revokeObjectURL: () => undefined,
-    });
-    const file = new File(['img'], '美的台扇.png', { type: 'image/png' });
-    const images = appendProductImages([], [file]);
-
-    expect(images[0]?.uid).toMatch(UUID_RE);
-    expect(images[0]?.uid).not.toContain(file.name);
-  });
-});
 
 describe('产品精修结果流', () => {
   it('追加批次时各槽位 id 唯一，事件按 id 更新', () => {

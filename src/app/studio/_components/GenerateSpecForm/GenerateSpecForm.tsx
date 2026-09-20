@@ -10,28 +10,42 @@ export type GenerateSpecFormFields = {
   count: string;
 };
 
-type SelectOption = { value: string; label: string };
+export type GenerateSpecSelectOption = { value: string; label: string };
 
-type GenerateSpecFormProps<T extends GenerateSpecFormFields> = {
-  form: T;
-  disabled: boolean;
-  onChange: (next: T) => void;
-  modelOptions: SelectOption[];
-  aspectRatioOptions: SelectOption[];
+export type GenerateSpecFormProps<T extends GenerateSpecFormFields> = {
+  /** 受控值；未传按空规格处理（Form.Item 首帧可能注入 undefined） */
+  value?: T;
+  onChange?: (next: T) => void;
+  modelOptions: GenerateSpecSelectOption[];
+  aspectRatioOptions: GenerateSpecSelectOption[];
   showCount?: boolean;
   aspectRatioLabel?: string;
 };
 
-/** 渲染模型、比例、清晰度与生成数量规格。 */
+const EMPTY_SPEC_FIELDS: GenerateSpecFormFields = {
+  model: '',
+  aspectRatio: '',
+  quality: '',
+  clarity: '',
+  count: '',
+};
+
+/**
+ * 渲染模型、比例、清晰度与生成数量规格。
+ *
+ * 四项始终作为一个整对象受控：切换模型要连带改写清晰度的可选项（`patchModel`），
+ * 拆成四个独立字段会把这份联动切碎，而它们本身都没有单字段校验。
+ */
 export default function GenerateSpecForm<T extends GenerateSpecFormFields>({
-  form,
-  disabled,
+  value,
   onChange,
   modelOptions,
   aspectRatioOptions,
   showCount = true,
   aspectRatioLabel = '比例',
 }: GenerateSpecFormProps<T>) {
+  const form = value ?? (EMPTY_SPEC_FIELDS as T);
+  const change = (next: T) => onChange?.(next);
   return (
     <>
       <div className={styles.pair}>
@@ -40,8 +54,7 @@ export default function GenerateSpecForm<T extends GenerateSpecFormFields>({
           <Select
             value={form.model}
             options={modelOptions}
-            disabled={disabled}
-            onChange={(model) => onChange(patchModel(form, model))}
+            onChange={(model) => change(patchModel(form, model))}
           />
         </label>
         <label className={styles.field}>
@@ -49,8 +62,7 @@ export default function GenerateSpecForm<T extends GenerateSpecFormFields>({
           <Select
             value={form.aspectRatio}
             options={aspectRatioOptions}
-            disabled={disabled}
-            onChange={(aspectRatio) => onChange({ ...form, aspectRatio })}
+            onChange={(aspectRatio) => change({ ...form, aspectRatio })}
           />
         </label>
       </div>
@@ -59,8 +71,7 @@ export default function GenerateSpecForm<T extends GenerateSpecFormFields>({
         <Select
           value={form.clarity}
           options={toClarityOptions(form.model)}
-          disabled={disabled}
-          onChange={(clarity) => onChange({ ...form, clarity })}
+          onChange={(clarity) => change({ ...form, clarity })}
         />
       </label>
       {showCount ? (
@@ -69,8 +80,7 @@ export default function GenerateSpecForm<T extends GenerateSpecFormFields>({
           <Select
             value={form.count}
             options={toCountOptions()}
-            disabled={disabled}
-            onChange={(count) => onChange({ ...form, count })}
+            onChange={(count) => change({ ...form, count })}
           />
         </label>
       ) : null}

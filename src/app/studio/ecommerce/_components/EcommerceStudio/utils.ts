@@ -16,19 +16,14 @@ import type {
   EcommerceTaskStepRecord,
   EcommerceTaskType,
 } from '@/app/api/studio/ecommerce/_shared/task-types';
-import { MAX_PRODUCT_DOCS } from '@/business-components/ProductDocsUpload/constants';
-import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
 import { apiPut } from '@/lib/shared/client/api-client';
 import {
   applyGenerateEvent,
   pendingImages as pendingImagesFromCount,
 } from '@/app/studio/_utils/generate-stream';
 import {
-  appendUploadItems,
   readUploadItemAsDataUrl,
   readUploadItemAsText,
-  removeUploadItem,
-  revokeUploadItemUrls,
   serializeUploadItem,
 } from '@/app/studio/_utils/upload-items';
 import {
@@ -42,6 +37,7 @@ import type {
   DesignStepSnapshot,
   DesignFormState,
   DesignResultGroups,
+  EcommercePanelValues,
   ProductDocItem,
   ProductImageItem,
   StudioFormState,
@@ -49,7 +45,11 @@ import type {
   StudioResultImage,
   VisualStepSnapshot,
 } from './types';
-import { DEFAULT_CLARITY_BY_TASK_TYPE, DEFAULT_DESIGN_FORM_STATE } from './constants';
+import {
+  DEFAULT_CLARITY_BY_TASK_TYPE,
+  DEFAULT_DESIGN_FORM_STATE,
+  DEFAULT_FORM_STATE,
+} from './constants';
 
 export {
   applyGenerateEvent,
@@ -96,60 +96,57 @@ export function withDesignVisualFlags<T extends Partial<DesignFormState>>(
   };
 }
 
-/**
- * 将选择的文件追加为本地预览项；超出上限的部分丢弃。
- */
-export function appendProductImages(
-  current: ProductImageItem[],
-  files: File[],
-  max = MAX_STUDIO_IMAGES,
-): ProductImageItem[] {
-  return appendUploadItems(current, files, max, (file, previewUrl) => ({
-    uid: crypto.randomUUID(),
-    file,
-    previewUrl,
-    name: file.name,
-    mimeType: file.type || 'image/jpeg',
-    size: file.size,
-  }));
-}
-
-/** 按 uid 移除预览项并释放 object URL */
-export function removeProductImage(current: ProductImageItem[], uid: string): ProductImageItem[] {
-  return removeUploadItem(current, uid);
-}
-
-/** 卸载时释放全部 object URL */
-export function revokeProductImageUrls(items: ProductImageItem[]): void {
-  revokeUploadItemUrls(items);
+/** 主视觉表单态：store 未播种时回落默认规格。 */
+export function resolveVisualForm(values: StudioFormState | undefined): StudioFormState {
+  return { ...DEFAULT_FORM_STATE, ...(values ?? {}) };
 }
 
 /**
- * 将选择的资料追加为本地项；超出上限的部分丢弃。
+ * 设计表单态：以任务类型为准覆写 taskType 与该类型的默认比例。
+ *
+ * 旧快照与作业回声都可能带着别的任务类型，统一在这里收敛，下游不必再各自判一遍。
  */
-export function appendProductDocs(
-  current: ProductDocItem[],
-  files: File[],
-  max = MAX_PRODUCT_DOCS,
-): ProductDocItem[] {
-  return appendUploadItems(current, files, max, (file, previewUrl) => ({
-    uid: crypto.randomUUID(),
-    file,
-    previewUrl,
-    name: file.name,
-    mimeType: toDocMediaType(file),
-    size: file.size,
-  }));
+export function resolveDesignForm(
+  values: DesignFormState | undefined,
+  taskType: EcommerceTaskType,
+): DesignFormState {
+  const base = withDesignVisualFlags({
+    ...createDefaultDesignForm(taskType),
+    ...(values ?? {}),
+  });
+  if (taskType === '详情图') {
+    return { ...base, taskType, aspectRatio: base.aspectRatio || '3:4' };
+  }
+  return { ...base, taskType };
 }
 
-/** 按 uid 移除资料并释放 object URL */
-export function removeProductDoc(current: ProductDocItem[], uid: string): ProductDocItem[] {
-  return removeUploadItem(current, uid);
-}
-
-/** 卸载时释放资料 object URL */
-export function revokeProductDocUrls(items: ProductDocItem[]): void {
-  revokeUploadItemUrls(items);
+/**
+ * 左栏值的唯一读取口。
+ *
+ * `getFieldsValue(true)` 的 `true` 不能省：进入设计或完成步后，主视觉那批 Form.Item 已卸载，
+ * `getFieldsValue()` 只返回「已注册字段」，那时规格与参考图都会被读成空。
+ */
+export function readEcommercePanelValues(
+  values: EcommercePanelValues,
+  taskType: EcommerceTaskType,
+): {
+  images: ProductImageItem[];
+  documents: ProductDocItem[];
+  productDocs: ProductDocItem[];
+  brandLogo: ProductImageItem[];
+  modelImages: ProductImageItem[];
+  visualForm: StudioFormState;
+  designForm: DesignFormState;
+} {
+  return {
+    images: values.images ?? [],
+    documents: values.documents ?? [],
+    productDocs: values.productDocs ?? [],
+    brandLogo: values.brandLogo ?? [],
+    modelImages: values.modelImages ?? [],
+    visualForm: resolveVisualForm(values.visualSpec),
+    designForm: resolveDesignForm(values.designSpec, taskType),
+  };
 }
 
 /** 营销主视觉请求体：表单规格 + 商业分析正文 + 产品精修图（非必填）+ 可选品牌 Logo */
@@ -303,22 +300,13 @@ export async function toDetailImageGeneratePayload(
   };
 }
 
-/** 本地 txt/md 的 MIME。 */
-export function toDocMediaType(file: File): string {
-  if (file.type) return file.type;
-  const name = file.name.toLowerCase();
-  if (name.endsWith('.txt')) return 'text/plain';
-  if (name.endsWith('.md')) return 'text/markdown';
-  return 'application/octet-stream';
-}
-
 /** 本地产品图转分析接口 images 字段 */
 export async function toAnalyzeImages(
   images: ProductImageItem[],
 ): Promise<BusinessAnalysisImageInput[]> {
   return Promise.all(
     images.map(async (item) => ({
-      filename: item.name,
+      filename: item.name ?? 'product-image',
       mediaType: item.mimeType || 'image/jpeg',
       dataUrl: await readUploadItemAsDataUrl(item),
     })),
@@ -331,8 +319,8 @@ export async function toAnalyzeDocuments(
 ): Promise<BusinessAnalysisDocumentInput[]> {
   return Promise.all(
     documents.map(async (item) => ({
-      filename: item.name,
-      mediaType: item.mimeType,
+      filename: item.name ?? 'product-doc',
+      mediaType: item.mimeType || 'text/plain',
       dataUrl: await readUploadItemAsDataUrl(item),
     })),
   );

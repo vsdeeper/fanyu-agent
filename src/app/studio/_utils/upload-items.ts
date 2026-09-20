@@ -1,33 +1,4 @@
-export type StudioUploadItem = {
-  uid: string;
-  file?: File;
-  previewUrl: string;
-};
-
-/** 追加本地图片并建立预览 URL，最多保留指定数量。 */
-export function appendUploadItems<T extends StudioUploadItem>(
-  current: T[],
-  files: File[],
-  max: number,
-  createItem: (file: File, previewUrl: string) => T,
-): T[] {
-  const room = max - current.length;
-  if (room <= 0) return current;
-  const next = files.slice(0, room).map((file) => createItem(file, URL.createObjectURL(file)));
-  return [...current, ...next];
-}
-
-/** 按 uid 移除图片并释放其预览 URL。 */
-export function removeUploadItem<T extends StudioUploadItem>(current: T[], uid: string): T[] {
-  const target = current.find((item) => item.uid === uid);
-  if (target) URL.revokeObjectURL(target.previewUrl);
-  return current.filter((item) => item.uid !== uid);
-}
-
-/** 释放一组本地图片的预览 URL。 */
-export function revokeUploadItemUrls(items: readonly StudioUploadItem[]): void {
-  for (const item of items) URL.revokeObjectURL(item.previewUrl);
-}
+import type { LocalUploadItem } from '@/lib/shared/client/upload-items';
 
 /** 将本地文件读取为 API 可接收的 data URL。 */
 export function readFileAsDataUrl(file: Blob): Promise<string> {
@@ -48,20 +19,20 @@ export async function readUrlAsDataUrl(url: string): Promise<string> {
 }
 
 /** 读取新上传文件或已持久化资产，统一产出 data URL。 */
-export async function readUploadItemAsDataUrl(item: StudioUploadItem): Promise<string> {
+export async function readUploadItemAsDataUrl(item: LocalUploadItem): Promise<string> {
   return item.file ? readFileAsDataUrl(item.file) : readUrlAsDataUrl(item.previewUrl);
 }
 
 /** 读取新上传 txt/md 或已持久化资料，统一产出 UTF-8 正文。 */
-export async function readUploadItemAsText(item: StudioUploadItem): Promise<string> {
+export async function readUploadItemAsText(item: LocalUploadItem): Promise<string> {
   if (item.file) return item.file.text();
   const response = await fetch(item.previewUrl);
   if (!response.ok) throw new Error('读取历史资料失败');
   return response.text();
 }
 
-/** 将上传图剥离 file（不可序列化），并把本地 blob URL 转为 data URL 供服务端落盘。 */
-export async function serializeUploadItem<T extends StudioUploadItem>(
+/** 将上传项剥离 file（不可序列化），并把本地 blob URL 转为 data URL 供服务端落盘。 */
+export async function serializeUploadItem<T extends LocalUploadItem>(
   item: T,
 ): Promise<Omit<T, 'file'>> {
   const { file, ...rest } = item;

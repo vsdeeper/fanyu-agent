@@ -60,21 +60,10 @@ export default function WechatArticleStudio({ task }: WechatArticleStudioProps) 
           ) : (
             <>
               <ControlPanel
+                form={studio.panelForm}
+                initialValues={studio.panelInitialValues}
                 phase={studio.phase}
-                idea={studio.idea}
-                viewpoint={studio.viewpoint}
-                styleSelections={studio.styleSelections}
-                lengthLimit={studio.lengthLimit}
-                styleReferenceImages={studio.styleReferenceImages}
-                watermarkImages={studio.watermarkImages}
-                onIdeaChange={studio.setIdea}
-                onViewpointChange={studio.setViewpoint}
-                onStyleSelectionsChange={studio.setStyleSelections}
-                onLengthLimitChange={studio.setLengthLimit}
-                onStyleReferenceAppend={studio.handleStyleReferenceAppend}
-                onStyleReferenceRemove={studio.handleStyleReferenceRemove}
-                onWatermarkAppend={studio.handleWatermarkAppend}
-                onWatermarkRemove={studio.handleWatermarkRemove}
+                onFieldChange={studio.handlePanelFieldChange}
                 onResearch={studio.handleResearch}
                 onPlan={studio.handlePlan}
                 onDraft={studio.handleDraft}

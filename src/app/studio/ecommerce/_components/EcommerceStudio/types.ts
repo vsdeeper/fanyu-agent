@@ -1,6 +1,7 @@
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
+import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
 
 export type { StudioResultImage };
 
@@ -14,23 +15,9 @@ export type StudioPhase =
   | 'designGenerating'
   | 'complete';
 
-export type ProductImageItem = {
-  uid: string;
-  file?: File;
-  previewUrl: string;
-  name: string;
-  mimeType: string;
-  size: number;
-};
-
-export type ProductDocItem = {
-  uid: string;
-  file?: File;
-  previewUrl: string;
-  name: string;
-  mimeType: string;
-  size: number;
-};
+/** 上传项与本地文件生命周期共用同一份定义，见 lib/shared/client/upload-items。 */
+export type ProductImageItem = StudioImageUploadItem;
+export type ProductDocItem = StudioImageUploadItem;
 
 /** 生图规格字段，主视觉与产品模特表单共用 */
 export type StudioSpecFields = {
@@ -53,6 +40,22 @@ export type DesignFormState = StudioFormState & {
 };
 
 export type DesignResultGroups = Partial<Record<EcommerceTaskType, StudioResultImage[]>>;
+
+/**
+ * 左栏表单值：与 ControlPanel 的 Form.Item name 一一对应。
+ *
+ * 主视觉与设计各占一套规格 name；几个上传项在互斥的步骤分支里复用同一个 key
+ * （例如 brandLogo 在分析步与主视觉步都写它，两步不会同时渲染）。
+ */
+export type EcommercePanelValues = {
+  images: ProductImageItem[];
+  documents: ProductDocItem[];
+  productDocs: ProductDocItem[];
+  brandLogo: ProductImageItem[];
+  modelImages: ProductImageItem[];
+  visualSpec: StudioFormState;
+  designSpec: DesignFormState;
+};
 
 export type AnalysisStepSnapshot = {
   images: ProductImageItem[];

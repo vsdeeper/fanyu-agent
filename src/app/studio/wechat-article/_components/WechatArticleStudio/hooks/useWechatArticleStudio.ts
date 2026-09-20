@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { App } from 'antd';
+import { App, Form } from 'antd';
 import type { WechatArticleTaskDetail } from '@/app/api/studio/wechat-article/_shared/task-types';
+import { validateForm } from '@/app/studio/_utils/form-validate';
 import { getModelCapability, resolveClarityForModel } from '@/app/studio/_utils/model-options';
+import { readUploadItemAsDataUrl } from '@/app/studio/_utils/upload-items';
+import {
+  revokeLocalUploadItemUrls,
+  revokeReplacedLocalUploadItemUrls,
+} from '@/lib/shared/client/upload-items';
 import {
   COPY_FAILED,
   COPY_IMAGE_FAILED,
@@ -15,10 +21,8 @@ import {
   IMAGES_FAILED,
   MISSING_ACTIVE_SLOT_WARNING,
   MISSING_ANGLE_WARNING,
-  MISSING_IDEA_WARNING,
   MISSING_MARKDOWN_WARNING,
   MISSING_PLAN_WARNING,
-  MISSING_STYLE_WARNING,
   MISSING_TITLE_WARNING,
   PLAN_FAILED,
   RESEARCH_FAILED,
@@ -33,6 +37,7 @@ import type {
   PlanStepSnapshot,
   ResearchStepSnapshot,
   StudioPhase,
+  WechatPanelValues,
 } from '../types';
 import {
   assertOkOrJsonFail,
@@ -60,20 +65,13 @@ import {
   readFileAsDataUrl,
   readPlanStepSnapshot,
   readResearchStepSnapshot,
-  resolveImageDataUrl,
   resolveInitialPhase,
   resolvePlanTitle,
   saveWechatStep,
+  toImageItems,
+  toPersistableImageUrl,
 } from '../utils';
-import {
-  formatStyleSelections,
-  hasStyleSelection,
-  type StyleDimensionSelections,
-} from '@/business-components/StyleDimensionPicker';
-import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload/types';
-
-const STYLE_REFERENCE_UID = 'style-reference';
-const WATERMARK_UID = 'watermark';
+import { formatStyleSelections } from '@/business-components/StyleDimensionPicker';
 
 /** 管理公众号五步：调研 → 思路 → 成稿 → 成稿配图 → 完成。 */
 export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
@@ -84,8 +82,16 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   const imageDefaults = defaultImageSpec();
 
   const [phase, setPhase] = useState<StudioPhase>(resolveInitialPhase(initialResearch));
-  const [idea, setIdea] = useState(initialResearch?.idea ?? '');
-  const [viewpoint, setViewpoint] = useState(initialResearch?.viewpoint ?? '');
+  const [panelForm] = Form.useForm<WechatPanelValues>();
+  // 左栏初值只算一次：Form 二次挂载是 store 赢（只补缺失键），重算只会白白多渲染
+  const [panelInitialValues] = useState<WechatPanelValues>(() => ({
+    idea: initialResearch?.idea ?? '',
+    viewpoint: initialResearch?.viewpoint ?? '',
+    styleSelections: initialDraft?.styleSelections ?? {},
+    lengthLimit: initialDraft?.lengthLimit,
+    watermarkImages: toImageItems(initialDraft?.watermarkUrl),
+    styleReferenceImages: toImageItems(initialDraft?.styleReferenceUrl),
+  }));
   const [researchStream, setResearchStream] = useState(initialResearch?.streamText ?? '');
   const [sources, setSources] = useState(initialResearch?.sources ?? []);
   const [angles, setAngles] = useState(initialResearch?.angles ?? []);
@@ -94,10 +100,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   const [planStream, setPlanStream] = useState(initialPlan?.streamText ?? '');
   const [plan, setPlan] = useState<PlanStepSnapshot | undefined>(initialPlan);
 
-  const [styleSelections, setStyleSelections] = useState<StyleDimensionSelections>(
-    initialDraft?.styleSelections ?? {},
-  );
-  const [lengthLimit, setLengthLimit] = useState<number | undefined>(initialDraft?.lengthLimit);
   const [draftStream, setDraftStream] = useState(initialDraft?.streamText ?? '');
   const [imagesStream, setImagesStream] = useState('');
   const [markdown, setMarkdown] = useState(initialDraft?.markdown ?? '');
@@ -107,8 +109,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     initialDraft?.imageHistory ?? [],
   );
   const [imageVisualStyle, setImageVisualStyle] = useState(initialDraft?.imageVisualStyle ?? '');
-  const [styleReferenceUrl, setStyleReferenceUrl] = useState(initialDraft?.styleReferenceUrl ?? '');
-  const [watermarkUrl, setWatermarkUrl] = useState(initialDraft?.watermarkUrl ?? '');
   const [imageModel, setImageModel] = useState(
     initialDraft?.imageModel ?? imageDefaults.imageModel,
   );
@@ -142,6 +142,8 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   const lastResearchRef = useRef(initialResearch);
   const lastPlanRef = useRef(initialPlan);
   const lastDraftRef = useRef(initialDraft);
+  /** 落盘请求序号：只让最后一次的响应回写 store 与基线，避免旧响应覆盖新状态 */
+  const persistSeqRef = useRef(0);
   const imageSlotsRef = useRef(imageSlots);
   const imageHistoryRef = useRef(imageHistory);
   const activeSlotIdRef = useRef(activeSlotId);
@@ -163,6 +165,10 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     selectedAngleIdRef.current = selectedAngleId;
   }, [selectedAngleId]);
 
+  // 供请求与落盘取用；preserve 让左栏卸载后也读得到，首帧 store 未播种时回落到初值
+  const watched = Form.useWatch([], { form: panelForm, preserve: true });
+  const panelValues: WechatPanelValues = watched ?? panelInitialValues;
+
   useEffect(
     () => () => {
       abortRef.current?.abort();
@@ -170,13 +176,19 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       planBuffer.dispose();
       draftBuffer.dispose();
       imagesBuffer.dispose();
+      // 面板卸载后 store 仍保留本次会话的值，故用 getFieldsValue(true) 读整表；
+      // 重复释放同一个 object URL 是幂等的
+      const values = panelForm.getFieldsValue(true);
+      revokeLocalUploadItemUrls(values.watermarkImages ?? []);
+      revokeLocalUploadItemUrls(values.styleReferenceImages ?? []);
     },
-    [draftBuffer, imagesBuffer, planBuffer, researchBuffer],
+    [draftBuffer, imagesBuffer, panelForm, planBuffer, researchBuffer],
   );
 
   const selectedAngle: AngleCard | undefined = angles.find((item) => item.id === selectedAngleId);
 
   async function persistResearch() {
+    const { idea, viewpoint } = panelValues;
     const next: ResearchStepSnapshot = {
       idea: idea.trim(),
       sources,
@@ -231,14 +243,16 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     slots?: ImageSlot[];
     history?: ImageHistoryItem[];
     imageVisualStyle?: string;
-    styleReferenceUrl?: string;
-    watermarkUrl?: string;
   }) {
+    // 取值全部走 store：panelValues 是渲染闭包里的快照，useWatch 的通知要等下一帧才生效，
+    // 同一事件里若有人先写过 store（如粘贴文风、上传回写），从这里读闭包会拿到上一轮的值
+    const values = panelForm.getFieldsValue(true);
+    const { styleSelections, lengthLimit } = values;
     const slots = toPersistableSlots(overrides?.slots ?? imageSlots);
     const history = toPersistableHistory(overrides?.history ?? imageHistory);
     const visualStyle = (overrides?.imageVisualStyle ?? imageVisualStyle).trim();
-    const styleRef = (overrides?.styleReferenceUrl ?? styleReferenceUrl).trim();
-    const watermark = (overrides?.watermarkUrl ?? watermarkUrl).trim();
+    const styleRef = await toPersistableImageUrl(values.styleReferenceImages ?? []);
+    const watermark = await toPersistableImageUrl(values.watermarkImages ?? []);
     const next: DraftStepSnapshot = {
       markdown: overrides?.markdown ?? markdown,
       imageSlots: slots,
@@ -255,15 +269,31 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       ...(draftStream.trim() ? { streamText: draftStream.trim() } : {}),
     };
     if (isSameDraftSnapshot(next, lastDraftRef.current)) return next;
+    const seq = (persistSeqRef.current += 1);
     const saved = await saveWechatStep(task.id, 'draft', next);
+    // 连传两张图会并发出两次落盘（各自带着不同的快照）。旧响应若后到，它的回写会把新传的那张
+    // 从 store 里抹掉、顺手 revoke 掉仍在引用的 object URL，故只接受最后一次的响应
+    if (seq !== persistSeqRef.current) return saved;
     lastDraftRef.current = saved;
     setMarkdown(saved.markdown);
     setTitles(saved.titles);
     setImageSlots(saved.imageSlots);
     setImageHistory(saved.imageHistory ?? []);
     setImageVisualStyle(saved.imageVisualStyle ?? '');
-    setStyleReferenceUrl(saved.styleReferenceUrl ?? '');
-    setWatermarkUrl(saved.watermarkUrl ?? '');
+    revokeReplacedLocalUploadItemUrls(
+      values.styleReferenceImages ?? [],
+      toImageItems(saved.styleReferenceUrl),
+    );
+    revokeReplacedLocalUploadItemUrls(
+      values.watermarkImages ?? [],
+      toImageItems(saved.watermarkUrl),
+    );
+    // 服务端已把本地文件换成资产 URL，必须写回 store：否则下次比对时基线永远对不上，
+    // 每回落盘都会重传一次这两张图。setFieldsValue 不触发 onValuesChange，不会与用户输入形成回环
+    panelForm.setFieldsValue({
+      styleReferenceImages: toImageItems(saved.styleReferenceUrl),
+      watermarkImages: toImageItems(saved.watermarkUrl),
+    });
     return saved;
   }
 
@@ -315,10 +345,8 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   }
 
   async function handleResearch() {
-    if (!idea.trim()) {
-      message.warning(MISSING_IDEA_WARNING);
-      return;
-    }
+    if (!(await validateForm(panelForm))) return;
+    const { idea, viewpoint } = panelValues;
     setSources([]);
     setAngles([]);
     setSelectedAngleId(undefined);
@@ -372,7 +400,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     await runSse(
       '/api/studio/wechat-article/plan',
       {
-        idea: idea.trim(),
+        idea: panelValues.idea.trim(),
         angle: selectedAngle,
         sources,
       },
@@ -419,10 +447,8 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       message.warning(MISSING_TITLE_WARNING);
       return;
     }
-    if (!hasStyleSelection(styleSelections)) {
-      message.warning(MISSING_STYLE_WARNING);
-      return;
-    }
+    if (!(await validateForm(panelForm))) return;
+    const { idea, lengthLimit, styleSelections } = panelValues;
     const stylePrompt = formatStyleSelections(styleSelections);
     await runSse(
       '/api/studio/wechat-article/draft',
@@ -486,10 +512,11 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       return;
     }
     const selectedTitle = titles?.[0] ?? (plan ? resolvePlanTitle(plan) : undefined);
+    const styleReference = panelValues.styleReferenceImages[0];
     let styleReferenceDataUrl: string | undefined;
-    if (styleReferenceUrl.trim()) {
+    if (styleReference) {
       try {
-        styleReferenceDataUrl = await resolveImageDataUrl(styleReferenceUrl.trim());
+        styleReferenceDataUrl = await readUploadItemAsDataUrl(styleReference);
       } catch (err) {
         console.error('[wechat-article-studio] style reference', err);
         message.error('风格参考图读取失败，请重新上传');
@@ -551,10 +578,10 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
 
   /** 出图后叠加水印：未上传水印图则原样返回；叠加失败只告警，不让整张图白跑。 */
   async function withWatermark(url: string): Promise<string> {
-    const mark = watermarkUrl.trim();
-    if (!mark) return url;
+    const watermark = panelValues.watermarkImages[0];
+    if (!watermark) return url;
     try {
-      return await composeWatermark(url, mark);
+      return await composeWatermark(url, await readUploadItemAsDataUrl(watermark));
     } catch (err) {
       console.error('[wechat-article-studio] compose watermark', err);
       message.warning(WATERMARK_FAILED);
@@ -805,65 +832,21 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     setImageVisualStyle(value);
   }
 
-  async function handleStyleReferenceAppend(files: File[]) {
-    const first = files[0];
-    if (!first) return;
+  /**
+   * 左栏字段变化。
+   *
+   * 水印图与风格参考图是「改完即落盘」：上传组件只负责回写 store，落盘得靠这里补上。
+   * 其余字段不在这里写——它们等各自步骤的动作（开始调研 / 生成正文 / 规划配图）统一落盘。
+   * 这份 Form 的 onValuesChange 只在用户改值（内部 trigger）时触发，setFieldsValue 不会走到这里，无回环。
+   */
+  async function handlePanelFieldChange(changed: Partial<WechatPanelValues>) {
+    if (!('styleReferenceImages' in changed) && !('watermarkImages' in changed)) return;
     try {
-      const dataUrl = await readFileAsDataUrl(first);
-      setStyleReferenceUrl(dataUrl);
-      try {
-        await persistDraft({ styleReferenceUrl: dataUrl });
-      } catch (err) {
-        console.error('[wechat-article-studio] persist style reference', err);
-      }
+      await persistDraft();
     } catch (err) {
-      console.error('[wechat-article-studio] style reference upload', err);
-      message.error(UPLOAD_FAILED);
+      console.error('[wechat-article-studio] persist reference images', err);
     }
   }
-
-  async function handleStyleReferenceRemove(_uid: string) {
-    setStyleReferenceUrl('');
-    try {
-      await persistDraft({ styleReferenceUrl: '' });
-    } catch (err) {
-      console.error('[wechat-article-studio] clear style reference', err);
-    }
-  }
-
-  async function handleWatermarkAppend(files: File[]) {
-    const first = files[0];
-    if (!first) return;
-    try {
-      const dataUrl = await readFileAsDataUrl(first);
-      setWatermarkUrl(dataUrl);
-      try {
-        await persistDraft({ watermarkUrl: dataUrl });
-      } catch (err) {
-        console.error('[wechat-article-studio] persist watermark', err);
-      }
-    } catch (err) {
-      console.error('[wechat-article-studio] watermark upload', err);
-      message.error(UPLOAD_FAILED);
-    }
-  }
-
-  async function handleWatermarkRemove(_uid: string) {
-    setWatermarkUrl('');
-    try {
-      await persistDraft({ watermarkUrl: '' });
-    } catch (err) {
-      console.error('[wechat-article-studio] clear watermark', err);
-    }
-  }
-
-  const styleReferenceImages: StudioImageUploadItem[] = styleReferenceUrl.trim()
-    ? [{ uid: STYLE_REFERENCE_UID, previewUrl: styleReferenceUrl.trim() }]
-    : [];
-
-  const watermarkImages: StudioImageUploadItem[] = watermarkUrl.trim()
-    ? [{ uid: WATERMARK_UID, previewUrl: watermarkUrl.trim() }]
-    : [];
 
   function openSlotDrawer(slotId?: string) {
     const nextId = slotId ?? imageSlots[0]?.id;
@@ -889,10 +872,9 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
 
   return {
     phase,
-    idea,
-    setIdea,
-    viewpoint,
-    setViewpoint,
+    panelForm,
+    panelInitialValues,
+    panelValues,
     researchStream,
     sources,
     angles,
@@ -904,10 +886,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     updatePlanField,
     selectTitleDirection,
     changeTitleDirection,
-    styleSelections,
-    setStyleSelections,
-    lengthLimit,
-    setLengthLimit,
     draftStream,
     imagesStream,
     markdown,
@@ -916,8 +894,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     imageSlots,
     imageHistory,
     imageVisualStyle,
-    styleReferenceImages,
-    watermarkImages,
     imageModel,
     setImageModel,
     imageAspectRatio,
@@ -947,9 +923,6 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
     updateSlotModel,
     updateSlotClarity,
     updateImageVisualStyle,
-    handleStyleReferenceAppend,
-    handleStyleReferenceRemove,
-    handleWatermarkAppend,
-    handleWatermarkRemove,
+    handlePanelFieldChange,
   };
 }

@@ -1,21 +1,14 @@
+import type { GenerateSpecFormFields } from '@/app/studio/_components/GenerateSpecForm';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
+import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
 
 export type ProductRetouchPhase =
   'refine' | 'refineGenerating' | 'multiview' | 'multiviewGenerating' | 'complete';
 
-export type ProductImageItem = {
-  uid: string;
-  file?: File;
-  previewUrl: string;
-};
+/** 上传项与本地文件生命周期共用同一份定义，见 lib/shared/client/upload-items。 */
+export type ProductImageItem = StudioImageUploadItem;
 
-export type GenerateSpecFields = {
-  model: string;
-  aspectRatio: string;
-  quality: string;
-  clarity: string;
-  count: string;
-};
+export type GenerateSpecFields = GenerateSpecFormFields;
 
 export type RefineFormState = GenerateSpecFields & {
   requirement: string;
@@ -23,6 +16,20 @@ export type RefineFormState = GenerateSpecFields & {
 
 export type MultiviewFormState = GenerateSpecFields & {
   requirement: string;
+};
+
+/**
+ * 左栏表单值：与 ControlPanel 的 Form.Item name 一一对应。
+ *
+ * 精修与多视角各占一套 name：两分支的 aspectRatio 默认值不同（1:1 / 16:9），共用 key 会串值。
+ */
+export type ProductRetouchPanelValues = {
+  images: ProductImageItem[];
+  refineRequirement: string;
+  refineSpec: GenerateSpecFields;
+  needsMultiview: boolean;
+  multiviewRequirement: string;
+  multiviewSpec: GenerateSpecFields;
 };
 
 /** 结果图与工作室共用同一份定义（身份、状态、选中语义都在 result-images 里） */
