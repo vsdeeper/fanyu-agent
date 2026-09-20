@@ -1,4 +1,4 @@
-/* 与相邻 Input.TextArea 同款描边，让 5 个维度读起来是一个整体控件 */
+/* 与相邻 Input.TextArea 同款描边，让各维度读起来是一个整体控件 */
 .picker {
   display: flex;
   flex-direction: column;

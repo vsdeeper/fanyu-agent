@@ -41,3 +41,20 @@ export type StyleDimension = {
 
 /** 已选卡片：维度 → 卡片 id。空维度不落键。 */
 export type StyleDimensionSelections = Partial<Record<StyleDimensionKey, string[]>>;
+
+/** 粘贴进来的文风 JSON 校验不过的原因。文案见 StyleClipboardActions/constants.ts。 */
+export type StylePayloadError =
+  /** 不是合法 JSON */
+  | 'invalid-json'
+  /** 能解析，但不是「维度 → 卡片 id 数组」的形状 */
+  | 'invalid-shape'
+  /** 含当前卡片库里没有的 id，多半来自别的版本 */
+  | 'unknown-card'
+  /** 同一互斥轴上选了两张，粘贴方会与复制方不一致 */
+  | 'axis-conflict'
+  /** 形状合法但一张有效卡片都没有 */
+  | 'empty';
+
+/** 文风 JSON 校验结果。 */
+export type StylePayloadResult =
+  { ok: true; selections: StyleDimensionSelections } | { ok: false; error: StylePayloadError };

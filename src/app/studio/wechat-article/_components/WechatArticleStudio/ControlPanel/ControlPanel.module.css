@@ -32,6 +32,32 @@
   width: 100%;
 }
 
+/*
+ * 复制/粘贴浮在「文风」标签行右侧。
+ *
+ * 按钮不能塞进 Form.Item 的 label：`<button>` 是 labelable 元素，`<label>` 会隐式关联
+ * 第一个按钮，Chrome 再把 label 的 :hover 转发给它——鼠标停在「粘贴」上（甚至只停在
+ * 「文风」二字上）「复制」都会跟着进 hover；点标签文字或另一个按钮也会连带触发它。
+ *
+ * 所以按钮留在 label 外，用绝对定位浮上去：不占布局，面板仍是整幅宽度。
+ *
+ * 高度对齐的是 label 的盒高，也就是它的行高（14px 字号 × 1.5714 = 22px），不是
+ * controlHeight：antd 垂直布局的 label 只占一行文字的高度，按 32px 居中会让按钮低 5px。
+ * 按钮自身高 24px，在 22px 的盒里居中后与「文风」同一条中线。
+ */
+.styleRow {
+  position: relative;
+}
+
+.styleActions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  height: 22px;
+}
+
 .lengthLimit :global(.ant-input-number) {
   flex: 1;
   min-width: 0;

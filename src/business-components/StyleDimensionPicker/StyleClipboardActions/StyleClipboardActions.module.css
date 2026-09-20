@@ -1,0 +1,6 @@
+/* 只做按钮排布，定位交给挂载方的 className。 */
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

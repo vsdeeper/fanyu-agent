@@ -5,6 +5,7 @@ import type {
   StyleDimensionGroup,
   StyleDimensionKey,
   StyleDimensionSelections,
+  StylePayloadResult,
 } from './types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -121,4 +122,58 @@ export function formatStyleSelections(selections: StyleDimensionSelections): str
     });
     return axes.length ? [`${dimension.label}：${axes.join('；')}`] : [];
   }).join('\n');
+}
+
+/**
+ * 序列化文风选择，供复制到别的任务使用。
+ * 缩进两格而非紧凑单行：粘贴方多半要先看一眼再决定，紧凑单行没法读。
+ */
+export function serializeStyleSelections(selections: StyleDimensionSelections): string {
+  return JSON.stringify(selections, null, 2);
+}
+
+/**
+ * 校验粘贴进来的文风 JSON。
+ *
+ * 与 parseStyleSelections 的分工：那个是「尽力清洗」，用在读旧快照这种改不了的输入上；
+ * 这个是「拦截无效数据」，用在人主动粘进来的输入上——未知 id 与同轴冲突一律拒绝，
+ * 不能悄悄丢掉，否则粘出来的跟复制的不是一回事，用户还以为是粘贴出了问题。
+ */
+export function parseStylePayload(text: string): StylePayloadResult {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return { ok: false, error: 'invalid-json' };
+  }
+  if (!isRecord(raw) || Array.isArray(raw)) return { ok: false, error: 'invalid-shape' };
+
+  const selections: StyleDimensionSelections = {};
+  let sawDimensionKey = false;
+  for (const dimension of STYLE_DIMENSIONS) {
+    const value = raw[dimension.key];
+    if (value === undefined) continue;
+    sawDimensionKey = true;
+    if (!Array.isArray(value)) return { ok: false, error: 'invalid-shape' };
+
+    const groups = indexCardsByGroup(dimension);
+    const takenExclusive = new Set<StyleDimensionGroup>();
+    const ids: string[] = [];
+    for (const id of value) {
+      if (typeof id !== 'string') return { ok: false, error: 'invalid-shape' };
+      const group = groups.get(id);
+      if (!group) return { ok: false, error: 'unknown-card' };
+      // 同一 id 重复出现无害，等同一次；同轴第二张才是真冲突。
+      if (ids.includes(id)) continue;
+      if (group.exclusive && takenExclusive.has(group))
+        return { ok: false, error: 'axis-conflict' };
+      if (group.exclusive) takenExclusive.add(group);
+      ids.push(id);
+    }
+    if (ids.length) selections[dimension.key] = ids;
+  }
+
+  if (!sawDimensionKey) return { ok: false, error: 'invalid-shape' };
+  if (!hasStyleSelection(selections)) return { ok: false, error: 'empty' };
+  return { ok: true, selections };
 }

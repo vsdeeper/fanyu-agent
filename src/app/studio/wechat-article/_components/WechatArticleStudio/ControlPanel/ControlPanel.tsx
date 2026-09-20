@@ -1,6 +1,7 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button, Form, Input, InputNumber, Space } from 'antd';
 import StyleDimensionPicker, {
+  StyleClipboardActions,
   hasStyleSelection,
   type StyleDimensionSelections,
 } from '@/business-components/StyleDimensionPicker';
@@ -148,13 +149,23 @@ export default function ControlPanel({
                 <Space.Addon>{LENGTH_LIMIT_SUFFIX}</Space.Addon>
               </Space.Compact>
             </Form.Item>
-            <Form.Item label={STYLE_LABEL} required>
-              <StyleDimensionPicker
+            {/* 复制/粘贴浮在「文风」标签行右侧（见 module.css 的 styleActions）：
+                不进 Form.Item 的 label，否则 `<button>` 会被 label 隐式关联。 */}
+            <div className={styles.styleRow}>
+              <Form.Item label={STYLE_LABEL} required>
+                <StyleDimensionPicker
+                  selections={styleSelections}
+                  disabled={busy}
+                  onChange={onStyleSelectionsChange}
+                />
+              </Form.Item>
+              <StyleClipboardActions
+                className={styles.styleActions}
                 selections={styleSelections}
                 disabled={busy}
-                onChange={onStyleSelectionsChange}
+                onPaste={onStyleSelectionsChange}
               />
-            </Form.Item>
+            </div>
           </Form>
         ) : null}
 

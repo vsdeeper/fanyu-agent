@@ -5,7 +5,9 @@ import {
   applyDimensionSelection,
   formatStyleSelections,
   hasStyleSelection,
+  parseStylePayload,
   parseStyleSelections,
+  serializeStyleSelections,
   toggleStyleCardId,
 } from './utils';
 
@@ -114,5 +116,72 @@ describe('hasStyleSelection', () => {
     expect(hasStyleSelection({})).toBe(false);
     expect(hasStyleSelection({ [EXCLUSIVE_DIMENSION]: ['not-a-card'] })).toBe(false);
     expect(hasStyleSelection({ [EXCLUSIVE_DIMENSION]: [EXCLUSIVE_A] })).toBe(true);
+  });
+});
+
+describe('serializeStyleSelections', () => {
+  it('复制出来的 JSON 能被 parseStylePayload 原样读回', () => {
+    const selections = {
+      [EXCLUSIVE_DIMENSION]: [EXCLUSIVE_A, OTHER_CARD],
+      [STACKABLE_DIMENSION]: [STACKABLE_A, STACKABLE_B],
+    };
+    const parsed = parseStylePayload(serializeStyleSelections(selections));
+    expect(parsed).toEqual({ ok: true, selections });
+  });
+});
+
+describe('parseStylePayload', () => {
+  it('拒绝不是合法 JSON 的输入', () => {
+    expect(parseStylePayload('这不是 JSON')).toEqual({ ok: false, error: 'invalid-json' });
+    expect(parseStylePayload('')).toEqual({ ok: false, error: 'invalid-json' });
+  });
+
+  it('拒绝形状不对的 JSON', () => {
+    expect(parseStylePayload('null')).toEqual({ ok: false, error: 'invalid-shape' });
+    expect(parseStylePayload('[]')).toEqual({ ok: false, error: 'invalid-shape' });
+    expect(parseStylePayload('"文字"')).toEqual({ ok: false, error: 'invalid-shape' });
+    expect(parseStylePayload('{}')).toEqual({ ok: false, error: 'invalid-shape' });
+    expect(parseStylePayload('{"foo":["bar"]}')).toEqual({ ok: false, error: 'invalid-shape' });
+    expect(parseStylePayload('{"narrativeStance":"voice-first"}')).toEqual({
+      ok: false,
+      error: 'invalid-shape',
+    });
+    expect(parseStylePayload('{"narrativeStance":[123]}')).toEqual({
+      ok: false,
+      error: 'invalid-shape',
+    });
+  });
+
+  it('拒绝含未知卡片 id 的数据，不静默丢弃', () => {
+    expect(parseStylePayload('{"narrativeStance":["voice-first","legacy-card"]}')).toEqual({
+      ok: false,
+      error: 'unknown-card',
+    });
+  });
+
+  it('拒绝同一互斥轴上选多张的数据', () => {
+    expect(parseStylePayload(`{"narrativeStance":["${EXCLUSIVE_A}","${EXCLUSIVE_B}"]}`)).toEqual({
+      ok: false,
+      error: 'axis-conflict',
+    });
+  });
+
+  it('可叠加轴上多张仍算合法', () => {
+    const json = `{"languageTexture":["${STACKABLE_A}","${STACKABLE_B}"]}`;
+    expect(parseStylePayload(json)).toEqual({
+      ok: true,
+      selections: { languageTexture: [STACKABLE_A, STACKABLE_B] },
+    });
+  });
+
+  it('形状合法但一张卡都没有时报 empty', () => {
+    expect(parseStylePayload('{"narrativeStance":[]}')).toEqual({ ok: false, error: 'empty' });
+  });
+
+  it('同维度内重复的同一个 id 去重后照常通过', () => {
+    expect(parseStylePayload(`{"narrativeStance":["${EXCLUSIVE_A}","${EXCLUSIVE_A}"]}`)).toEqual({
+      ok: true,
+      selections: { narrativeStance: [EXCLUSIVE_A] },
+    });
   });
 });
