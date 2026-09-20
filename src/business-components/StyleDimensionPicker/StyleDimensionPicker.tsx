@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Flex, Tag } from 'antd';
 import { STYLE_DIMENSIONS } from './style-dimensions';
-import type { StyleDimensionKey, StyleDimensionSelections } from './types';
+import type { StyleDimension, StyleDimensionKey, StyleDimensionSelections } from './types';
 import { applyDimensionSelection, selectCardsByIds, toggleStyleCardId } from './utils';
 import { LIBRARY_EMPTY_HINT, PICK_BUTTON, UNSELECTED_HINT } from './constants';
 import StyleDimensionModal from './StyleDimensionModal';
@@ -14,8 +14,8 @@ export type StyleDimensionPickerProps = {
 };
 
 /**
- * 文风五维卡片选择：每个维度一个入口，弹框内多选，确定后以 Tag 回显。
- * 弹框内改动只落在草稿，取消即丢弃。
+ * 文风维度卡片选择：每个维度一个入口，弹框内按轴选卡（互斥轴单选、可叠加轴多选），
+ * 确定后以 Tag 回显。弹框内改动只落在草稿，取消即丢弃。
  */
 export default function StyleDimensionPicker({
   selections,
@@ -40,9 +40,13 @@ export default function StyleDimensionPicker({
     setDraftIds([]);
   }
 
-  function handleRemoveCard(key: StyleDimensionKey, cardId: string) {
+  function handleRemoveCard(dimension: StyleDimension, cardId: string) {
     onChange(
-      applyDimensionSelection(selections, key, toggleStyleCardId(selections[key] ?? [], cardId)),
+      applyDimensionSelection(
+        selections,
+        dimension.key,
+        toggleStyleCardId(dimension, selections[dimension.key] ?? [], cardId),
+      ),
     );
   }
 
@@ -72,7 +76,7 @@ export default function StyleDimensionPicker({
                   <Tag
                     key={card.id}
                     closable={!disabled}
-                    onClose={() => handleRemoveCard(dimension.key, card.id)}
+                    onClose={() => handleRemoveCard(dimension, card.id)}
                   >
                     {card.tag}
                   </Tag>
@@ -90,7 +94,7 @@ export default function StyleDimensionPicker({
           dimension={activeDimension}
           selectedIds={draftIds}
           disabled={disabled}
-          onToggle={(cardId) => setDraftIds(toggleStyleCardId(draftIds, cardId))}
+          onToggle={(cardId) => setDraftIds(toggleStyleCardId(activeDimension, draftIds, cardId))}
           onCancel={closeDimension}
           onConfirm={() => {
             onChange(applyDimensionSelection(selections, openKey, draftIds));

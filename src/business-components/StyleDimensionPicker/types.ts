@@ -1,6 +1,11 @@
-/** 文风五维键（叙事立场 / 情绪质感 / 语言质感 / 空间视角 / 主题风格）。 */
+/** 文风维度键（叙事姿态 / 时空编排 / 情感质地 / 语言质地 / 主题风格 / 文体体例）。 */
 export type StyleDimensionKey =
-  'narrativeStance' | 'emotionTexture' | 'languageTexture' | 'spacePerspective' | 'themeStyle';
+  | 'narrativeStance'
+  | 'spacePerspective'
+  | 'emotionTexture'
+  | 'languageTexture'
+  | 'themeStyle'
+  | 'genre';
 
 /** 一张文风卡片：tag 拼进提示词，description 只在弹框里给人看。 */
 export type StyleDimensionCard = {
@@ -12,10 +17,17 @@ export type StyleDimensionCard = {
   description: string;
 };
 
-/** 弹框内的「一、二、三」大分类。 */
+/** 弹框内的「一、二、三」大分类，也就是一根独立的轴。 */
 export type StyleDimensionGroup = {
-  /** 分类标题，如「一、叙述者站位」；留空则整组不渲染标题 */
+  /** 分类标题，如「一、按「人称」分」，只做弹框分组标题 */
   title: string;
+  /** 轴的短名，拼进提示词作前缀，如「人称」→「人称=第三人称」 */
+  label: string;
+  /**
+   * 该轴是否互斥：true 表示组内只能选一张（温度、收束方式这类一根连续轴）；
+   * false 表示可叠加（词汇、意象这类彼此不冲突的并列要求）。
+   */
+  exclusive: boolean;
   cards: readonly StyleDimensionCard[];
 };
 

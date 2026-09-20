@@ -12,6 +12,13 @@
   margin: 0 0 12px !important;
 }
 
+.axisHint {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--one-color-text-secondary);
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

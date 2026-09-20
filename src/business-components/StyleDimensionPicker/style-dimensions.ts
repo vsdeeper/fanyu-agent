@@ -6,8 +6,23 @@ import type { StyleDimension } from './types';
  * 约定：
  * - tag 会拼进发给服务端的文风文本，请写成关键词（如「外聚焦、低调陈述」）；
  *   description 只显示在弹框里作解释，不进提示词。
- * - id 全局唯一，且一旦被选过就不要再改，否则旧任务的已选会失效。
+ * - id 全局唯一，且一旦被选过就不要再改，否则旧任务的已选会失效。合并两根轴时
+ *   不要把幸存卡片的 id 顺手改成新前缀——语义没变就沿用旧 id，能救回旧任务已选。
  * - groups / cards 留空即空态，UI 显示「该维度暂无可选卡片」。
+ *
+ * 结构约定：
+ * - 每个 group 是一根**独立的轴**，`exclusive` 标注该轴是否互斥：
+ *   true → 组内单选（温度、收束方式这类一根连续轴，多选会拼出自相矛盾的提示词）；
+ *   false → 组内可多选（词汇、意象这类彼此不冲突的并列要求）。
+ * - `label` 是轴的短名，拼提示词时作前缀（「人称=第三人称」）；`title` 只做弹框分组标题。
+ * - **不同维度之间不得共用同一根轴**。历史上温度、密度、时间位置、解决方式各自被
+ *   贴了 2～4 层皮散落在多个维度里，拼出的提示词互相抵消；新增卡片前先确认这根轴
+ *   在当前维度是否已经存在。
+ *
+ * 几处易混轴的边界（勿合并）：
+ * - 时空编排·时间位置 = **叙述**站在哪个时间点讲；情感质地·情感时间结构 = **情感自身**
+ *   的时序（事情发生时没感觉、过后才涌上）。两者不同层，可同时成立。
+ * - 主题风格·关涉对象 = 这篇讲几个人；语言质地·对话 = 对话在文本里起什么作用。
  */
 export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
   {
@@ -15,7 +30,42 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
     label: '叙事姿态',
     groups: [
       {
-        title: '一、按叙述者的「位置」分',
+        title: '一、按「人称」分',
+        label: '人称',
+        exclusive: true,
+        cards: [
+          {
+            id: 'voice-first',
+            tag: '第一人称',
+            description: '用「我」讲。别让「我」变成布道者——理想状态是一个还在路上的人。',
+          },
+          {
+            id: 'voice-second',
+            tag: '第二人称',
+            description:
+              '用「你」讲，像自我对话。容易变成说教；用得好可写出「分裂出去的另一个自己」。',
+          },
+          {
+            id: 'voice-third',
+            tag: '第三人称',
+            description: '用「他/她」讲。最客观也最灵活——像一台安静的摄影机。',
+          },
+          {
+            id: 'voice-plural',
+            tag: '第一人称复数',
+            description: '用「我们」讲。制造共同体感，警惕变成集体抒情。',
+          },
+          {
+            id: 'voice-none',
+            tag: '无人称',
+            description: '没有「我」「你」「他」，只有动作和景物，像古诗。写「无我」时用。',
+          },
+        ],
+      },
+      {
+        title: '二、按「聚焦」分',
+        label: '聚焦',
+        exclusive: true,
         cards: [
           {
             id: 'external-focus',
@@ -41,19 +91,67 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '二、按叙述者与故事的关系分',
+        title: '三、按叙述者的「站位」分',
+        label: '站位',
+        exclusive: true,
         cards: [
           {
-            id: 'homodiegetic',
-            tag: '同故事叙述者',
+            id: 'insider-view',
+            tag: '局内人',
             description:
-              '叙述者就是故事里的人，用「我」讲自己的经历。分主角的「我」和旁观者的「我」。',
+              '叙述者在故事内部，是参与者。有立场、有盲区、有情感卷入；用「我」讲自己的经历即属此类。',
           },
           {
-            id: 'heterodiegetic',
-            tag: '异故事叙述者',
-            description: '叙述者不在故事里，用「他/她」讲别人的事。',
+            id: 'outsider-view',
+            tag: '局外人',
+            description:
+              '叙述者在故事外部，是观察者。不参与、不评判、不站队；用「他/她」讲别人的事即属此类。',
           },
+          {
+            id: 'boundary-view',
+            tag: '边界站位',
+            description:
+              '站在内外交界处，一只脚在里面，一只脚在外面。写「修行者回到世俗生活」常用。',
+          },
+          {
+            id: 'multi-boundary-view',
+            tag: '多重边界',
+            description: '在多个边界之间切换：故乡与异乡、过去与现在。写「漂泊」的核心视角。',
+          },
+        ],
+      },
+      {
+        title: '四、按「视角距离」分',
+        label: '距离',
+        exclusive: true,
+        cards: [
+          {
+            id: 'close-view',
+            tag: '贴身距离',
+            description: '紧贴人物，几乎同步感受。适合写「当下」「觉察」。',
+          },
+          {
+            id: 'medium-view',
+            tag: '中距',
+            description: '保持一段距离，看得见动作，但不完全进入内心。近到能看见，远到不打扰。',
+          },
+          {
+            id: 'far-view',
+            tag: '远距',
+            description: '站得很远，人物变成一个小点，故事变成一幅画。适合写「无常」「渺小」。',
+          },
+          {
+            id: 'distance-shift',
+            tag: '距离切换',
+            description: '同一篇里视角忽远忽近。距离的变化本身就是情感的变化。',
+          },
+        ],
+      },
+      {
+        title: '五、按「叙述可靠度」分',
+        label: '可靠度',
+        exclusive: true,
+        cards: [
           {
             id: 'reliable-narrator',
             tag: '可靠叙述者',
@@ -68,7 +166,9 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '三、按叙述者的「态度」分',
+        title: '六、按叙述者的「态度」分',
+        label: '态度',
+        exclusive: true,
         cards: [
           {
             id: 'understatement',
@@ -81,60 +181,143 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
             description: '表面说一套，实际意思相反。容易显得刻薄；「温柔的自我反讽」例外。',
           },
           {
-            id: 'lyrical',
-            tag: '抒情',
-            description:
-              '直接表达情感、发表感慨。最容易让人觉得被说教，建议克制，或藏在具体动作后面。',
-          },
-          {
             id: 'camera-eye',
-            tag: '冷峻/零度叙事',
+            tag: '零度叙事',
             description: '完全不流露情感，像摄像机一样记录。适合写「痛而不言」的部分。',
           },
           {
             id: 'intrusive-commentary',
-            tag: '介入式/议论式',
+            tag: '介入式议论',
             description: '叙述者跳出来发表观点、评价人物。要用的话最好以自嘲介入，避免居高临下。',
           },
         ],
       },
+    ],
+  },
+  {
+    key: 'spacePerspective',
+    label: '时空编排',
+    groups: [
       {
-        title: '四、按叙述的「时间位置」分',
+        title: '一、按「叙述的时间位置」分',
+        label: '时间位置',
+        exclusive: true,
         cards: [
           {
             id: 'retrospective',
-            tag: '事后叙述',
+            tag: '事后回看',
             description: '站在事情发生之后回看，天然带反思和沉淀感。最常用的一种。',
           },
           {
             id: 'simultaneous',
-            tag: '同时叙述',
+            tag: '同步进行',
             description: '叙述和事件同步进行，像现场直播。适合写「当下」「觉察」。',
           },
           {
             id: 'proleptic',
-            tag: '预言式叙述',
+            tag: '提前预言',
             description: '提前透露结局，制造宿命感。适合写「无常」。',
+          },
+          {
+            id: 'mixed-view',
+            tag: '三层交错',
+            description: '过去、现在、未来交替叠加。适合写「时间中的修行」，写出未完成感。',
+          },
+          {
+            id: 'theme-time-none',
+            tag: '无时间',
+            description: '不指向任何具体时间，像抽离了钟表的状态。',
           },
         ],
       },
       {
-        title: '五、按叙述者的「声音密度」分',
+        title: '二、按空间的「功能」分',
+        label: '空间功能',
+        exclusive: false,
         cards: [
           {
-            id: 'high-density',
-            tag: '高密度叙述',
-            description: '叙述者频繁解释、评论，读者被牵着走。鸡汤文常用，应避免。',
+            id: 'physical-space',
+            tag: '物理空间',
+            description: '故事发生的具体场所：房间、街道、城市、山川。不只是背景，是心境的延伸。',
           },
           {
-            id: 'low-density',
-            tag: '低密度叙述',
-            description: '叙述者几乎隐身，只给画面和对话，读者自己找意义。最理想的一种。',
+            id: 'psychological-space',
+            tag: '心理空间',
+            description:
+              '人物内心的地形：记忆的迷宫、情绪的深渊、认知的边界。常投射到物理空间上写。',
           },
           {
-            id: 'ellipsis',
-            tag: '留白式叙述',
-            description: '关键信息故意不说，让读者自己在空白处填。写「放下」「释怀」特别有效。',
+            id: 'social-space',
+            tag: '社会空间',
+            description:
+              '人物所处的阶层、圈子、人际网络。写出「在写字楼修行」和「在山里修行」的差别。',
+          },
+          {
+            id: 'textual-space',
+            tag: '文本空间',
+            description:
+              '叙述本身营造的空间感：留白、跳跃、省略留下的空隙。不填满，让读者在空隙里呼吸。',
+          },
+        ],
+      },
+      {
+        title: '三、按空间的「尺度」分',
+        label: '空间尺度',
+        exclusive: false,
+        cards: [
+          {
+            id: 'micro-space',
+            tag: '微观',
+            description: '一个杯子、一道裂缝、一粒米。从极小的东西里写出整个世界。',
+          },
+          {
+            id: 'meso-space',
+            tag: '中观',
+            description: '一间屋子、一条街、一个村庄。日常生活的尺度，也是修心最真实的现场。',
+          },
+          {
+            id: 'macro-space',
+            tag: '宏观',
+            description: '一座城市、一片大陆、一个时代。容易空泛，谨慎使用。',
+          },
+          {
+            id: 'scale-shift',
+            tag: '跨尺度切换',
+            description: '从一粒米写到一座城。用微观动作承载宏观主题，高级手法。',
+          },
+        ],
+      },
+      {
+        title: '四、按空间的「移动方式」分',
+        label: '空间移动',
+        exclusive: true,
+        cards: [
+          {
+            id: 'fixed-space',
+            tag: '固定不移',
+            description: '故事只在一个地点，不移动，像独幕剧。写「日常修行」常用。',
+          },
+          {
+            id: 'linear-movement',
+            tag: '线性移动',
+            description:
+              '人物按时间顺序从一地到另一地。写「寻找自我」的旅程可用；注意移动不等于抵达。',
+          },
+          {
+            id: 'radiating-movement',
+            tag: '辐射式移动',
+            description:
+              '以某个中心点向四周扩散，反复回到同一处，每次带回不同的东西。写「回乡」常用。',
+          },
+          {
+            id: 'rootless-movement',
+            tag: '无根漂泊',
+            description: '不断移动，没有固定坐标，处处经过却无处抵达。地理的漂泊对应心理的未完成。',
+          },
+          {
+            id: 'circular-movement',
+            tag: '循环移动',
+            description: '回到原点，但已经不是原来的自己。写「修行一圈，山还是那座山」。',
           },
         ],
       },
@@ -146,6 +329,8 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
     groups: [
       {
         title: '一、按情感的「温度」分',
+        label: '温度',
+        exclusive: true,
         cards: [
           {
             id: 'heat-burning',
@@ -176,6 +361,8 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
       },
       {
         title: '二、按情感的「密度」分',
+        label: '密度',
+        exclusive: true,
         cards: [
           {
             id: 'density-thick',
@@ -200,57 +387,70 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '三、按情感的「方向」分',
+        title: '三、按情感的「身体性」分',
+        label: '身体性',
+        exclusive: true,
         cards: [
           {
-            id: 'direction-inward',
-            tag: '向内收',
-            description: '不向外发泄，往内压。收，比放更有力量。',
+            id: 'body-embodied',
+            tag: '具身',
+            description: '通过身体反应呈现：胃里一沉、喉咙发紧、手指发麻。情绪首先住在身体里。',
           },
           {
-            id: 'direction-outward',
-            tag: '向外溢',
-            description: '向外流淌，感染读者。要控制流量，溢多了变鸡汤。',
+            id: 'body-disembodied',
+            tag: '离身',
+            description: '与身体分离，只存在于意识层面。写「解离」「麻木」时用。',
           },
           {
-            id: 'direction-lateral-shift',
-            tag: '横向错位',
-            description: '情感没落在该落的地方。写「该哭的时候笑了，该笑的时候哭了」。',
+            id: 'body-somatized',
+            tag: '躯体化',
+            description: '心理情感转化为身体症状：焦虑变成失眠，悲伤变成背痛。写「身心一体」时用。',
           },
           {
-            id: 'direction-vertical-shift',
-            tag: '纵向错位',
-            description: '情感与情境不匹配。不是冷血，是注意力自己跑偏了。',
+            id: 'body-actionized',
+            tag: '动作化',
+            description: '完全通过动作呈现，不进入身体内部。动作比形容词更诚实。',
           },
         ],
       },
       {
-        title: '四、按情感的「时间性」分',
+        title: '四、按情感的「表达方式」分',
+        label: '表达方式',
+        exclusive: true,
         cards: [
           {
-            id: 'timing-immediate',
-            tag: '即时情感',
-            description: '此刻正在发生的情感。写「当下」的觉察：愤怒升起的那一秒。',
+            id: 'express-direct',
+            tag: '直抒胸臆',
+            description: '直接说出情感。慎用，太直白，没有余味。',
           },
           {
-            id: 'timing-delayed',
-            tag: '延迟情感',
-            description: '事情发生时没感觉，过后才涌上来。写「无常」常用。',
+            id: 'express-implied',
+            tag: '暗示',
+            description:
+              '通过动作、对话、景物暗示情感（借景抒情、借事抒情都归此类）。让读者自己完成「悟」的动作。',
           },
           {
-            id: 'timing-anticipatory',
-            tag: '预期情感',
-            description: '事情还没发生，情感先到了。写「放下」的前奏。',
+            id: 'express-anti-lyrical',
+            tag: '反抒情的抒情',
+            description:
+              '越想表达深情越往回收。写思念不写「我想你」，写「今天路过那家店，没进去」。',
           },
           {
-            id: 'timing-mismatched',
-            tag: '错时情感',
-            description: '情感与事件的时间线错位。写「未完成」的核心质地。',
+            id: 'express-displaced',
+            tag: '错位表达',
+            description: '用相反的情感表达真实情感：悲伤用笑，在乎用冷漠，想留用「你走吧」。',
+          },
+          {
+            id: 'express-silence',
+            tag: '沉默表达',
+            description: '完全不说，只留空白。不说，是最重的说。',
           },
         ],
       },
       {
         title: '五、按情感的「道德姿态」分',
+        label: '社会姿态',
+        exclusive: true,
         cards: [
           {
             id: 'stance-judging',
@@ -281,32 +481,9 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '六、按情感的「身体性」分',
-        cards: [
-          {
-            id: 'body-embodied',
-            tag: '具身情感',
-            description: '通过身体反应呈现：胃里一沉、喉咙发紧、手指发麻。情绪首先住在身体里。',
-          },
-          {
-            id: 'body-disembodied',
-            tag: '离身情感',
-            description: '与身体分离，只存在于意识层面。写「解离」「麻木」时用。',
-          },
-          {
-            id: 'body-somatized',
-            tag: '躯体化情感',
-            description: '心理情感转化为身体症状：焦虑变成失眠，悲伤变成背痛。写「身心一体」时用。',
-          },
-          {
-            id: 'body-actionized',
-            tag: '动作化情感',
-            description: '完全通过动作呈现，不进入身体内部。动作比形容词更诚实。',
-          },
-        ],
-      },
-      {
-        title: '七、按情感的「关系性」分',
+        title: '六、按情感的「关系性」分',
+        label: '关系性',
+        exclusive: true,
         cards: [
           {
             id: 'relation-unrequited',
@@ -331,63 +508,29 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '八、按情感的「解决方式」分',
+        title: '七、按情感的「时间性」分',
+        label: '情感时间结构',
+        exclusive: true,
         cards: [
           {
-            id: 'resolve-resolved',
-            tag: '被解决',
-            description: '有明确的出口和结局。慎用，太圆满反而假。',
+            id: 'timing-immediate',
+            tag: '即时',
+            description: '此刻正在发生的情感。写「当下」的觉察：愤怒升起的那一秒。',
           },
           {
-            id: 'resolve-shelved',
-            tag: '被搁置',
-            description: '没被解决，只是放在一边。搁置不等于放下，但可以继续生活。',
+            id: 'timing-delayed',
+            tag: '延迟',
+            description: '事情发生时没感觉，过后才涌上来。写「无常」常用。',
           },
           {
-            id: 'resolve-transformed',
-            tag: '被转化',
-            description: '改变了形态：愤怒变成疲惫，疲惫变成沉默。不是消灭情绪，是让它流动。',
+            id: 'timing-anticipatory',
+            tag: '预期',
+            description: '事情还没发生，情感先到了。写「放下」的前奏。',
           },
           {
-            id: 'resolve-unresolved',
-            tag: '不被解决',
-            description: '始终在那里，不消失也不爆发。不升华，不超越，只是与它共处。',
-          },
-          {
-            id: 'resolve-recurring',
-            tag: '反复回来',
-            description: '以为走了，又回来了。修行不是一次性的，是反复的。',
-          },
-        ],
-      },
-      {
-        title: '九、按情感的「表达方式」分',
-        cards: [
-          {
-            id: 'express-direct',
-            tag: '直抒',
-            description: '直接说出情感。慎用，太直白，没有余味。',
-          },
-          {
-            id: 'express-implied',
-            tag: '暗示',
-            description: '通过动作、对话、景物暗示情感。让读者自己完成「悟」的动作。',
-          },
-          {
-            id: 'express-anti-lyrical',
-            tag: '反抒情的抒情',
-            description:
-              '越想表达深情越往回收。写思念不写「我想你」，写「今天路过那家店，没进去」。',
-          },
-          {
-            id: 'express-displaced',
-            tag: '错位表达',
-            description: '用相反的情感表达真实情感：悲伤用笑，在乎用冷漠，想留用「你走吧」。',
-          },
-          {
-            id: 'express-silence',
-            tag: '沉默表达',
-            description: '完全不说，只留空白。不说，是最重的说。',
+            id: 'timing-mismatched',
+            tag: '错时',
+            description: '情感与事件的时间线错位。写「未完成」的核心质地。',
           },
         ],
       },
@@ -399,6 +542,8 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
     groups: [
       {
         title: '一、按句子的「长度与节奏」分',
+        label: '节奏',
+        exclusive: true,
         cards: [
           {
             id: 'rhythm-short',
@@ -417,7 +562,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
           },
           {
             id: 'rhythm-fragment',
-            tag: '断句/碎片',
+            tag: '碎片断句',
             description: '句子不完整，主谓宾残缺，像意识碎片。写「走神」「恍惚」时用。',
           },
           {
@@ -429,6 +574,8 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
       },
       {
         title: '二、按词汇的「质感」分',
+        label: '词汇',
+        exclusive: false,
         cards: [
           {
             id: 'word-concrete',
@@ -457,18 +604,20 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
           },
           {
             id: 'word-dialect',
-            tag: '方言/地方词',
+            tag: '方言词',
             description: '偶尔用一两个增加质感。不要过量，否则读者会出戏。',
           },
           {
             id: 'word-zen-phrase',
-            tag: '古语/禅语',
+            tag: '禅语',
             description: '「吃茶去」「平常心」可用，但要少，用多了变成功夫茶表演。',
           },
         ],
       },
       {
         title: '三、按修辞的「密度」分',
+        label: '修辞密度',
+        exclusive: true,
         cards: [
           {
             id: 'rhetoric-none',
@@ -498,123 +647,9 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '四、按语言的「温度」分',
-        cards: [
-          {
-            id: 'lang-hot',
-            tag: '热语言',
-            description: '情感外露，词汇温暖：拥抱、阳光、治愈。慎用，太烫。',
-          },
-          {
-            id: 'lang-warm',
-            tag: '温语言',
-            description: '有温度但不烫，像一杯放了一会儿的茶。最舒适的温度。',
-          },
-          {
-            id: 'lang-cool',
-            tag: '凉语言',
-            description: '带着薄薄的凉意，不冷也不热。写孤独、疏离时用。',
-          },
-          {
-            id: 'lang-cold',
-            tag: '冷语言',
-            description: '情感压到最低，几乎不流露。零度叙事，写痛而不言时用。',
-          },
-          {
-            id: 'lang-icy',
-            tag: '冰语言',
-            description: '比冷更冷，带荒诞感。慎用，容易让读者觉得太丧。',
-          },
-        ],
-      },
-      {
-        title: '五、按语言的「密度」分',
-        cards: [
-          {
-            id: 'lang-density-dense',
-            tag: '稠密',
-            description: '信息密集，句子之间没有空隙，读起来喘不过气。慎用。',
-          },
-          {
-            id: 'lang-density-sparse',
-            tag: '稀疏',
-            description: '大量留白，句子之间有空隙，像中国画。不填满，让读者在空隙里呼吸。',
-          },
-          {
-            id: 'lang-density-intermittent',
-            tag: '间隙式',
-            description: '时稠时稀。稠的是疼的那个瞬间，稀的是之后的空白。',
-          },
-          {
-            id: 'lang-density-vacuum',
-            tag: '真空式',
-            description: '语言被刻意抽空，只留下最必要的词。写「痛到说不出来」时用。',
-          },
-        ],
-      },
-      {
-        title: '六、按对话的「功能」分',
-        cards: [
-          {
-            id: 'dialogue-info',
-            tag: '信息交换',
-            description: '对话只传递信息，太功能化，没有余味。慎用。',
-          },
-          {
-            id: 'dialogue-character',
-            tag: '性格展示',
-            description: '对话展示人物性格。可以用，但别变成「人物塑造练习」。',
-          },
-          {
-            id: 'dialogue-undercurrent',
-            tag: '暗流承载',
-            description: '表面说 A，实际说 B。谁都没说真话，但谁都听懂了。最推荐。',
-          },
-          {
-            id: 'dialogue-silent',
-            tag: '沉默对话',
-            description: '有大量停顿、省略、答非所问。写「亲密关系中的隔阂」时用。',
-          },
-          {
-            id: 'dialogue-monologue',
-            tag: '独白式对话',
-            description: '一个人在说，另一个不回应；或两人各说各的。写「孤独」时用。',
-          },
-        ],
-      },
-      {
-        title: '七、按「抒情方式」分',
-        cards: [
-          {
-            id: 'lyric-direct',
-            tag: '直抒胸臆',
-            description: '直接说出情感。慎用，太直白，没有余味。',
-          },
-          {
-            id: 'lyric-scene',
-            tag: '借景抒情',
-            description: '通过景物表达情感。可用，但别变成「天气预报式抒情」。',
-          },
-          {
-            id: 'lyric-action',
-            tag: '借事抒情',
-            description: '通过动作、事件表达情感。让动作自己说话，最推荐。',
-          },
-          {
-            id: 'lyric-anti',
-            tag: '反抒情的抒情',
-            description:
-              '越想表达深情越往回收。写思念不写「我想你」，写「今天路过那家店，没进去」。',
-          },
-          {
-            id: 'lyric-zero',
-            tag: '零度抒情',
-            description: '完全不抒情，只呈现事实，读者自己感受。不说，是最重的说。',
-          },
-        ],
-      },
-      {
-        title: '八、按「意象」的使用分',
+        title: '四、按「意象」的使用分',
+        label: '意象',
+        exclusive: false,
         cards: [
           {
             id: 'image-daily',
@@ -644,227 +679,34 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '九、按「叙述声音」分',
+        title: '五、按对话的「功能」分',
+        label: '对话',
+        exclusive: true,
         cards: [
           {
-            id: 'voice-first',
-            tag: '第一人称声音',
-            description: '「我」在说话。避免「我」变成布道者——应该是一个还在路上的人。',
+            id: 'dialogue-info',
+            tag: '信息交换',
+            description: '对话只传递信息，太功能化，没有余味。慎用。',
           },
           {
-            id: 'voice-second',
-            tag: '第二人称声音',
-            description: '「你」在说话，像自我对话。可制造「分裂出去的另一个自己」。',
+            id: 'dialogue-character',
+            tag: '性格展示',
+            description: '对话展示人物性格。可以用，但别变成「人物塑造练习」。',
           },
           {
-            id: 'voice-third',
-            tag: '第三人称声音',
-            description: '「他/她」在说话。最推荐客观第三人称——像一台安静的摄影机。',
+            id: 'dialogue-undercurrent',
+            tag: '暗流承载',
+            description: '表面说 A，实际说 B。谁都没说真话，但谁都听懂了。最推荐。',
           },
           {
-            id: 'voice-plural',
-            tag: '复数声音',
-            description: '「我们」在说话。慎用，容易变成集体抒情。',
+            id: 'dialogue-silent',
+            tag: '沉默对话',
+            description: '有大量停顿、省略、答非所问。写「亲密关系中的隔阂」时用。',
           },
           {
-            id: 'voice-none',
-            tag: '无人称声音',
-            description: '没有「我」「你」「他」，只有动作和景物，像古诗。写「无我」时用。',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    key: 'spacePerspective',
-    label: '空间与视角',
-    groups: [
-      {
-        title: '一、按空间的「功能」分',
-        cards: [
-          {
-            id: 'physical-space',
-            tag: '物理空间',
-            description: '故事发生的具体场所：房间、街道、城市、山川。不只是背景，是心境的延伸。',
-          },
-          {
-            id: 'psychological-space',
-            tag: '心理空间',
-            description:
-              '人物内心的地形：记忆的迷宫、情绪的深渊、认知的边界。常投射到物理空间上写。',
-          },
-          {
-            id: 'social-space',
-            tag: '社会空间',
-            description:
-              '人物所处的阶层、圈子、人际网络。写出「在写字楼修行」和「在山里修行」的差别。',
-          },
-          {
-            id: 'textual-space',
-            tag: '文本空间',
-            description:
-              '叙述本身营造的空间感：留白、跳跃、省略留下的空隙。不填满，让读者在空隙里呼吸。',
-          },
-        ],
-      },
-      {
-        title: '二、按空间的「移动方式」分',
-        cards: [
-          {
-            id: 'fixed-space',
-            tag: '固定空间',
-            description: '故事只在一个地点，不移动，像独幕剧。写「日常修行」常用。',
-          },
-          {
-            id: 'linear-movement',
-            tag: '线性移动',
-            description:
-              '人物按时间顺序从一地到另一地。写「寻找自我」的旅程可用；注意移动不等于抵达。',
-          },
-          {
-            id: 'radiating-movement',
-            tag: '辐射式移动',
-            description:
-              '以某个中心点向四周扩散，反复回到同一处，每次带回不同的东西。写「回乡」常用。',
-          },
-          {
-            id: 'rootless-movement',
-            tag: '漂泊/无根移动',
-            description: '不断移动，没有固定坐标，处处经过却无处抵达。地理的漂泊对应心理的未完成。',
-          },
-          {
-            id: 'circular-movement',
-            tag: '循环移动',
-            description: '回到原点，但已经不是原来的自己。写「修行一圈，山还是那座山」。',
-          },
-        ],
-      },
-      {
-        title: '三、按空间的「尺度」分',
-        cards: [
-          {
-            id: 'micro-space',
-            tag: '微观空间',
-            description: '一个杯子、一道裂缝、一粒米。从极小的东西里写出整个世界。',
-          },
-          {
-            id: 'meso-space',
-            tag: '中观空间',
-            description: '一间屋子、一条街、一个村庄。日常生活的尺度，也是修心最真实的现场。',
-          },
-          {
-            id: 'macro-space',
-            tag: '宏观空间',
-            description: '一座城市、一片大陆、一个时代。容易空泛，谨慎使用。',
-          },
-          {
-            id: 'scale-shift',
-            tag: '跨尺度切换',
-            description: '从一粒米写到一座城。用微观动作承载宏观主题，高级手法。',
-          },
-        ],
-      },
-      {
-        title: '四、按视角的「人称」分',
-        cards: [
-          {
-            id: 'first-person',
-            tag: '第一人称「我」',
-            description:
-              '最直接。分主角、见证者、回忆者三种。别让「我」变成布道者，理想状态是还在路上。',
-          },
-          {
-            id: 'second-person',
-            tag: '第二人称「你」',
-            description: '把读者拉进故事。容易变成说教；用得好可写出「分裂出去的另一个自己」。',
-          },
-          {
-            id: 'third-person',
-            tag: '第三人称「他/她」',
-            description:
-              '最灵活。分限制性、全知、客观三种。客观第三人称最推荐——像一台安静的摄影机。',
-          },
-          {
-            id: 'first-person-plural',
-            tag: '第一人称复数「我们」',
-            description:
-              '制造共同体感。警惕变成集体抒情；克制使用可写出「各自孤独的人短暂站在一起」。',
-          },
-        ],
-      },
-      {
-        title: '五、按视角的「距离」分',
-        cards: [
-          {
-            id: 'close-view',
-            tag: '贴身视角',
-            description: '紧贴人物，几乎同步感受。适合写「当下」「觉察」。',
-          },
-          {
-            id: 'medium-view',
-            tag: '中距视角',
-            description: '保持一段距离，看得见动作，但不完全进入内心。近到能看见，远到不打扰。',
-          },
-          {
-            id: 'far-view',
-            tag: '远距视角',
-            description: '站得很远，人物变成一个小点，故事变成一幅画。适合写「无常」「渺小」。',
-          },
-          {
-            id: 'distance-shift',
-            tag: '距离切换',
-            description: '同一篇里视角忽远忽近。距离的变化本身就是情感的变化。',
-          },
-        ],
-      },
-      {
-        title: '六、按视角的「位置」分',
-        cards: [
-          {
-            id: 'insider-view',
-            tag: '局内人视角',
-            description: '叙述者在故事内部，是参与者。有立场、有盲区、有情感卷入。',
-          },
-          {
-            id: 'outsider-view',
-            tag: '局外人视角',
-            description: '叙述者在故事外部，是观察者。不参与、不评判、不站队。',
-          },
-          {
-            id: 'boundary-view',
-            tag: '边界视角',
-            description:
-              '站在内外交界处，一只脚在里面，一只脚在外面。写「修行者回到世俗生活」常用。',
-          },
-          {
-            id: 'multi-boundary-view',
-            tag: '多重边界视角',
-            description: '在多个边界之间切换：故乡与异乡、过去与现在。写「漂泊」的核心视角。',
-          },
-        ],
-      },
-      {
-        title: '七、按视角的「时间位置」分',
-        cards: [
-          {
-            id: 'synchronous-view',
-            tag: '同步视角',
-            description: '视角与事件同时发生。适合写「当下」「觉察」。',
-          },
-          {
-            id: 'retrospective-view',
-            tag: '回溯视角',
-            description: '站在事情发生之后回看。适合写「无常」「遗憾」。',
-          },
-          {
-            id: 'prospective-view',
-            tag: '前瞻视角',
-            description: '站在现在预想未来。慎用，容易变成鸡汤。',
-          },
-          {
-            id: 'mixed-view',
-            tag: '混合视角',
-            description: '同步、回溯、前瞻交替，三层叠加。适合写「时间中的修行」。',
+            id: 'dialogue-monologue',
+            tag: '独白式对话',
+            description: '一个人在说，另一个不回应；或两人各说各的。写「孤独」时用。',
           },
         ],
       },
@@ -875,12 +717,15 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
     label: '主题风格',
     groups: [
       {
-        title: '一、按「主题的完成度」分',
+        title: '一、按「主题的收束方式」分',
+        label: '收束方式',
+        exclusive: true,
         cards: [
           {
             id: 'arc-complete',
             tag: '完成式',
-            description: '有明确的起承转合，最终抵达某个结论。慎用，太圆满反而失真。',
+            description:
+              '有明确的起承转合，最终抵达某个结论，情绪有明确出口。慎用，太圆满反而失真。',
           },
           {
             id: 'arc-unfinished',
@@ -888,14 +733,35 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
             description: '始终悬而未决，不给出答案。写「他还在学。昨天又没做到。今天再试」。',
           },
           {
+            id: 'arc-shelved',
+            tag: '搁置式',
+            description: '没被解决，只是放在一边。搁置不等于放下，但可以继续生活。',
+          },
+          {
+            id: 'lonely-transformed',
+            tag: '转化式',
+            description: '情绪改变了形态：愤怒变成疲惫，疲惫变成沉默。不是消灭情绪，是让它流动。',
+          },
+          {
             id: 'arc-recurring',
             tag: '反复式',
             description: '以为结束了，又回来了。写「以为自己放下了，结果又梦见了」。',
           },
           {
-            id: 'arc-shelved',
-            tag: '搁置式',
-            description: '没被解决，只是放在一边。搁置不等于放下，但可以继续生活。',
+            id: 'ending-circular',
+            tag: '循环式',
+            description: '回到原点，但人已经不同。写「山还是那座山，但她看山的方式变了」。',
+          },
+          {
+            id: 'ending-anti-climax',
+            tag: '反高潮式',
+            description: '铺垫了很久，最后什么都没发生。不爆发，只是继续生活。',
+          },
+          {
+            id: 'lonely-renamed',
+            tag: '重新命名式',
+            description:
+              '不是问题解决了，是命名方式变了。写「她不再叫它孤独了。她叫它『一个人』」。',
           },
           {
             id: 'arc-no-exit',
@@ -906,6 +772,8 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
       },
       {
         title: '二、按「主题的落点」分',
+        label: '落点',
+        exclusive: true,
         cards: [
           {
             id: 'landing-self',
@@ -935,55 +803,14 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '三、按「主题的温度」分',
+        title: '三、按「过程怎么走」分',
+        label: '过程质感',
+        exclusive: false,
         cards: [
-          {
-            id: 'tone-healing',
-            tag: '治愈系',
-            description: '指向安慰、抚慰、温暖。慎用，容易滑向鸡汤。',
-          },
-          {
-            id: 'tone-sober',
-            tag: '清醒系',
-            description: '指向看破、觉察、不逃避。不哄你，但陪你。',
-          },
-          {
-            id: 'tone-cold',
-            tag: '冷感系',
-            description: '指向疏离、旁观、不介入。写「孤独」时用。',
-          },
-          {
-            id: 'tone-absurd',
-            tag: '荒诞系',
-            description: '指向存在的荒诞感。偶尔用，可以消解说教感。',
-          },
-          {
-            id: 'tone-gentle-cruelty',
-            tag: '温柔残忍系',
-            description:
-              '不回避痛苦，不粉饰困境，也不居高临下地点醒。不审判任何人，包括叙述者自己。',
-          },
-        ],
-      },
-      {
-        title: '四、按「主题如何被经历」分',
-        cards: [
-          {
-            id: 'practice-daily',
-            tag: '落在日常',
-            description:
-              '不写抽象道理，写洗碗、走路、等地铁这类具体动作。主题落在日常里，才站得住。',
-          },
           {
             id: 'practice-clumsy',
             tag: '带着狼狈',
-            description:
-              '写过程里的尴尬与失手：说了重话、没做到、自己先急了。不完美才是现场。',
-          },
-          {
-            id: 'practice-recurring',
-            tag: '反复折返',
-            description: '写「以为过去了，结果又回来了」。主题不是一次性解决，是反复经历。',
+            description: '写过程里的尴尬与失手：说了重话、没做到、自己先急了。不完美才是现场。',
           },
           {
             id: 'practice-no-gain',
@@ -998,44 +825,14 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '五、按「主题的孤独处理方式」分',
-        cards: [
-          {
-            id: 'lonely-resolved',
-            tag: '孤独被解决',
-            description: '写「他终于不再孤独了」。慎用，太圆满反而假。',
-          },
-          {
-            id: 'lonely-shelved',
-            tag: '孤独被搁置',
-            description: '写「她决定先不想这件事了」。搁置不等于解决，但可以继续生活。',
-          },
-          {
-            id: 'lonely-transformed',
-            tag: '孤独被转化',
-            description: '孤独变成别的什么——可能是自由，也可能是更深的孤独。不是消灭，是让它流动。',
-          },
-          {
-            id: 'lonely-unresolved',
-            tag: '孤独不被解决',
-            description: '写「孤独浮在表面，不被解决」。不升华，不超越，只是与它共处。',
-          },
-          {
-            id: 'lonely-renamed',
-            tag: '孤独被重新命名',
-            description:
-              '写「她不再叫它孤独了。她叫它『一个人』」。不是问题解决了，是命名方式变了。',
-          },
-        ],
-      },
-      {
-        title: '六、按「主题的自我认知」分',
+        title: '四、按「主题的自我认知」分',
+        label: '自我认知',
+        exclusive: true,
         cards: [
           {
             id: 'aware-none',
             tag: '未觉察',
-            description:
-              '人物不知道自己怎么了。写「他一直在生气，但不知道在气什么」。',
+            description: '人物不知道自己怎么了。写「他一直在生气，但不知道在气什么」。',
           },
           {
             id: 'aware-partial',
@@ -1061,92 +858,107 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '七、按「主题的结局」分',
-        cards: [
-          {
-            id: 'ending-closed',
-            tag: '闭合式',
-            description: '有明确的结局。写「他终于释怀了」。慎用。',
-          },
-          {
-            id: 'ending-open',
-            tag: '开放式',
-            description: '没有明确结局，留下悬念。常用。',
-          },
-          {
-            id: 'ending-circular',
-            tag: '循环式',
-            description: '回到原点，但人已经不同。写「山还是那座山，但她看山的方式变了」。',
-          },
-          {
-            id: 'ending-anti-climax',
-            tag: '反高潮式',
-            description: '铺垫了很久，最后什么都没发生。不爆发，只是继续生活。',
-          },
-          {
-            id: 'ending-none',
-            tag: '无结局式',
-            description: '从头到尾没有结局，也不试图找结局。不抵达，但继续。',
-          },
-        ],
-      },
-      {
-        title: '八、按「主题的时间性」分',
-        cards: [
-          {
-            id: 'theme-time-present',
-            tag: '当下主题',
-            description: '聚焦此刻正在发生的事与感受。',
-          },
-          {
-            id: 'theme-time-memory',
-            tag: '记忆主题',
-            description: '聚焦过去。写「回溯」时用。',
-          },
-          {
-            id: 'theme-time-future',
-            tag: '预言主题',
-            description: '指向未来。慎用，容易变成鸡汤。',
-          },
-          {
-            id: 'theme-time-shifted',
-            tag: '时间错位主题',
-            description: '在过去、现在、未来之间切换。三层叠加，写出未完成感。',
-          },
-          {
-            id: 'theme-time-none',
-            tag: '无时间主题',
-            description: '不指向任何具体时间，像抽离了钟表的状态。',
-          },
-        ],
-      },
-      {
-        title: '九、按「主题的对话性」分',
+        title: '五、按「主题的关涉对象」分',
+        label: '关涉对象',
+        exclusive: true,
         cards: [
           {
             id: 'theme-dialogue-solo',
-            tag: '独白主题',
-            description: '只关乎一个人。写「孤独」时用。',
+            tag: '一个人',
+            description: '只关乎一个人，无人回应。写「孤独」时用。',
           },
           {
             id: 'theme-dialogue-pair',
-            tag: '对话主题',
-            description: '关乎两个人之间的关系。写「亲密关系」时用。',
+            tag: '两个人',
+            description:
+              '关乎两个人之间的关系，可包含不在同一频道（错过）或只有沉默（隔阂）。写「亲密关系」时用。',
           },
           {
-            id: 'theme-dialogue-mismatched',
-            tag: '错位对话主题',
-            description: '两个人都有情感，但不在同一个频道上。写「错过」时用。',
-          },
-          {
-            id: 'theme-dialogue-silent',
-            tag: '沉默对话主题',
-            description: '两个人之间没有对话，只有沉默。写「隔阂」时用。',
+            id: 'theme-dialogue-group',
+            tag: '一群人',
+            description: '关乎一群人的共同处境。可用，但要避免集体抒情。',
           },
           {
             id: 'theme-dialogue-self',
-            tag: '无人对话主题',
-            description: '一个人对着空气或自己说话。写「自我对话」时用。',
+            tag: '与自我',
+            description: '一个人对着自己或空气说话，像分裂出另一个自己。写「自我对话」时用。',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'genre',
+    label: '文体体例',
+    groups: [
+      {
+        title: '一、按「文体」分',
+        label: '文体',
+        exclusive: true,
+        cards: [
+          {
+            id: 'genre-narrative',
+            tag: '叙事散文',
+            description: '以一件具体的事或一段经历为骨，边走边看，判断藏在细节后面。',
+          },
+          {
+            id: 'genre-commentary',
+            tag: '观点评论',
+            description:
+              '先立一个尖锐判断，再给理由与反方会怎么反驳，最后落到自己的取舍。不写成中立综述。',
+          },
+          {
+            id: 'genre-explanatory',
+            tag: '知识说明',
+            description: '把一件事讲清楚：是什么、为什么、怎么办。多用例子与对照，少用形容词。',
+          },
+          {
+            id: 'genre-interview',
+            tag: '人物访谈',
+            description: '以问答或转述他人原话推进，作者退到后面，只在关键处补一句判断。',
+          },
+          {
+            id: 'genre-listicle',
+            tag: '清单体',
+            description:
+              '用分点短章推进，每点自成一个可独立阅读的小块，点与点之间有递进或对照关系。',
+          },
+          {
+            id: 'genre-timeline',
+            tag: '时间线复盘',
+            description: '按时间顺序还原事件脉络，在关键节点停下来说判断，不做整体总结。',
+          },
+        ],
+      },
+      {
+        title: '二、按「材料类型」分',
+        label: '材料',
+        exclusive: false,
+        cards: [
+          {
+            id: 'material-personal',
+            tag: '个人经历',
+            description: '用自己或身边人的具体经历作材料。写清时间、地点、动作，别只写感受。',
+          },
+          {
+            id: 'material-data',
+            tag: '数据引述',
+            description: '用可核对的数据、报告、公开统计作支撑。数字要给出处与口径。',
+          },
+          {
+            id: 'material-case',
+            tag: '案例细节',
+            description: '用具体案例的细节（时间、数字、对话中的一句）代替概括性描述。',
+          },
+          {
+            id: 'material-dialogue',
+            tag: '对话实录',
+            description: '直接引述原话或对话片段作为材料，让当事人自己说，作者不代劳总结。',
+          },
+          {
+            id: 'material-classic',
+            tag: '典籍引用',
+            description: '引用经典文本、古语或行业权威的原话。要少而准，不做装饰性掉书袋。',
           },
         ],
       },

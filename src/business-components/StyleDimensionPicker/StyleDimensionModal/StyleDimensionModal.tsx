@@ -1,6 +1,13 @@
 import { Button, Card, Empty, Modal, Tag, Typography } from 'antd';
 import type { StyleDimension } from '../types';
-import { CANCEL_BUTTON, CONFIRM_BUTTON, MODAL_WIDTH, NO_CARDS_HINT } from './constants';
+import {
+  AXIS_EXCLUSIVE_HINT,
+  AXIS_STACKABLE_HINT,
+  CANCEL_BUTTON,
+  CONFIRM_BUTTON,
+  MODAL_WIDTH,
+  NO_CARDS_HINT,
+} from './constants';
 import styles from './StyleDimensionModal.module.css';
 
 export type StyleDimensionModalProps = {
@@ -12,7 +19,10 @@ export type StyleDimensionModalProps = {
   onConfirm: () => void;
 };
 
-/** 单个文风维度的卡片弹框：按大分类分组，卡片多选，确定才提交。 */
+/**
+ * 单个文风维度的卡片弹框：按轴分组，互斥轴单选、可叠加轴多选，确定才提交。
+ * 选中态由上层持有，本组件只按 selectedIds 渲染、把点击抛给上层。
+ */
 export default function StyleDimensionModal({
   dimension,
   selectedIds,
@@ -48,6 +58,9 @@ export default function StyleDimensionModal({
           <section key={`${dimension.key}-${index}`} className={styles.group}>
             <Typography.Title level={5} className={styles.groupTitle}>
               {group.title}
+              <span className={styles.axisHint}>
+                {group.exclusive ? AXIS_EXCLUSIVE_HINT : AXIS_STACKABLE_HINT}
+              </span>
             </Typography.Title>
             <div className={styles.grid}>
               {group.cards.map((card) => {
