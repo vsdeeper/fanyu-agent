@@ -26,9 +26,9 @@ import {
   RESEARCH_FAILED,
   RESEARCH_MAX_SEARCH_ROUNDS,
   RESEARCH_MAX_STEPS,
+  WECHAT_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS,
   WECHAT_ARTICLE_IMAGES_MAX_OUTPUT_TOKENS,
   WECHAT_ARTICLE_PLAN_MAX_OUTPUT_TOKENS,
-  resolveDraftMaxOutputTokens,
 } from './constants';
 import {
   DRAFT_INSTRUCTIONS,
@@ -36,12 +36,7 @@ import {
   PLAN_INSTRUCTIONS,
   RESEARCH_INSTRUCTIONS,
 } from './instructions';
-import {
-  parseDraftBody,
-  parseImagesBody,
-  parsePlanBody,
-  parseResearchBody,
-} from './parse-request';
+import { parseDraftBody, parseImagesBody, parsePlanBody, parseResearchBody } from './parse-request';
 import {
   buildDraftPrompt,
   buildImagesPrompt,
@@ -261,7 +256,7 @@ export async function handleWechatArticleDraft(req: Request): Promise<Response> 
           instructions: DRAFT_INSTRUCTIONS,
           prompt: buildDraftPrompt(body),
           abortSignal: req.signal,
-          maxOutputTokens: resolveDraftMaxOutputTokens(body.lengthLimit),
+          maxOutputTokens: WECHAT_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS,
           providerOptions: { openai: openaiOptions },
         });
         await pipeTextStream(result, req.signal, send, DRAFT_FAILED, DRAFT_TRUNCATED);

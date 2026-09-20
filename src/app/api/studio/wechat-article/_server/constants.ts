@@ -19,22 +19,11 @@ export const RESEARCH_MAX_STEPS = 6;
  */
 export const WECHAT_ARTICLE_PLAN_MAX_OUTPUT_TOKENS = 8192;
 /**
- * draft 默认输出上限。公众号正文远长于思路 JSON，且 reasoning 占同一预算；
+ * draft 输出上限。公众号正文远长于思路 JSON，且 reasoning 占同一预算；
  * 取较大档避免长文 finishReason=length。
+ *
+ * 不按「篇幅下限」分档：篇幅只是提示词里的下限约束，2×字数 + reasoning/JSON 余量在界面上限
+ * （5000 字）内始终低于本值，分档等于恒定；真往下压只会让正文被截断，且输出按实际 token 计费，
+ * 压低上限也省不下成本。
  */
 export const WECHAT_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS = 32768;
-/** draft 输出硬顶：有篇幅下限时按字数上调，但不超过此值。 */
-export const WECHAT_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS_CAP = 65536;
-
-/**
- * 按篇幅下限估算 draft maxOutputTokens。
- * 中文约 1～2 token/字，另留 reasoning 与文末 JSON 余量。
- */
-export function resolveDraftMaxOutputTokens(lengthLimit?: number): number {
-  if (!lengthLimit) return WECHAT_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS;
-  const needed = Math.ceil(lengthLimit * 2) + 8192;
-  return Math.min(
-    WECHAT_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS_CAP,
-    Math.max(WECHAT_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS, needed),
-  );
-}
