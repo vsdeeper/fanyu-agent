@@ -26,11 +26,11 @@
 
 基于 **Next.js App Router + TypeScript + Vercel AI SDK + @ant-design/x** 的 AI 对话前端脚手架。样式使用 CSS Modules / Ant Design（**不使用 Tailwind**）。
 
-| 项         | 值                          |
-| ---------- | --------------------------- |
-| 应用名称   | 凡域                        |
-| 包管理器   | pnpm                        |
-| Node 版本  | 未在 package.json 指定（建议 22+） |
+| 项        | 值                                 |
+| --------- | ---------------------------------- |
+| 应用名称  | 凡域                               |
+| 包管理器  | pnpm                               |
+| Node 版本 | 未在 package.json 指定（建议 22+） |
 
 ### 技术栈
 
@@ -80,6 +80,8 @@ docs(agents): 补充本地启动与环境变量说明
 refactor(ui): 抽离 Chat 组件
 chore(deps): 升级 eslint 与 prettier
 ```
+
+**只写一行**：不加 body 段落，不罗列改了哪些文件、为何这么改。改动再复杂也只留标题，细节看 diff。
 
 - commit-msg：commitlint（`@commitlint/config-conventional`）
 - pre-commit：husky + lint-staged（ESLint / Prettier）
@@ -136,16 +138,16 @@ drizzle/                   # SQL migrations
 
 ### 落点规则一览
 
-| # | 场景 | 落点 |
-| - | ---- | ---- |
-| 1 | 组件专属（store / 纯函数 / 类型 / 常量 / Hook） | `app/<页面域>/_components/<Component>/`（`utils.ts` / `constants.ts` / `hooks/`） |
-| 2 | 页面级共享工具与常量（同路由多个**顶层**组件或 page） | `app/<页面域>/_utils/`（勿叫 `_lib`；勿在页面根平铺 `constants.ts`） |
-| 3 | 页面级共享 Hook | `app/<页面域>/_hooks/`（勿叫 `hooks/`，否则成 URL 段） |
-| 4 | 仅 Node / Route | `app/api/<域>/_server/`（`import 'server-only'`） |
-| 5 | Client + Server 共用类型 / 纯函数 / 常量 | 该 API 域 `_shared/`（Client **只允许** import `_shared`） |
-| 6 | 无独立产品面 | `src/lib/` |
-| 7 | 跨路由、无业务耦合 UI / Hook | `src/components/` / `src/hooks/` |
-| 8 | 跨产品、带业务语义 UI | `src/business-components/`（专属 Hook/常量仍放该组件目录） |
+| #   | 场景                                                  | 落点                                                                              |
+| --- | ----------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 1   | 组件专属（store / 纯函数 / 类型 / 常量 / Hook）       | `app/<页面域>/_components/<Component>/`（`utils.ts` / `constants.ts` / `hooks/`） |
+| 2   | 页面级共享工具与常量（同路由多个**顶层**组件或 page） | `app/<页面域>/_utils/`（勿叫 `_lib`；勿在页面根平铺 `constants.ts`）              |
+| 3   | 页面级共享 Hook                                       | `app/<页面域>/_hooks/`（勿叫 `hooks/`，否则成 URL 段）                            |
+| 4   | 仅 Node / Route                                       | `app/api/<域>/_server/`（`import 'server-only'`）                                 |
+| 5   | Client + Server 共用类型 / 纯函数 / 常量              | 该 API 域 `_shared/`（Client **只允许** import `_shared`）                        |
+| 6   | 无独立产品面                                          | `src/lib/`                                                                        |
+| 7   | 跨路由、无业务耦合 UI / Hook                          | `src/components/` / `src/hooks/`                                                  |
+| 8   | 跨产品、带业务语义 UI                                 | `src/business-components/`（专属 Hook/常量仍放该组件目录）                        |
 
 **命名约束：**
 
@@ -183,14 +185,14 @@ lib/*、src/hooks     →  禁止依赖 app/ 与任何产品实现
 
 #### Route 一览
 
-| API Route | 实现目录 | 说明 |
-| --------- | -------- | ---- |
-| `app/api/chat/` | `_server/` | 流式对话、会话提交、tools |
-| `app/api/chats/`、`[id]/` | `_server/` | 会话列表 / 新建 / 读取 / 删除 |
-| `app/api/studio/` | `_server/` + 各产品子域 | 共用生图与任务；子路由见下 |
-| `app/api/geo/` | `_server/` | 逆地理、UserLocation |
-| `app/api/images/` | `_server/` | 生图资源、Provider |
-| `app/api/docs/` | `_server/` | DESIGN.md 等会话文档下载 |
+| API Route                 | 实现目录                | 说明                          |
+| ------------------------- | ----------------------- | ----------------------------- |
+| `app/api/chat/`           | `_server/`              | 流式对话、会话提交、tools     |
+| `app/api/chats/`、`[id]/` | `_server/`              | 会话列表 / 新建 / 读取 / 删除 |
+| `app/api/studio/`         | `_server/` + 各产品子域 | 共用生图与任务；子路由见下    |
+| `app/api/geo/`            | `_server/`              | 逆地理、UserLocation          |
+| `app/api/images/`         | `_server/`              | 生图资源、Provider            |
+| `app/api/docs/`           | `_server/`              | DESIGN.md 等会话文档下载      |
 
 工作室子路由要点：
 
@@ -209,14 +211,14 @@ lib/*、src/hooks     →  禁止依赖 app/ 与任何产品实现
 
 #### 域内典型文件命名
 
-| 文件 | 位置 | 说明 |
-| ---- | ---- | ---- |
-| `handle-<动作>.ts` | `_server/` | HTTP 方法或 Route 入口 |
-| `parse-request.ts` | `_server/` | 请求体解析与校验 |
-| `store.ts` / `assets.ts` | `_server/` | DAL（`import 'server-only'`） |
-| `providers/<name>/` | `_server/` | 第三方 SDK 适配；`client.ts` **不是**浏览器模块 |
-| `types.ts` | `_shared/` | **仅**类型；勿放运行时常量 |
-| `constants.ts` | `_shared/` 或 `_server/` | 运行时常量；与 types 分离 |
+| 文件                     | 位置                     | 说明                                            |
+| ------------------------ | ------------------------ | ----------------------------------------------- |
+| `handle-<动作>.ts`       | `_server/`               | HTTP 方法或 Route 入口                          |
+| `parse-request.ts`       | `_server/`               | 请求体解析与校验                                |
+| `store.ts` / `assets.ts` | `_server/`               | DAL（`import 'server-only'`）                   |
+| `providers/<name>/`      | `_server/`               | 第三方 SDK 适配；`client.ts` **不是**浏览器模块 |
+| `types.ts`               | `_shared/`               | **仅**类型；勿放运行时常量                      |
+| `constants.ts`           | `_shared/` 或 `_server/` | 运行时常量；与 types 分离                       |
 
 Client 需要的会话类型从 `app/api/chats/_shared/types.ts` 导入，**勿**从 `store.ts` 再导出。
 
@@ -244,11 +246,11 @@ Client 需要的会话类型从 `app/api/chats/_shared/types.ts` 导入，**勿*
 
 ### 组件目录约定
 
-| 层级 | 路径 | 判定 | 示例 |
-| ---- | ---- | ---- | ---- |
-| 全局通用 | `src/components/` | 无业务耦合，可跨路由 | `theme/`、`ModeSwitch/` |
-| 业务通用 | `src/business-components/` | 带业务语义，跨产品页 | `StudioImageUpload/` |
-| 页面级 | `app/<route>/_components/` | 仅该路由段；`_` 非 URL | `app/chat/_components/` |
+| 层级     | 路径                       | 判定                   | 示例                    |
+| -------- | -------------------------- | ---------------------- | ----------------------- |
+| 全局通用 | `src/components/`          | 无业务耦合，可跨路由   | `theme/`、`ModeSwitch/` |
+| 业务通用 | `src/business-components/` | 带业务语义，跨产品页   | `StudioImageUpload/`    |
+| 页面级   | `app/<route>/_components/` | 仅该路由段；`_` 非 URL | `app/chat/_components/` |
 
 页面级可引用全局 / 业务通用；反向禁止。
 
@@ -286,11 +288,11 @@ Button/
 
 ### Hook 目录约定
 
-| 层级 | 路径 | 判定 | 示例 |
-| ---- | ---- | ---- | ---- |
-| 全局 | `src/hooks/` | 无业务耦合，可跨路由 | 按需创建 |
-| 页面私有 | `app/<route>/_hooks/` | 同路由多个组件或 page 共用 | 按需创建 |
-| 组件私有 | `<Component>/hooks/` | 仅该组件使用 | `EcommerceTaskList/hooks/…` |
+| 层级     | 路径                  | 判定                       | 示例                        |
+| -------- | --------------------- | -------------------------- | --------------------------- |
+| 全局     | `src/hooks/`          | 无业务耦合，可跨路由       | 按需创建                    |
+| 页面私有 | `app/<route>/_hooks/` | 同路由多个组件或 page 共用 | 按需创建                    |
+| 组件私有 | `<Component>/hooks/`  | 仅该组件使用               | `EcommerceTaskList/hooks/…` |
 
 - 文件名 `useXxx.ts`；勿为空目录占位
 - **就近上提**：单调用方 → 组件 `hooks/` → 同页多组件 → `_hooks/` → 跨路由无业务耦合 → `src/hooks/`
@@ -301,11 +303,11 @@ Button/
 
 ### 常量目录约定
 
-| 层级 | 路径 | 判定 | 示例 |
-| ---- | ---- | ---- | ---- |
-| 组件专属 | `<Component>/constants.ts` | 仅该组件；同树子组件可留父级 | `EcommerceStudio/constants.ts` |
-| 页面私有 | `app/<route>/_utils/constants.ts`（或按主题拆分） | 同路由多个**顶层**组件或 page 共用 | `app/studio/ecommerce/_utils/constants.ts` |
-| API 契约 | `api/<域>/_shared/constants.ts` 或 `_server/constants.ts` | Client+Server → `_shared`；仅 Node → `_server` | `api/docs/_shared/constants.ts` |
+| 层级     | 路径                                                      | 判定                                           | 示例                                       |
+| -------- | --------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------ |
+| 组件专属 | `<Component>/constants.ts`                                | 仅该组件；同树子组件可留父级                   | `EcommerceStudio/constants.ts`             |
+| 页面私有 | `app/<route>/_utils/constants.ts`（或按主题拆分）         | 同路由多个**顶层**组件或 page 共用             | `app/studio/ecommerce/_utils/constants.ts` |
+| API 契约 | `api/<域>/_shared/constants.ts` 或 `_server/constants.ts` | Client+Server → `_shared`；仅 Node → `_server` | `api/docs/_shared/constants.ts`            |
 
 **就近上提：**
 
@@ -331,12 +333,12 @@ Button/
 
 #### 存储路径
 
-| 用途 | 路径规则 | 默认 |
-| ---- | -------- | ---- |
-| 会话图片 / 文档 | `CHAT_STORE_DIR` 下 `images/`、`docs/` | `./data/chats/` |
-| 会话库 | `dirname(CHAT_STORE_DIR)/chats.db`（WAL） | `./data/chats.db` |
-| 工作室任务资产 | `dirname(CHAT_STORE_DIR)/studio/{product}/{taskId}/` | `./data/studio/{product}/` |
-| 云盘同步对端 | `CHAT_SYNC_REMOTE_DIR`（须 `.env.local`，无代码默认） | 应指向 `.../chats` |
+| 用途            | 路径规则                                              | 默认                       |
+| --------------- | ----------------------------------------------------- | -------------------------- |
+| 会话图片 / 文档 | `CHAT_STORE_DIR` 下 `images/`、`docs/`                | `./data/chats/`            |
+| 会话库          | `dirname(CHAT_STORE_DIR)/chats.db`（WAL）             | `./data/chats.db`          |
+| 工作室任务资产  | `dirname(CHAT_STORE_DIR)/studio/{product}/{taskId}/`  | `./data/studio/{product}/` |
+| 云盘同步对端    | `CHAT_SYNC_REMOTE_DIR`（须 `.env.local`，无代码默认） | 应指向 `.../chats`         |
 
 - 启动时若仅发现旧路径 `CHAT_STORE_DIR/chats.db`，会改名迁到上一级
 - `pnpm sync:data:push` 本地→云盘；`pnpm sync:data:pull` 云盘→本地（镜像 chats、同级 studio、上一级 chats.db；pull 覆盖本地）
@@ -379,10 +381,10 @@ Button/
 
 两层注入（Execution / references 预留）：**Discovery → Activation**。
 
-| 层 | 行为 |
-| -- | ---- |
-| Discovery | 每轮 `instructions` 常驻目录（`id` + `name` + `description`），见 `buildSkillCatalogPrompt`；不含指令正文；区分可调用 vs 知识库（`userInvocable: false`） |
-| Activation | 仅本轮加载完整 `instructions`；来源：手动 `/<id>`（跳过阈值）、意图达阈值、`coActivateWith` 伴随激活；取并集 |
+| 层         | 行为                                                                                                                                                      |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Discovery  | 每轮 `instructions` 常驻目录（`id` + `name` + `description`），见 `buildSkillCatalogPrompt`；不含指令正文；区分可调用 vs 知识库（`userInvocable: false`） |
+| Activation | 仅本轮加载完整 `instructions`；来源：手动 `/<id>`（跳过阈值）、意图达阈值、`coActivateWith` 伴随激活；取并集                                              |
 
 补充规则：
 
@@ -405,10 +407,10 @@ Button/
 
 #### 持久化与 SSR
 
-| 键 | 存储 | 内容 |
-| -- | ---- | ---- |
-| `one-theme` | localStorage | 偏好（可含 `'system'`） |
-| `one-theme-resolved` | cookie | 解析后的 `'light' \| 'dark'`（SSR 防 FOUC） |
+| 键                   | 存储         | 内容                                        |
+| -------------------- | ------------ | ------------------------------------------- |
+| `one-theme`          | localStorage | 偏好（可含 `'system'`）                     |
+| `one-theme-resolved` | cookie       | 解析后的 `'light' \| 'dark'`（SSR 防 FOUC） |
 
 - `html[data-theme]` / `color-scheme` 永远写解析后的 light/dark
 - `'system'` 用 `matchMedia` 实时解析；preference 为 system 时挂 `change` 监听
@@ -449,10 +451,10 @@ Button/
 
 按「目的」分两类，勿混淆：
 
-| 类型 | 何时写 | 内容 |
-| ---- | ------ | ---- |
-| 防回归 | **仅**真实修错的代码 | 原现象 / 根因 / 为何这样写、勿改回 |
-| 意图 | 反直觉、易被误改、隐藏约束 | 「为什么」取舍；显而易见不写 |
+| 类型   | 何时写                     | 内容                               |
+| ------ | -------------------------- | ---------------------------------- |
+| 防回归 | **仅**真实修错的代码       | 原现象 / 根因 / 为何这样写、勿改回 |
+| 意图   | 反直觉、易被误改、隐藏约束 | 「为什么」取舍；显而易见不写       |
 
 规则：
 
@@ -471,10 +473,10 @@ Button/
 
 统一信封：`{ code: number; message: string; data: T | null }`
 
-| 结果 | `code` | `message` | `data` | HTTP |
-| ---- | ------ | --------- | ------ | ---- |
-| 成功 | `0` | `'ok'` | 业务载荷 | 200 |
-| 失败 | ≠ 0 | 中文可读描述 | `null` | 保留语义（400/404/502…） |
+| 结果 | `code` | `message`    | `data`   | HTTP                     |
+| ---- | ------ | ------------ | -------- | ------------------------ |
+| 成功 | `0`    | `'ok'`       | 业务载荷 | 200                      |
+| 失败 | ≠ 0    | 中文可读描述 | `null`   | 保留语义（400/404/502…） |
 
 客户端以 `code === 0` 判成功。工具：[`api-response.ts`](src/lib/shared/server/api-response.ts) — `jsonOk` / `jsonFail` / `readApiData`。
 
