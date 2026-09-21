@@ -508,6 +508,30 @@ export async function copyText(text: string): Promise<void> {
   await navigator.clipboard.writeText(text);
 }
 
+/**
+ * 复制富文本（公众号后台认 text/html + 内联 style）。
+ * Safari 对 ClipboardItem 值要求 Promise 包装的 Blob，故统一用 Promise.resolve。
+ * 富文本写入失败时降级为纯文本。
+ */
+export async function copyRichText(payload: { html: string; plain: string }): Promise<void> {
+  const { html, plain } = payload;
+  if (!html.trim() && !plain.trim()) {
+    throw new Error('empty copy payload');
+  }
+  try {
+    const htmlBlob = new Blob([html], { type: 'text/html' });
+    const plainBlob = new Blob([plain || html], { type: 'text/plain' });
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html': Promise.resolve(htmlBlob),
+        'text/plain': Promise.resolve(plainBlob),
+      }),
+    ]);
+  } catch {
+    await navigator.clipboard.writeText(plain || html);
+  }
+}
+
 /** 将图片 URL 复制为 image/png。 */
 export async function copyImageFromUrl(url: string): Promise<void> {
   const response = await fetch(url);

@@ -79,6 +79,7 @@ export const SAVE_BUTTON = '保存';
 export const CANCEL_BUTTON = '取消';
 export const DELETE_BUTTON = '删除';
 export const COPY_OK = '已复制到剪贴板';
+export const COPY_ARTICLE_OK = '已复制，可粘贴到公众号后台';
 export const COPY_FAILED = '复制失败，请手动选择文本';
 export const COPY_IMAGE_FAILED = '复制图片失败，请右键另存';
 export const GENERATE_FAILED = '配图生成失败，请稍后重试';

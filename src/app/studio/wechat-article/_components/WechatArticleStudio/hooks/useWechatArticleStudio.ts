@@ -9,6 +9,7 @@ import {
   revokeReplacedLocalUploadItemUrls,
 } from '@/lib/shared/client/upload-items';
 import {
+  COPY_ARTICLE_OK,
   COPY_FAILED,
   COPY_IMAGE_FAILED,
   COPY_OK,
@@ -41,12 +42,11 @@ import type {
 } from '../types';
 import {
   assertOkOrJsonFail,
-  buildCopyArticleText,
   composeWatermark,
   consumeAnalyzeSse,
   consumeGenerateNdjson,
   copyImageFromUrl,
-  copyText,
+  copyRichText,
   createRafTextBuffer,
   defaultImageSpec,
   cleanResearchBrief,
@@ -71,6 +71,7 @@ import {
   toImageItems,
   toPersistableImageUrl,
 } from '../utils';
+import { buildWechatCopyHtml } from '../wechat-copy';
 import { formatStyleSelections } from '@/business-components/StyleDimensionPicker';
 
 /** 管理公众号五步：调研 → 思路 → 成稿 → 成稿配图 → 完成。 */
@@ -710,8 +711,9 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
 
   async function handleCopyArticle() {
     try {
-      await copyText(buildCopyArticleText(titles, markdown));
-      message.success(COPY_OK);
+      const payload = buildWechatCopyHtml(markdown);
+      await copyRichText(payload);
+      message.success(COPY_ARTICLE_OK);
     } catch {
       message.error(COPY_FAILED);
     }
