@@ -5,7 +5,16 @@
  * pull：CHAT_SYNC_REMOTE_DIR 与同级 studio、上一级 chats.db → 本地
  * --yes：跳过 pull 确认与风险中止（风险清单仍会打印）
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'fs';
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from 'fs';
 import { dirname, join, resolve } from 'path';
 import { spawnSync } from 'child_process';
 import { createInterface } from 'readline';
@@ -83,6 +92,27 @@ function describeDb(chatsDir) {
   return `${dbPath}（${stat.mtime.toLocaleString()}，${(stat.size / 1024 / 1024).toFixed(1)}MB）`;
 }
 
+/**
+ * 把单个文件替换到目标路径。
+ * 云盘盘符上不能先写旁路文件再改名：客户端会跟上 `*.syncing`，文件一消失就报「文件不存在」。
+ * 也不能 cpSync / 对已有文件 copyFileSync：前者 unlink 被当成 errno 0 失败，后者在客户端占用时 EBUSY。
+ * 先删掉目标，再把源复制到这个空路径。
+ */
+function copyFileReplacing(from, to) {
+  if (existsSync(to)) {
+    try {
+      rmSync(to, { force: true });
+    } catch (err) {
+      const removed = err && (err.errno === 0 || err.code === '');
+      if (!removed && existsSync(to)) throw err;
+    }
+  }
+  if (existsSync(to)) {
+    throw new Error(`无法替换被占用的文件: ${to}`);
+  }
+  copyFileSync(from, to);
+}
+
 /** 将 chats.db 及 WAL 副档复制到目标会话目录的上一级，并清掉目标内旧嵌套库 */
 function copyDbFiles(srcChats, destChats) {
   const srcDb = resolveExistingDb(srcChats);
@@ -97,7 +127,7 @@ function copyDbFiles(srcChats, destChats) {
     const from = `${srcDb}${suffix}`;
     const to = `${destDb}${suffix}`;
     if (existsSync(from)) {
-      cpSync(from, to, { force: true });
+      copyFileReplacing(from, to);
     } else if (suffix !== '' && existsSync(to)) {
       rmSync(to, { force: true });
     }
