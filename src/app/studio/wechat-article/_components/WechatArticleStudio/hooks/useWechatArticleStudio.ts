@@ -87,6 +87,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   // 左栏初值只算一次：Form 二次挂载是 store 赢（只补缺失键），重算只会白白多渲染
   const [panelInitialValues] = useState<WechatPanelValues>(() => ({
     idea: initialResearch?.idea ?? '',
+    experience: initialResearch?.experience ?? '',
     viewpoint: initialResearch?.viewpoint ?? '',
     styleSelections: initialDraft?.styleSelections ?? {},
     lengthLimit: initialDraft?.lengthLimit,
@@ -189,11 +190,12 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
   const selectedAngle: AngleCard | undefined = angles.find((item) => item.id === selectedAngleId);
 
   async function persistResearch() {
-    const { idea, viewpoint } = panelValues;
+    const { idea, experience, viewpoint } = panelValues;
     const next: ResearchStepSnapshot = {
       idea: idea.trim(),
       sources,
       angles,
+      ...(experience.trim() ? { experience: experience.trim() } : {}),
       ...(viewpoint.trim() ? { viewpoint: viewpoint.trim() } : {}),
       ...(researchStream.trim() ? { streamText: cleanResearchBrief(researchStream) } : {}),
       ...(selectedAngleId ? { selectedAngleId } : {}),
@@ -347,14 +349,15 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
 
   async function handleResearch() {
     if (!(await validateForm(panelForm))) return;
-    const { idea, viewpoint } = panelValues;
+    const { idea, experience, viewpoint } = panelValues;
     setSources([]);
     setAngles([]);
     setSelectedAngleId(undefined);
     await runSse(
       '/api/studio/wechat-article/research',
       {
-        idea: idea.trim(),
+        ...(idea.trim() ? { idea: idea.trim() } : {}),
+        ...(experience.trim() ? { experience: experience.trim() } : {}),
         ...(viewpoint.trim() ? { viewpoint: viewpoint.trim() } : {}),
       },
       researchBuffer,
@@ -379,6 +382,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
             sources: parsed.sources,
             angles: parsed.angles,
             streamText: brief,
+            ...(experience.trim() ? { experience: experience.trim() } : {}),
             ...(viewpoint.trim() ? { viewpoint: viewpoint.trim() } : {}),
             ...(selected ? { selectedAngleId: selected } : {}),
           };
@@ -398,10 +402,12 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       message.warning(MISSING_ANGLE_WARNING);
       return;
     }
+    const { idea, experience } = panelValues;
     await runSse(
       '/api/studio/wechat-article/plan',
       {
-        idea: panelValues.idea.trim(),
+        ...(idea.trim() ? { idea: idea.trim() } : {}),
+        ...(experience.trim() ? { experience: experience.trim() } : {}),
         angle: selectedAngle,
         sources,
       },
@@ -449,12 +455,13 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
       return;
     }
     if (!(await validateForm(panelForm))) return;
-    const { idea, lengthLimit, styleSelections } = panelValues;
+    const { idea, experience, lengthLimit, styleSelections } = panelValues;
     const stylePrompt = formatStyleSelections(styleSelections);
     await runSse(
       '/api/studio/wechat-article/draft',
       {
-        idea: idea.trim(),
+        ...(idea.trim() ? { idea: idea.trim() } : {}),
+        ...(experience.trim() ? { experience: experience.trim() } : {}),
         angle: selectedAngle,
         plan: {
           beats: plan.beats,

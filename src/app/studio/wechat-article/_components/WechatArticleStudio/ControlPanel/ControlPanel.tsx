@@ -16,7 +16,7 @@ import {
   LENGTH_LIMIT_MIN,
   LENGTH_LIMIT_PLACEHOLDER,
   LENGTH_LIMIT_SUFFIX,
-  MISSING_IDEA_WARNING,
+  MISSING_RESEARCH_INPUT_WARNING,
   MISSING_STYLE_WARNING,
   PLAN_BUTTON,
   PLAN_IMAGES_BUTTON,
@@ -88,6 +88,17 @@ export default function ControlPanel({
     void form.validateFields(['styleSelections']).catch(() => undefined);
   };
 
+  /** 想法 / 经历 / 观点至少填一项；挂在「我的想法」上，另两字段变更时通过 dependencies 重校验。 */
+  const atLeastOneResearchInput = {
+    validator: async () => {
+      const idea = String(form.getFieldValue('idea') ?? '').trim();
+      const experience = String(form.getFieldValue('experience') ?? '').trim();
+      const viewpoint = String(form.getFieldValue('viewpoint') ?? '').trim();
+      if (idea || experience || viewpoint) return;
+      throw new Error(MISSING_RESEARCH_INPUT_WARNING);
+    },
+  };
+
   return (
     <aside className={styles.panel}>
       <div className={styles.scroll}>
@@ -109,9 +120,16 @@ export default function ControlPanel({
               <Form.Item
                 name="idea"
                 label="我的想法"
-                rules={[{ required: true, whitespace: true, message: MISSING_IDEA_WARNING }]}
+                dependencies={['experience', 'viewpoint']}
+                rules={[atLeastOneResearchInput]}
               >
                 <Input.TextArea rows={4} placeholder="例如：AI agent 开始替人逛电商" />
+              </Form.Item>
+              <Form.Item name="experience" label="我的经历">
+                <Input.TextArea
+                  rows={4}
+                  placeholder="例如：上周帮客户用 agent 下单，踩过哪些坑"
+                />
               </Form.Item>
               <Form.Item name="viewpoint" label="我的观点">
                 <Input.TextArea rows={4} placeholder="例如：国外已经在落地，国内还在聊概念" />

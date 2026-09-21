@@ -13,14 +13,19 @@ export function buildResearchPrompt(body: WechatArticleResearchRequest): string 
     String(today.getMonth() + 1).padStart(2, '0'),
     String(today.getDate()).padStart(2, '0'),
   ].join('-');
+  const idea = body.idea?.trim();
+  const experience = body.experience?.trim();
+  const viewpoint = body.viewpoint?.trim();
   const lines = [
-    '【用户想法】',
-    body.idea.trim(),
-    ...(body.viewpoint?.trim() ? ['【我的观点】', body.viewpoint.trim()] : []),
+    ...(idea ? ['【用户想法】', idea] : []),
+    ...(experience ? ['【我的经历】', experience] : []),
+    ...(viewpoint ? ['【我的观点】', viewpoint] : []),
     '【今天日期】',
     todayIso,
     '',
-    '请先调用 web_search 联网检索（不限国内外；权威可核对并兼顾时效），再输出：简报正文 + 带真实链接与日期的参考来源 + 角度卡。涉及「今天/新鲜事」时必须以检索结果为准，禁止用记忆编造。简报第一句就是结论；不要写 I will search / 我先搜 等预告，不要写「检索简报」标题，不要写检索过程。',
+    experience
+      ? '用户给出了亲身经历：调研与角度须以这段经历为叙事主轴，检索只作背景/对照/时效补充，禁止用外部热点另起一套与经历无关的选题。请先调用 web_search 联网检索（不限国内外；权威可核对并兼顾时效），再输出：简报正文 + 带真实链接与日期的参考来源 + 角度卡。涉及「今天/新鲜事」时必须以检索结果为准，禁止用记忆编造。简报第一句就是结论；不要写 I will search / 我先搜 等预告，不要写「检索简报」标题，不要写检索过程。'
+      : '请先调用 web_search 联网检索（不限国内外；权威可核对并兼顾时效），再输出：简报正文 + 带真实链接与日期的参考来源 + 角度卡。涉及「今天/新鲜事」时必须以检索结果为准，禁止用记忆编造。简报第一句就是结论；不要写 I will search / 我先搜 等预告，不要写「检索简报」标题，不要写检索过程。',
   ];
   return lines.join('\n');
 }
@@ -33,9 +38,11 @@ export function buildPlanPrompt(body: WechatArticlePlanRequest): string {
       return `${index + 1}. [${item.kind}] ${item.title}${date ? `（${date}）` : ''} (${item.url})\n${item.blurb}`;
     })
     .join('\n');
+  const idea = body.idea?.trim();
+  const experience = body.experience?.trim();
   return [
-    '【用户想法】',
-    body.idea.trim(),
+    ...(idea ? ['【用户想法】', idea] : []),
+    ...(experience ? ['【我的经历】', experience] : []),
     '【选定角度】',
     `判断：${body.angle.claim}`,
     `冲突：${body.angle.conflict}`,
@@ -44,15 +51,19 @@ export function buildPlanPrompt(body: WechatArticlePlanRequest): string {
     '【参考来源】',
     sources || '（无）',
     '',
-    '请输出轻量内容思路：JSON 外最多两句导语，随即附完整 JSON（含 beats，以及至少 3 条 titleDirections）；不要写长文或分节大纲。',
+    experience
+      ? '请输出轻量内容思路：以【我的经历】为叙事主轴；JSON 外最多两句导语，随即附完整 JSON（含 beats，以及至少 3 条 titleDirections）；不要写长文或分节大纲。'
+      : '请输出轻量内容思路：JSON 外最多两句导语，随即附完整 JSON（含 beats，以及至少 3 条 titleDirections）；不要写长文或分节大纲。',
   ].join('\n');
 }
 
 /** 构建成稿用户提示。 */
 export function buildDraftPrompt(body: WechatArticleDraftRequest): string {
+  const idea = body.idea?.trim();
+  const experience = body.experience?.trim();
   return [
-    '【用户想法】',
-    body.idea.trim(),
+    ...(idea ? ['【用户想法】', idea] : []),
+    ...(experience ? ['【我的经历】', experience] : []),
     '【选定角度】',
     `判断：${body.angle.claim}`,
     `冲突：${body.angle.conflict}`,
@@ -68,9 +79,13 @@ export function buildDraftPrompt(body: WechatArticleDraftRequest): string {
       : []),
     ...(body.plan.audience ? ['【受众】', body.plan.audience] : []),
     '',
-    body.plan.title?.trim()
-      ? `请写公众号正文 Markdown：第一行必须是 \`# ${body.plan.title.trim()}\`（标题已定，勿改写），空一行后写正文；正文须含若干 \`## \` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。`
-      : '请写公众号正文 Markdown；正文须含若干 `## ` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。',
+    experience
+      ? body.plan.title?.trim()
+        ? `请写公众号正文 Markdown：第一行必须是 \`# ${body.plan.title.trim()}\`（标题已定，勿改写），空一行后写正文；以【我的经历】为叙事主轴，勿用外部资讯另起故事；正文须含若干 \`## \` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。`
+        : '请写公众号正文 Markdown；以【我的经历】为叙事主轴，勿用外部资讯另起故事；正文须含若干 `## ` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。'
+      : body.plan.title?.trim()
+        ? `请写公众号正文 Markdown：第一行必须是 \`# ${body.plan.title.trim()}\`（标题已定，勿改写），空一行后写正文；正文须含若干 \`## \` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。`
+        : '请写公众号正文 Markdown；正文须含若干 `## ` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。',
   ].join('\n');
 }
 

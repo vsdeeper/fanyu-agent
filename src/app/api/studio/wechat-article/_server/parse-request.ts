@@ -24,19 +24,24 @@ const sourceSchema = z.object({
   publishedAt: z.string().trim().min(1).optional(),
 });
 
-const researchSchema = z.object({
-  idea: z.string().trim().min(1),
-  viewpoint: z.string().trim().optional(),
-});
+const researchSchema = z
+  .object({
+    idea: z.string().trim().optional().default(''),
+    experience: z.string().trim().optional(),
+    viewpoint: z.string().trim().optional(),
+  })
+  .refine((value) => Boolean(value.idea || value.experience || value.viewpoint));
 
 const planSchema = z.object({
-  idea: z.string().trim().min(1),
+  idea: z.string().trim().optional().default(''),
+  experience: z.string().trim().optional(),
   angle: angleSchema,
   sources: z.array(sourceSchema),
 });
 
 const draftSchema = z.object({
-  idea: z.string().trim().min(1),
+  idea: z.string().trim().optional().default(''),
+  experience: z.string().trim().optional(),
   angle: angleSchema,
   plan: z.object({
     beats: z.array(z.string().trim().min(1)).min(1),

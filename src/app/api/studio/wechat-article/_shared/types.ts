@@ -1,12 +1,14 @@
-/** 选题调研请求：想法驱动，无补充资料上传。 */
+/** 选题调研请求：想法 / 经历 / 观点至少填一项。 */
 export type WechatArticleResearchRequest = {
-  idea: string;
+  idea?: string;
+  experience?: string;
   viewpoint?: string;
 };
 
 /** 内容思路请求。 */
 export type WechatArticlePlanRequest = {
-  idea: string;
+  idea?: string;
+  experience?: string;
   angle: {
     id: string;
     claim: string;
@@ -25,7 +27,8 @@ export type WechatArticlePlanRequest = {
 
 /** 成稿请求。 */
 export type WechatArticleDraftRequest = {
-  idea: string;
+  idea?: string;
+  experience?: string;
   angle: {
     id: string;
     claim: string;

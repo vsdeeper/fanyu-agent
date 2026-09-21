@@ -5,7 +5,7 @@ export const DRAFT_FAILED = '成稿失败，请稍后重试';
 export const DRAFT_TRUNCATED = '成稿输出被截断，请重试生成';
 export const IMAGES_FAILED = '配图规划失败，请稍后重试';
 export const IMAGES_TRUNCATED = '配图规划输出被截断，请重试';
-export const MISSING_IDEA = '请先填写我的想法';
+export const MISSING_RESEARCH_INPUT = '请至少填写我的想法、我的经历或我的观点之一';
 /** 配图规划输出上限（带标注正文 + JSON）。 */
 export const WECHAT_ARTICLE_IMAGES_MAX_OUTPUT_TOKENS = 16384;
 

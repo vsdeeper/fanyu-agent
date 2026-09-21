@@ -20,7 +20,7 @@ import {
   DRAFT_TRUNCATED,
   IMAGES_FAILED,
   IMAGES_TRUNCATED,
-  MISSING_IDEA,
+  MISSING_RESEARCH_INPUT,
   PLAN_FAILED,
   PLAN_TRUNCATED,
   RESEARCH_FAILED,
@@ -119,8 +119,11 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
-  if (!body.idea.trim()) {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_IDEA, 400);
+  const hasResearchInput = Boolean(
+    body.idea?.trim() || body.experience?.trim() || body.viewpoint?.trim(),
+  );
+  if (!hasResearchInput) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_RESEARCH_INPUT, 400);
   }
 
   return createPushStreamResponse(

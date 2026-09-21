@@ -51,7 +51,7 @@ export const IMAGE_MODEL_LABEL = '模型';
 export const IMAGE_ASPECT_LABEL = '比例';
 export const IMAGE_CLARITY_LABEL = '清晰度';
 
-export const MISSING_IDEA_WARNING = '请先填写我的想法';
+export const MISSING_RESEARCH_INPUT_WARNING = '请至少填写我的想法、我的经历或我的观点之一';
 export const MISSING_ANGLE_WARNING = '请先点选一个写作角度';
 export const MISSING_PLAN_WARNING = '请先生成并确认内容思路';
 export const MISSING_TITLE_WARNING = '请先点选一个标题方向作为成稿标题';
@@ -87,7 +87,8 @@ export const WATERMARK_FAILED = '水印叠加失败，本张按无水印出图';
 export const UPLOAD_FAILED = '图片上传失败，请重试';
 export const HISTORY_DELETE_FAILED = '已删除，但保存失败，刷新后可能恢复';
 
-export const EMPTY_RESEARCH_HINT = '写下想法后点击「开始调研」，将产出检索简报、参考来源与角度卡';
+export const EMPTY_RESEARCH_HINT =
+  '填写想法、经历或观点后点击「开始调研」，将产出检索简报、参考来源与角度卡';
 export const RESEARCH_PACKING_HINT = '正在整理参考来源与角度卡…';
 export const EMPTY_PLAN_HINT = '确认角度后点击「生成思路」，产出轻量写作要点';
 export const PLAN_GENERATING_HINT = '正在生成内容思路…';

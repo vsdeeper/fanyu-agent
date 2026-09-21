@@ -359,12 +359,14 @@ export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | 
   const angles = Array.isArray(data.angles)
     ? parseResearchPayload({ sources: [], angles: data.angles }).angles
     : [];
+  const experience = asString(data.experience);
   // 旧快照把观点写在 stance；新字段为 viewpoint，读取时兼容旧键。
   const viewpoint = asString(data.viewpoint) || asString(data.stance);
   return {
     idea,
     sources,
     angles,
+    ...(experience ? { experience } : {}),
     ...(viewpoint ? { viewpoint } : {}),
     ...(asString(data.streamText) ? { streamText: asString(data.streamText) } : {}),
     ...(asString(data.selectedAngleId) ? { selectedAngleId: asString(data.selectedAngleId) } : {}),

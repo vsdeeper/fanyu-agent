@@ -9,6 +9,7 @@ import type { StyleDimensionSelections } from '@/business-components/StyleDimens
  */
 export type WechatPanelValues = {
   idea: string;
+  experience: string;
   viewpoint: string;
   styleSelections: StyleDimensionSelections;
   lengthLimit?: number;
@@ -50,6 +51,7 @@ export type ResearchSource = {
 
 export type ResearchStepSnapshot = {
   idea: string;
+  experience?: string;
   viewpoint?: string;
   streamText?: string;
   sources: ResearchSource[];
