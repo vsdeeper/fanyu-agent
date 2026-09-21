@@ -139,7 +139,8 @@ export default function ResultPanel({
     (phase === 'researched' && Boolean(selectedAngleId)) ||
     (phase === 'planned' && Boolean(plan)) ||
     (phase === 'drafted' && Boolean(markdown.trim())) ||
-    (phase === 'illustrated' && Boolean(markdown.trim()));
+    // 成稿配图非必须：未规划也可直接进预览
+    ((phase === 'images' || phase === 'illustrated') && Boolean(markdown.trim()));
 
   const title = researchView
     ? '选题调研'

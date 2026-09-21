@@ -756,7 +756,8 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
         setPhase(imageSlots.length ? 'illustrated' : 'images');
         return;
       }
-      if (phase === 'illustrated') {
+      // 成稿配图非必须：images（未规划）与 illustrated（已规划）均可进预览
+      if (phase === 'images' || phase === 'illustrated') {
         await persistDraft();
         setPhase('complete');
       }

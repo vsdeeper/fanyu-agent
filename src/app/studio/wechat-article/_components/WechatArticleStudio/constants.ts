@@ -94,7 +94,8 @@ export const BEAT_DELETE_CONFIRM_TITLE = '删除这条写作要点？';
 export const HISTORY_DELETE_CONFIRM_TITLE = '删除这条旧槽位？';
 export const MIN_TITLE_DIRECTIONS = 3;
 export const EMPTY_DRAFT_HINT = '选定文风后点击「生成正文」';
-export const EMPTY_IMAGES_HINT = '点击「规划配图」后，正文会出现可点击的配图标注';
+export const EMPTY_IMAGES_HINT =
+  '点击「规划配图」后，正文会出现可点击的配图标注；也可直接「下一步」跳过配图';
 
 export const RESEARCH_BRIEF_TITLE = '检索简报';
 export const RESEARCH_SOURCES_TITLE = '参考来源';
