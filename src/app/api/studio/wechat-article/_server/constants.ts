@@ -6,7 +6,7 @@ export const DRAFT_FAILED = '成稿失败，请稍后重试';
 export const DRAFT_TRUNCATED = '成稿输出被截断，请重试生成';
 export const IMAGES_FAILED = '配图规划失败，请稍后重试';
 export const IMAGES_TRUNCATED = '配图规划输出被截断，请重试';
-export const MISSING_RESEARCH_INPUT = '请至少填写我的想法、我的经历或我的观点之一';
+export const MISSING_RESEARCH_INPUT = '请至少填写我的想法、我的观点或我的经历之一';
 /** 配图规划输出上限（带标注正文 + JSON）。 */
 export const WECHAT_ARTICLE_IMAGES_MAX_OUTPUT_TOKENS = 16384;
 /**
@@ -17,6 +17,8 @@ export const WECHAT_ARTICLE_RESEARCH_MAX_OUTPUT_TOKENS = 16384;
 
 /** 选题调研允许的检索轮数（每轮可并行多次 web_search）；超过后强制只写简报 */
 export const RESEARCH_MAX_SEARCH_ROUNDS = 3;
+/** 有「我的经历」时：按需检索，轮次上限更低，避免挤掉叙事切入 */
+export const RESEARCH_NARRATIVE_MAX_SEARCH_ROUNDS = 1;
 /** 选题调研总步数上限：检索轮 + 写简报，避免只搜不写撞到空正文 */
 export const RESEARCH_MAX_STEPS = 6;
 /**

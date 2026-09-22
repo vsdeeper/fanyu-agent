@@ -26,6 +26,7 @@ import {
   RESEARCH_FAILED,
   RESEARCH_MAX_SEARCH_ROUNDS,
   RESEARCH_MAX_STEPS,
+  RESEARCH_NARRATIVE_MAX_SEARCH_ROUNDS,
   RESEARCH_TRUNCATED,
   WECHAT_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS,
   WECHAT_ARTICLE_IMAGES_MAX_OUTPUT_TOKENS,
@@ -127,6 +128,10 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
   if (!hasResearchInput) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_RESEARCH_INPUT, 400);
   }
+  const narrative = Boolean(body.experience?.trim());
+  const maxSearchRounds = narrative
+    ? RESEARCH_NARRATIVE_MAX_SEARCH_ROUNDS
+    : RESEARCH_MAX_SEARCH_ROUNDS;
 
   return createPushStreamResponse(
     SSE_STREAM_HEADERS,
@@ -135,13 +140,14 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
       try {
         const { provider, runtime, openaiOptions } = buildOpenaiOptions();
         const usesSdkWebSearch = runtime.getCapabilities().usesSdkWebSearchTool;
+        const searchHint = usesSdkWebSearch
+          ? ''
+          : narrative
+            ? `\n\n${webSearch.getHint()}\n叙事调研额外约束：web_search 按需、最多 1 轮；经历已够写故事可不搜；随后必须输出短简报与切入 JSON。`
+            : `\n\n${webSearch.getHint()}\n选题调研额外约束：web_search 最多 3 轮，随后必须输出简报与 JSON，禁止继续检索。`;
         const result = streamText({
           model: runtime.getMainModel(getModelId(provider, 'pro')),
-          instructions:
-            RESEARCH_INSTRUCTIONS +
-            (usesSdkWebSearch
-              ? ''
-              : `\n\n${webSearch.getHint()}\n选题调研额外约束：web_search 最多 3 轮，随后必须输出简报与 JSON，禁止继续检索。`),
+          instructions: RESEARCH_INSTRUCTIONS + searchHint,
           prompt: buildResearchPrompt(body),
           abortSignal: req.signal,
           maxOutputTokens: WECHAT_ARTICLE_RESEARCH_MAX_OUTPUT_TOKENS,
@@ -155,13 +161,14 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
             : {
                 web_search: webSearch.create({ chatId: 'wechat-article-research' }),
               },
-          // 首步强制联网；搜满轮次后关掉工具，避免只搜不写导致空正文失败
+          // 论证模式首步强制联网；叙事模式不强制。搜满轮次后关掉工具，避免只搜不写
           prepareStep: ({ steps }) => {
             if (steps.length === 0) {
+              if (narrative) return {};
               return { toolChoice: { type: 'tool' as const, toolName: 'web_search' as const } };
             }
             const searchRounds = steps.filter((step) => step.toolCalls.length > 0).length;
-            if (searchRounds >= RESEARCH_MAX_SEARCH_ROUNDS) {
+            if (searchRounds >= maxSearchRounds) {
               return { toolChoice: 'none' as const };
             }
             return {};
@@ -179,6 +186,8 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
           console.info('[wechat-article/research] toolCalls', toolNames, {
             chars: fullText.length,
             hasJsonFence,
+            narrative,
+            maxSearchRounds,
           });
           if (!hasJsonFence) {
             console.warn('[wechat-article/research] missing trailing ```json block');

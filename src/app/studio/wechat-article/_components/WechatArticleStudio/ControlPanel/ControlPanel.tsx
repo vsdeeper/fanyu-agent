@@ -21,6 +21,8 @@ import {
   PLAN_BUTTON,
   PLAN_IMAGES_BUTTON,
   RESEARCH_BUTTON,
+  SELECTED_ANGLE_EMPTY,
+  SELECTED_ANGLE_LABEL,
   STYLE_LABEL,
   STYLE_REFERENCE_HINT,
   STYLE_REFERENCE_LABEL,
@@ -120,30 +122,30 @@ export default function ControlPanel({
               <Form.Item
                 name="idea"
                 label="我的想法"
-                dependencies={['experience', 'viewpoint']}
+                dependencies={['viewpoint', 'experience']}
                 rules={[atLeastOneResearchInput]}
               >
                 <Input.TextArea rows={4} placeholder="例如：AI agent 开始替人逛电商" />
               </Form.Item>
+              <Form.Item name="viewpoint" label="我的观点">
+                <Input.TextArea rows={4} placeholder="例如：国外已经在落地，国内还在聊概念" />
+              </Form.Item>
               <Form.Item name="experience" label="我的经历">
                 <Input.TextArea
                   rows={4}
-                  placeholder="例如：上周帮客户用 agent 下单，踩过哪些坑"
+                  placeholder="例如：有个朋友失业了，月供六千，账上只剩三万"
                 />
-              </Form.Item>
-              <Form.Item name="viewpoint" label="我的观点">
-                <Input.TextArea rows={4} placeholder="例如：国外已经在落地，国内还在聊概念" />
               </Form.Item>
             </>
           ) : null}
 
           {planStep ? (
             <div className={styles.angleBlock}>
-              <div className={styles.angleLabel}>选定角度</div>
+              <div className={styles.angleLabel}>{SELECTED_ANGLE_LABEL}</div>
               {selectedAngle ? (
                 <AngleCardView angle={selectedAngle} />
               ) : (
-                <p className={styles.angleEmpty}>尚未选择角度</p>
+                <p className={styles.angleEmpty}>{SELECTED_ANGLE_EMPTY}</p>
               )}
             </div>
           ) : null}

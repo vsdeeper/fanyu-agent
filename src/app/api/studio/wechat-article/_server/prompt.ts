@@ -18,16 +18,37 @@ export function buildResearchPrompt(body: WechatArticleResearchRequest): string 
   const viewpoint = body.viewpoint?.trim();
   const lines = [
     ...(idea ? ['【用户想法】', idea] : []),
-    ...(experience ? ['【我的经历】', experience] : []),
     ...(viewpoint ? ['【我的观点】', viewpoint] : []),
+    ...(experience ? ['【我的经历】', experience] : []),
     '【今天日期】',
     todayIso,
     '',
     experience
-      ? '用户给出了亲身经历：调研与角度须以这段经历为叙事主轴，检索只作背景/对照/时效补充，禁止用外部热点另起一套与经历无关的选题。请先调用 web_search 联网检索（不限国内外；权威可核对并兼顾时效），再输出：简报正文，并在末尾附上含 sources 与 angles 的 ```json 代码块（角度卡 3～5 张，不可省略；简报内 Markdown 链接不能代替该 JSON）。涉及「今天/新鲜事」时必须以检索结果为准，禁止用记忆编造。简报第一句就是结论；不要写 I will search / 我先搜 等预告，不要写「检索简报」标题，不要写检索过程。'
-      : '请先调用 web_search 联网检索（不限国内外；权威可核对并兼顾时效），再输出：简报正文，并在末尾附上含 sources 与 angles 的 ```json 代码块（角度卡 3～5 张，不可省略；简报内 Markdown 链接不能代替该 JSON）。涉及「今天/新鲜事」时必须以检索结果为准，禁止用记忆编造。简报第一句就是结论；不要写 I will search / 我先搜 等预告，不要写「检索简报」标题，不要写检索过程。',
+      ? [
+          '叙事模式：以【我的经历】为叙事主轴产出 3～5 张切入卡（JSON angles）。',
+          '四槽填法：claim=故事钩子/开篇画面；conflict=人物处境与进退两难；whyNow=为何值得听这个故事；risk=矫情/卖惨/洩密等边界（可选）。',
+          '检索按需、最多 1 轮，只作背景/对照/事实核对；无必要可不搜；sources 可少或空。禁止用外部热点另起无关选题。',
+          '简报宜短（几句即可）；末尾必须附含 sources 与 angles 的 ```json 代码块（切入卡不可省略；简报内 Markdown 链接不能代替）。',
+          '涉及「今天/新鲜事」须以检索为准。简报第一句就是结论；不要写检索预告或「检索简报」标题。',
+        ].join('')
+      : [
+          '论证模式：请先调用 web_search 联网检索，再输出简报 + 含 sources 与 angles 的 ```json（切入卡 3～5 张，不可省略）。',
+          '四槽填法：claim=核心主张一句；conflict=对立面/争议点；whyNow=为何现在值得发；risk=论据脆弱/易被打脸（可选）。',
+          '涉及「今天/新鲜事」须以检索为准。简报第一句就是结论；不要写检索预告或「检索简报」标题。',
+        ].join(''),
   ];
   return lines.join('\n');
+}
+
+/** 格式化选定切入（通用四槽文案）。 */
+function formatSelectedAngle(angle: WechatArticlePlanRequest['angle']): string[] {
+  return [
+    '【选定切入】',
+    `切入：${angle.claim}`,
+    `张力：${angle.conflict}`,
+    `读者理由：${angle.whyNow}`,
+    ...(angle.risk ? [`注意：${angle.risk}`] : []),
+  ];
 }
 
 /** 构建内容思路用户提示。 */
@@ -43,16 +64,12 @@ export function buildPlanPrompt(body: WechatArticlePlanRequest): string {
   return [
     ...(idea ? ['【用户想法】', idea] : []),
     ...(experience ? ['【我的经历】', experience] : []),
-    '【选定角度】',
-    `判断：${body.angle.claim}`,
-    `冲突：${body.angle.conflict}`,
-    `为何现在写：${body.angle.whyNow}`,
-    ...(body.angle.risk ? [`风险：${body.angle.risk}`] : []),
+    ...formatSelectedAngle(body.angle),
     '【参考来源】',
     sources || '（无）',
     '',
     experience
-      ? '请输出轻量内容思路：以【我的经历】为叙事主轴；JSON 外最多两句导语，随即附完整 JSON（含 beats，以及至少 3 条 titleDirections）；不要写长文或分节大纲。'
+      ? '请输出轻量内容思路：以【我的经历】为叙事主轴；beats 写成故事节拍（场景→转折→余味），禁止论点大纲；JSON 外最多两句导语，随即附完整 JSON（含 beats，以及至少 3 条 titleDirections）。'
       : '请输出轻量内容思路：JSON 外最多两句导语，随即附完整 JSON（含 beats，以及至少 3 条 titleDirections）；不要写长文或分节大纲。',
   ].join('\n');
 }
@@ -64,10 +81,7 @@ export function buildDraftPrompt(body: WechatArticleDraftRequest): string {
   return [
     ...(idea ? ['【用户想法】', idea] : []),
     ...(experience ? ['【我的经历】', experience] : []),
-    '【选定角度】',
-    `判断：${body.angle.claim}`,
-    `冲突：${body.angle.conflict}`,
-    `为何现在写：${body.angle.whyNow}`,
+    ...formatSelectedAngle(body.angle),
     '【内容思路】',
     '要点：',
     ...body.plan.beats.map((beat, index) => `${index + 1}. ${beat}`),
@@ -81,8 +95,8 @@ export function buildDraftPrompt(body: WechatArticleDraftRequest): string {
     '',
     experience
       ? body.plan.title?.trim()
-        ? `请写公众号正文 Markdown：第一行必须是 \`# ${body.plan.title.trim()}\`（标题已定，勿改写），空一行后写正文；以【我的经历】为叙事主轴，勿用外部资讯另起故事；正文须含若干 \`## \` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。`
-        : '请写公众号正文 Markdown；以【我的经历】为叙事主轴，勿用外部资讯另起故事；正文须含若干 `## ` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。'
+        ? `请写公众号正文 Markdown：第一行必须是 \`# ${body.plan.title.trim()}\`（标题已定，勿改写），空一行后写正文；以【我的经历】为叙事主轴讲故事（场景与细节优先），勿用外部资讯另起故事或写成纯观点文；正文须含若干 \`## \` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。`
+        : '请写公众号正文 Markdown；以【我的经历】为叙事主轴讲故事（场景与细节优先），勿用外部资讯另起故事或写成纯观点文；正文须含若干 `## ` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。'
       : body.plan.title?.trim()
         ? `请写公众号正文 Markdown：第一行必须是 \`# ${body.plan.title.trim()}\`（标题已定，勿改写），空一行后写正文；正文须含若干 \`## \` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。`
         : '请写公众号正文 Markdown；正文须含若干 `## ` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。',

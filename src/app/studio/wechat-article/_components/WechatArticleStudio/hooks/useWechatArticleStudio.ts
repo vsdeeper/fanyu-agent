@@ -368,7 +368,7 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
         const parsed = parseResearchPayload(json);
         const brief = cleanResearchBrief(prose || fullText);
         setResearchStream(brief);
-        // 模型常只写带行内链接的简报、漏掉末尾 JSON → 角度卡空白；不当成调研成功
+        // 模型常只写带行内链接的简报、漏掉末尾 JSON → 切入卡空白；不当成调研成功
         if (parsed.angles.length === 0) {
           setSources([]);
           setAngles([]);

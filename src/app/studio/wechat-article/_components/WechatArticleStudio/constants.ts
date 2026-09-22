@@ -51,8 +51,8 @@ export const IMAGE_MODEL_LABEL = '模型';
 export const IMAGE_ASPECT_LABEL = '比例';
 export const IMAGE_CLARITY_LABEL = '清晰度';
 
-export const MISSING_RESEARCH_INPUT_WARNING = '请至少填写我的想法、我的经历或我的观点之一';
-export const MISSING_ANGLE_WARNING = '请先点选一个写作角度';
+export const MISSING_RESEARCH_INPUT_WARNING = '请至少填写我的想法、我的观点或我的经历之一';
+export const MISSING_ANGLE_WARNING = '请先点选一个切入';
 export const MISSING_PLAN_WARNING = '请先生成并确认内容思路';
 export const MISSING_TITLE_WARNING = '请先点选一个标题方向作为成稿标题';
 export const MISSING_STYLE_WARNING = '请至少选择一个文风卡片';
@@ -68,7 +68,7 @@ export const LENGTH_LIMIT_MIN = 1000;
 export const LENGTH_LIMIT_MAX = 5000;
 export const RESEARCH_FAILED = '选题调研失败，请稍后重试';
 /** 简报写出来了，但末尾 sources/angles JSON 缺失或解析失败 */
-export const RESEARCH_NO_ANGLES = '未产出角度卡，请重新调研';
+export const RESEARCH_NO_ANGLES = '未产出切入卡，请重新调研';
 export const PLAN_FAILED = '内容思路生成失败，请稍后重试';
 export const DRAFT_FAILED = '成稿失败，请稍后重试';
 export const IMAGES_FAILED = '配图规划失败，请稍后重试';
@@ -90,10 +90,10 @@ export const UPLOAD_FAILED = '图片上传失败，请重试';
 export const HISTORY_DELETE_FAILED = '已删除，但保存失败，刷新后可能恢复';
 
 export const EMPTY_RESEARCH_HINT =
-  '填写想法、经历或观点后点击「开始调研」，将产出检索简报、参考来源与角度卡';
-export const RESEARCH_PACKING_HINT = '正在整理参考来源与角度卡…';
-export const RESEARCH_NO_ANGLES_HINT = '未产出角度卡，请点击「开始调研」重试';
-export const EMPTY_PLAN_HINT = '确认角度后点击「生成思路」，产出轻量写作要点';
+  '填写想法、观点或经历后点击「开始调研」，将产出检索简报、参考来源与切入卡';
+export const RESEARCH_PACKING_HINT = '正在整理参考来源与切入卡…';
+export const RESEARCH_NO_ANGLES_HINT = '未产出切入卡，请点击「开始调研」重试';
+export const EMPTY_PLAN_HINT = '确认切入后点击「生成思路」，产出轻量写作要点';
 export const PLAN_GENERATING_HINT = '正在生成内容思路…';
 export const BEAT_DELETE_CONFIRM_TITLE = '删除这条写作要点？';
 export const HISTORY_DELETE_CONFIRM_TITLE = '删除这条旧槽位？';
@@ -104,7 +104,14 @@ export const EMPTY_IMAGES_HINT =
 
 export const RESEARCH_BRIEF_TITLE = '检索简报';
 export const RESEARCH_SOURCES_TITLE = '参考来源';
-export const RESEARCH_ANGLES_TITLE = '角度卡（点选一张）';
+export const RESEARCH_ANGLES_TITLE = '切入卡（点选一张）';
+
+/** 切入卡四槽展示文案（与落盘 claim/conflict/whyNow/risk 对应） */
+export const ANGLE_SLOT_CONFLICT_LABEL = '张力';
+export const ANGLE_SLOT_WHY_NOW_LABEL = '读者理由';
+export const ANGLE_SLOT_RISK_LABEL = '注意';
+export const SELECTED_ANGLE_LABEL = '选定切入';
+export const SELECTED_ANGLE_EMPTY = '尚未选择切入';
 
 export const DEFAULT_IMAGE_MODEL = 'gpt-image-2-vip';
 /** 槽位默认比例：公众号头图就是 2.35:1，封面与正文配图统一按它出图。 */

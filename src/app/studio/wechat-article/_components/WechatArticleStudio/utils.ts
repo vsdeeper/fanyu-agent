@@ -130,7 +130,11 @@ export function extractTrailingJsonBlock(text: string): {
       const raw = text.slice(brace).trim();
       try {
         const json = JSON.parse(raw) as unknown;
-        if (json && typeof json === 'object' && Array.isArray((json as { angles?: unknown }).angles)) {
+        if (
+          json &&
+          typeof json === 'object' &&
+          Array.isArray((json as { angles?: unknown }).angles)
+        ) {
           return { prose: text.slice(0, brace).trim(), json };
         }
       } catch {
@@ -161,7 +165,7 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-/** 解析调研 JSON 为参考来源与角度卡；无 url 的来源条目丢弃。 */
+/** 解析调研 JSON 为参考来源与切入卡；无 url 的来源条目丢弃。 */
 export function parseResearchPayload(json: unknown): {
   sources: ResearchSource[];
   angles: AngleCard[];
@@ -473,7 +477,7 @@ export function readDraftStepSnapshot(data: unknown): DraftStepSnapshot | undefi
   };
 }
 
-/** 首次进入/刷新默认停在第一步选题调研；有角度卡则进入 researched 结果态。 */
+/** 首次进入/刷新默认停在第一步选题调研；有切入卡则进入 researched 结果态。 */
 export function resolveInitialPhase(research?: ResearchStepSnapshot): StudioPhase {
   if (research?.angles.length) return 'researched';
   return 'research';
