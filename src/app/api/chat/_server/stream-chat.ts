@@ -23,6 +23,7 @@ import { saveChat, updateChatTitle } from '@/app/api/chats/_server/store';
 import { selectModel } from '@/app/api/chat/_server/select-model';
 import { getFirstUserText } from '@/app/api/chat/_server/title';
 import { getLatestUserImageDataUrls } from './tools/pasted-image';
+import { getConfiguredAnalyzeImageModelId } from './tools/analyze-image-config';
 import { createCatalogTools, getToolHints } from './tools/registry';
 import { buildSkillCatalogPrompt } from '@/lib/skills/server/catalog-prompt';
 import { expandSkillTokensInText } from '@/lib/skills/server/expand';
@@ -123,6 +124,10 @@ export async function streamChatResponse({
   const activatedIds = new Set(turnActivatedIds);
   const allSkillIds = new Set(listSkills().map((skill) => skill.id));
 
+  // 已配置专用识图模型时不向主模型塞图片像素（避免压缩视觉误判），改由 analyze_image 全分辨率识图
+  const acceptPixelsInMainModel =
+    capabilities.acceptsImageInput && getConfiguredAnalyzeImageModelId() == null;
+
   // 联网搜索构造权在 Provider：usesSdkWebSearchTool=true（ark）注册 SDK 原生
   // server tool；否则（deepseek/zhipu）由本地 web_search 工具经智谱独立 API 显式检索
   const catalogTools = createCatalogTools({
@@ -146,7 +151,7 @@ export async function streamChatResponse({
   // application/pdf 内联文件抛 UnsupportedFunctionalityError（AI SDK 转换阶段硬抛，fetch 拦不到）
   const convertedMessages = await convertToModelMessages(
     await sanitizeFilePartsForModel(messages, {
-      acceptsImageInput: capabilities.acceptsImageInput,
+      acceptsImageInput: acceptPixelsInMainModel,
     }),
     {
       tools,

@@ -3,6 +3,7 @@ import 'server-only';
 import { isFileUIPart, isToolUIPart, type UIMessage } from 'ai';
 import mammoth from 'mammoth';
 import { IMAGE_TOOL_INTERRUPTED_ERROR } from '../_shared/tool-errors';
+import { getConfiguredAnalyzeImageModelId } from './tools/analyze-image-config';
 
 const GENERIC_TOOL_INTERRUPTED_ERROR = '已中断';
 
@@ -207,6 +208,12 @@ function imageFilePartToPlaceholder(
   }
   // pastedImageIndexes 仅对最新用户轮的粘贴图生效；跨轮/单张不提示，避免主模型索引到错图或误用
   const indexHint = total > 1 ? '；多张时可用 pastedImageIndexes 指定某几张' : '';
+  if (getConfiguredAnalyzeImageModelId()) {
+    return {
+      type: 'text',
+      text: `本轮含图片附件${seq}${label}，主模型看不到像素；请先调用 analyze_image 识图，再按结果改图（generate_image）${indexHint}`,
+    };
+  }
   return {
     type: 'text',
     text: `本轮含图片附件${seq}${label}，主模型当前无法直接看见像素；请结合用户文字意图，或在改图时通过 generate_image 引用附件${indexHint}`,

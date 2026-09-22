@@ -2,10 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 
 import {
-  assetToDataUrl,
   buildImageAssetUrl,
-  getAsset,
-  getWorkingAsset,
   resolveParentModelId,
   saveImageAsset,
 } from '@/app/api/images/_server/assets';
@@ -30,12 +27,11 @@ import {
   isValidImageSize,
   resolveImageQuality,
 } from '@/app/api/images/_server/image-spec';
-import {
-  IMAGE_TOOL_INTERRUPTED_ERROR,
-  IMAGE_TOOL_PASTE_SOURCE_ERROR,
-} from '@/app/api/chat/_shared/tool-errors';
+import { IMAGE_TOOL_INTERRUPTED_ERROR } from '@/app/api/chat/_shared/tool-errors';
 import type { ImagePurpose } from '@/app/api/chat/_shared/types';
 import { listImageGroupingSkillIds } from '@/lib/skills/server/registry';
+import { getConfiguredAnalyzeImageModelId } from '../analyze-image-config';
+import { resolveImageRefs, type ResolvedImageRefs } from '../resolve-image-refs';
 import type { AgentToolDefinition } from '../types';
 import { normalizeImageAssets } from './legacy-output';
 
@@ -102,66 +98,6 @@ function normalizeImagePurpose(type: string | undefined): ImagePurpose | undefin
   return IMAGE_PURPOSE_ALIASES.get(type.trim().toLowerCase());
 }
 
-/** 解析出的参考图集：data URL 数组 + 每个来源的 parentId（粘贴图为 null，历史资产为其 assetId）。 */
-type ResolvedRefs = {
-  dataUrls: string[];
-  parentIds: (string | null)[];
-};
-
-/**
- * 解析 edit 阶段的参考源数组。优先级：显式 pastedImageIndexes → 全部粘贴图 → 历史资产 sourceAssetIds →
- * 会话工作图。越界或资产不属当前会话时返回友好错误。粘贴图无资产实体，parentId 为 null。
- */
-async function resolveEditRefs({
-  chatId,
-  pastedImageDataUrls,
-  sourceAssetIds,
-  pastedImageIndexes,
-}: {
-  chatId: string;
-  pastedImageDataUrls?: string[];
-  sourceAssetIds?: string[];
-  pastedImageIndexes?: number[];
-}): Promise<ResolvedRefs | { error: string }> {
-  const sources: Array<{ dataUrl: string; parentId: string | null }> = [];
-
-  // 粘贴图是主路径：优先于历史资产。默认仅取第一张（与「第一张为默认源」提示一致）；
-  // 多参考合成/批量须由模型显式传 pastedImageIndexes，避免省略参数时把多张错误地当作参考合成。
-  if (pastedImageDataUrls?.length) {
-    const indexes = pastedImageIndexes?.length ? pastedImageIndexes : [0];
-    for (const index of indexes) {
-      const dataUrl = pastedImageDataUrls[index];
-      if (!dataUrl) {
-        return { error: `粘贴图第 ${index + 1} 张不存在` };
-      }
-      sources.push({ dataUrl, parentId: null });
-    }
-    return {
-      dataUrls: sources.map((s) => s.dataUrl),
-      parentIds: sources.map((s) => s.parentId),
-    };
-  }
-
-  // 历史资产路径：sourceAssetIds 缺省退化为工作图。
-  const sourceIds = sourceAssetIds?.length
-    ? [...sourceAssetIds]
-    : [(await getWorkingAsset(chatId))?.id].filter((id): id is string => Boolean(id));
-  if (sourceIds.length === 0) {
-    return { error: IMAGE_TOOL_PASTE_SOURCE_ERROR };
-  }
-  for (const sourceId of sourceIds) {
-    const sourceAsset = getAsset(sourceId);
-    if (!sourceAsset || sourceAsset.chatId !== chatId) {
-      return { error: '参考图不存在或不属于当前会话' };
-    }
-    sources.push({ dataUrl: assetToDataUrl(sourceAsset), parentId: sourceAsset.id });
-  }
-  return {
-    dataUrls: sources.map((s) => s.dataUrl),
-    parentIds: sources.map((s) => s.parentId),
-  };
-}
-
 /**
  * 按当前生图模型的尺寸规格生成工具使用规则。
  */
@@ -177,11 +113,14 @@ function getImageSystemHint(): string {
       ? `- 生图尺寸只传 ${presets}，或总像素 ${spec.minPixels} ~ ${spec.maxPixels} 的 WIDTHxHEIGHT（默认 ${spec.size.default}）`
       : `- 生图尺寸只传 ${presets}（默认 ${spec.size.default}）`
     : `- 生图尺寸随所选模型而异（档位/像素区间见该模型说明），默认 2K；编辑历史图时以该图模型为准`;
+  const seeSourceLine = getConfiguredAnalyzeImageModelId()
+    ? `- 有源图且改图/按图生图依赖画面内容（复刻风格、改文字、提取局部、指定元素）时：必须先调用 analyze_image，再按识图结果调用本工具；禁止仅凭主模型目视或猜测编造画面文字`
+    : `- 有源图且改图/按图生图指令依赖画面内容（复刻风格、改文字、提取局部、指定元素）时：先看清源图画面，再按所见调用本工具`;
   return `生图工具使用规则：
 - 用户明确要求生成/绘制/出图时调用 generate_image，mode=generate
 - 用户要求修改图片时调用 generate_image，mode=edit
 - 仅讨论如何画、不请求出图时不要调用
-- 有源图且改图/按图生图指令依赖画面内容（复刻风格、改文字、提取局部、指定元素）时：先看清源图画面，再按所见调用本工具
+${seeSourceLine}
 - 用户本轮消息含图片附件并要求修改时：mode=edit，服务端优先使用该附件作源图，无需传 sourceAssetIds
 - 用户贴了多张图并要求「把这些图一起合成一张」时：strategy=merge（多个参考合并成一张）；要求「把这几张各自都改成 X」时：必传 strategy=batch（每张各出一张新图），漏传会静默合成一张、用户多张请求被缩水
 - 只对多张做批改或合成，必传 pastedImageIndexes 指认参考（0 基，0=第一张）；省略时服务端只用第一张，不会自动用全部。多参考按顺序在 prompt 说明图片用途（如「第1张作场景、第2张是主体」）
@@ -217,6 +156,13 @@ function getQualityFieldDescribe(): string {
 
 const PASTE_IMAGE_EDIT_HINT =
   '本轮用户消息含图片附件，edit 将使用这些附件作源图（第一张为默认源，可传 pastedImageIndexes 指定某几张，strategy 决定合成一张还是每张各一张）；若改图依赖画面内容，先看清附件画面再调用本工具。';
+
+function getPasteImageEditHint(): string {
+  if (getConfiguredAnalyzeImageModelId()) {
+    return '本轮用户消息含图片附件，edit 将使用这些附件作源图；主模型看不到像素，改图前必须先 analyze_image，再按识图结果调用本工具。';
+  }
+  return PASTE_IMAGE_EDIT_HINT;
+}
 
 /** 创建 generate_image：出图或改图（支持多参考合成/批量），成功后逐张落盘为会话图片资产。 */
 function createGenerateImageTool(
@@ -299,9 +245,9 @@ function createGenerateImageTool(
           return { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR };
         }
 
-        let refs: ResolvedRefs = { dataUrls: [], parentIds: [] };
+        let refs: ResolvedImageRefs = { dataUrls: [], parentIds: [] };
         if (mode === 'edit') {
-          const resolved = await resolveEditRefs({
+          const resolved = await resolveImageRefs({
             chatId,
             pastedImageDataUrls,
             sourceAssetIds,
@@ -521,5 +467,5 @@ export const generateImage: AgentToolDefinition = {
   create: ({ chatId, pastedImageDataUrls, activatedSkillIds, stickySkillIds }) =>
     createGenerateImageTool(chatId, pastedImageDataUrls, activatedSkillIds, stickySkillIds),
   getHint: getImageSystemHint,
-  getPasteHint: () => PASTE_IMAGE_EDIT_HINT,
+  getPasteHint: getPasteImageEditHint,
 };

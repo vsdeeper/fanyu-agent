@@ -1,7 +1,7 @@
 /**
- * 修复：方舟联网引用常挂在 message.content[].annotations（url_citation），
- * 却不发 OpenAI 的 response.output_text.annotation.added；
- * @ai-sdk/openai 流式路径只认 annotation.added → source-url，故需在此注入/补全。
+ * 方舟 Responses 入站归一化：
+ * - SSE：注入/补全 annotation.added（见 createArkSseNormalizeTransform）
+ * - JSON（generateText 非流式）：补全 output_text.annotations=[]，否则 @ai-sdk/openai Zod 报 Invalid JSON
  */
 
 type UrlCitation = {
@@ -241,8 +241,35 @@ export function createArkSseNormalizeTransform(): TransformStream<Uint8Array, Ui
 }
 
 /**
- * 包装方舟 SSE Response：注入/补全 annotation.added，供 AI SDK 产出 source-url。
+ * 修复：方舟非流式 Responses 常省略 content[].annotations，
+ * @ai-sdk/openai 校验要求 array → Invalid JSON / Zod invalid_type。
+ * 缺省时补 []，不改动已有 annotations。
  */
+export function normalizeArkResponseJsonBody(text: string): string {
+  let body: {
+    output?: Array<{ content?: Array<{ annotations?: unknown } & Record<string, unknown>> }>;
+  };
+  try {
+    body = JSON.parse(text) as typeof body;
+  } catch {
+    return text;
+  }
+  if (!Array.isArray(body.output)) return text;
+
+  let patched = false;
+  for (const item of body.output) {
+    if (!Array.isArray(item.content)) continue;
+    for (const part of item.content) {
+      if (part && typeof part === 'object' && !Array.isArray(part.annotations)) {
+        part.annotations = [];
+        patched = true;
+      }
+    }
+  }
+  return patched ? JSON.stringify(body) : text;
+}
+
+/** 包装方舟 SSE Response：注入/补全 annotation.added，供 AI SDK 产出 source-url。 */
 export function normalizeArkResponsesSse(response: Response): Response {
   if (!response.body) return response;
 
@@ -257,4 +284,37 @@ export function normalizeArkResponsesSse(response: Response): Response {
     statusText: response.statusText,
     headers: response.headers,
   });
+}
+
+/**
+ * 入站统一归一：SSE 走注解注入；JSON 走 annotations=[] 补全（analyze_image / generateText）。
+ */
+export async function normalizeArkResponse(response: Response): Promise<Response> {
+  const contentType = response.headers.get('content-type') ?? '';
+
+  if (contentType.includes('text/event-stream')) {
+    return normalizeArkResponsesSse(response);
+  }
+
+  if (contentType.includes('application/json') && response.ok) {
+    const text = await response.text();
+    const normalized = normalizeArkResponseJsonBody(text);
+    if (normalized === text) {
+      return new Response(text, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    }
+    const headers = new Headers(response.headers);
+    headers.delete('content-length');
+    headers.delete('content-encoding');
+    return new Response(normalized, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
+
+  return response;
 }

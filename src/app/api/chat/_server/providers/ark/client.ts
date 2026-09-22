@@ -2,13 +2,14 @@ import { createOpenAI } from '@ai-sdk/openai';
 
 import { requireEnv } from '@/lib/shared/server/env';
 import { patchArkRequestBody, type ArkRequestBody } from './request-patch';
-import { normalizeArkResponsesSse } from './sse';
+import { normalizeArkResponse } from './sse';
 
 let instance: ReturnType<typeof createOpenAI> | undefined;
 
 /**
  * 惰性构造方舟客户端：主对话 CHAT_PROVIDER=ark、以及方舟 Seedream 生图路径读取 ARK_*。
- * 自定义 fetch 负责出站请求修补（兼容方舟 Responses API）与入站 SSE 归一化（注入 annotation.added）。
+ * 自定义 fetch 负责出站请求修补（兼容方舟 Responses API）与入站响应归一化
+ * （SSE 注入 annotation.added；JSON 补全 annotations=[]）。
  */
 export function getArkClient() {
   if (!instance) {
@@ -26,8 +27,8 @@ export function getArkClient() {
 
         const response = await globalThis.fetch(url, init);
 
-        // 修复：注入 annotation.added，否则 sendSources 也拿不到 source-url
-        return normalizeArkResponsesSse(response);
+        // 修复：SSE 注入 annotation.added；非流式 JSON 补 annotations，否则 Zod 报 Invalid JSON
+        return normalizeArkResponse(response);
       },
     });
   }
