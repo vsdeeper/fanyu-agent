@@ -82,7 +82,7 @@ export default function StudioImageUpload({
               ) : null}
               {label}
             </span>
-            <span className={styles.sub}>{subtitle}</span>
+            {subtitle ? <span className={styles.sub}>{subtitle}</span> : null}
           </div>
         </div>
         <span className={styles.counter}>
@@ -110,7 +110,7 @@ export default function StudioImageUpload({
             <span className={styles.emptyIcon} aria-hidden>
               <UploadOutlined />
             </span>
-            <span className={styles.emptyHint}>{hint}</span>
+            {hint ? <span className={styles.emptyHint}>{hint}</span> : null}
           </Button>
         </Upload>
       ) : (

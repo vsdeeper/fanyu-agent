@@ -141,6 +141,15 @@ const wechatInlineGenerateSchema = specFieldsSchema.extend({
   visualStyle: z.string().trim().min(1).optional(),
 });
 
+const imageTextGenerateSchema = specFieldsSchema.extend({
+  kind: z.literal('imageText'),
+  count: z.literal(1),
+  prompt: z.string().trim().min(1),
+  styleReferenceDataUrl: imageDataUrlSchema.optional(),
+  characterModelDataUrl: imageDataUrlSchema.optional(),
+  characterRequirement: z.string().trim().min(1).max(500).optional(),
+});
+
 const generateBodySchema = z
   .discriminatedUnion('kind', [
     productRefineGenerateSchema,
@@ -152,6 +161,7 @@ const generateBodySchema = z
     mainImageGenerateSchema,
     detailImageGenerateSchema,
     wechatInlineGenerateSchema,
+    imageTextGenerateSchema,
   ])
   .superRefine((value, context) => {
     if (value.kind !== 'design') return;

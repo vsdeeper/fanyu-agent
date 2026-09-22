@@ -69,6 +69,17 @@ function summarizeGeminiFailurePayload(payload: GeminiGenerateResponse) {
   };
 }
 
+/**
+ * Gemini 可能 HTTP 200 仍因安全策略无图：promptFeedback.blockReason 或 candidate finishReason。
+ * 须在取图前识别，避免落成「服务暂不可用」。
+ */
+function isGeminiSafetyBlocked(payload: GeminiGenerateResponse): boolean {
+  if (payload.promptFeedback?.blockReason === 'SAFETY') return true;
+  return (payload.candidates ?? []).some(
+    (candidate) => candidate.finishReason === 'SAFETY' || candidate.finishReason === 'IMAGE_SAFETY',
+  );
+}
+
 /** 老张生图失败打服务端日志（含出站尺寸）；payload 摘要避免把整段 base64 刷进终端。 */
 function logLaozhangFailure(
   reason: string,
@@ -308,11 +319,23 @@ export const laozhangProvider: ImageProvider = {
       });
       if (
         isSafetyRejection(response.status, undefined, payload.error?.message) ||
-        payload.promptFeedback?.blockReason === 'SAFETY'
+        isGeminiSafetyBlocked(payload)
       ) {
         throw new ImageSafetyRejectedError();
       }
       throw new Error('老张生图服务暂不可用');
+    }
+
+    // 修复：Gemini 常以 200 + SAFETY/无图拒绝，勿仅在 !ok 时识别，否则会误报服务不可用
+    if (isGeminiSafetyBlocked(payload)) {
+      logLaozhangFailure('safety blocked', {
+        modelId: req.modelId,
+        status: response.status,
+        size: imageSize,
+        aspectRatio: ratio,
+        payload: summarizeGeminiFailurePayload(payload),
+      });
+      throw new ImageSafetyRejectedError();
     }
 
     const image = extractGeminiImage(payload);

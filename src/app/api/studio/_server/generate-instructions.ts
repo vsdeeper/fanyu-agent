@@ -473,3 +473,38 @@ export function buildWechatInlinePrompt(prompt: string, visualStyle?: string): s
   lines.push(prompt.trim());
   return lines.join('\n');
 }
+
+/**
+ * 图文配图：按图文卡片内容出一张图。
+ * 不预设媒介或色调；有视觉参考时对齐画风、配色、字体与排版风格。
+ */
+export function buildImageTextPrompt(
+  prompt: string,
+  refs?: {
+    hasStyleReference?: boolean;
+    hasCharacterModel?: boolean;
+    characterRequirement?: string;
+  },
+): string {
+  const lines = [
+    '生成恰好一张图文卡片成品图，不要输出说明文字。',
+    '画面本身就是完整卡片：铺满画布、主体清晰、版式干净；文案若需上屏，应简洁可读并与画面融为一体。',
+    '禁止出现手机外框、刘海/挖孔、状态栏、浏览器顶栏、App 导航栏、桌面壁纸或任何设备/界面外壳；不要做成「手机截图」或「手机里的卡片」效果。',
+  ];
+  if (refs?.hasStyleReference) {
+    lines.push(
+      '【视觉参考图】对齐画风、配色、字体与排版风格；勿复刻其人物相貌与原文案。',
+    );
+  }
+  if (refs?.hasCharacterModel) {
+    lines.push(
+      '【人物模特】锁定人物身份与外貌，并自然融入本张卡片；勿复刻其姿态、构图或背景。',
+    );
+  }
+  const requirement = refs?.characterRequirement?.trim();
+  if (requirement) {
+    lines.push('【我的要求】人物相关补充，优先于默认姿态与出镜方式：', requirement);
+  }
+  lines.push('【本张画面 / 图文内容】', prompt.trim());
+  return lines.join('\n');
+}

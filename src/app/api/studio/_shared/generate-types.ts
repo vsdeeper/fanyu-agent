@@ -13,7 +13,8 @@ export type StudioGenerateKind =
   | 'design'
   | 'mainImage'
   | 'detailImage'
-  | 'wechatInline';
+  | 'wechatInline'
+  | 'imageText';
 
 type StudioGenerateBase = {
   model: string;
@@ -160,6 +161,19 @@ export type StudioWechatInlineGenerateRequest = StudioGenerateBase & {
   visualStyle?: string;
 };
 
+/** 图文工作室：按图文卡片正文出一张图，可选视觉参考与人物模特。 */
+export type StudioImageTextGenerateRequest = StudioGenerateBase & {
+  kind: 'imageText';
+  count: 1;
+  prompt: string;
+  /** 可选视觉参考图 data URL。 */
+  styleReferenceDataUrl?: string;
+  /** 可选人物模特参考图 data URL。 */
+  characterModelDataUrl?: string;
+  /** 可选人物相关补充要求。 */
+  characterRequirement?: string;
+};
+
 export type StudioGenerateRequest =
   | StudioProductRefineGenerateRequest
   | StudioProductMultiviewGenerateRequest
@@ -169,7 +183,8 @@ export type StudioGenerateRequest =
   | StudioDesignGenerateRequest
   | StudioMainImageGenerateRequest
   | StudioDetailImageGenerateRequest
-  | StudioWechatInlineGenerateRequest;
+  | StudioWechatInlineGenerateRequest
+  | StudioImageTextGenerateRequest;
 
 /** 单张出图结果事件：以占位槽 id 寻址，客户端无需知道批次内位置。 */
 export type StudioGenerateImageEvent = {

@@ -1,6 +1,7 @@
 import {
   BgColorsOutlined,
   EditOutlined,
+  FileImageOutlined,
   FileSearchOutlined,
   ShoppingOutlined,
   UserOutlined,
@@ -8,6 +9,7 @@ import {
 import {
   BUSINESS_ANALYSIS_PATH,
   ECOMMERCE_PATH,
+  IMAGE_TEXT_PATH,
   PRODUCT_MODEL_PATH,
   PRODUCT_RETOUCH_PATH,
   WECHAT_ARTICLE_PATH,
@@ -51,5 +53,12 @@ export const STUDIO_ENTRIES: StudioEntry[] = [
     description: '想法驱动：选题调研、内容思路与成稿',
     path: WECHAT_ARTICLE_PATH,
     icon: EditOutlined,
+  },
+  {
+    key: 'image-text',
+    title: '图文',
+    description: '内容驱动：图文内容、生图与手机预览',
+    path: IMAGE_TEXT_PATH,
+    icon: FileImageOutlined,
   },
 ];
