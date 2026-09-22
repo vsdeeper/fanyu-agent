@@ -110,6 +110,34 @@ export function extractTrailingJsonBlock(text: string): {
       return { prose, json: null };
     }
   }
+  // 模型有时漏写 json 语言标：末尾普通 ``` ... ```
+  const bare = text.match(/```\s*([\s\S]*?)```\s*$/);
+  if (bare?.index != null) {
+    const inner = bare[1]!.trim();
+    if (inner.startsWith('{')) {
+      try {
+        return { prose: text.slice(0, bare.index).trim(), json: JSON.parse(inner) as unknown };
+      } catch {
+        /* 继续尝试无围栏 */
+      }
+    }
+  }
+  // 无围栏时：从最后一个含 angles 的 { 尝试解析
+  const anglesAt = text.lastIndexOf('"angles"');
+  if (anglesAt >= 0) {
+    const brace = text.lastIndexOf('{', anglesAt);
+    if (brace >= 0) {
+      const raw = text.slice(brace).trim();
+      try {
+        const json = JSON.parse(raw) as unknown;
+        if (json && typeof json === 'object' && Array.isArray((json as { angles?: unknown }).angles)) {
+          return { prose: text.slice(0, brace).trim(), json };
+        }
+      } catch {
+        /* 保持全文为 prose */
+      }
+    }
+  }
   return { prose: text.trim(), json: null };
 }
 

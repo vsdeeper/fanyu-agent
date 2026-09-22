@@ -26,9 +26,11 @@ import {
   RESEARCH_FAILED,
   RESEARCH_MAX_SEARCH_ROUNDS,
   RESEARCH_MAX_STEPS,
+  RESEARCH_TRUNCATED,
   WECHAT_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS,
   WECHAT_ARTICLE_IMAGES_MAX_OUTPUT_TOKENS,
   WECHAT_ARTICLE_PLAN_MAX_OUTPUT_TOKENS,
+  WECHAT_ARTICLE_RESEARCH_MAX_OUTPUT_TOKENS,
 } from './constants';
 import {
   DRAFT_INSTRUCTIONS,
@@ -142,6 +144,7 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
               : `\n\n${webSearch.getHint()}\n选题调研额外约束：web_search 最多 3 轮，随后必须输出简报与 JSON，禁止继续检索。`),
           prompt: buildResearchPrompt(body),
           abortSignal: req.signal,
+          maxOutputTokens: WECHAT_ARTICLE_RESEARCH_MAX_OUTPUT_TOKENS,
           providerOptions: { openai: openaiOptions },
           tools: usesSdkWebSearch
             ? {
@@ -165,11 +168,21 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
           },
           stopWhen: stepCountIs(RESEARCH_MAX_STEPS),
         });
-        await pipeTextStream(result, req.signal, send, RESEARCH_FAILED);
+        await pipeTextStream(result, req.signal, send, RESEARCH_FAILED, RESEARCH_TRUNCATED);
         try {
-          const steps = await result.steps;
+          const [steps, fullText] = await Promise.all([
+            result.steps,
+            Promise.resolve(result.text).then((text) => (text || '').trim()),
+          ]);
           const toolNames = steps.flatMap((step) => step.toolCalls.map((call) => call.toolName));
-          console.info('[wechat-article/research] toolCalls', toolNames);
+          const hasJsonFence = /```json\b/i.test(fullText);
+          console.info('[wechat-article/research] toolCalls', toolNames, {
+            chars: fullText.length,
+            hasJsonFence,
+          });
+          if (!hasJsonFence) {
+            console.warn('[wechat-article/research] missing trailing ```json block');
+          }
         } catch (err) {
           console.warn('[wechat-article/research] steps log failed', err);
         }

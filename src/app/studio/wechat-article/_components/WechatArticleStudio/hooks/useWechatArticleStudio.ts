@@ -27,6 +27,7 @@ import {
   MISSING_TITLE_WARNING,
   PLAN_FAILED,
   RESEARCH_FAILED,
+  RESEARCH_NO_ANGLES,
   UPLOAD_FAILED,
   WATERMARK_FAILED,
 } from '../constants';
@@ -366,12 +367,25 @@ export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
         const { prose, json } = extractTrailingJsonBlock(fullText);
         const parsed = parseResearchPayload(json);
         const brief = cleanResearchBrief(prose || fullText);
+        setResearchStream(brief);
+        // 模型常只写带行内链接的简报、漏掉末尾 JSON → 角度卡空白；不当成调研成功
+        if (parsed.angles.length === 0) {
+          setSources([]);
+          setAngles([]);
+          setSelectedAngleId(undefined);
+          setPhase('research');
+          message.error(RESEARCH_NO_ANGLES);
+          console.warn('[wechat-article-studio] research missing angles', {
+            chars: fullText.length,
+            hasJson: Boolean(json),
+          });
+          return;
+        }
         const prevSelected = selectedAngleIdRef.current;
         const selected =
           prevSelected && parsed.angles.some((item) => item.id === prevSelected)
             ? prevSelected
             : parsed.angles[0]?.id;
-        setResearchStream(brief);
         setSources(parsed.sources);
         setAngles(parsed.angles);
         setSelectedAngleId(selected);

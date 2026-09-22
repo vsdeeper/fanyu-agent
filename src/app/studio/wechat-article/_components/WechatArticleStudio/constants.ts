@@ -67,6 +67,8 @@ export const LENGTH_LIMIT_SUFFIX = '≥字';
 export const LENGTH_LIMIT_MIN = 1000;
 export const LENGTH_LIMIT_MAX = 5000;
 export const RESEARCH_FAILED = '选题调研失败，请稍后重试';
+/** 简报写出来了，但末尾 sources/angles JSON 缺失或解析失败 */
+export const RESEARCH_NO_ANGLES = '未产出角度卡，请重新调研';
 export const PLAN_FAILED = '内容思路生成失败，请稍后重试';
 export const DRAFT_FAILED = '成稿失败，请稍后重试';
 export const IMAGES_FAILED = '配图规划失败，请稍后重试';
@@ -90,6 +92,7 @@ export const HISTORY_DELETE_FAILED = '已删除，但保存失败，刷新后可
 export const EMPTY_RESEARCH_HINT =
   '填写想法、经历或观点后点击「开始调研」，将产出检索简报、参考来源与角度卡';
 export const RESEARCH_PACKING_HINT = '正在整理参考来源与角度卡…';
+export const RESEARCH_NO_ANGLES_HINT = '未产出角度卡，请点击「开始调研」重试';
 export const EMPTY_PLAN_HINT = '确认角度后点击「生成思路」，产出轻量写作要点';
 export const PLAN_GENERATING_HINT = '正在生成内容思路…';
 export const BEAT_DELETE_CONFIRM_TITLE = '删除这条写作要点？';

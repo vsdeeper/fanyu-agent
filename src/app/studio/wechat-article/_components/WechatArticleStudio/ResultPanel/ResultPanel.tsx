@@ -21,6 +21,7 @@ import {
   PREV_BUTTON,
   RESEARCH_ANGLES_TITLE,
   RESEARCH_BRIEF_TITLE,
+  RESEARCH_NO_ANGLES_HINT,
   RESEARCH_PACKING_HINT,
   RESEARCH_SOURCES_TITLE,
   SAVE_BUTTON,
@@ -268,6 +269,12 @@ export default function ResultPanel({
                     <Spin size="small" />
                     <span>{RESEARCH_PACKING_HINT}</span>
                   </div>
+                ) : null}
+                {!researchPacking &&
+                researchBrief &&
+                angles.length === 0 &&
+                phase !== 'researching' ? (
+                  <p className={styles.hint}>{RESEARCH_NO_ANGLES_HINT}</p>
                 ) : null}
                 {sources.length > 0 ? (
                   <>

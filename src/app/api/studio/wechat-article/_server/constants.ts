@@ -1,4 +1,5 @@
 export const RESEARCH_FAILED = '选题调研失败，请稍后重试';
+export const RESEARCH_TRUNCATED = '选题调研输出被截断，请重试';
 export const PLAN_FAILED = '内容思路生成失败，请稍后重试';
 export const PLAN_TRUNCATED = '内容思路输出被截断，请重试生成';
 export const DRAFT_FAILED = '成稿失败，请稍后重试';
@@ -8,6 +9,11 @@ export const IMAGES_TRUNCATED = '配图规划输出被截断，请重试';
 export const MISSING_RESEARCH_INPUT = '请至少填写我的想法、我的经历或我的观点之一';
 /** 配图规划输出上限（带标注正文 + JSON）。 */
 export const WECHAT_ARTICLE_IMAGES_MAX_OUTPUT_TOKENS = 16384;
+/**
+ * 调研输出上限（简报 + sources/angles JSON）。
+ * 思考模型 reasoning 与正文同预算；过小易在 JSON 写完前被截断。
+ */
+export const WECHAT_ARTICLE_RESEARCH_MAX_OUTPUT_TOKENS = 16384;
 
 /** 选题调研允许的检索轮数（每轮可并行多次 web_search）；超过后强制只写简报 */
 export const RESEARCH_MAX_SEARCH_ROUNDS = 3;
