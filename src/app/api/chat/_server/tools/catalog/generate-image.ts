@@ -15,7 +15,10 @@ import {
   getCurrentImageModelId,
   getImageModelProfile,
 } from '@/app/api/images/_server/registry';
-import { isImageAbortError } from '@/app/api/images/_server/image-utils';
+import {
+  isImageAbortError,
+  isImageSafetyRejectedError,
+} from '@/app/api/images/_server/image-utils';
 import { generateImageViaRouter, resolveImageModelId } from '@/app/api/images/_server/router';
 import {
   describeImageQuality,
@@ -471,6 +474,9 @@ function createGenerateImageTool(
             size: resolvedSize,
           });
           return { ok: false, error: '生图超时，请稍后重试' };
+        }
+        if (isImageSafetyRejectedError(err)) {
+          return { ok: false, error: err.message };
         }
         logImageToolFailure({
           error: '生图服务暂不可用，请稍后重试',

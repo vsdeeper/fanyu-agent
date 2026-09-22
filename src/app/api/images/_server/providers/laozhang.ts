@@ -4,6 +4,7 @@ import {
   createRequestAbortSignal,
   decodeBase64Image,
   downloadImage,
+  ImageSafetyRejectedError,
   readImageDimensions,
   sniffImageMime,
 } from '../image-utils';
@@ -84,7 +85,16 @@ function logLaozhangFailure(
 
 /** OpenAI images 通道的响应项：gpt-image 系列默认只回 b64_json，兼容 url。 */
 type OpenAIImageItem = { b64_json?: string; url?: string };
-type OpenAIImageResponse = { data?: OpenAIImageItem[]; error?: { message?: string } };
+type OpenAIImageResponse = {
+  data?: OpenAIImageItem[];
+  error?: { message?: string; code?: string };
+};
+
+/** 上游 451 或 image_safety：图已生成但被安全策略丢掉，不是服务宕机。 */
+function isSafetyRejection(status: number, code?: string, message?: string): boolean {
+  if (status === 451 || code === 'image_safety') return true;
+  return typeof message === 'string' && message.toLowerCase().includes('safety policy');
+}
 
 /**
  * 走 OpenAI /v1/images/* 通道的 laozhang 模型（非 Gemini generateContent）。
@@ -111,7 +121,8 @@ function extFromMime(mimeType: string): string {
 
 /**
  * laozhang 的 OpenAI images 通道：生成走 /v1/images/generations，改图走 /v1/images/edits（multipart）。
- * 响应认 data[].b64_json / data[].url；多参考被上游 400 拒绝时降级仅首图重试。
+ * 响应认 data[].b64_json / data[].url。
+ * 多图：按上游约定重复 append 同名 `image`（顺序即 prompt 中「图1/图2/…」），最多 16 张；勿降级丢参考。
  */
 async function generateOpenAIImage(
   req: ImageGenerateRequest,
@@ -128,15 +139,15 @@ async function generateOpenAIImage(
   const buildPayload = async (sources: string[]) => {
     const prompt = buildImagePrompt(req.prompt, req.transparent);
     if (req.mode === 'edit') {
-      // edits 为 multipart：每张参考图一个 image 字段；同样带 size（OpenAI edits 兼容），
+      // edits 为 multipart：多图重复同名 image 字段（老张 / OpenAI 兼容网关约定）；同样带 size，
       // 否则改图收不到尺寸、按模型默认比例（如 16:10）出图，表现为 size 失效。
       const form = new FormData();
       form.append('model', req.modelId);
       form.append('prompt', prompt);
       form.append('size', outboundSize);
       if (quality) form.append('quality', quality);
-      for (const ref of sources) {
-        const { bytes, mimeType } = await toSourceBytes(ref);
+      for (let i = 0; i < sources.length; i++) {
+        const { bytes, mimeType } = await toSourceBytes(sources[i]);
         // 复制到独立 ArrayBuffer 再喂 Blob：TS lib 的 BlobPart 只认 ArrayBufferView<ArrayBuffer>，
         // 不接受可能 SharedArrayBuffer 后备的 Uint8Array<ArrayBufferLike>（否则 type-check 失败）。
         const buffer = new ArrayBuffer(bytes.byteLength);
@@ -144,7 +155,7 @@ async function generateOpenAIImage(
         form.append(
           'image',
           new Blob([buffer], { type: mimeType }),
-          `ref.${extFromMime(mimeType)}`,
+          `ref-${i}.${extFromMime(mimeType)}`,
         );
       }
       return { body: form };
@@ -163,34 +174,21 @@ async function generateOpenAIImage(
   const target = req.mode === 'edit' ? `${baseURL}/images/edits` : `${baseURL}/images/generations`;
 
   const requestSignal = createRequestAbortSignal(req.abortSignal);
-  const doFetch = async (payload: { body: BodyInit; contentType?: string }) => {
-    const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}` };
-    // multipart（FormData）由 fetch 自动带 boundary，勿手设 Content-Type；仅 JSON 分支设置。
-    if (payload.contentType) headers['Content-Type'] = payload.contentType;
-    const response = await fetch(target, {
-      method: 'POST',
-      headers,
-      body: payload.body,
-      signal: requestSignal,
-    });
-    let payloadJson: OpenAIImageResponse = {};
-    try {
-      payloadJson = (await response.json()) as OpenAIImageResponse;
-    } catch {
-      payloadJson = {};
-    }
-    return { response, payload: payloadJson };
-  };
-
-  let { response, payload } = await doFetch(await buildPayload(refs));
-
-  // 多参考被上游明确 400（参数无效）拒绝时降级仅首图，其余靠 prompt 描述。
-  if (response.status === 400 && refs.length > 1) {
-    console.warn('[laozhang] gpt-image 多参考被上游拒绝(400)，降级仅首图', payload);
-    if (req.abortSignal?.aborted) {
-      throw new Error('已中断');
-    }
-    ({ response, payload } = await doFetch(await buildPayload([refs[0]])));
+  const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}` };
+  const payloadBody = await buildPayload(refs);
+  // multipart（FormData）由 fetch 自动带 boundary，勿手设 Content-Type；仅 JSON 分支设置。
+  if (payloadBody.contentType) headers['Content-Type'] = payloadBody.contentType;
+  const response = await fetch(target, {
+    method: 'POST',
+    headers,
+    body: payloadBody.body,
+    signal: requestSignal,
+  });
+  let payload: OpenAIImageResponse = {};
+  try {
+    payload = (await response.json()) as OpenAIImageResponse;
+  } catch {
+    payload = {};
   }
 
   if (!response.ok) {
@@ -201,6 +199,9 @@ async function generateOpenAIImage(
       aspectRatio: req.aspectRatio,
       payload,
     });
+    if (isSafetyRejection(response.status, payload.error?.code, payload.error?.message)) {
+      throw new ImageSafetyRejectedError();
+    }
     throw new Error('老张生图服务暂不可用');
   }
 
@@ -259,57 +260,42 @@ export const laozhangProvider: ImageProvider = {
     // imageSize 仅认模型登记的档位串；WxH 或未知值回退到模型默认档位。
     const imageSize = resolveOutboundImageSize(req.size, undefined, spec);
 
-    // 生成/改图统一：参考图逐个追加 inline_data 段（Gemini generateContent 支持多图输入），无则仅文本。
+    // 生成/改图统一：参考图逐个追加 inline_data 段。
+    // 官方 generateContent 支持多图 Part；老张 Nano Banana 原生格式亦支持多参考（最多约 14 张）。勿降级丢参考。
     // req.mode 已由 router 按能力校验；edit 才带上参考图，generate 保持纯文本。
     const refs = req.mode === 'edit' ? (req.referenceImageDataUrls ?? []) : [];
     const requestSignal = createRequestAbortSignal(req.abortSignal);
 
-    const buildBody = async (sources: string[]) => {
-      const parts: GeminiRequestPart[] = [{ text: buildImagePrompt(req.prompt, req.transparent) }];
-      for (const reference of sources) {
-        parts.push({ inline_data: await toInlineData(reference) });
-      }
-      return {
-        contents: [{ parts }],
-        generationConfig: {
-          responseModalities: ['IMAGE'],
-          imageConfig: {
-            ...(ratio ? { aspectRatio: ratio } : {}),
-            imageSize,
-            ...(req.transparent ? { imageType: 'image/png' } : {}),
-          },
+    const parts: GeminiRequestPart[] = [{ text: buildImagePrompt(req.prompt, req.transparent) }];
+    for (const reference of refs) {
+      parts.push({ inline_data: await toInlineData(reference) });
+    }
+    const body = {
+      contents: [{ parts }],
+      generationConfig: {
+        responseModalities: ['IMAGE'],
+        imageConfig: {
+          ...(ratio ? { aspectRatio: ratio } : {}),
+          imageSize,
+          ...(req.transparent ? { imageType: 'image/png' } : {}),
         },
-      };
+      },
     };
 
-    const doFetch = async (candidateBody: unknown) => {
-      const response = await fetch(`${baseURL}/models/${req.modelId}:generateContent`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(candidateBody),
-        signal: requestSignal,
-      });
-      let payload: GeminiGenerateResponse = {};
-      try {
-        payload = (await response.json()) as GeminiGenerateResponse;
-      } catch {
-        payload = {};
-      }
-      return { response, payload };
-    };
-
-    let { response, payload } = await doFetch(await buildBody(refs));
-
-    // 默认模型多图输入能力未验证：上游 400 拒绝（不支持多 inline_data）时降级仅首图重试，其余靠 prompt 描述。
-    if (response.status === 400 && refs.length > 1) {
-      console.warn('[laozhang] 多参考被上游拒绝(400)，降级仅首图', payload);
-      if (req.abortSignal?.aborted) {
-        throw new Error('已中断');
-      }
-      ({ response, payload } = await doFetch(await buildBody([refs[0]])));
+    const response = await fetch(`${baseURL}/models/${req.modelId}:generateContent`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: requestSignal,
+    });
+    let payload: GeminiGenerateResponse = {};
+    try {
+      payload = (await response.json()) as GeminiGenerateResponse;
+    } catch {
+      payload = {};
     }
 
     if (!response.ok) {
@@ -320,6 +306,12 @@ export const laozhangProvider: ImageProvider = {
         aspectRatio: ratio,
         payload: summarizeGeminiFailurePayload(payload),
       });
+      if (
+        isSafetyRejection(response.status, undefined, payload.error?.message) ||
+        payload.promptFeedback?.blockReason === 'SAFETY'
+      ) {
+        throw new ImageSafetyRejectedError();
+      }
       throw new Error('老张生图服务暂不可用');
     }
 

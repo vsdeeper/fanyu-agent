@@ -5,7 +5,10 @@ import {
   isValidImageSize,
   resolveImageQuality,
 } from '@/app/api/images/_server/image-spec';
-import { isImageAbortError } from '@/app/api/images/_server/image-utils';
+import {
+  isImageAbortError,
+  isImageSafetyRejectedError,
+} from '@/app/api/images/_server/image-utils';
 import { resolveExplicitImageModelId } from '@/app/api/images/_server/registry';
 import { generateImageViaRouter } from '@/app/api/images/_server/router';
 import { GENERATE_TIMEOUT } from './constants';
@@ -88,6 +91,9 @@ export async function generateStudioImage(input: {
     if (isImageAbortError(err)) {
       console.warn('[studio/generate] generateStudioImage timeout');
       return { ok: false, error: GENERATE_TIMEOUT };
+    }
+    if (isImageSafetyRejectedError(err)) {
+      return { ok: false, error: err.message };
     }
     console.error('[studio/generate] generateStudioImage', err);
     return { ok: false, error: '生图服务暂不可用' };

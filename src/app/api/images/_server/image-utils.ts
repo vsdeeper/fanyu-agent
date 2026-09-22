@@ -124,6 +124,20 @@ export function isImageAbortError(err: unknown): boolean {
   return err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError');
 }
 
+/** 上游已生成图片，但被安全策略拒绝。文案给用户，不含供应商信息。 */
+export const IMAGE_SAFETY_REJECTED = '这张图未通过安全审核，请调整画面描述后重试';
+
+export class ImageSafetyRejectedError extends Error {
+  constructor() {
+    super(IMAGE_SAFETY_REJECTED);
+    this.name = 'ImageSafetyRejectedError';
+  }
+}
+
+export function isImageSafetyRejectedError(err: unknown): err is ImageSafetyRejectedError {
+  return err instanceof ImageSafetyRejectedError;
+}
+
 /**
  * 组装出站生图的 abort 信号：转发入参 signal 的中止事件 + N 秒超时，每请求只生成一个，
  * 供上游出图 fetch 与结果图下载复用，避免重复订阅 req.signal。
