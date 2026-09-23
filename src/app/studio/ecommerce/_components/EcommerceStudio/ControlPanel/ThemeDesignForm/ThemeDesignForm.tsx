@@ -1,5 +1,5 @@
 import { Form, Radio } from 'antd';
-import StudioImageUpload from '@/business-components/StudioImageUpload';
+import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import GenerateForm from '../GenerateForm';
 import {

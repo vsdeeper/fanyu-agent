@@ -9,7 +9,7 @@ import GenerateSpecForm, {
   type GenerateSpecFormFields,
 } from '@/app/studio/_components/GenerateSpecForm';
 import { toModelOptions } from '@/app/studio/_utils/model-options';
-import StudioImageUpload from '@/business-components/StudioImageUpload';
+import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import {
   CHARACTER_MODEL_HINT,
   CHARACTER_MODEL_LABEL,

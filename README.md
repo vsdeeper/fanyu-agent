@@ -142,10 +142,9 @@ pnpm run db:generate
 ```
 src/
   app/chat/            # 对话页（_components / _utils / _hooks）
-  app/studio/          # 工作室页（各产品子路由）
+  app/studio/          # 工作室页（各产品子路由 + 共用 _components）
   app/api/<域>/        # route.ts 薄壳 + _server + _shared
   components/          # 全局通用 UI
-  business-components/ # 跨产品业务 UI
   lib/                 # 平台内核：db / skills / shared / theme
 drizzle/               # SQL 迁移（db:generate 产出）
 scripts/               # checkpoint / sync-data 等 Node 脚本

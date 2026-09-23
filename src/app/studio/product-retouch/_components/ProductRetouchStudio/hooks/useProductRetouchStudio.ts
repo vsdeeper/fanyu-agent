@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { App, Form } from 'antd';
-import { MAX_STUDIO_IMAGES } from '@/business-components/StudioImageUpload';
+import { MAX_STUDIO_IMAGES } from '@/app/studio/_components/StudioImageUpload';
 import type { ProductRetouchTaskDetail } from '@/app/api/studio/product-retouch/_shared/task-types';
 import { validateForm } from '@/app/studio/_utils/form-validate';
 import { ApiClientError } from '@/lib/shared/client/api-client';

@@ -1,7 +1,7 @@
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
-import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
+import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 
 export type { StudioResultImage };
 

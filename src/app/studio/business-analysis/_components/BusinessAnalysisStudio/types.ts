@@ -1,4 +1,4 @@
-import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
+import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 
 export type StudioPhase = 'input' | 'analyzing' | 'analyzed' | 'complete';
 

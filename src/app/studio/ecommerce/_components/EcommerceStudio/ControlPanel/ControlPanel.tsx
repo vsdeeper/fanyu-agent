@@ -2,8 +2,8 @@ import { HighlightOutlined } from '@ant-design/icons';
 import { Button, Form, type FormInstance } from 'antd';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
-import ProductDocsUpload from '@/business-components/ProductDocsUpload';
-import StudioImageUpload from '@/business-components/StudioImageUpload';
+import ProductDocsUpload from '@/app/studio/_components/ProductDocsUpload';
+import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import {
   ANALYSIS_UPLOAD_MISSING,
   ANALYZE_BUTTON,

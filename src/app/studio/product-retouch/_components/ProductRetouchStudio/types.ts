@@ -1,6 +1,6 @@
 import type { GenerateSpecFormFields } from '@/app/studio/_components/GenerateSpecForm';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
-import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
+import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 
 export type ProductRetouchPhase =
   'refine' | 'refineGenerating' | 'multiview' | 'multiviewGenerating' | 'complete';

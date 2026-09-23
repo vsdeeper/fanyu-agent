@@ -1,4 +1,4 @@
-import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
+import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 
 /** 工作台步骤。生成内容中单独标出，生图进行中仍停在生成步。 */
 export type ImageTextPhase = 'plan' | 'planning' | 'planned' | 'generate' | 'preview';

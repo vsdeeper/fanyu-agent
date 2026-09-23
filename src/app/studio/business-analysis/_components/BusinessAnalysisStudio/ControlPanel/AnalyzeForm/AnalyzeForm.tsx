@@ -1,6 +1,6 @@
 import { Form, Input } from 'antd';
-import ProductDocsUpload from '@/business-components/ProductDocsUpload';
-import StudioImageUpload from '@/business-components/StudioImageUpload';
+import ProductDocsUpload from '@/app/studio/_components/ProductDocsUpload';
+import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import { MAX_BRAND_LOGOS } from '../../constants';
 import {
   BRAND_LOGO_ARIA_LABEL,

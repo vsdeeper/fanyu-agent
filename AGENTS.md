@@ -129,7 +129,6 @@ src/
       geo/ / images/ / docs/
     page.tsx / layout.tsx / global.css
   components/              # 全局通用 UI（无业务耦合）
-  business-components/     # 跨产品业务 UI
   hooks/                   # 全局通用 Hook
   lib/                     # 平台内核：db / skills / shared / theme
 public/
@@ -147,7 +146,7 @@ drizzle/                   # SQL migrations
 | 5   | Client + Server 共用类型 / 纯函数 / 常量              | 该 API 域 `_shared/`（Client **只允许** import `_shared`）                        |
 | 6   | 无独立产品面                                          | `src/lib/`                                                                        |
 | 7   | 跨路由、无业务耦合 UI / Hook                          | `src/components/` / `src/hooks/`                                                  |
-| 8   | 跨产品、带业务语义 UI                                 | `src/business-components/`（专属 Hook/常量仍放该组件目录）                        |
+| 8   | 工作室跨产品子路由复用 UI                             | `app/studio/_components/`（专属 Hook/常量仍放该组件目录）                         |
 
 **命名约束：**
 
@@ -168,11 +167,11 @@ drizzle/                   # SQL migrations
 
 ```text
 app/chat Client      →  _hooks、_utils、_components、lib/skills、lib/shared/client、
-                        api/*/ _shared、components、business-components、hooks
+                        api/*/ _shared、components、hooks
 app/chat RSC         →  同上 + app/api/chats/_server/store
 app/studio Client    →  studio/_hooks、_utils、_components、
                         api/studio/_shared、api/studio/{product}/_shared、
-                        components、business-components
+                        components
 app/api/<域>/_server →  本域 _shared、lib/db、lib/shared/server、其他域 _server（仅能力调用）
 lib/*、src/hooks     →  禁止依赖 app/ 与任何产品实现
 ```
@@ -246,13 +245,13 @@ Client 需要的会话类型从 `app/api/chats/_shared/types.ts` 导入，**勿*
 
 ### 组件目录约定
 
-| 层级     | 路径                       | 判定                   | 示例                    |
-| -------- | -------------------------- | ---------------------- | ----------------------- |
-| 全局通用 | `src/components/`          | 无业务耦合，可跨路由   | `theme/`、`ModeSwitch/` |
-| 业务通用 | `src/business-components/` | 带业务语义，跨产品页   | `StudioImageUpload/`    |
-| 页面级   | `app/<route>/_components/` | 仅该路由段；`_` 非 URL | `app/chat/_components/` |
+| 层级     | 路径                       | 判定                         | 示例                       |
+| -------- | -------------------------- | ---------------------------- | -------------------------- |
+| 全局通用 | `src/components/`          | 无业务耦合，可跨路由         | `theme/`、`ModeSwitch/`    |
+| 工作室共用 | `app/studio/_components/`  | 跨工作室产品子路由复用       | `StudioImageUpload/`       |
+| 页面级   | `app/<route>/_components/` | 仅该路由段；`_` 非 URL       | `app/chat/_components/`    |
 
-页面级可引用全局 / 业务通用；反向禁止。
+页面级可引用全局 / 工作室共用；反向禁止。工作室产品页可引用 `app/studio/_components/`，勿反向依赖各产品 `_components`。
 
 #### 单组件目录结构
 
@@ -298,7 +297,7 @@ Button/
 - **就近上提**：单调用方 → 组件 `hooks/` → 同页多组件 → `_hooks/` → 跨路由无业务耦合 → `src/hooks/`
 - 页面级必须 `_hooks/`；组件级 / 全局是 `hooks/`
 - Hook ≠ 纯函数：禁止与 `_utils/` / `utils.ts` 互塞
-- 带业务语义、随业务组件复用 → `src/business-components/<Component>/hooks/`
+- 工作室跨产品复用组件的私有 Hook → `app/studio/_components/<Component>/hooks/`
 - **禁止**跨页面 import `_hooks`；**禁止**把页面/组件私有逻辑放进 `src/hooks`
 
 ### 常量目录约定

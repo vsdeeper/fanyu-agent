@@ -1,6 +1,6 @@
 import { Form } from 'antd';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
-import StudioImageUpload from '@/business-components/StudioImageUpload';
+import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import { MAX_MODEL_IMAGES, MODEL_IMAGE_HINT, MODEL_IMAGE_SUBTITLE } from '../../constants';
 import { isPosterTask } from '../../workflow';
 import GenerateForm from '../GenerateForm';

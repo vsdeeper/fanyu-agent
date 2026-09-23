@@ -7,7 +7,7 @@ import { validateForm } from '@/app/studio/_utils/form-validate';
 import { getModelCapability, resolveClarityForModel } from '@/app/studio/_utils/model-options';
 import { readUploadItemAsDataUrl } from '@/app/studio/_utils/upload-items';
 import { revokeReplacedLocalUploadItemUrls } from '@/lib/shared/client/upload-items';
-import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
+import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 import {
   DEFAULT_GENERATE_CARD_ID,
   DEFAULT_GENERATE_CARD_TITLE,

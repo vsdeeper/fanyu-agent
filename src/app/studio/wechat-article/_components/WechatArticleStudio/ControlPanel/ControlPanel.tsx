@@ -4,8 +4,8 @@ import StyleDimensionPicker, {
   StyleClipboardActions,
   hasStyleSelection,
   type StyleDimensionSelections,
-} from '@/business-components/StyleDimensionPicker';
-import StudioImageUpload from '@/business-components/StudioImageUpload';
+} from '@/app/studio/_components/StyleDimensionPicker';
+import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import AngleCardView from '../AngleCardView';
 import {
   DRAFT_BUTTON,

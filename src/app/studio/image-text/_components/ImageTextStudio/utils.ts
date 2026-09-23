@@ -4,7 +4,7 @@ import type {
   ImageTextStepKey,
   ImageTextTaskStepRecord,
 } from '@/app/api/studio/image-text/_shared/task-types';
-import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
+import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 import { apiPut } from '@/lib/shared/client/api-client';
 import { readFileAsDataUrl } from '@/app/studio/_utils/upload-items';
 import { DEFAULT_IMAGE_ASPECT, DEFAULT_IMAGE_CLARITY, DEFAULT_IMAGE_MODEL } from './constants';

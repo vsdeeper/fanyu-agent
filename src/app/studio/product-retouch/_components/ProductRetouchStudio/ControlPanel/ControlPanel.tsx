@@ -1,6 +1,6 @@
 import { HighlightOutlined } from '@ant-design/icons';
 import { Button, Form, Input, Radio, type FormInstance } from 'antd';
-import StudioImageUpload from '@/business-components/StudioImageUpload';
+import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import {
   MULTIVIEW_BUTTON,
   MULTIVIEW_NEED_OPTIONS,

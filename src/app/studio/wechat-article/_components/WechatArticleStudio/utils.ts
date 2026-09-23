@@ -3,8 +3,8 @@ import type {
   WechatArticleStepKey,
   WechatArticleTaskStepRecord,
 } from '@/app/api/studio/wechat-article/_shared/task-types';
-import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
-import { parseStyleSelections } from '@/business-components/StyleDimensionPicker';
+import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
+import { parseStyleSelections } from '@/app/studio/_components/StyleDimensionPicker';
 import { apiPut } from '@/lib/shared/client/api-client';
 import type {
   AngleCard,

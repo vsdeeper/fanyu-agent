@@ -1,5 +1,5 @@
-import type { StudioImageUploadItem } from '@/business-components/StudioImageUpload';
-import type { StyleDimensionSelections } from '@/business-components/StyleDimensionPicker';
+import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
+import type { StyleDimensionSelections } from '@/app/studio/_components/StyleDimensionPicker';
 
 /**
  * 左栏表单值：与 ControlPanel 的 Form.Item name 一一对应。

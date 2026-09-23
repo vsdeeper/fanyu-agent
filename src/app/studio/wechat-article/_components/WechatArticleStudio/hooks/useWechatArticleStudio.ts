@@ -73,7 +73,7 @@ import {
   toPersistableImageUrl,
 } from '../utils';
 import { buildWechatCopyHtml } from '../wechat-copy';
-import { formatStyleSelections } from '@/business-components/StyleDimensionPicker';
+import { formatStyleSelections } from '@/app/studio/_components/StyleDimensionPicker';
 
 /** 管理公众号五步：调研 → 思路 → 成稿 → 成稿配图 → 完成。 */
 export function useWechatArticleStudio(task: WechatArticleTaskDetail) {
