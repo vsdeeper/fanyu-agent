@@ -1,6 +1,7 @@
-import { Button, Card, Input } from 'antd';
+import { Button, Input } from 'antd';
 import { useState } from 'react';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
+import SelectableCard from '@/app/studio/_components/SelectableCard';
 import { AI_ASSIST_BUTTON, CANCEL_BUTTON, EDIT_BUTTON, SAVE_BUTTON } from './constants';
 import { useThemePlanAiAssist } from './hooks/useThemePlanAiAssist';
 import styles from './ThemePlanCards.module.css';
@@ -98,18 +99,15 @@ export default function ThemePlanCards({
       {cards.map((card) => {
         const selected = selectedThemeIds.includes(card.themeId);
         const editing = editingKey === card.themeId;
+        const interactive = canInteract && !editingKey;
         return (
-          <Card
+          <SelectableCard
             key={card.themeId}
-            size="small"
-            hoverable={canInteract && !editingKey}
             title={card.title}
             extra={renderExtra(card.themeId, card.requirement)}
-            className={`${styles.card} ${selected ? styles.selected : ''}`}
-            onClick={() => {
-              if (!canInteract || editingKey) return;
-              onToggleTheme(card.themeId);
-            }}
+            selected={selected}
+            interactive={interactive}
+            onClick={interactive ? () => onToggleTheme(card.themeId) : undefined}
           >
             {editing ? (
               <div className={styles.editorWrap} onClick={(event) => event.stopPropagation()}>
@@ -137,7 +135,7 @@ export default function ThemePlanCards({
             ) : (
               <p className={styles.body}>{card.requirement}</p>
             )}
-          </Card>
+          </SelectableCard>
         );
       })}
     </div>

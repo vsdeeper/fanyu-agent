@@ -1,0 +1,17 @@
+.card {
+  width: 100%;
+}
+
+.card :global(.ant-card-head) {
+  min-height: 44px;
+}
+
+.interactive {
+  cursor: pointer;
+}
+
+.selected,
+.selected:global(.ant-card-hoverable):hover {
+  border-color: var(--one-color-primary) !important;
+  box-shadow: 0 0 0 1px var(--one-color-primary);
+}

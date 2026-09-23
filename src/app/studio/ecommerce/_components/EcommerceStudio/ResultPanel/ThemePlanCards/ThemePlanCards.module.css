@@ -4,18 +4,6 @@
   gap: 12px;
 }
 
-.card {
-  cursor: pointer;
-}
-
-.card :global(.ant-card-head) {
-  min-height: 44px;
-}
-
-.selected {
-  border-color: var(--one-color-primary) !important;
-}
-
 .body {
   margin: 0;
   white-space: pre-wrap;
