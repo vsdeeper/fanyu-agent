@@ -1,5 +1,5 @@
-import { Card } from 'antd';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
+import SelectableCard from '@/app/studio/_components/SelectableCard';
 import styles from './SelectedPlanCards.module.css';
 
 type SelectedPlanCardsProps = {
@@ -13,9 +13,7 @@ export default function SelectedPlanCards({ cards }: SelectedPlanCardsProps) {
   return (
     <div className={styles.list}>
       {cards.map((card) => (
-        <Card key={card.themeId} size="small" title={card.title} className={styles.card}>
-          <p className={styles.body}>{card.requirement}</p>
-        </Card>
+        <SelectableCard key={card.themeId} title={card.title} value={card.requirement} />
       ))}
     </div>
   );

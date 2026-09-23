@@ -1,2 +1,6 @@
 export { default } from './SelectableCard';
-export type { SelectableCardProps } from './SelectableCard';
+export type {
+  SelectableCardEditPlacement,
+  SelectableCardMetaItem,
+  SelectableCardProps,
+} from './SelectableCard';

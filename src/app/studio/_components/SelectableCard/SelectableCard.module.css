@@ -15,3 +15,108 @@
   border-color: var(--one-color-primary) !important;
   box-shadow: 0 0 0 1px var(--one-color-primary);
 }
+
+.bodyStack {
+  flex: 1;
+  min-width: 0;
+}
+
+.bodyText {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--one-color-text);
+  word-break: break-word;
+}
+
+.meta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--one-color-text-secondary);
+}
+
+.meta + .meta {
+  margin-top: 4px;
+}
+
+.index {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--one-color-fill-secondary);
+  color: var(--one-color-text-secondary);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.displayRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.displayMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.actionBtn {
+  flex-shrink: 0;
+  padding-inline: 0;
+  height: auto;
+  line-height: 1.65;
+}
+
+.displayActions :global(.ant-btn) {
+  flex-shrink: 0;
+  padding-inline: 0;
+  height: auto;
+  line-height: 1.65;
+}
+
+.editorWrap {
+  position: relative;
+}
+
+.editorWrap :global(.ant-input) {
+  padding-bottom: 32px;
+}
+
+.editor {
+  margin-bottom: 0;
+}
+
+.aiAssist {
+  position: absolute;
+  right: 8px;
+  bottom: 4px;
+  z-index: 1;
+  line-height: 1;
+}
+
+.aiAssist :global(.ant-btn) {
+  padding-inline: 4px;
+  height: auto;
+}
+
+.editRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

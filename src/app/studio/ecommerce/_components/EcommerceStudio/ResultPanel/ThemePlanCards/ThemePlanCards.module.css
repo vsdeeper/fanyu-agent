@@ -3,36 +3,3 @@
   flex-direction: column;
   gap: 12px;
 }
-
-.body {
-  margin: 0;
-  white-space: pre-wrap;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--one-color-text);
-}
-
-.editorWrap {
-  position: relative;
-}
-
-.editor {
-  margin-bottom: 0;
-}
-
-.editorWrap :global(.ant-input) {
-  padding-bottom: 32px;
-}
-
-.aiAssist {
-  position: absolute;
-  right: 8px;
-  bottom: 4px;
-  z-index: 1;
-  line-height: 1;
-}
-
-.aiAssist :global(.ant-btn) {
-  padding-inline: 4px;
-  height: auto;
-}
