@@ -4,8 +4,8 @@
   width: 380px;
   flex-shrink: 0;
   min-height: 0;
-  background: var(--one-color-bg-container);
-  border: 1px solid var(--one-color-border-secondary);
+  background: var(--fanyu-color-bg-container);
+  border: 1px solid var(--fanyu-color-border-secondary);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -35,7 +35,7 @@
 .footer {
   flex-shrink: 0;
   padding: 12px 16px 16px;
-  border-top: 1px solid var(--one-color-border-secondary);
+  border-top: 1px solid var(--fanyu-color-border-secondary);
 }
 
 .actionBtn {
@@ -52,7 +52,7 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--one-color-text);
+  color: var(--fanyu-color-text);
 }
 
 .labelWithTip {
@@ -64,7 +64,7 @@
 .labelTipIcon {
   display: inline-flex;
   align-items: center;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
   font-size: 14px;
   cursor: help;
 }
@@ -78,17 +78,17 @@
 .pick {
   max-width: 100%;
   padding: 4px 10px;
-  border: 1px solid var(--one-color-border-secondary);
+  border: 1px solid var(--fanyu-color-border-secondary);
   border-radius: 999px;
   background: transparent;
-  color: var(--one-color-text);
+  color: var(--fanyu-color-text);
   font-size: 13px;
   cursor: pointer;
 }
 
 .picked {
-  border-color: var(--one-color-primary);
-  color: var(--one-color-primary);
+  border-color: var(--fanyu-color-primary);
+  color: var(--fanyu-color-primary);
 }
 
 .cardBody {
@@ -97,13 +97,13 @@
   gap: 4px;
   padding: 12px;
   border-radius: 8px;
-  background: var(--one-color-fill-quaternary);
+  background: var(--fanyu-color-fill-quaternary);
 }
 
 .metaLabel {
   margin: 4px 0 0;
   font-size: 12px;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
 }
 
 .metaText {
@@ -112,5 +112,5 @@
   line-height: 1.65;
   white-space: pre-wrap;
   word-break: break-word;
-  color: var(--one-color-text);
+  color: var(--fanyu-color-text);
 }

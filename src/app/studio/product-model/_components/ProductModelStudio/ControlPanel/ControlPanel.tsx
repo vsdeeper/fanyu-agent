@@ -32,7 +32,7 @@ export default function ControlPanel({
         {/*
           左栏值的唯一真相是这份 Form store。面板卸载后 store 仍在，故 hook 里读值必须用
           getFieldsValue(true)；因此不要给这个 Form 加 clearOnDestroy，否则完成步返回时表单会空。
-          component={false} 同样不可用：本项目 cssVar.prefix='one'，antd 组件必须渲染真实节点。
+          component={false} 同样不可用：本项目 cssVar.prefix='fanyu'，antd 组件必须渲染真实节点。
         */}
         <Form
           form={form}

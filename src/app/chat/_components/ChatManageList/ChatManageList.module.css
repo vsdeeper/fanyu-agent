@@ -78,6 +78,6 @@
 }
 
 .totalCount {
-  color: var(--one-color-text-tertiary) !important;
+  color: var(--fanyu-color-text-tertiary) !important;
   font-size: 12px !important;
 }

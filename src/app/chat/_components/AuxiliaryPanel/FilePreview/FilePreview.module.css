@@ -18,7 +18,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--one-color-text);
+  color: var(--fanyu-color-text);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -29,5 +29,5 @@
   justify-content: center;
   min-height: 160px;
   padding: 24px;
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
 }

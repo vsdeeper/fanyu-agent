@@ -400,15 +400,15 @@ Button/
   - `mode`：实际生效 `'light' | 'dark'`
   - `preference`：用户选择 `'light' | 'dark' | 'system'`
   - `setMode` / `toggle`：三态循环 light → dark → system → light
-- 主题 token：`src/lib/theme/` — `appTheme` / `darkTheme`（`cssVar.prefix: 'one'`）
+- 主题 token：`src/lib/theme/` — `appTheme` / `darkTheme`（`cssVar.prefix: 'fanyu'`）
 - 切换按钮：`src/components/ModeSwitch/`（ChatShell 顶栏右侧）
 
 #### 持久化与 SSR
 
 | 键                   | 存储         | 内容                                        |
 | -------------------- | ------------ | ------------------------------------------- |
-| `one-theme`          | localStorage | 偏好（可含 `'system'`）                     |
-| `one-theme-resolved` | cookie       | 解析后的 `'light' \| 'dark'`（SSR 防 FOUC） |
+| `fanyu-theme`          | localStorage | 偏好（可含 `'system'`）                     |
+| `fanyu-theme-resolved` | cookie       | 解析后的 `'light' \| 'dark'`（SSR 防 FOUC） |
 
 - `html[data-theme]` / `color-scheme` 永远写解析后的 light/dark
 - `'system'` 用 `matchMedia` 实时解析；preference 为 system 时挂 `change` 监听
@@ -416,13 +416,13 @@ Button/
 
 #### 样式与 Layout
 
-- CSS Module 用 `--one-*` 即可换肤；无 antd token 的自定义色在 `global.css` 的 `html[data-theme='dark']` 覆盖
+- CSS Module 用 `--fanyu-*` 即可换肤；无 antd token 的自定义色在 `global.css` 的 `html[data-theme='dark']` 覆盖
 - **布局壳必须用 antd `Layout`**（否则 `Layout.*` 组件级 token 不 flush）
 
 #### XMarkdown
 
 - 同时引入 `light.css` / `dark.css`，用 `useThemeMode()` 切换 `x-markdown-light` / `x-markdown-dark`
-- 变量覆写：[`src/lib/theme/XMarkdownTheme.css`](src/lib/theme/XMarkdownTheme.css) 映射到 `--one-*`
+- 变量覆写：[`src/lib/theme/XMarkdownTheme.css`](src/lib/theme/XMarkdownTheme.css) 映射到 `--fanyu-*`
 - **引入顺序**：消费组件内紧跟 light/dark 之后 import 覆写层；**勿放 `global.css`**
 - 浅/深 code 背景分别覆写 `--light-bg` / `--dark-bg`
 

@@ -12,7 +12,7 @@
 
 .title {
   margin: 0 !important;
-  color: var(--one-color-text) !important;
+  color: var(--fanyu-color-text) !important;
 }
 
 .ratioGroup {
@@ -22,7 +22,7 @@
 }
 
 .ratioTitle {
-  color: var(--one-color-text-secondary) !important;
+  color: var(--fanyu-color-text-secondary) !important;
   font-size: 12px !important;
   font-weight: 500 !important;
 }

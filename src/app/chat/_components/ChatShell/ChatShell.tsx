@@ -98,7 +98,7 @@ export default function ChatShell({ chats, children }: ChatShellProps) {
 
   return (
     // 修复：布局壳必须用 antd Layout（Header/Content/Sider），组件级 token 才惰性输出为
-    // --one-layout-* 并作用到 .ant-layout-*；改用原生 div 会让 components.ts 的 Layout 配置失效
+    // --fanyu-layout-* 并作用到 .ant-layout-*；改用原生 div 会让 components.ts 的 Layout 配置失效
     <Layout hasSider className={styles.shell}>
       <Layout className={styles.main}>
         <Layout.Header className={styles.mainHeader}>

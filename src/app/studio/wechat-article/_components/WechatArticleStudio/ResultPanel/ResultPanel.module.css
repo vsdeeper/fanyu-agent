@@ -5,8 +5,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--one-color-bg-container);
-  border: 1px solid var(--one-color-border-secondary);
+  background: var(--fanyu-color-bg-container);
+  border: 1px solid var(--fanyu-color-border-secondary);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -17,10 +17,10 @@
   gap: 8px;
   padding: 0 20px;
   height: 50px;
-  border-bottom: 1px solid var(--one-color-border-secondary);
+  border-bottom: 1px solid var(--fanyu-color-border-secondary);
   font-size: 14px;
   font-weight: 600;
-  color: var(--one-color-text);
+  color: var(--fanyu-color-text);
 }
 
 .headActions {
@@ -46,7 +46,7 @@
   justify-content: center;
   gap: 12px;
   padding: 24px;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
 }
 
 .hint {
@@ -61,7 +61,7 @@
   gap: 8px;
   margin: 0;
   font-size: 13px;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
 }
 
 .scroll {
@@ -89,7 +89,7 @@
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
 }
 
 .sourceList {
@@ -121,7 +121,7 @@
   gap: 12px;
   font-size: 13px;
   line-height: 1.65;
-  color: var(--one-color-text);
+  color: var(--fanyu-color-text);
 }
 
 .sourceBody {
@@ -136,11 +136,11 @@
 .sourceDate {
   margin-inline-start: 8px;
   font-size: 12px;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
 }
 
 .sourceBlurb {
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
 }
 
 .sourceIndex {
@@ -152,8 +152,8 @@
   height: 20px;
   margin-top: 2px;
   border-radius: 50%;
-  background: var(--one-color-fill-secondary);
-  color: var(--one-color-text-secondary);
+  background: var(--fanyu-color-fill-secondary);
+  color: var(--fanyu-color-text-secondary);
   font-size: 12px;
   line-height: 1;
 }
@@ -166,7 +166,7 @@
 .charCount {
   margin: 0;
   font-size: 12px;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
   text-align: right;
 }
 
@@ -176,7 +176,7 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 20px 16px;
-  border-top: 1px solid var(--one-color-border-secondary);
+  border-top: 1px solid var(--fanyu-color-border-secondary);
 }
 
 .slotList {
@@ -190,7 +190,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--one-color-border-secondary);
+  border: 1px solid var(--fanyu-color-border-secondary);
   border-radius: 8px;
 }
 

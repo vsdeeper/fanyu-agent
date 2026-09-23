@@ -17,7 +17,7 @@
 
 .card:hover {
   color: inherit;
-  background: var(--one-color-fill-tertiary);
+  background: var(--fanyu-color-fill-tertiary);
 }
 
 .cardStatic {
@@ -43,7 +43,7 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -58,7 +58,7 @@
 .date::before {
   content: '·';
   margin: 0 6px;
-  color: var(--one-color-text-quaternary);
+  color: var(--fanyu-color-text-quaternary);
 }
 
 .index {
@@ -69,8 +69,8 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--one-color-fill-secondary);
-  color: var(--one-color-text-secondary);
+  background: var(--fanyu-color-fill-secondary);
+  color: var(--fanyu-color-text-secondary);
   font-size: 12px;
   line-height: 1;
 }
@@ -87,7 +87,7 @@
 
 .snippet {
   margin-top: 4px;
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
   font-size: 13px;
   line-height: 1.5;
   overflow: hidden;

@@ -11,8 +11,8 @@
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 50%;
-  border: 1px solid var(--one-color-bg-container);
-  background: var(--one-color-fill-tertiary);
+  border: 1px solid var(--fanyu-color-bg-container);
+  background: var(--fanyu-color-fill-tertiary);
   box-sizing: border-box;
 }
 
@@ -24,5 +24,5 @@
 }
 
 .fallback {
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
 }

@@ -1,6 +1,6 @@
 /* 修复：宽度裁切改由 antd Sider 自带（collapsedWidth=0 + all .2s 过渡）；
    .sider 补 overflow:hidden，动画期间裁切内层，防重排压缩。
-   背景不再写在这里，由 Layout.siderBg token（=--one-color-bg-layout）驱动，明暗自跟随。 */
+   背景不再写在这里，由 Layout.siderBg token（=--fanyu-color-bg-layout）驱动，明暗自跟随。 */
 .sider {
   overflow: hidden;
 }
@@ -77,7 +77,7 @@
 /* 修复：disabled 时不应用 hover 高亮——busy 期间按钮禁用但仍可 hover，会误导用户可点。
    用 :not(:global(.ant-btn-disabled)) 排除 antd 禁用态。 */
 .newChatBtn:hover:not(button[disabled]) {
-  color: var(--one-color-primary) !important;
+  color: var(--fanyu-color-primary) !important;
   box-shadow:
     0 4px 4px var(--sidebar-btn-shadow-5),
     0 -3px 4px var(--sidebar-btn-shadow-6),
@@ -85,20 +85,20 @@
 }
 
 .navBtn {
-  height: var(--one-control-height-lg) !important;
-  min-height: var(--one-control-height-lg) !important;
-  border-radius: var(--one-border-radius-lg) !important;
+  height: var(--fanyu-control-height-lg) !important;
+  min-height: var(--fanyu-control-height-lg) !important;
+  border-radius: var(--fanyu-border-radius-lg) !important;
   justify-content: flex-start !important;
 }
 
 .navBtnActive {
-  color: var(--one-color-text) !important;
-  background: var(--one-color-bg-text-hover) !important;
+  color: var(--fanyu-color-text) !important;
+  background: var(--fanyu-color-bg-text-hover) !important;
 }
 
 .navBtnActive:hover:not(button[disabled]) {
-  color: var(--one-color-text) !important;
-  background: var(--one-color-bg-text-hover) !important;
+  color: var(--fanyu-color-text) !important;
+  background: var(--fanyu-color-bg-text-hover) !important;
 }
 
 /* 列表随内容增高，滚动交给外层 .scroll；覆盖组件自带 overflowY:auto，避免内层单独出滚动条 */
@@ -123,10 +123,10 @@
 }
 
 .manageBtn {
-  color: var(--one-color-text-tertiary) !important;
+  color: var(--fanyu-color-text-tertiary) !important;
   font-size: 13px !important;
 }
 
 .manageBtn:hover:not(button[disabled]) {
-  color: var(--one-color-text-secondary) !important;
+  color: var(--fanyu-color-text-secondary) !important;
 }

@@ -32,7 +32,7 @@
 
 .subtitle {
   overflow: hidden;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
   font-size: 12px !important;
   line-height: 1.4;
   text-overflow: ellipsis;

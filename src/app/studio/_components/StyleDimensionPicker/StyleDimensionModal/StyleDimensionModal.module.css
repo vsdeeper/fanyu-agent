@@ -16,7 +16,7 @@
   margin-left: 8px;
   font-size: 12px;
   font-weight: 400;
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
 }
 
 .grid {
@@ -30,12 +30,12 @@
 }
 
 .selected {
-  border-color: var(--one-color-primary) !important;
+  border-color: var(--fanyu-color-primary) !important;
 }
 
 .desc {
   margin: 8px 0 0;
   font-size: 13px;
   line-height: 1.7;
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
 }

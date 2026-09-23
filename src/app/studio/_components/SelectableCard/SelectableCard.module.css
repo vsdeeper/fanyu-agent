@@ -12,8 +12,8 @@
 
 .selected,
 .selected:global(.ant-card-hoverable):hover {
-  border-color: var(--one-color-primary) !important;
-  box-shadow: 0 0 0 1px var(--one-color-primary);
+  border-color: var(--fanyu-color-primary) !important;
+  box-shadow: 0 0 0 1px var(--fanyu-color-primary);
 }
 
 .bodyStack {
@@ -26,7 +26,7 @@
   white-space: pre-wrap;
   font-size: 13px;
   line-height: 1.7;
-  color: var(--one-color-text);
+  color: var(--fanyu-color-text);
   word-break: break-word;
 }
 
@@ -34,7 +34,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.6;
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
 }
 
 .meta + .meta {
@@ -50,8 +50,8 @@
   height: 20px;
   margin-top: 2px;
   border-radius: 50%;
-  background: var(--one-color-fill-secondary);
-  color: var(--one-color-text-secondary);
+  background: var(--fanyu-color-fill-secondary);
+  color: var(--fanyu-color-text-secondary);
   font-size: 12px;
   line-height: 1;
 }

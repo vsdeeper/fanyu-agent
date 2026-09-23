@@ -4,9 +4,9 @@
   gap: 10px;
   max-width: 220px;
   padding: 10px 12px;
-  border: 1px solid var(--one-color-border);
-  border-radius: var(--one-border-radius);
-  background: var(--one-color-bg-container);
+  border: 1px solid var(--fanyu-color-border);
+  border-radius: var(--fanyu-border-radius);
+  background: var(--fanyu-color-bg-container);
   color: inherit;
   text-decoration: none;
   cursor: default;
@@ -14,7 +14,7 @@
 }
 
 .card:not(.failed):hover {
-  background-color: var(--one-color-fill-tertiary);
+  background-color: var(--fanyu-color-fill-tertiary);
 }
 
 .failed {
@@ -37,7 +37,7 @@
   display: inline-flex;
   flex-shrink: 0;
   font-size: 20px;
-  color: var(--one-color-primary);
+  color: var(--fanyu-color-primary);
 }
 
 .meta {
@@ -55,7 +55,7 @@
 .hint {
   font-size: 12px;
   line-height: 1.4;
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
 }
 
 .download {
@@ -64,17 +64,17 @@
   justify-content: center;
   flex-shrink: 0;
   font-size: 16px;
-  color: var(--one-color-primary);
+  color: var(--fanyu-color-primary);
   line-height: 1;
   text-decoration: none;
 }
 
 .download:hover {
-  color: var(--one-color-primary);
+  color: var(--fanyu-color-primary);
 }
 
 .downloadDisabled {
-  color: var(--one-color-text-disabled);
+  color: var(--fanyu-color-text-disabled);
   cursor: not-allowed;
   pointer-events: none;
 }

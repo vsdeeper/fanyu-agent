@@ -1,5 +1,5 @@
 .root {
-  background-color: var(--one-color-bg-container);
+  background-color: var(--fanyu-color-bg-container);
 }
 
 /* 间距只靠插入的那一格空格；antd slot 默认左右 margin 会叠成两格宽 */
@@ -10,11 +10,11 @@
 /* Sender 的 tag slot 只渲染 span，不支持 antd Tag 的 variant；用 token 对齐气泡内 solid processing */
 .root :global(.ant-sender-slot-tag) {
   font-size: 12px !important;
-  padding: 2px var(--one-padding-xxs) !important;
-  background: var(--one-color-info) !important;
-  border-color: var(--one-color-info) !important;
-  color: var(--one-color-text-light-solid) !important;
-  border-radius: var(--one-border-radius-sm) !important;
+  padding: 2px var(--fanyu-padding-xxs) !important;
+  background: var(--fanyu-color-info) !important;
+  border-color: var(--fanyu-color-info) !important;
+  color: var(--fanyu-color-text-light-solid) !important;
+  border-radius: var(--fanyu-border-radius-sm) !important;
 }
 
 /* Suggestion 根元素（Cascader），保证包裹内容全宽 */

@@ -4,8 +4,8 @@
   width: 380px;
   flex-shrink: 0;
   min-height: 0;
-  background: var(--one-color-bg-container);
-  border: 1px solid var(--one-color-border-secondary);
+  background: var(--fanyu-color-bg-container);
+  border: 1px solid var(--fanyu-color-border-secondary);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -75,7 +75,7 @@
 }
 
 .angleLabel {
-  color: var(--one-color-text);
+  color: var(--fanyu-color-text);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -83,13 +83,13 @@
 .angleEmpty {
   margin: 0;
   font-size: 13px;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
 }
 
 .footer {
   flex-shrink: 0;
   padding: 12px 16px 16px;
-  border-top: 1px solid var(--one-color-border-secondary);
+  border-top: 1px solid var(--fanyu-color-border-secondary);
 }
 
 .actionBtn {
@@ -118,5 +118,5 @@
 .specLabel {
   font-size: 13px;
   font-weight: 600;
-  color: var(--one-color-text);
+  color: var(--fanyu-color-text);
 }

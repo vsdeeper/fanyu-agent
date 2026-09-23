@@ -2,8 +2,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--one-margin-xs, 8px);
-  padding: var(--one-padding-sm, 12px) var(--one-padding, 16px);
+  gap: var(--fanyu-margin-xs, 8px);
+  padding: var(--fanyu-padding-sm, 12px) var(--fanyu-padding, 16px);
 }
 
 .item {
@@ -29,8 +29,8 @@
   padding: 0;
   border: none;
   transform: translate(50%, -50%);
-  font-size: var(--one-font-size-lg, 16px);
-  color: var(--one-color-text-secondary, rgba(0, 0, 0, 0.45));
+  font-size: var(--fanyu-font-size-lg, 16px);
+  color: var(--fanyu-color-text-secondary, rgba(0, 0, 0, 0.45));
   background: transparent;
   cursor: pointer;
   opacity: 0;
@@ -47,5 +47,5 @@
 }
 
 .addBtn {
-  color: var(--one-color-text-secondary, rgba(0, 0, 0, 0.45));
+  color: var(--fanyu-color-text-secondary, rgba(0, 0, 0, 0.45));
 }

@@ -11,7 +11,7 @@
 
 .icon {
   font-size: 28px;
-  color: var(--one-color-primary);
+  color: var(--fanyu-color-primary);
 }
 
 .contentWrapper {
@@ -21,12 +21,12 @@
 .title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--one-color-text);
+  color: var(--fanyu-color-text);
 }
 
 .description {
   font-size: 13px;
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

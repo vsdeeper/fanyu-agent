@@ -3,7 +3,7 @@
   flex: none;
   overflow: hidden;
   border-radius: 8px;
-  background: var(--one-color-fill-tertiary);
+  background: var(--fanyu-color-fill-tertiary);
 }
 
 .frame :global(.ant-image) {
@@ -26,7 +26,7 @@
 }
 
 .selected {
-  outline: 2px solid var(--one-color-primary);
+  outline: 2px solid var(--fanyu-color-primary);
   outline-offset: 2px;
 }
 
@@ -37,7 +37,7 @@
   width: 100%;
   height: 100%;
   padding: 12px;
-  color: var(--one-color-error);
+  color: var(--fanyu-color-error);
   font-size: 12px;
   text-align: center;
 }
@@ -61,7 +61,7 @@
 }
 
 .badge {
-  background: var(--one-color-primary);
+  background: var(--fanyu-color-primary);
   pointer-events: none;
 }
 
@@ -76,5 +76,5 @@
 }
 
 .pick:hover {
-  background: var(--one-color-primary);
+  background: var(--fanyu-color-primary);
 }

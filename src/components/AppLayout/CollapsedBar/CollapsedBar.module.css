@@ -9,10 +9,10 @@
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  border: 1px solid var(--one-color-border-secondary, #f0f0f0);
+  border: 1px solid var(--fanyu-color-border-secondary, #f0f0f0);
   border-radius: 999px;
   padding: 2px;
-  background: var(--one-color-bg-container);
+  background: var(--fanyu-color-bg-container);
 }
 
 .enter {

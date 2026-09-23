@@ -5,9 +5,9 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--one-color-border-secondary);
+  border: 1px solid var(--fanyu-color-border-secondary);
   border-radius: 12px;
-  background: var(--one-color-bg-container);
+  background: var(--fanyu-color-bg-container);
 }
 
 .frame {
@@ -18,7 +18,7 @@
 
 .empty {
   margin: 24px 0;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
   font-size: 13px;
   text-align: center;
 }

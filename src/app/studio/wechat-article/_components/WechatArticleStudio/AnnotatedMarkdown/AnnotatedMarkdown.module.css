@@ -33,21 +33,21 @@
 }
 
 .figureClickable:hover {
-  border-color: var(--one-color-border);
+  border-color: var(--fanyu-color-border);
 }
 
 .figureActive {
-  border-color: var(--one-color-primary);
-  box-shadow: 0 0 0 1px var(--one-color-primary);
+  border-color: var(--fanyu-color-primary);
+  box-shadow: 0 0 0 1px var(--fanyu-color-primary);
 }
 
 .figureLabel {
   align-self: flex-start;
   padding: 2px 8px;
   border-radius: 4px;
-  background: var(--one-color-color-fill-secondary, rgba(0, 0, 0, 0.04));
+  background: var(--fanyu-color-color-fill-secondary, rgba(0, 0, 0, 0.04));
   font-size: 12px;
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
 }
 
 .figureImage {

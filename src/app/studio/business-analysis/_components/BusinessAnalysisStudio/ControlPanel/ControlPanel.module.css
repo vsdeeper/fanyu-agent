@@ -4,8 +4,8 @@
   width: 380px;
   flex-shrink: 0;
   min-height: 0;
-  background: var(--one-color-bg-container);
-  border: 1px solid var(--one-color-border-secondary);
+  background: var(--fanyu-color-bg-container);
+  border: 1px solid var(--fanyu-color-border-secondary);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -34,7 +34,7 @@
 .footer {
   flex-shrink: 0;
   padding: 12px 16px 16px;
-  border-top: 1px solid var(--one-color-border-secondary);
+  border-top: 1px solid var(--fanyu-color-border-secondary);
 }
 
 .analyzeBtn {
@@ -46,5 +46,5 @@
   margin-bottom: 8px;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
 }

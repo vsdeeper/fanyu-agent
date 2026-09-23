@@ -16,7 +16,7 @@ export const seedTokens: ThemeConfig['token'] = {
   colorError: '#ff4d4f',
   colorInfo: '#1677ff',
 
-  // ===== 背景 / 前景（由 cssVar 生成 --one-color-bg-base / --one-color-text-base 等，供 body 与侧栏引用）=====
+  // ===== 背景 / 前景（由 cssVar 生成 --fanyu-color-bg-base / --fanyu-color-text-base 等，供 body 与侧栏引用）=====
   colorBgBase: '#ffffff',
   colorTextBase: '#141414',
   colorBgLayout: '#f9fafb', // 侧栏背景；原 ChatSidebar 局部变量 --color-bg-container

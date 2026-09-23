@@ -9,27 +9,27 @@ import type { ThemeConfig } from 'antd';
 export const componentTokens: ThemeConfig['components'] = {
   // ===== antd Layout 布局 =====
   // 修复：布局壳必须用 antd Layout 组件（AppLayout/Sidebar、ChatShell），组件级 token 才会惰性输出
-  // 为 --one-layout-* 并注入 .ant-layout-* 规则；若仍用原生 div 布局，以下配置完全不生效。
+  // 为 --fanyu-layout-* 并注入 .ant-layout-* 规则；若仍用原生 div 布局，以下配置完全不生效。
   Layout: {
     // 默认 bodyBg = colorBgLayout（#f9fafb）会把主内容区变灰，必须显式设回 colorBgBase
-    bodyBg: 'var(--one-color-bg-base)',
+    bodyBg: 'var(--fanyu-color-bg-base)',
     // 顶部栏当前无背景（透出主区 colorBgBase），保持透明
     headerBg: 'transparent',
     // 侧栏背景跟随 colorBgLayout：浅色 #f9fafb / 暗色 #0d0d0d
-    siderBg: 'var(--one-color-bg-layout)',
+    siderBg: 'var(--fanyu-color-bg-layout)',
     headerHeight: 56, // 接近原 min-height40 + padding20 的实际高度
     headerPadding: '0 24px',
   },
-  // headerMarginBottom 是 Modal 内部 token，未列入公开 ComponentToken；断言后运行时仍会合并并生成 --one-modal-header-margin-bottom
+  // headerMarginBottom 是 Modal 内部 token，未列入公开 ComponentToken；断言后运行时仍会合并并生成 --fanyu-modal-header-margin-bottom
   Modal: {
     headerMarginBottom: 30,
   } as NonNullable<ThemeConfig['components']>['Modal'],
   // ===== @ant-design/x 组件 =====
   // Sender: {
-  //   colorBgSlot: 'var(--one-color-bg-layout)',
+  //   colorBgSlot: 'var(--fanyu-color-bg-layout)',
   // },
   // Conversations: {
-  //   creationBgColor: 'var(--one-color-bg-layout)',
+  //   creationBgColor: 'var(--fanyu-color-bg-layout)',
   // },
   // ===== antd 基础组件 =====
   // Button: { borderRadius: 8 },

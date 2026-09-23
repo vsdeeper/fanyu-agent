@@ -4,9 +4,9 @@
   flex-direction: column;
   gap: 14px;
   padding: 10px 11px;
-  border: 1px solid var(--one-color-border);
-  border-radius: var(--one-border-radius);
-  background: var(--one-color-bg-container);
+  border: 1px solid var(--fanyu-color-border);
+  border-radius: var(--fanyu-border-radius);
+  background: var(--fanyu-color-bg-container);
 }
 
 .dimension {
@@ -33,11 +33,11 @@
 
 .unselected {
   font-size: 13px;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
 }
 
 .emptyHint {
   margin: 0;
   font-size: 13px;
-  color: var(--one-color-text-tertiary);
+  color: var(--fanyu-color-text-tertiary);
 }

@@ -26,7 +26,7 @@
 
 .label {
   flex: none;
-  color: var(--one-color-text-secondary);
+  color: var(--fanyu-color-text-secondary);
 }
 
 .value {
