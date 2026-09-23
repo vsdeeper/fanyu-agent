@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { StarOutlined } from '@ant-design/icons';
 import { Button, Empty, Input, Popconfirm, Spin } from 'antd';
