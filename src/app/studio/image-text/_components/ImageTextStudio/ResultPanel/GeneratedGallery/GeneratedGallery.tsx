@@ -1,6 +1,7 @@
 import { CheckCircleFilled } from '@ant-design/icons';
 import { Image } from 'antd';
 import GeneratingSkeleton from '@/app/studio/_components/GeneratingSkeleton';
+import ResultImageItem from '@/app/studio/_components/ResultImageItem';
 import { aspectRatioToSize } from '@/app/studio/_utils/result-images';
 import { IMAGE_ASPECT_RATIO_OPTIONS, PREVIEW_MARK } from '../../constants';
 import type { ImageTextRatioGroup } from '../../types';
@@ -39,37 +40,28 @@ export default function GeneratedGallery({
               {group.images.map((image) => {
                 const { width, height } = aspectRatioToSize(image.aspectRatio, GALLERY_THUMB_WIDTH);
                 return (
-                  <div
+                  <ResultImageItem
                     key={image.id}
-                    className={`${styles.thumb} ${image.selected ? styles.selected : ''}`}
-                    style={{ width, height }}
-                  >
-                    <Image
-                      src={image.url}
-                      width={width}
-                      height={height}
-                      alt={image.cardTitle ?? ratioLabel(group.ratio)}
-                      preview={{ mask: '预览', minScale: 0.5 }}
-                    />
-                    <button
-                      type="button"
-                      className={image.selected ? styles.mark : styles.pick}
-                      aria-pressed={image.selected}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onToggle(image.id);
-                      }}
-                    >
-                      {image.selected ? (
-                        <>
-                          <CheckCircleFilled />
-                          {PREVIEW_MARK}
-                        </>
-                      ) : (
-                        PICK_PREVIEW_LABEL
-                      )}
-                    </button>
-                  </div>
+                    image={{
+                      id: image.id,
+                      aspectRatio: image.aspectRatio,
+                      status: 'ready',
+                      url: image.url,
+                    }}
+                    width={width}
+                    height={height}
+                    alt={image.cardTitle ?? ratioLabel(group.ratio)}
+                    selectable
+                    selected={image.selected}
+                    selectedBadge={
+                      <>
+                        <CheckCircleFilled />
+                        {PREVIEW_MARK}
+                      </>
+                    }
+                    pickLabel={PICK_PREVIEW_LABEL}
+                    onSelect={onToggle}
+                  />
                 );
               })}
               {generating && group.ratio === aspectRatio ? (

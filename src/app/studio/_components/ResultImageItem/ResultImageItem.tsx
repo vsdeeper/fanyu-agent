@@ -10,8 +10,8 @@ type ResultImageItemProps = {
   alt?: string;
   selectable?: boolean;
   selected?: boolean;
-  selectedBadge?: string;
-  pickLabel?: string;
+  selectedBadge?: ReactNode;
+  pickLabel?: ReactNode;
   onSelect?: (id: string) => void;
   getSrc?: (image: StudioResultImage) => string;
   failedFallbackSrc?: string;
@@ -86,6 +86,7 @@ export default function ResultImageItem({
         <button
           type="button"
           className={selected ? `${styles.badge} ${styles.badgeButton}` : styles.pick}
+          aria-pressed={selected}
           onClick={(event) => {
             event.stopPropagation();
             onSelect?.(image.id);

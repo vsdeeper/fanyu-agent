@@ -1,12 +1,18 @@
 .frame {
   position: relative;
+  flex: none;
   overflow: hidden;
   border-radius: 8px;
   background: var(--one-color-fill-tertiary);
 }
 
+.frame :global(.ant-image) {
+  display: block;
+}
+
 .frame :global(.ant-image-img),
 .image {
+  display: block;
   object-fit: contain;
 }
 
@@ -42,6 +48,9 @@
   left: 8px;
   bottom: 8px;
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin: 0;
   padding: 2px 8px;
   border: 0;
