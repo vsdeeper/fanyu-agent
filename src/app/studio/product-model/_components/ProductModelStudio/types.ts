@@ -1,4 +1,4 @@
-import type { GenerateSpecFormFields } from '@/app/studio/_components/GenerateSpecForm';
+import type { GenerateSpecFields } from '@/app/studio/_utils/model-options';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
 import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 
@@ -16,12 +16,12 @@ export type ProductModelFormState = {
   count: string;
 };
 
-/** 左栏表单值：与 ControlPanel 的 Form.Item name 一一对应，出图规格整对象挂在 spec 上。 */
+/** 左栏表单值：与 ControlPanel 的 Form.Item name 一一对应，出图规格挂在 spec 上。 */
 export type ProductModelPanelValues = {
   productImages: ProductImageItem[];
   modelImages: ProductImageItem[];
   viewRequirement: string;
-  spec: GenerateSpecFormFields;
+  spec: GenerateSpecFields;
 };
 
 /** 结果图与工作室共用同一份定义（身份、状态、选中语义都在 result-images 里） */

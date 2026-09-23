@@ -7,7 +7,7 @@ import type {
   ProductModelStepKey,
   ProductModelTaskStepRecord,
 } from '@/app/api/studio/product-model/_shared/task-types';
-import type { GenerateSpecFormFields } from '@/app/studio/_components/GenerateSpecForm';
+import type { GenerateSpecFields } from '@/app/studio/_utils/model-options';
 import { apiPut } from '@/lib/shared/client/api-client';
 import { patchModel } from '@/app/studio/_utils/model-options';
 import { normalizeResultImages } from '@/app/studio/_utils/result-images';
@@ -50,7 +50,7 @@ export {
 } from '@/app/studio/_utils/upload-items';
 
 /** 从表单态里取出出图规格四件套（模型 / 比例 / 清晰度 / 生成数量）。 */
-export function pickSpecFields(form: ProductModelFormState): GenerateSpecFormFields {
+export function pickSpecFields(form: ProductModelFormState): GenerateSpecFields {
   return {
     model: form.model,
     aspectRatio: form.aspectRatio,

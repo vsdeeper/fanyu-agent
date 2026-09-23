@@ -1,4 +1,4 @@
-import type { GenerateSpecFormFields } from '@/app/studio/_components/GenerateSpecForm';
+import type { GenerateSpecFields } from '@/app/studio/_utils/model-options';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
 import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 
@@ -7,8 +7,6 @@ export type ProductRetouchPhase =
 
 /** 上传项与本地文件生命周期共用同一份定义，见 lib/shared/client/upload-items。 */
 export type ProductImageItem = StudioImageUploadItem;
-
-export type GenerateSpecFields = GenerateSpecFormFields;
 
 export type RefineFormState = GenerateSpecFields & {
   requirement: string;

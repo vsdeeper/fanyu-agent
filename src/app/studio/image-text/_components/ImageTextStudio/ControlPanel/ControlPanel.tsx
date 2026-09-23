@@ -5,10 +5,7 @@ import {
   IMAGE_TEXT_MAX_CONTENT_LENGTH,
   IMAGE_TEXT_MAX_MATERIALS,
 } from '@/app/api/studio/image-text/_shared/constants';
-import GenerateSpecForm, {
-  type GenerateSpecFormFields,
-} from '@/app/studio/_components/GenerateSpecForm';
-import { toModelOptions } from '@/app/studio/_utils/model-options';
+import GenerateSpecFields from '@/app/studio/_components/GenerateSpecFields';
 import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import {
   CHARACTER_MODEL_HINT,
@@ -20,7 +17,6 @@ import {
   CONTENT_LABEL,
   CONTENT_PLACEHOLDER,
   GENERATE_BUTTON,
-  IMAGE_ASPECT_RATIO_OPTIONS,
   MATERIALS_HINT,
   MATERIALS_LABEL,
   MISSING_INPUT_WARNING,
@@ -36,9 +32,7 @@ type ControlPanelProps = {
   initialValues: ImageTextPanelValues;
   phase: ImageTextPhase;
   canGenerate: boolean;
-  spec: GenerateSpecFormFields;
   generating: boolean;
-  onSpecChange: (next: GenerateSpecFormFields) => void;
   onPlan: () => void;
   onGenerate: () => void;
 };
@@ -59,9 +53,7 @@ export default function ControlPanel({
   initialValues,
   phase,
   canGenerate,
-  spec,
   generating,
-  onSpecChange,
   onPlan,
   onGenerate,
 }: ControlPanelProps) {
@@ -126,13 +118,7 @@ export default function ControlPanel({
                   disabled={generating}
                 />
               </Form.Item>
-              <GenerateSpecForm
-                value={spec}
-                onChange={onSpecChange}
-                modelOptions={toModelOptions()}
-                aspectRatioOptions={IMAGE_ASPECT_RATIO_OPTIONS}
-                showCount={false}
-              />
+              <GenerateSpecFields namePrefix={['spec']} showCount={false} />
             </>
           ) : (
             <>

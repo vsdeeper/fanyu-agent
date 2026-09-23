@@ -1,5 +1,4 @@
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
-import { toModelOptions } from './model-options';
 import type { DesignFormState, StudioFormState, StudioPhase } from './types';
 
 export const STUDIO_TITLE = '电商设计';
@@ -88,17 +87,6 @@ export const BRAND_LOGO_ARIA_LABEL = '上传品牌 Logo';
  * 非必填，不上传时生图侧降级为文生图，产品外观只能按商业分析描述生成。
  */
 export const VISUAL_PRODUCT_IMAGE_SUBTITLE = '可选；不上传时产品本体按商业分析描述生成';
-
-/** 模型下拉（id + label），派生自 model-options，与服务端模型清单一致 */
-export const MODEL_OPTIONS = toModelOptions();
-
-export const ASPECT_RATIO_OPTIONS = [
-  { value: '1:1', label: '1:1 方形' },
-  { value: '3:4', label: '3:4 竖版' },
-  { value: '4:3', label: '4:3 横版' },
-  { value: '9:16', label: '9:16 竖版' },
-  { value: '16:9', label: '16:9 横版' },
-];
 
 export const DEFAULT_FORM_STATE: StudioFormState = {
   model: 'gpt-image-2-vip',

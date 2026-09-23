@@ -1,7 +1,7 @@
 import { Form, Radio } from 'antd';
 import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
-import GenerateForm from '../GenerateForm';
+import GenerateSpecFields from '@/app/studio/_components/GenerateSpecFields';
 import {
   PRODUCT_IMAGE_HINT,
   PRODUCT_IMAGE_LABEL,
@@ -24,9 +24,7 @@ type ThemeDesignFormProps = {
  * 两种任务的产品精修图都非必填，所以副标题与提示恒为「可选」口径 ——
  * 本组件只由主题规划类任务渲染，不用再按 taskType 分支。
  *
- * 两个出图开关写成 designSpec 的子路径，与同一个对象上的规格 Item 并存：
- * rc-field-form 写子路径时沿路径克隆，父 Item 拿到新对象引用会照常重渲染，
- * 规格整对象回写时也会把这两个键带上。
+ * 出图开关与规格字段都写成 designSpec 子路径，由 rc-field-form 按路径合并进同一对象。
  */
 export default function ThemeDesignForm({ selectedCards, disabled }: ThemeDesignFormProps) {
   return (
@@ -63,9 +61,7 @@ export default function ThemeDesignForm({ selectedCards, disabled }: ThemeDesign
           disabled={disabled}
         />
       </Form.Item>
-      <Form.Item name="designSpec">
-        <GenerateForm />
-      </Form.Item>
+      <GenerateSpecFields namePrefix={['designSpec']} />
     </>
   );
 }

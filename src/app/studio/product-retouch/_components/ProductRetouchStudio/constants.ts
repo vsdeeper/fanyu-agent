@@ -1,4 +1,3 @@
-import { toModelOptions } from './model-options';
 import type { MultiviewFormState, ProductRetouchPhase, RefineFormState } from './types';
 
 export const STUDIO_TITLE = '产品精修';
@@ -38,14 +37,6 @@ export const DEFAULT_MULTIVIEW_FORM: MultiviewFormState = {
   count: '1',
 };
 
-export const MODEL_OPTIONS = toModelOptions();
-export const ASPECT_RATIO_OPTIONS = [
-  { value: '3:4', label: '3:4 竖版' },
-  { value: '1:1', label: '1:1 方形' },
-  { value: '4:3', label: '4:3 横版' },
-  { value: '9:16', label: '9:16 竖版' },
-  { value: '16:9', label: '16:9 横版' },
-];
 export const MULTIVIEW_NEED_OPTIONS = [
   { label: '需要', value: true },
   { label: '不需要', value: false },

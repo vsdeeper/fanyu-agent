@@ -1,4 +1,5 @@
 import { Button, Form, Input, Radio, type FormInstance } from 'antd';
+import GenerateSpecFields from '@/app/studio/_components/GenerateSpecFields';
 import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import {
   MULTIVIEW_BUTTON,
@@ -8,7 +9,6 @@ import {
   REQUIREMENT_MISSING,
 } from '../constants';
 import type { ProductRetouchPanelValues, ProductRetouchPhase } from '../types';
-import GenerateSpecForm from '../GenerateSpecForm';
 import SelectedStandards from './SelectedStandards';
 import styles from './ControlPanel.module.css';
 
@@ -64,9 +64,7 @@ export default function ControlPanel({
               >
                 <Input.TextArea autoSize={{ minRows: 5, maxRows: 9 }} />
               </Form.Item>
-              <Form.Item name="refineSpec">
-                <GenerateSpecForm />
-              </Form.Item>
+              <GenerateSpecFields namePrefix={['refineSpec']} showCount={false} />
               {hasRefineResult ? (
                 <Form.Item name="needsMultiview" label="产品多视角">
                   <Radio.Group
@@ -89,9 +87,7 @@ export default function ControlPanel({
               >
                 <Input.TextArea autoSize={{ minRows: 6, maxRows: 10 }} />
               </Form.Item>
-              <Form.Item name="multiviewSpec">
-                <GenerateSpecForm />
-              </Form.Item>
+              <GenerateSpecFields namePrefix={['multiviewSpec']} showCount={false} />
             </>
           )}
         </Form>

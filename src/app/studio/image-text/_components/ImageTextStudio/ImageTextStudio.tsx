@@ -65,9 +65,7 @@ export default function ImageTextStudio({ task }: ImageTextStudioProps) {
                 initialValues={studio.panelInitialValues}
                 phase={studio.phase}
                 canGenerate={Boolean(studio.body.trim())}
-                spec={studio.spec}
                 generating={studio.generating}
-                onSpecChange={studio.updateSpec}
                 onPlan={studio.handlePlan}
                 onGenerate={studio.handleGenerate}
               />

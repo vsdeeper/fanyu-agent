@@ -1,3 +1,4 @@
+import type { GenerateSpecFields } from '@/app/studio/_utils/model-options';
 import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 
 /** 工作台步骤。生成内容中单独标出，生图进行中仍停在生成步。 */
@@ -66,6 +67,8 @@ export type ImageTextPanelValues = {
   characterModelImages: StudioImageUploadItem[];
   /** 可选：人物模特补充要求。 */
   characterRequirement: string;
+  /** 生成步出图规格。 */
+  spec: GenerateSpecFields;
 };
 
 /** 仅按比例分组的已出图。 */

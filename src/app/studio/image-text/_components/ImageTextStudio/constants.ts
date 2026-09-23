@@ -60,14 +60,7 @@ export const DEFAULT_IMAGE_MODEL = 'gpt-image-2-vip';
 export const DEFAULT_IMAGE_ASPECT = '3:4';
 export const DEFAULT_IMAGE_CLARITY = '2K';
 
-export const IMAGE_ASPECT_RATIO_OPTIONS = [
-  { value: '1:1', label: '1:1 方形' },
-  { value: '3:4', label: '3:4 竖版' },
-  { value: '3:2', label: '3:2 横版' },
-  { value: '4:3', label: '4:3 横版' },
-  { value: '9:16', label: '9:16 竖版' },
-  { value: '16:9', label: '16:9 横版' },
-];
+export { IMAGE_ASPECT_RATIO_OPTIONS } from '@/app/studio/_utils/model-options';
 
 export const MARKDOWN_DISABLE_STYLES: Array<'code' | 'img'> = ['code', 'img'];
 export const MARKDOWN_STREAMING_ON = { hasNextChunk: true };

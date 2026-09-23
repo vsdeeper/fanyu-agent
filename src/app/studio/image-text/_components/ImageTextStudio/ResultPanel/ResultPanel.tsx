@@ -5,7 +5,7 @@ import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
-import type { GenerateSpecFormFields } from '@/app/studio/_components/GenerateSpecForm';
+import type { GenerateSpecFields } from '@/app/studio/_utils/model-options';
 import { useThemeMode } from '@/components/theme';
 import {
   CANCEL_BUTTON,
@@ -39,7 +39,7 @@ type ResultPanelProps = {
   body: string;
   images: ImageTextGeneratedImage[];
   /** 当前出图规格；生成中骨架按比例占位。 */
-  spec: GenerateSpecFormFields;
+  spec: GenerateSpecFields;
   generating: boolean;
   navLoading: boolean;
   onSaveBody: (body: string) => void;

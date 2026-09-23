@@ -154,16 +154,7 @@ export const WATERMARK_INK_ON_LIGHT: readonly [number, number, number] = [22, 22
 /** 水印合成后按原图 mime 导出；JPEG 用该质量重编码。 */
 export const WATERMARK_JPEG_QUALITY = 0.92;
 
-export const IMAGE_ASPECT_RATIO_OPTIONS = [
-  { value: '1:1', label: '1:1 方形' },
-  { value: '3:4', label: '3:4 竖版' },
-  { value: '3:2', label: '3:2 横版' },
-  { value: '4:3', label: '4:3 横版' },
-  { value: '9:16', label: '9:16 竖版' },
-  { value: '16:9', label: '16:9 横版' },
-  { value: '2.35:1', label: '2.35:1 横版' },
-  { value: '1:2.35', label: '1:2.35 竖版' },
-];
+export { IMAGE_ASPECT_RATIO_OPTIONS } from '@/app/studio/_utils/model-options';
 
 export const SOURCE_KIND_LABEL = {
   fact: '事实',

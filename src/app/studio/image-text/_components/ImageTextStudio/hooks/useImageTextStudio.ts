@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { App, Form } from 'antd';
 import type { FormInstance } from 'antd';
 import type { ImageTextTaskDetail } from '@/app/api/studio/image-text/_shared/task-types';
-import type { GenerateSpecFormFields } from '@/app/studio/_components/GenerateSpecForm';
+import type { GenerateSpecFields } from '@/app/studio/_utils/model-options';
 import { validateForm } from '@/app/studio/_utils/form-validate';
 import { getModelCapability, resolveClarityForModel } from '@/app/studio/_utils/model-options';
 import { readUploadItemAsDataUrl } from '@/app/studio/_utils/upload-items';
@@ -48,7 +48,7 @@ import {
   toPersistableImageUrl,
 } from '../utils';
 
-function defaultSpec(): GenerateSpecFormFields {
+function defaultSpec(): GenerateSpecFields {
   const capability = getModelCapability(DEFAULT_IMAGE_MODEL);
   return {
     model: DEFAULT_IMAGE_MODEL,
@@ -75,34 +75,34 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
   const { message } = App.useApp();
   const initialPlan = readPlanSnapshot(task.steps.plan?.data);
   const initialGenerate = readGenerateSnapshot(task.steps.generate?.data);
-  const initialSpec = defaultSpec();
 
   const [phase, setPhase] = useState<ImageTextPhase>(
     resolveInitialPhase(initialPlan, initialGenerate),
   );
   const [panelForm] = Form.useForm<ImageTextPanelValues>();
-  const [panelInitialValues] = useState<ImageTextPanelValues>(() => ({
-    materials: toMaterialItems(initialPlan?.materialUrls ?? []),
-    content: initialPlan?.content ?? '',
-    styleReferenceImages: toImageItems(initialGenerate?.styleReferenceUrl),
-    characterModelImages: toImageItems(initialGenerate?.characterModelUrl),
-    characterRequirement: initialGenerate?.characterRequirement ?? '',
-  }));
+  const [panelInitialValues] = useState<ImageTextPanelValues>(() => {
+    const base = defaultSpec();
+    const model = initialGenerate?.model ?? base.model;
+    return {
+      materials: toMaterialItems(initialPlan?.materialUrls ?? []),
+      content: initialPlan?.content ?? '',
+      styleReferenceImages: toImageItems(initialGenerate?.styleReferenceUrl),
+      characterModelImages: toImageItems(initialGenerate?.characterModelUrl),
+      characterRequirement: initialGenerate?.characterRequirement ?? '',
+      spec: {
+        ...base,
+        model,
+        aspectRatio: initialGenerate?.aspectRatio ?? base.aspectRatio,
+        clarity: resolveClarityForModel(model, initialGenerate?.clarity ?? base.clarity),
+        quality: getModelCapability(model)?.qualityDefault ?? base.quality,
+      },
+    };
+  });
   const [streamText, setStreamText] = useState(initialPlan?.streamText ?? '');
   const [body, setBody] = useState(initialPlan?.body ?? '');
   const [caption, setCaption] = useState(initialPlan?.caption ?? '');
-  const [spec, setSpec] = useState<GenerateSpecFormFields>({
-    ...initialSpec,
-    model: initialGenerate?.model ?? initialSpec.model,
-    aspectRatio: initialGenerate?.aspectRatio ?? initialSpec.aspectRatio,
-    clarity: resolveClarityForModel(
-      initialGenerate?.model ?? initialSpec.model,
-      initialGenerate?.clarity ?? initialSpec.clarity,
-    ),
-    quality:
-      getModelCapability(initialGenerate?.model ?? initialSpec.model)?.qualityDefault ??
-      initialSpec.quality,
-  });
+  const watchedSpec = Form.useWatch('spec', panelForm);
+  const spec = watchedSpec ?? panelInitialValues.spec;
   const [images, setImages] = useState<ImageTextGeneratedImage[]>(initialGenerate?.images ?? []);
   const [generating, setGenerating] = useState(false);
   const [navLoading, setNavLoading] = useState(false);
@@ -112,7 +112,6 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
   const captionRef = useRef(caption);
   const imagesRef = useRef(images);
   const streamTextRef = useRef(streamText);
-  const specRef = useRef(spec);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -159,8 +158,8 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
 
   /** 落盘生成快照：规格、参考图与出图资产 URL。 */
   async function persistGenerate() {
-    const currentSpec = specRef.current;
     const values = panelForm.getFieldsValue(true) as ImageTextPanelValues;
+    const currentSpec = values.spec ?? panelInitialValues.spec;
     const styleReferenceImages = values.styleReferenceImages ?? [];
     const characterModelImages = values.characterModelImages ?? [];
     const characterRequirement = values.characterRequirement?.trim() ?? '';
@@ -267,11 +266,6 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
     }
   }
 
-  function updateSpec(next: GenerateSpecFormFields) {
-    specRef.current = next;
-    setSpec(next);
-  }
-
   function saveBody(nextBody: string) {
     const normalized = normalizeCardBody(nextBody);
     if (!normalized) return;
@@ -300,8 +294,8 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
     const controller = new AbortController();
     abortRef.current = controller;
     const imageId = crypto.randomUUID();
-    const currentSpec = specRef.current;
     const values = panelForm.getFieldsValue(true) as ImageTextPanelValues;
+    const currentSpec = values.spec ?? panelInitialValues.spec;
     setGenerating(true);
     try {
       const styleReference = (values.styleReferenceImages ?? [])[0];
@@ -441,7 +435,6 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
     body,
     caption,
     spec,
-    updateSpec,
     images,
     generating,
     navLoading,

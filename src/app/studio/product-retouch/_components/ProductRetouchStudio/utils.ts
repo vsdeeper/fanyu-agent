@@ -8,7 +8,7 @@ import type {
   ProductRetouchTaskStepRecord,
 } from '@/app/api/studio/product-retouch/_shared/task-types';
 import { apiPut } from '@/lib/shared/client/api-client';
-import { patchModel } from '@/app/studio/_utils/model-options';
+import { patchModel, type GenerateSpecFields } from '@/app/studio/_utils/model-options';
 import {
   keepExistingImageIds,
   normalizeResultImages,
@@ -16,7 +16,6 @@ import {
 } from '@/app/studio/_utils/result-images';
 import { readUploadItemAsDataUrl, serializeUploadItem } from '@/app/studio/_utils/upload-items';
 import type {
-  GenerateSpecFields,
   MultiviewFormState,
   ProductImageItem,
   ProductRetouchMultiviewStepSnapshot,

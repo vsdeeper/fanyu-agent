@@ -115,10 +115,28 @@ export function toCountOptions(): { value: string; label: string }[] {
   }));
 }
 
-type GenerateSpecFields = {
+/**
+ * 工作室共用出图比例下拉（各产品左栏 / 配图槽位统一从此取）。
+ * 产品可按需子集过滤，但新增比例只改这一处。
+ */
+export const IMAGE_ASPECT_RATIO_OPTIONS: { value: string; label: string }[] = [
+  { value: '1:1', label: '1:1 方形' },
+  { value: '3:4', label: '3:4 竖版' },
+  { value: '3:2', label: '3:2 横版' },
+  { value: '4:3', label: '4:3 横版' },
+  { value: '9:16', label: '9:16 竖版' },
+  { value: '16:9', label: '16:9 横版' },
+  { value: '2.35:1', label: '2.35:1 横版' },
+  { value: '1:2.35', label: '1:2.35 竖版' },
+];
+
+/** 出图规格字段：挂在 Form 的 spec / designSpec 等对象上。 */
+export type GenerateSpecFields = {
   model: string;
-  clarity: string;
+  aspectRatio: string;
   quality: string;
+  clarity: string;
+  count: string;
 };
 
 /** 切换模型时优先保留当前清晰度；不可用则回落 1K，再回落模型默认。 */
@@ -131,7 +149,10 @@ export function resolveClarityForModel(model: string, clarity: string): string {
 }
 
 /** 切换模型：当前清晰度仍在新模型选项内则保留，否则回该模型默认档。 */
-export function patchModel<T extends GenerateSpecFields>(form: T, model: string): T {
+export function patchModel<T extends Pick<GenerateSpecFields, 'model' | 'clarity' | 'quality'>>(
+  form: T,
+  model: string,
+): T {
   const capability = getModelCapability(model);
   if (!capability) return { ...form, model };
   return {

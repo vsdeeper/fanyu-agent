@@ -1,4 +1,3 @@
-import { toModelOptions } from './model-options';
 import type { ProductModelFormState, ProductModelPhase } from './types';
 
 export const STUDIO_TITLE = '产品模特';
@@ -21,15 +20,6 @@ export const DEFAULT_FORM: ProductModelFormState = {
   clarity: '2K',
   count: '1',
 };
-
-export const MODEL_OPTIONS = toModelOptions();
-export const ASPECT_RATIO_OPTIONS = [
-  { value: '3:4', label: '3:4 竖版' },
-  { value: '1:1', label: '1:1 方形' },
-  { value: '4:3', label: '4:3 横版' },
-  { value: '9:16', label: '9:16 竖版' },
-  { value: '16:9', label: '16:9 横版' },
-];
 
 export const MAX_MODEL_IMAGES = 3;
 export const PRODUCT_IMAGE_SUBTITLE = '识别品类，并参考视觉、气质与风格';

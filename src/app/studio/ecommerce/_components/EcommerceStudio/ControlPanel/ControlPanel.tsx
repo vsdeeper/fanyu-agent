@@ -21,8 +21,8 @@ import {
 import type { EcommercePanelValues, StudioPhase } from '../types';
 import { isDetailImageTask, isMainImageTask, isPosterTask, isThemePlanTask } from '../workflow';
 import DesignForm from './DesignForm';
-import GenerateForm from './GenerateForm';
 import ThemeDesignForm from './ThemeDesignForm';
+import GenerateSpecFields from '@/app/studio/_components/GenerateSpecFields';
 import { isAnalyzePhase, isDesignPhase, isVisualPhase } from './utils';
 import styles from './ControlPanel.module.css';
 
@@ -169,9 +169,7 @@ export default function ControlPanel({
                   </Form.Item>
                 </>
               ) : null}
-              <Form.Item name="visualSpec">
-                <GenerateForm />
-              </Form.Item>
+              <GenerateSpecFields namePrefix={['visualSpec']} />
             </>
           ) : showDesignForm && themePlan ? (
             <ThemeDesignForm selectedCards={selectedCards} disabled={formLocked} />

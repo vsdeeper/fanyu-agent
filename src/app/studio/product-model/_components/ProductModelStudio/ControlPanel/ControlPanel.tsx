@@ -1,4 +1,5 @@
 import { Button, Form, Input, type FormInstance } from 'antd';
+import GenerateSpecFields from '@/app/studio/_components/GenerateSpecFields';
 import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import {
   GENERATE_BUTTON,
@@ -9,7 +10,6 @@ import {
   REQUIREMENT_MISSING,
 } from '../constants';
 import type { ProductModelPanelValues } from '../types';
-import GenerateSpecForm from '../GenerateSpecForm';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
@@ -66,9 +66,7 @@ export default function ControlPanel({
           >
             <Input.TextArea autoSize={{ minRows: 5, maxRows: 10 }} />
           </Form.Item>
-          <Form.Item name="spec">
-            <GenerateSpecForm />
-          </Form.Item>
+          <GenerateSpecFields namePrefix={['spec']} />
         </Form>
       </div>
       <div className={styles.footer}>
