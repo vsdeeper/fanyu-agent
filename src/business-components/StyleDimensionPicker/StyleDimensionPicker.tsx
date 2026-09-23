@@ -73,7 +73,8 @@ export default function StyleDimensionPicker({
             <div className={styles.head}>
               <span className={styles.label}>{dimension.label}</span>
               <Button
-                type="link"
+                color="default"
+                variant="text"
                 size="small"
                 className={styles.pick}
                 disabled={disabled}
