@@ -24,8 +24,12 @@ import {
   PLAN_FAILED,
   PLAN_TRUNCATED,
   RESEARCH_FAILED,
+  RESEARCH_MAX_PARALLEL_SEARCHES,
+  RESEARCH_MAX_SEARCH_CALLS,
   RESEARCH_MAX_SEARCH_ROUNDS,
   RESEARCH_MAX_STEPS,
+  RESEARCH_NARRATIVE_MAX_PARALLEL_SEARCHES,
+  RESEARCH_NARRATIVE_MAX_SEARCH_CALLS,
   RESEARCH_NARRATIVE_MAX_SEARCH_ROUNDS,
   RESEARCH_TRUNCATED,
   WECHAT_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS,
@@ -46,6 +50,7 @@ import {
   buildPlanPrompt,
   buildResearchPrompt,
 } from './prompt';
+import { withWebSearchCallBudget } from './with-web-search-budget';
 
 type SseSend = (event: string, data: unknown) => Promise<void>;
 
@@ -132,6 +137,12 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
   const maxSearchRounds = narrative
     ? RESEARCH_NARRATIVE_MAX_SEARCH_ROUNDS
     : RESEARCH_MAX_SEARCH_ROUNDS;
+  const maxSearchCalls = narrative
+    ? RESEARCH_NARRATIVE_MAX_SEARCH_CALLS
+    : RESEARCH_MAX_SEARCH_CALLS;
+  const maxParallel = narrative
+    ? RESEARCH_NARRATIVE_MAX_PARALLEL_SEARCHES
+    : RESEARCH_MAX_PARALLEL_SEARCHES;
 
   return createPushStreamResponse(
     SSE_STREAM_HEADERS,
@@ -140,11 +151,17 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
       try {
         const { provider, runtime, openaiOptions } = buildOpenaiOptions();
         const usesSdkWebSearch = runtime.getCapabilities().usesSdkWebSearchTool;
+        // 轮数 + 总次数双约束；并行上限靠提示（Provider 原生工具无法在单步内截断并行）
+        const budgetHint = narrative
+          ? `叙事调研额外约束：web_search 按需、最多 ${maxSearchRounds} 轮且全程最多 ${maxSearchCalls} 次（每轮并行≤${maxParallel}）；经历已够写故事可不搜；达上限后必须输出短简报与切入 JSON。`
+          : `选题调研额外约束：web_search 最多 ${maxSearchRounds} 轮且全程最多 ${maxSearchCalls} 次（每轮并行≤${maxParallel} 个关键词，宜少而准）；达上限后立刻写简报与 JSON，禁止继续检索。`;
         const searchHint = usesSdkWebSearch
-          ? ''
-          : narrative
-            ? `\n\n${webSearch.getHint()}\n叙事调研额外约束：web_search 按需、最多 1 轮；经历已够写故事可不搜；随后必须输出短简报与切入 JSON。`
-            : `\n\n${webSearch.getHint()}\n选题调研额外约束：web_search 最多 3 轮，随后必须输出简报与 JSON，禁止继续检索。`;
+          ? `\n\n${budgetHint}`
+          : `\n\n${webSearch.getHint()}\n${budgetHint}`;
+        const localWebSearch = withWebSearchCallBudget(
+          webSearch.create({ chatId: 'wechat-article-research' }),
+          maxSearchCalls,
+        );
         const result = streamText({
           model: runtime.getMainModel(getModelId(provider, 'pro')),
           instructions: RESEARCH_INSTRUCTIONS + searchHint,
@@ -159,16 +176,21 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
                   .tools.webSearch(runtime.getWebSearchArgs(undefined)),
               }
             : {
-                web_search: webSearch.create({ chatId: 'wechat-article-research' }),
+                web_search: localWebSearch,
               },
-          // 论证模式首步强制联网；叙事模式不强制。搜满轮次后关掉工具，避免只搜不写
+          // 论证模式首步强制联网；叙事模式不强制。轮数或总次数触顶后关掉工具
           prepareStep: ({ steps }) => {
             if (steps.length === 0) {
               if (narrative) return {};
               return { toolChoice: { type: 'tool' as const, toolName: 'web_search' as const } };
             }
             const searchRounds = steps.filter((step) => step.toolCalls.length > 0).length;
-            if (searchRounds >= maxSearchRounds) {
+            const searchCalls = steps.reduce(
+              (sum, step) =>
+                sum + step.toolCalls.filter((call) => call.toolName === 'web_search').length,
+              0,
+            );
+            if (searchRounds >= maxSearchRounds || searchCalls >= maxSearchCalls) {
               return { toolChoice: 'none' as const };
             }
             return {};
@@ -188,6 +210,8 @@ export async function handleWechatArticleResearch(req: Request): Promise<Respons
             hasJsonFence,
             narrative,
             maxSearchRounds,
+            maxSearchCalls,
+            searchCallCount: toolNames.filter((name) => name === 'web_search').length,
           });
           if (!hasJsonFence) {
             console.warn('[wechat-article/research] missing trailing ```json block');

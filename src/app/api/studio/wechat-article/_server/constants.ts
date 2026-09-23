@@ -19,6 +19,18 @@ export const WECHAT_ARTICLE_RESEARCH_MAX_OUTPUT_TOKENS = 16384;
 export const RESEARCH_MAX_SEARCH_ROUNDS = 3;
 /** 有「我的经历」时：按需检索，轮次上限更低，避免挤掉叙事切入 */
 export const RESEARCH_NARRATIVE_MAX_SEARCH_ROUNDS = 1;
+/**
+ * 论证模式全程 web_search 调用上限。
+ * 轮数上限拦不住「一轮并行十几个 query」；总次数单独封顶以控成本。
+ * 6 次 × 每结果页约 5 条，足够筛出 sources 建议的 3～8 条。
+ */
+export const RESEARCH_MAX_SEARCH_CALLS = 6;
+/** 叙事模式全程调用上限（按需核对即可，勿铺开搜） */
+export const RESEARCH_NARRATIVE_MAX_SEARCH_CALLS = 2;
+/** 提示词引导：每轮并行关键词上限（硬限靠总次数；并行过量靠文案约束） */
+export const RESEARCH_MAX_PARALLEL_SEARCHES = 3;
+/** 叙事模式每轮并行上限 */
+export const RESEARCH_NARRATIVE_MAX_PARALLEL_SEARCHES = 2;
 /** 选题调研总步数上限：检索轮 + 写简报，避免只搜不写撞到空正文 */
 export const RESEARCH_MAX_STEPS = 6;
 /**
