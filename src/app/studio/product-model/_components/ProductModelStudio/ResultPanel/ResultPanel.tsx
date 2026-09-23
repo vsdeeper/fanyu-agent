@@ -1,9 +1,10 @@
 import { StarOutlined } from '@ant-design/icons';
-import { Button, Skeleton, Typography } from 'antd';
+import { Button, Typography } from 'antd';
+import GeneratingSkeleton from '@/app/studio/_components/GeneratingSkeleton';
+import ResultImageItem from '@/app/studio/_components/ResultImageItem';
 import { COMPLETE_BUTTON, EMPTY_RESULT_HINT } from '../constants';
 import type { ResultImage } from '../types';
 import { aspectRatioToSize, groupResultImagesByRatio, hasReadyImage } from '../utils';
-import ResultImageItem from '@/app/studio/_components/ResultImageItem';
 import styles from './ResultPanel.module.css';
 
 type ResultPanelProps = {
@@ -24,7 +25,6 @@ export default function ResultPanel({
   persisting,
   onComplete,
 }: ResultPanelProps) {
-  const placeholderSize = aspectRatioToSize(aspectRatio, 280);
   const ratioGroups = groupResultImagesByRatio(images);
   return (
     <section className={styles.panel}>
@@ -57,15 +57,7 @@ export default function ResultPanel({
         <div className={styles.scroll}>
           <div className={styles.grid}>
             {Array.from({ length: Math.max(1, expectedCount) }, (_, index) => (
-              <Skeleton.Image
-                key={index}
-                active
-                style={{
-                  width: placeholderSize.width,
-                  height: placeholderSize.height,
-                  borderRadius: 8,
-                }}
-              />
+              <GeneratingSkeleton key={index} aspectRatio={aspectRatio} baseWidth={280} />
             ))}
           </div>
         </div>

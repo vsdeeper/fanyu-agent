@@ -1,6 +1,7 @@
-import { Image, Skeleton } from 'antd';
-import type { StudioResultImage } from '../../types';
+import { Image } from 'antd';
+import GeneratingSkeleton from '@/app/studio/_components/GeneratingSkeleton';
 import ResultImageItem from '@/app/studio/_components/ResultImageItem';
+import type { StudioResultImage } from '../../types';
 import {
   RESULT_IMAGE_SIZE,
   RESULT_PREVIEW_GROUP_CLASS_NAMES,
@@ -40,10 +41,6 @@ export default function ResultImageGrid({
   pickLabel,
   onSelect,
 }: ResultImageGridProps) {
-  const { width: placeholderWidth, height: placeholderHeight } = aspectRatioToSize(
-    aspectRatio,
-    RESULT_IMAGE_SIZE,
-  );
   const previewItems = images
     .filter((item) => item.status === 'ready')
     .map((item) => ({ src: getImageSrc(item) }))
@@ -54,10 +51,10 @@ export default function ResultImageGrid({
     return (
       <div className={styles.grid}>
         {Array.from({ length: placeholders }, (_, index) => (
-          <Skeleton.Image
+          <GeneratingSkeleton
             key={`pending-${index}`}
-            active
-            style={{ width: placeholderWidth, height: placeholderHeight, borderRadius: 8 }}
+            aspectRatio={aspectRatio}
+            baseWidth={RESULT_IMAGE_SIZE}
           />
         ))}
       </div>

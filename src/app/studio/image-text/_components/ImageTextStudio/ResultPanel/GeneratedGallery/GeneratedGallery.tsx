@@ -1,5 +1,6 @@
 import { CheckCircleFilled } from '@ant-design/icons';
-import { Image, Skeleton } from 'antd';
+import { Image } from 'antd';
+import GeneratingSkeleton from '@/app/studio/_components/GeneratingSkeleton';
 import { aspectRatioToSize } from '@/app/studio/_utils/result-images';
 import { IMAGE_ASPECT_RATIO_OPTIONS, PREVIEW_MARK } from '../../constants';
 import type { ImageTextRatioGroup } from '../../types';
@@ -16,16 +17,6 @@ type GeneratedGalleryProps = {
 
 function ratioLabel(ratio: string): string {
   return IMAGE_ASPECT_RATIO_OPTIONS.find((item) => item.value === ratio)?.label ?? ratio;
-}
-
-/** 当前比例组末尾的出图骨架，尺寸与同组缩略图一致。 */
-function GeneratingSkeleton({ aspectRatio }: { aspectRatio: string }) {
-  const { width, height } = aspectRatioToSize(aspectRatio, GALLERY_THUMB_WIDTH);
-  return (
-    <div className={styles.skeleton} style={{ width, height }}>
-      <Skeleton.Image active style={{ width, height, borderRadius: 8 }} />
-    </div>
-  );
 }
 
 /** 已出图：仅按生成比例分组展示，角标勾选是否进入预览步；生成中追加骨架。 */
@@ -82,7 +73,7 @@ export default function GeneratedGallery({
                 );
               })}
               {generating && group.ratio === aspectRatio ? (
-                <GeneratingSkeleton aspectRatio={aspectRatio} />
+                <GeneratingSkeleton aspectRatio={aspectRatio} baseWidth={GALLERY_THUMB_WIDTH} />
               ) : null}
             </div>
           </section>
@@ -92,7 +83,7 @@ export default function GeneratedGallery({
         <section className={styles.ratioGroup}>
           <p className={styles.ratioTitle}>{ratioLabel(aspectRatio)}</p>
           <div className={styles.grid}>
-            <GeneratingSkeleton aspectRatio={aspectRatio} />
+            <GeneratingSkeleton aspectRatio={aspectRatio} baseWidth={GALLERY_THUMB_WIDTH} />
           </div>
         </section>
       ) : null}
