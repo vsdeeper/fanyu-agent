@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * 手动镜像同步本地数据目录（会话 chats + 工作室 studio + 上一级 chats.db，本地 ↔ 云盘）。
- * push：CHAT_STORE_DIR 与同级 studio、上一级 chats.db → CHAT_SYNC_REMOTE_DIR 与同级 studio、上一级 chats.db
- * pull：CHAT_SYNC_REMOTE_DIR 与同级 studio、上一级 chats.db → 本地
+ * 手动镜像同步本地数据目录（会话 chats + 工作室 studio + 上一级 app.db，本地 ↔ 云盘）。
+ * push：CHAT_STORE_DIR 与同级 studio、上一级 app.db → CHAT_SYNC_REMOTE_DIR 与同级 studio、上一级 app.db
+ * pull：CHAT_SYNC_REMOTE_DIR 与同级 studio、上一级 app.db → 本地
  * --yes：跳过 pull 确认与风险中止（风险清单仍会打印）
  */
 import {
@@ -59,34 +59,20 @@ function siblingStudioDir(chatsDir) {
   return join(dirname(chatsDir), 'studio');
 }
 
-/** 会话库：CHAT_STORE_DIR 上一级的 chats.db（与 chats/、studio/ 平级） */
-function chatsDbPath(chatsDir) {
-  return join(dirname(chatsDir), 'chats.db');
+/** 应用库：CHAT_STORE_DIR 上一级的 app.db（与 chats/、studio/ 平级） */
+function appDbPath(chatsDir) {
+  return join(dirname(chatsDir), 'app.db');
 }
 
-/** 旧路径：库曾放在会话目录内 */
-function legacyChatsDbPath(chatsDir) {
-  return join(chatsDir, 'chats.db');
-}
-
-/** 实际库路径：优先上一级，否则旧嵌套路径 */
-function resolveExistingDb(chatsDir) {
-  const canonical = chatsDbPath(chatsDir);
-  if (existsSync(canonical)) return canonical;
-  const legacy = legacyChatsDbPath(chatsDir);
-  if (existsSync(legacy)) return legacy;
-  return canonical;
-}
-
-/** 应用在跑时会话库带 WAL 副档；此时镜像等于在连接底下换库 */
+/** 应用在跑时库带 WAL 副档；此时镜像等于在连接底下换库 */
 function hasWal(chatsDir) {
-  const dbPath = resolveExistingDb(chatsDir);
+  const dbPath = appDbPath(chatsDir);
   return existsSync(`${dbPath}-wal`) || existsSync(`${dbPath}-shm`);
 }
 
-/** 会话库摘要（路径、修改时间、大小），供 pull 覆盖前核对两侧差异 */
+/** 应用库摘要（路径、修改时间、大小），供 pull 覆盖前核对两侧差异 */
 function describeDb(chatsDir) {
-  const dbPath = resolveExistingDb(chatsDir);
+  const dbPath = appDbPath(chatsDir);
   if (!existsSync(dbPath)) return `${dbPath}（不存在）`;
   const stat = statSync(dbPath);
   return `${dbPath}（${stat.mtime.toLocaleString()}，${(stat.size / 1024 / 1024).toFixed(1)}MB）`;
@@ -113,16 +99,16 @@ function copyFileReplacing(from, to) {
   copyFileSync(from, to);
 }
 
-/** 将 chats.db 及 WAL 副档复制到目标会话目录的上一级，并清掉目标内旧嵌套库 */
+/** 将应用库及 WAL 副档复制到目标会话目录的上一级 app.db */
 function copyDbFiles(srcChats, destChats) {
-  const srcDb = resolveExistingDb(srcChats);
+  const srcDb = appDbPath(srcChats);
   if (!existsSync(srcDb)) {
-    console.error(`源会话库不存在: ${srcDb}`);
+    console.error(`源应用库不存在: ${srcDb}`);
     process.exit(1);
   }
-  const destDb = chatsDbPath(destChats);
+  const destDb = appDbPath(destChats);
   mkdirSync(dirname(destDb), { recursive: true });
-  console.log(`复制会话库: ${srcDb} → ${destDb}`);
+  console.log(`复制应用库: ${srcDb} → ${destDb}`);
   for (const suffix of ['', '-wal', '-shm']) {
     const from = `${srcDb}${suffix}`;
     const to = `${destDb}${suffix}`;
@@ -130,13 +116,6 @@ function copyDbFiles(srcChats, destChats) {
       copyFileReplacing(from, to);
     } else if (suffix !== '' && existsSync(to)) {
       rmSync(to, { force: true });
-    }
-  }
-  const leftover = legacyChatsDbPath(destChats);
-  for (const suffix of ['', '-wal', '-shm']) {
-    const nested = `${leftover}${suffix}`;
-    if (existsSync(nested)) {
-      rmSync(nested, { force: true });
     }
   }
 }
@@ -148,11 +127,11 @@ function copyDbFiles(srcChats, destChats) {
 function collectSyncRisks({ direction, localChats, remoteChats, localStudio, remoteStudio }) {
   const risks = [];
   if (hasWal(localChats)) {
-    risks.push(`本地会话库存在 chats.db-wal/shm（应用可能正在运行）: ${localChats}`);
+    risks.push(`本地应用库存在 -wal/-shm（应用可能正在运行）: ${appDbPath(localChats)}`);
   }
   if (direction === 'pull') {
     if (hasWal(remoteChats)) {
-      risks.push(`云盘会话库存在 chats.db-wal/shm（上次未关闭应用就同步）: ${remoteChats}`);
+      risks.push(`云盘应用库存在 -wal/-shm（上次未关闭应用就同步）: ${appDbPath(remoteChats)}`);
     }
     if (!existsSync(remoteStudio)) {
       risks.push(
@@ -174,7 +153,7 @@ function confirmPull(localChatsDir, localStudioDir) {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolveConfirm) => {
     rl.question(
-      `pull 将覆盖本地 ${localChatsDir}、${localStudioDir} 与上一级 chats.db，是否继续？(y/N) `,
+      `pull 将覆盖本地 ${localChatsDir}、${localStudioDir} 与上一级 app.db，是否继续？(y/N) `,
       (answer) => {
         rl.close();
         resolveConfirm(/^y(es)?$/i.test(answer.trim()));
@@ -254,8 +233,8 @@ async function main() {
 
   if (!direction || !['push', 'pull'].includes(direction)) {
     console.error('用法: node scripts/sync-data.mjs <push|pull> [--yes]');
-    console.error('  push  本地 → 云盘（chats、同级 studio、上一级 chats.db）');
-    console.error('  pull  云盘 → 本地（chats、同级 studio、上一级 chats.db）');
+    console.error('  push  本地 → 云盘（chats、同级 studio、上一级 app.db）');
+    console.error('  pull  云盘 → 本地（chats、同级 studio、上一级 app.db）');
     console.error('  --yes 跳过确认与风险中止（检测到 WAL 或资产目录缺失时会默认中止）');
     process.exit(1);
   }
@@ -291,7 +270,7 @@ async function main() {
   }
 
   console.log(
-    `即将从云盘拉取并覆盖本地: ${remoteChats} → ${localChats}，以及 ${remoteStudio} → ${localStudio}，以及会话库`,
+    `即将从云盘拉取并覆盖本地: ${remoteChats} → ${localChats}，以及 ${remoteStudio} → ${localStudio}，以及应用库`,
   );
   console.log(`  云盘侧: ${describeDb(remoteChats)}`);
   console.log(`  本地侧: ${describeDb(localChats)}`);

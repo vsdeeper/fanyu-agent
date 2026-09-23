@@ -335,12 +335,11 @@ Button/
 | 用途            | 路径规则                                              | 默认                       |
 | --------------- | ----------------------------------------------------- | -------------------------- |
 | 会话图片 / 文档 | `CHAT_STORE_DIR` 下 `images/`、`docs/`                | `./data/chats/`            |
-| 会话库          | `dirname(CHAT_STORE_DIR)/chats.db`（WAL）             | `./data/chats.db`          |
+| 应用库          | `dirname(CHAT_STORE_DIR)/app.db`（WAL）               | `./data/app.db`            |
 | 工作室任务资产  | `dirname(CHAT_STORE_DIR)/studio/{product}/{taskId}/`  | `./data/studio/{product}/` |
 | 云盘同步对端    | `CHAT_SYNC_REMOTE_DIR`（须 `.env.local`，无代码默认） | 应指向 `.../chats`         |
 
-- 启动时若仅发现旧路径 `CHAT_STORE_DIR/chats.db`，会改名迁到上一级
-- `pnpm sync:data:push` 本地→云盘；`pnpm sync:data:pull` 云盘→本地（镜像 chats、同级 studio、上一级 chats.db；pull 覆盖本地）
+- `pnpm sync:data:push` 本地→云盘；`pnpm sync:data:pull` 云盘→本地（镜像 chats、同级 studio、上一级 app.db；pull 覆盖本地）
 - 同步前先关应用，再跑 `pnpm db:checkpoint`（WAL 合回主库）；若仍残留 `-wal`/`-shm` 导致 sync 风险检测中止，关应用后重跑即可
 - 明文落盘 + 云盘同步不适合高敏感内容
 

@@ -1,5 +1,5 @@
 import { defineConfig } from 'drizzle-kit';
-import { resolveChatsDbPath } from './src/lib/db/paths';
+import { resolveAppDbPath } from './src/lib/db/paths';
 import { loadEnvLocal, requireEnv } from './src/lib/shared/server/env';
 
 // drizzle-kit 不加载 Next 的 .env.local，须先补进 process.env
@@ -12,6 +12,6 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'sqlite',
   dbCredentials: {
-    url: resolveChatsDbPath(storeDir),
+    url: resolveAppDbPath(storeDir),
   },
 });

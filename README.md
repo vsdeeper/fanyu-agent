@@ -63,8 +63,8 @@ pnpm run dev
 | `pnpm run dev` / `build` / `start` | 开发 / 构建 / 生产 |
 | `pnpm run lint` / `format` / `test` | ESLint / Prettier / Vitest |
 | `pnpm run db:generate` | 对照 `schema.ts` 生成 `drizzle/` 迁移 SQL（不改库） |
-| `pnpm run db:migrate` | CLI 把未应用迁移写入 `chats.db`（不启动 Next 时用） |
-| `pnpm db:checkpoint` | 将 `chats.db` 的 WAL 合回主库（同步前用） |
+| `pnpm run db:migrate` | CLI 把未应用迁移写入 `app.db`（不启动 Next 时用） |
+| `pnpm db:checkpoint` | 将 `app.db` 的 WAL 合回主库（同步前用） |
 | `pnpm sync:data:push` / `pull` | 本地 ↔ 云盘镜像（pull 会覆盖本地） |
 
 ## 数据与备份
@@ -72,7 +72,7 @@ pnpm run dev
 | 路径 | 内容 |
 | ---- | ---- |
 | `CHAT_STORE_DIR`（默认 `./data/chats`） | 会话图片、DESIGN.md |
-| `dirname(CHAT_STORE_DIR)/chats.db` | 会话库（WAL） |
+| `dirname(CHAT_STORE_DIR)/app.db` | 应用库（会话 + 工作室任务元数据，WAL） |
 | 同级 `studio/{product}/` | 工作室任务资产 |
 
 ```bash
@@ -83,11 +83,11 @@ pnpm sync:data:pull              # 云盘 → 本地（覆盖）
 pnpm sync:data:pull -- --yes     # 跳过确认
 ```
 
-`db:checkpoint` 执行 `PRAGMA wal_checkpoint(TRUNCATE)`，清理残留的 `chats.db-wal` / `-shm`；若 sync 因 WAL 风险检测中止，关应用后跑一次即可。明文落盘不适合高敏感内容。
+`db:checkpoint` 执行 `PRAGMA wal_checkpoint(TRUNCATE)`，清理残留的 `app.db-wal` / `-shm`；若 sync 因 WAL 风险检测中止，关应用后跑一次即可。明文落盘不适合高敏感内容。
 
 ## 数据库迁移
 
-表结构的真相在 `src/lib/db/schema.ts`；可执行的变更脚本在 `drizzle/`（须进 Git）。目标库由 `.env.local` 的 `CHAT_STORE_DIR` 解析（默认 `./data/chats.db`）。`db:generate` / `db:migrate` **不会**随 `dev` / `build` 自动执行。
+表结构的真相在 `src/lib/db/schema.ts`；可执行的变更脚本在 `drizzle/`（须进 Git）。目标库由 `.env.local` 的 `CHAT_STORE_DIR` 解析（默认 `./data/app.db`）。`db:generate` / `db:migrate` **不会**随 `dev` / `build` 自动执行。
 
 ### `pnpm run db:generate` — 生成迁移（不改库）
 
@@ -109,11 +109,11 @@ pnpm run db:generate
 # 3. 继续开发；见下方「如何应用到库」
 ```
 
-注意：本命令**只写文件、不碰** `chats.db`。没有生成新 SQL，后面怎么 migrate 库结构也不会变。
+注意：本命令**只写文件、不碰** `app.db`。没有生成新 SQL，后面怎么 migrate 库结构也不会变。
 
 ### `pnpm run db:migrate` — CLI 应用迁移（改库）
 
-把 `drizzle/` 中**尚未应用到当前库**的 SQL 按 journal 顺序执行进 `chats.db`。
+把 `drizzle/` 中**尚未应用到当前库**的 SQL 按 journal 顺序执行进 `app.db`。
 
 **何时跑**：
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * 将本地会话库 chats.db 的 WAL 合回主库（PRAGMA wal_checkpoint(TRUNCATE)）。
- * 用于关应用后仍残留 chats.db-wal / chats.db-shm、导致 sync:data 风险检测中止时。
+ * 将本地应用库 app.db 的 WAL 合回主库（PRAGMA wal_checkpoint(TRUNCATE)）。
+ * 用于关应用后仍残留 app.db-wal / app.db-shm、导致 sync:data 风险检测中止时。
  * 请先确认 pnpm dev / next 已退出，再运行本脚本。
  */
 import { createRequire } from 'module';
@@ -35,14 +35,9 @@ function getLocalChatsDir() {
   return resolve(process.cwd(), raw);
 }
 
-/** 会话库路径：CHAT_STORE_DIR 上一级 */
-function getLocalChatsDbPath() {
-  const chatsDir = getLocalChatsDir();
-  const canonical = join(dirname(chatsDir), 'chats.db');
-  const legacy = join(chatsDir, 'chats.db');
-  if (existsSync(canonical)) return canonical;
-  if (existsSync(legacy)) return legacy;
-  return canonical;
+/** 应用库路径：CHAT_STORE_DIR 上一级的 app.db */
+function getLocalAppDbPath() {
+  return join(dirname(getLocalChatsDir()), 'app.db');
 }
 
 /** 格式化文件大小 */
@@ -60,12 +55,12 @@ function describeSideFile(path) {
 }
 
 function main() {
-  const dbPath = getLocalChatsDbPath();
+  const dbPath = getLocalAppDbPath();
   const walPath = `${dbPath}-wal`;
   const shmPath = `${dbPath}-shm`;
 
   if (!existsSync(dbPath)) {
-    console.error(`会话库不存在: ${dbPath}`);
+    console.error(`应用库不存在: ${dbPath}`);
     process.exit(1);
   }
 
@@ -100,7 +95,7 @@ function main() {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`checkpoint 失败: ${message}`);
     if (/SQLITE_BUSY|database is locked/i.test(message)) {
-      console.error('请先关闭占用会话库的应用进程后重试。');
+      console.error('请先关闭占用应用库的应用进程后重试。');
     }
     process.exit(1);
   } finally {

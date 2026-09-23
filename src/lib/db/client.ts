@@ -1,12 +1,12 @@
 import 'server-only';
 
-import { existsSync, mkdirSync, renameSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { requireEnv } from '@/lib/shared/server/env';
-import { resolveChatsDbPath, resolveLegacyChatsDbPath } from './paths';
+import { resolveAppDbPath } from './paths';
 import * as schema from './schema';
 
 export function getChatDir(): string {
@@ -17,24 +17,6 @@ function ensureChatDir(chatDir: string): void {
   if (!existsSync(chatDir)) {
     mkdirSync(chatDir, { recursive: true });
   }
-}
-
-/**
- * 将会话库放到 CHAT_STORE_DIR 上一级；若仅存在旧路径则整体改名迁过去（含 WAL 副档）。
- */
-function relocateChatsDbIfNeeded(storeDir: string): string {
-  const canonical = resolveChatsDbPath(storeDir);
-  const legacy = resolveLegacyChatsDbPath(storeDir);
-  if (!existsSync(canonical) && existsSync(legacy)) {
-    mkdirSync(path.dirname(canonical), { recursive: true });
-    for (const suffix of ['', '-wal', '-shm'] as const) {
-      const from = `${legacy}${suffix}`;
-      const to = `${canonical}${suffix}`;
-      if (existsSync(from)) renameSync(from, to);
-    }
-  }
-  mkdirSync(path.dirname(canonical), { recursive: true });
-  return canonical;
 }
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -53,7 +35,8 @@ function createDb(): Db {
   const chatDir = path.resolve(getChatDir());
   ensureChatDir(chatDir);
 
-  const dbPath = relocateChatsDbIfNeeded(chatDir);
+  const dbPath = resolveAppDbPath(chatDir);
+  mkdirSync(path.dirname(dbPath), { recursive: true });
   const sqlite = new Database(dbPath);
   // 修复：WAL 提升并发读；云盘会同步 -wal/-shm，换机前请先关应用以便 checkpoint
   sqlite.pragma('journal_mode = WAL');

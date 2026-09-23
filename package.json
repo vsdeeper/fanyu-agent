@@ -12,7 +12,7 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:checkpoint": "node scripts/checkpoint-chats-db.mjs",
+    "db:checkpoint": "node scripts/checkpoint-app-db.mjs",
     "sync:data:push": "node scripts/sync-data.mjs push",
     "sync:data:pull": "node scripts/sync-data.mjs pull",
     "prepare": "husky"
