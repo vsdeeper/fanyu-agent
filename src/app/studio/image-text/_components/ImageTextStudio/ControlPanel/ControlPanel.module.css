@@ -55,6 +55,20 @@
   color: var(--one-color-text);
 }
 
+.labelWithTip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.labelTipIcon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--one-color-text-tertiary);
+  font-size: 14px;
+  cursor: help;
+}
+
 .picker {
   display: flex;
   flex-wrap: wrap;

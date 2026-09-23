@@ -18,6 +18,7 @@ import {
 import {
   buildDesignPrompt,
   buildDetailImagePrompt,
+  buildImageTextPrompt,
   buildMainImagePrompt,
   buildProductModelPrompt,
   buildProductMultiviewPrompt,
@@ -1197,5 +1198,51 @@ describe('电商详情图请求契约', () => {
       'detailImage',
     );
     expect(parseGenerateBody({ ...BASE_DETAIL_IMAGE_REQUEST, requirements: [] })).toBeNull();
+  });
+});
+
+describe('图文配图指令', () => {
+  const body = '# 中府\n\n## 定义\n肺经募穴\n\n## 定位\n锁骨下窝外侧';
+
+  it('无「我的要求」时正文直接作为图文内容上屏，不含知识库筛选语义', () => {
+    const prompt = buildImageTextPrompt(body, {
+      hasStyleReference: true,
+      hasCharacterModel: true,
+    });
+
+    expect(prompt).toContain('【本张画面 / 图文内容】');
+    expect(prompt).toContain(body);
+    expect(prompt).toContain('视觉参考图');
+    expect(prompt).toContain('人物模特');
+    expect(prompt).not.toContain('我的要求');
+    expect(prompt).not.toContain('知识库');
+    expect(prompt).not.toContain('优先于正文默认的信息密度');
+    expect(prompt).toContain('须全部出镜');
+  });
+
+  it('有「我的要求」时正文仅作知识库，要求优先于默认信息密度', () => {
+    const requirement = '仅根据模特做穴位标识，不要展示其他内容';
+    const prompt = buildImageTextPrompt(body, {
+      hasStyleReference: true,
+      hasCharacterModel: true,
+      characterRequirement: requirement,
+    });
+
+    expect(prompt).toContain('【我的要求】');
+    expect(prompt).toContain(requirement);
+    expect(prompt).toContain('优先于正文默认的信息密度');
+    expect(prompt).toContain('知识库');
+    expect(prompt).toContain('非必须全文上屏');
+    expect(prompt).toContain('禁止多栏信息框');
+    expect(prompt).toContain('不得据此把正文扩成');
+    expect(prompt).toContain('版式密度以【我的要求】为准');
+    expect(prompt).toContain('须全部出镜');
+    expect(prompt).toContain('不得只保留其中一人');
+    expect(prompt).toContain('不得因此删减人物模特中的任一人物');
+    expect(prompt).toContain(body);
+    const requirementIdx = prompt.indexOf('【我的要求】');
+    const bodyLabelIdx = prompt.indexOf('【本张画面 / 图文内容】');
+    expect(requirementIdx).toBeGreaterThan(-1);
+    expect(bodyLabelIdx).toBeGreaterThan(requirementIdx);
   });
 });

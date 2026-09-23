@@ -466,6 +466,23 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).toContain('人物模特');
     expect(plan[0]?.prompt).toContain('我的要求');
     expect(plan[0]?.prompt).toContain('半身侧影，看向窗外');
+    expect(plan[0]?.prompt).toContain('知识库');
+    expect(plan[0]?.prompt).toContain('优先于正文默认的信息密度');
     expect(plan[0]?.prompt).not.toContain('整套视觉约束');
+  });
+
+  it('图文无「我的要求」时不注入知识库筛选语义', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'imageText',
+      count: 1,
+      prompt: '# 标题\n\n## 要点\n- 一条',
+    });
+
+    expect(plan).toHaveLength(1);
+    expect(plan[0]?.prompt).toContain('【本张画面 / 图文内容】');
+    expect(plan[0]?.prompt).toContain('# 标题');
+    expect(plan[0]?.prompt).not.toContain('我的要求');
+    expect(plan[0]?.prompt).not.toContain('知识库');
   });
 });

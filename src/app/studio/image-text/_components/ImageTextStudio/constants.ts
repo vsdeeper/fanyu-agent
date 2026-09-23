@@ -33,7 +33,10 @@ export const VISUAL_REFERENCE_HINT = '上传一张图，对齐画风、配色、
 export const CHARACTER_MODEL_LABEL = '人物模特';
 export const CHARACTER_MODEL_HINT = '上传一张图，锁定人物形象';
 export const CHARACTER_REQUIREMENT_LABEL = '我的要求';
-export const CHARACTER_REQUIREMENT_PLACEHOLDER = '可选：补充人物姿态、表情、着装或出镜方式等要求';
+export const CHARACTER_REQUIREMENT_HINT =
+  '可约束人物姿态与出镜，也可说明画面要展示哪些信息、禁止哪些板块；有填写时正文仅作知识库，按要求筛选上屏';
+export const CHARACTER_REQUIREMENT_PLACEHOLDER =
+  '可选：人物姿态/着装；或如「仅穴位标识，不要信息框与其它板块」';
 export const CHARACTER_REQUIREMENT_MAX_LENGTH = 500;
 export const PREVIEW_MARK = '预览';
 export const RESULT_PLAN_TITLE = '图文内容';

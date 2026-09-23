@@ -1,5 +1,5 @@
-import { PictureOutlined } from '@ant-design/icons';
-import { Button, Form, Input } from 'antd';
+import { PictureOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { Button, Form, Input, Tooltip } from 'antd';
 import type { FormInstance } from 'antd';
 import {
   IMAGE_TEXT_MAX_CONTENT_LENGTH,
@@ -13,6 +13,7 @@ import StudioImageUpload from '@/business-components/StudioImageUpload';
 import {
   CHARACTER_MODEL_HINT,
   CHARACTER_MODEL_LABEL,
+  CHARACTER_REQUIREMENT_HINT,
   CHARACTER_REQUIREMENT_LABEL,
   CHARACTER_REQUIREMENT_MAX_LENGTH,
   CHARACTER_REQUIREMENT_PLACEHOLDER,
@@ -99,7 +100,24 @@ export default function ControlPanel({
                   disabled={generating}
                 />
               </Form.Item>
-              <Form.Item name="characterRequirement" label={CHARACTER_REQUIREMENT_LABEL} preserve>
+              <Form.Item
+                name="characterRequirement"
+                label={
+                  <span className={styles.labelWithTip}>
+                    {CHARACTER_REQUIREMENT_LABEL}
+                    <Tooltip title={CHARACTER_REQUIREMENT_HINT}>
+                      <span
+                        className={styles.labelTipIcon}
+                        role="img"
+                        aria-label={CHARACTER_REQUIREMENT_HINT}
+                      >
+                        <QuestionCircleOutlined />
+                      </span>
+                    </Tooltip>
+                  </span>
+                }
+                preserve
+              >
                 <Input.TextArea
                   rows={3}
                   maxLength={CHARACTER_REQUIREMENT_MAX_LENGTH}
