@@ -2,10 +2,11 @@ import 'server-only';
 
 import { cache } from 'react';
 import { generateId, type UIMessage } from 'ai';
-import { asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, like, lte, type SQL } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
 import { chats, messages } from '@/lib/db/schema';
-import { DEFAULT_CHAT_TITLE, ECOM_CHAT_ID_PREFIX } from './constants';
+import { DEFAULT_CHAT_TITLE } from './constants';
+import { removeChatStoreDirectories } from './remove-chat-files';
 import { deriveHeuristicTitle, getFirstUserText } from '@/app/api/chat/_server/title';
 import type { ChatListItem, ChatRecord } from '../_shared/types';
 
@@ -114,19 +115,56 @@ export async function saveChat({
   });
 }
 
-/** 会话列表（按更新时间倒序）；排除历史上工作台写入的 ecom- 空会话。React.cache 去重同请求内根 layout 与 chat layout 的重复查询 */
+/** 侧栏会话列表（按更新时间倒序）。React.cache 去重同请求内根 layout 与会话 layout 的重复查询 */
 export const listChats = cache(async function listChats(): Promise<ChatListItem[]> {
   const db = getDb();
   const rows = db.select().from(chats).orderBy(desc(chats.updatedAt)).all();
-  return rows
-    .filter((row) => !row.id.startsWith(ECOM_CHAT_ID_PREFIX))
-    .map((row) => ({
-      id: row.id,
-      title: row.title || DEFAULT_CHAT_TITLE,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-    }));
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title || DEFAULT_CHAT_TITLE,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }));
 });
+
+export type QueryChatsFilters = {
+  title?: string;
+  createdFrom?: string;
+  createdTo?: string;
+};
+
+/** 对话管理列表：按标题与创建日期筛选，创建时间倒序全量返回。 */
+export async function queryChats(filters: QueryChatsFilters = {}): Promise<ChatListItem[]> {
+  const db = getDb();
+  const conditions: SQL[] = [];
+
+  if (filters.title) {
+    conditions.push(like(chats.title, `%${filters.title}%`));
+  }
+  if (filters.createdFrom) {
+    conditions.push(gte(chats.createdAt, filters.createdFrom));
+  }
+  if (filters.createdTo) {
+    conditions.push(lte(chats.createdAt, filters.createdTo));
+  }
+
+  const rows =
+    conditions.length > 0
+      ? db
+          .select()
+          .from(chats)
+          .where(and(...conditions))
+          .orderBy(desc(chats.createdAt))
+          .all()
+      : db.select().from(chats).orderBy(desc(chats.createdAt)).all();
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title || DEFAULT_CHAT_TITLE,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }));
+}
 
 /** 仅更新会话标题，不碰消息、不刷新 updatedAt（避免侧栏因改标题而重排） */
 export async function updateChatTitle(chatId: string, title: string): Promise<void> {
@@ -139,4 +177,17 @@ export async function updateChatTitle(chatId: string, title: string): Promise<vo
 export async function deleteChat(id: string): Promise<void> {
   const db = getDb();
   db.delete(chats).where(eq(chats.id, id)).run();
+  // DB cascade 已清 messages / image_assets；再删会话图片与文档目录
+  removeChatStoreDirectories(id);
+}
+
+/** 批量删除会话，返回实际删除条数。 */
+export async function deleteChats(ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const db = getDb();
+  const result = db.delete(chats).where(inArray(chats.id, ids)).run();
+  for (const id of ids) {
+    removeChatStoreDirectories(id);
+  }
+  return result.changes;
 }

@@ -116,3 +116,17 @@
 .conversations :global(.ant-conversations-label + div) {
   display: inline-flex;
 }
+
+.footer {
+  display: flex;
+  justify-content: center;
+}
+
+.manageBtn {
+  color: var(--one-color-text-tertiary) !important;
+  font-size: 13px !important;
+}
+
+.manageBtn:hover:not(button[disabled]) {
+  color: var(--one-color-text-secondary) !important;
+}

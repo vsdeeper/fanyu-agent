@@ -2,8 +2,8 @@ import { handleCreateChat, handleListChats } from '@/app/api/chats/_server/handl
 
 export const runtime = 'nodejs';
 
-export async function GET() {
-  return handleListChats();
+export async function GET(req: Request) {
+  return handleListChats(req);
 }
 
 export async function POST() {

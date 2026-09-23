@@ -4,13 +4,14 @@ import { Conversations } from '@ant-design/x';
 import type { ConversationItemType } from '@ant-design/x/es/conversations/interface';
 import {
   AppstoreOutlined,
+  ArrowRightOutlined,
   DeleteOutlined,
   MenuFoldOutlined,
   MessageOutlined,
 } from '@ant-design/icons';
 import { Button, Layout, Typography } from 'antd';
 import { useWorkspace } from '@/components/AppLayout/context';
-import { STUDIO_PATH } from './constants';
+import { CHAT_MANAGE_PATH, STUDIO_PATH } from './constants';
 import { getActiveChatIdFromPathname, getChatGroupLabel } from './utils';
 import type { ChatListItem } from '@/app/api/chats/_shared/types';
 import { apiDelete } from '@/lib/shared/client/api-client';
@@ -182,6 +183,23 @@ export default function Sidebar({ chats }: SidebarProps) {
               },
             })}
           />
+        </div>
+
+        <div className={styles.footer}>
+          <Button
+            type="text"
+            shape="round"
+            className={styles.manageBtn}
+            disabled={actionsDisabled}
+            icon={<ArrowRightOutlined />}
+            iconPlacement="end"
+            onClick={() => {
+              if (pathname === CHAT_MANAGE_PATH) return;
+              goRefresh(CHAT_MANAGE_PATH);
+            }}
+          >
+            对话管理
+          </Button>
         </div>
       </div>
     </Layout.Sider>

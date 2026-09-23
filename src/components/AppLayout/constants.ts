@@ -2,6 +2,8 @@ export const HOME_PATH = '/';
 
 export const CHAT_DRAFT_PATH = '/chat';
 
+export const CHAT_MANAGE_PATH = '/chat/manage';
+
 export const STUDIO_PATH = '/studio';
 
 export const PRODUCT_RETOUCH_PATH = '/studio/product-retouch';
