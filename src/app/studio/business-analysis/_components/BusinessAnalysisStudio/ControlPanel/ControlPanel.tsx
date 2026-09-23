@@ -1,4 +1,3 @@
-import { HighlightOutlined } from '@ant-design/icons';
 import { Button, Form, type FormInstance } from 'antd';
 import { ANALYZE_BUTTON, NO_MATERIAL_WARNING } from '../constants';
 import type { AnalysisPanelValues } from '../types';
@@ -54,7 +53,6 @@ export default function ControlPanel({
           type="primary"
           block
           size="large"
-          icon={<HighlightOutlined />}
           loading={analyzing}
           disabled={!canAnalyze}
           onClick={onAnalyze}

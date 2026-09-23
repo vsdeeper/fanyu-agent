@@ -1,4 +1,3 @@
-import { HighlightOutlined } from '@ant-design/icons';
 import { Button, Form, type FormInstance } from 'antd';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
@@ -188,7 +187,6 @@ export default function ControlPanel({
             type="primary"
             block
             size="large"
-            icon={<HighlightOutlined />}
             loading={analyzing}
             disabled={jobRunning}
             onClick={onAnalyze}
@@ -204,7 +202,6 @@ export default function ControlPanel({
             type="primary"
             block
             size="large"
-            icon={<HighlightOutlined />}
             loading={visualGenerating}
             disabled={visualBlocked}
             onClick={onGenerateVisual}
@@ -220,7 +217,6 @@ export default function ControlPanel({
             type="primary"
             block
             size="large"
-            icon={<HighlightOutlined />}
             loading={designGenerating}
             disabled={!canGenerateDesign || designBlocked}
             onClick={onGenerateDesign}

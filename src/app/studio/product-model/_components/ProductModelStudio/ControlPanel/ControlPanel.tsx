@@ -1,4 +1,3 @@
-import { HighlightOutlined } from '@ant-design/icons';
 import { Button, Form, Input, type FormInstance } from 'antd';
 import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import {
@@ -78,7 +77,6 @@ export default function ControlPanel({
           type="primary"
           block
           size="large"
-          icon={<HighlightOutlined />}
           loading={generating}
           onClick={onGenerate}
         >

@@ -1,4 +1,3 @@
-import { HighlightOutlined } from '@ant-design/icons';
 import { Button, Form, Input, InputNumber, Space, type FormInstance } from 'antd';
 import StyleDimensionPicker, {
   StyleClipboardActions,
@@ -240,7 +239,6 @@ export default function ControlPanel({
             type="primary"
             block
             size="large"
-            icon={<HighlightOutlined />}
             loading={phase === 'researching'}
             onClick={onResearch}
           >
@@ -253,7 +251,6 @@ export default function ControlPanel({
             type="primary"
             block
             size="large"
-            icon={<HighlightOutlined />}
             loading={phase === 'planning'}
             disabled={!selectedAngle}
             onClick={onPlan}
@@ -267,7 +264,6 @@ export default function ControlPanel({
             type="primary"
             block
             size="large"
-            icon={<HighlightOutlined />}
             loading={phase === 'drafting'}
             disabled={!plan}
             onClick={onDraft}
@@ -281,7 +277,6 @@ export default function ControlPanel({
             type="primary"
             block
             size="large"
-            icon={<HighlightOutlined />}
             loading={phase === 'illustrating'}
             disabled={!hasMarkdown}
             onClick={onPlanImages}

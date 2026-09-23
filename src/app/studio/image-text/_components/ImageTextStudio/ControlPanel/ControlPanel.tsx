@@ -1,4 +1,4 @@
-import { PictureOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { QuestionCircleOutlined } from '@ant-design/icons';
 import { Button, Form, Input, Tooltip } from 'antd';
 import type { FormInstance } from 'antd';
 import {
@@ -188,7 +188,6 @@ export default function ControlPanel({
             type="primary"
             block
             className={styles.actionBtn}
-            icon={<PictureOutlined />}
             loading={generating}
             disabled={!canGenerate}
             onClick={onGenerate}
