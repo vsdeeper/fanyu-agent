@@ -56,9 +56,21 @@
 .image {
   display: block;
   width: 100%;
-  height: 420px;
-  object-fit: cover;
+  height: auto;
   background: var(--one-color-fill-quaternary);
+}
+
+.carousel :global(.slick-list),
+.carousel :global(.slick-track) {
+  height: auto !important;
+}
+
+.carousel :global(.slick-slide) {
+  height: auto;
+}
+
+.carousel :global(.slick-slide > div) {
+  height: auto;
 }
 
 .caption {
