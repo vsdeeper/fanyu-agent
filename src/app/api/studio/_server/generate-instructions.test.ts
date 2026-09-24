@@ -1204,16 +1204,22 @@ describe('电商详情图请求契约', () => {
 describe('图文配图指令', () => {
   const body = '# 中府\n\n## 定义\n肺经募穴\n\n## 定位\n锁骨下窝外侧';
 
-  it('无「我的要求」时正文直接作为图文内容上屏，不含知识库筛选语义', () => {
+  it('无「我的要求」时正文仅作来源，须取舍精简并留足边距，不含「我的要求」优先语义', () => {
     const prompt = buildImageTextPrompt(body, {
       hasStyleReference: true,
       hasCharacterModel: true,
     });
 
     expect(prompt).toContain('【本张画面 / 图文内容】');
+    expect(prompt).toContain('非必须全文上屏');
+    expect(prompt).toContain('取舍精简');
+    expect(prompt).toContain('安全边距');
+    expect(prompt).toContain('禁止贴边排满');
+    expect(prompt).toContain('禁止多栏信息框');
     expect(prompt).toContain(body);
     expect(prompt).toContain('视觉参考图');
     expect(prompt).toContain('人物模特');
+    expect(prompt).toContain('高密度信息墙');
     expect(prompt).not.toContain('我的要求');
     expect(prompt).not.toContain('知识库');
     expect(prompt).not.toContain('优先于正文默认的信息密度');
@@ -1233,6 +1239,7 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('优先于正文默认的信息密度');
     expect(prompt).toContain('知识库');
     expect(prompt).toContain('非必须全文上屏');
+    expect(prompt).toContain('安全边距');
     expect(prompt).toContain('禁止多栏信息框');
     expect(prompt).toContain('不得据此把正文扩成');
     expect(prompt).toContain('版式密度以【我的要求】为准');

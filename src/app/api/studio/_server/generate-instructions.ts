@@ -477,7 +477,7 @@ export function buildWechatInlinePrompt(prompt: string, visualStyle?: string): s
 /**
  * 图文配图：按图文卡片内容出一张图。
  * 不预设媒介或色调；有视觉参考时对齐画风、配色、字体与排版风格。
- * 有「我的要求」时：正文仅作知识库，按要求筛选上屏信息与版式密度。
+ * 正文一律作事实与文案来源：允许取舍精简上屏，禁止全文塞进画面；有「我的要求」时再按其优先筛选。
  */
 export function buildImageTextPrompt(
   prompt: string,
@@ -489,7 +489,8 @@ export function buildImageTextPrompt(
 ): string {
   const lines = [
     '生成恰好一张图文卡片成品图，不要输出说明文字。',
-    '画面本身就是完整卡片：铺满画布、主体清晰、版式干净；文案若需上屏，应简洁可读并与画面融为一体。',
+    '画面本身就是完整卡片：主体清晰、版式干净疏朗；四周须留足安全边距与呼吸感，禁止贴边排满、出血顶满或把画布塞成信息墙。',
+    '文案上屏须克制：优先标题与少量关键句，字号够大、层级分明；宁可少写、写准，也不要为「内容完整」把要点、列表、步骤、配伍等一并塞进同一张图。',
     '禁止出现手机外框、刘海/挖孔、状态栏、浏览器顶栏、App 导航栏、桌面壁纸或任何设备/界面外壳；不要做成「手机截图」或「手机里的卡片」效果。',
   ];
   const requirement = refs?.characterRequirement?.trim();
@@ -500,7 +501,7 @@ export function buildImageTextPrompt(
       );
     } else {
       lines.push(
-        '【视觉参考图】对齐画风、配色、字体与排版风格；若参考为多人分栏，保留多人同框关系；勿复刻其人物相貌与原文案。',
+        '【视觉参考图】对齐画风、配色、字体与排版气质；若参考为多人分栏，保留多人同框关系；勿复刻其人物相貌、原文案或参考图本身的高密度信息墙版式。',
       );
     }
   }
@@ -525,7 +526,10 @@ export function buildImageTextPrompt(
       prompt.trim(),
     );
   } else {
-    lines.push('【本张画面 / 图文内容】', prompt.trim());
+    lines.push(
+      '【本张画面 / 图文内容】仅作事实与文案来源，非必须全文上屏：在不失真、不编造的前提下取舍精简，通常保留标题与 1～3 个最能传达主题的要点或一句摘要即可；勿按正文 ## 小节、列表、步骤逐条铺满画面，禁止多栏信息框、密排图标栏与百科式长文信息图。',
+      prompt.trim(),
+    );
   }
   return lines.join('\n');
 }

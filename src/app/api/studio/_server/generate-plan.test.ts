@@ -471,7 +471,7 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).not.toContain('整套视觉约束');
   });
 
-  it('图文无「我的要求」时不注入知识库筛选语义', () => {
+  it('图文无「我的要求」时仍注入取舍精简与留白约束，但不注入知识库 / 要求优先语义', () => {
     const plan = buildGeneratePlan({
       ...base,
       kind: 'imageText',
@@ -482,6 +482,9 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan).toHaveLength(1);
     expect(plan[0]?.prompt).toContain('【本张画面 / 图文内容】');
     expect(plan[0]?.prompt).toContain('# 标题');
+    expect(plan[0]?.prompt).toContain('非必须全文上屏');
+    expect(plan[0]?.prompt).toContain('取舍精简');
+    expect(plan[0]?.prompt).toContain('安全边距');
     expect(plan[0]?.prompt).not.toContain('我的要求');
     expect(plan[0]?.prompt).not.toContain('知识库');
   });
