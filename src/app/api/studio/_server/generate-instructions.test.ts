@@ -1220,6 +1220,9 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('视觉参考图');
     expect(prompt).toContain('人物模特');
     expect(prompt).toContain('高密度信息墙');
+    expect(prompt).toContain('反约束');
+    expect(prompt).toContain('不作定位依据');
+    expect(prompt).toContain('标记点落点');
     expect(prompt).not.toContain('我的要求');
     expect(prompt).not.toContain('知识库');
     expect(prompt).not.toContain('优先于正文默认的信息密度');
@@ -1243,6 +1246,8 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('禁止多栏信息框');
     expect(prompt).toContain('不得据此把正文扩成');
     expect(prompt).toContain('版式密度以【我的要求】为准');
+    expect(prompt).toContain('反约束');
+    expect(prompt).toContain('不作定位依据');
     expect(prompt).toContain('须全部出镜');
     expect(prompt).toContain('不得只保留其中一人');
     expect(prompt).toContain('不得因此删减人物模特中的任一人物');

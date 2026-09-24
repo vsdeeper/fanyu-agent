@@ -29,7 +29,8 @@ export const MATERIALS_HINT = '上传参考图以提炼主题与要点；也可�
 export const CONTENT_LABEL = '内容';
 export const CONTENT_PLACEHOLDER = '粘贴或填写主题、大纲、要点等，将整理成图文卡片';
 export const VISUAL_REFERENCE_LABEL = '视觉参考';
-export const VISUAL_REFERENCE_HINT = '上传一张图，对齐画风、配色、字体与排版风格';
+export const VISUAL_REFERENCE_HINT =
+  '上传一张图，只对齐画风、配色、字体与气质；不作为穴位/标注位置依据';
 export const CHARACTER_MODEL_LABEL = '人物模特';
 export const CHARACTER_MODEL_HINT = '上传一张图，锁定人物形象';
 export const CHARACTER_REQUIREMENT_LABEL = '我的要求';
