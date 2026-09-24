@@ -3,6 +3,7 @@ import {
   EditOutlined,
   FileImageOutlined,
   FileSearchOutlined,
+  ReadOutlined,
   ShoppingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -10,6 +11,7 @@ import {
   BUSINESS_ANALYSIS_PATH,
   ECOMMERCE_PATH,
   IMAGE_TEXT_PATH,
+  NOVEL_PATH,
   PRODUCT_MODEL_PATH,
   PRODUCT_RETOUCH_PATH,
   WECHAT_ARTICLE_PATH,
@@ -60,5 +62,12 @@ export const STUDIO_ENTRIES: StudioEntry[] = [
     description: '内容驱动：图文内容、生图与手机预览',
     path: IMAGE_TEXT_PATH,
     icon: FileImageOutlined,
+  },
+  {
+    key: 'novel',
+    title: '小说',
+    description: '想法驱动：选题调研与成文',
+    path: NOVEL_PATH,
+    icon: ReadOutlined,
   },
 ];

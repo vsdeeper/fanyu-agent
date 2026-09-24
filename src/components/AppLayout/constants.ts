@@ -17,3 +17,5 @@ export const ECOMMERCE_PATH = '/studio/ecommerce';
 export const WECHAT_ARTICLE_PATH = '/studio/wechat-article';
 
 export const IMAGE_TEXT_PATH = '/studio/image-text';
+
+export const NOVEL_PATH = '/studio/novel';
