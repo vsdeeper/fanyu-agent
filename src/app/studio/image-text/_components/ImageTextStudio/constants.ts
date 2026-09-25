@@ -36,10 +36,10 @@ export const CONTENT_REQUIREMENT_PLACEHOLDER =
 export const CONTENT_REQUIREMENT_MAX_LENGTH = 500;
 export const VISUAL_REFERENCE_LABEL = '视觉参考';
 export const VISUAL_REFERENCE_HINT =
-  '上传一张图，只对齐画风、配色、字体与气质；不作为标识点/标注位置依据';
+  '对齐画风、配色与字体；人物主要用于锁定外貌；姿态以「我的要求」优先，其次按正文，不作标识点/标注位置依据';
 export const CHARACTER_REQUIREMENT_LABEL = '我的要求';
 export const CHARACTER_REQUIREMENT_HINT =
-  '可约束人物姿态与出镜，也可说明画面要展示哪些信息、禁止哪些板块；有填写时正文仅作知识库，按要求筛选上屏';
+  '优先级最高：可约束人物姿态与出镜，也可说明画面要展示哪些信息、禁止哪些板块；有填写时正文仅作知识库，按要求筛选上屏';
 export const CHARACTER_REQUIREMENT_PLACEHOLDER =
   '可选：人物姿态/着装；或如「保留步骤示意与要点摘要两个板块，其余精简」';
 export const CHARACTER_REQUIREMENT_MAX_LENGTH = 500;

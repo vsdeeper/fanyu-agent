@@ -466,7 +466,11 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).toContain('我的要求');
     expect(plan[0]?.prompt).toContain('半身侧影，看向窗外');
     expect(plan[0]?.prompt).toContain('知识库');
-    expect(plan[0]?.prompt).toContain('优先于正文默认的信息密度');
+    expect(plan[0]?.prompt).toContain('优先级最高');
+    expect(plan[0]?.prompt).toContain('姿态硬约束');
+    expect(plan[0]?.prompt).toContain(
+      '姿态优先级复核：【我的要求】＞【本张画面 / 图文内容】＞视觉参考',
+    );
     expect(plan[0]?.prompt).not.toContain('整套视觉约束');
   });
 
