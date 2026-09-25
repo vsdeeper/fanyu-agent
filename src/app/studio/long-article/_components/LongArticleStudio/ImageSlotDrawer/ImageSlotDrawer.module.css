@@ -1,0 +1,107 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fanyu-color-text);
+}
+
+.divider {
+  height: 1px;
+  background: var(--fanyu-color-border-secondary);
+  margin: 4px 0;
+}
+
+.slotList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.slotCard,
+.historyCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--fanyu-color-border-secondary);
+  border-radius: 8px;
+  background: var(--fanyu-color-bg-layout);
+  cursor: pointer;
+}
+
+.slotActive {
+  border-color: var(--fanyu-color-primary);
+  box-shadow: 0 0 0 1px var(--fanyu-color-primary);
+}
+
+.historyCard {
+  cursor: default;
+}
+
+.preview {
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.aspectRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aspectLabel {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--fanyu-color-text-secondary);
+}
+
+.aspectSelect {
+  flex: 1;
+  min-width: 0;
+}
+
+.specGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.specField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.specField:last-child {
+  grid-column: 1 / -1;
+}
+
+.specLabel {
+  font-size: 12px;
+  color: var(--fanyu-color-text-secondary);
+}
+
+.uploadWrap {
+  display: inline-flex;
+}
+
+.empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fanyu-color-text-tertiary);
+}

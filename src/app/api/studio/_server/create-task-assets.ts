@@ -10,6 +10,7 @@ import {
   productModelTaskAssets,
   productRetouchTaskAssets,
   imageTextTaskAssets,
+  longArticleTaskAssets,
   novelTaskAssets,
   wechatArticleTaskAssets,
 } from '@/lib/db/schema';
@@ -23,7 +24,8 @@ export type StudioAssetsTable =
   | typeof businessAnalysisTaskAssets
   | typeof wechatArticleTaskAssets
   | typeof imageTextTaskAssets
-  | typeof novelTaskAssets;
+  | typeof novelTaskAssets
+  | typeof longArticleTaskAssets;
 
 export type StudioTaskAssetRecord = {
   id: string;

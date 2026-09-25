@@ -1,0 +1,206 @@
+.panel {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--fanyu-color-bg-container);
+  border: 1px solid var(--fanyu-color-border-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  height: 50px;
+  border-bottom: 1px solid var(--fanyu-color-border-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fanyu-color-text);
+}
+
+.headActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor {
+  width: 100%;
+  resize: none;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  text-align: center;
+}
+
+.packingHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+  /* 关闭浏览器滚动锚定，避免与流式贴底跟随互相抢 scrollTop */
+  overflow-anchor: none;
+}
+
+.scrollContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scrollContent > :global(label) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fanyu-color-text-secondary);
+}
+
+.sourceList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.angleSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.angleList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sourceItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--fanyu-color-text);
+}
+
+.sourceBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.sourceKind {
+  margin-inline-end: 6px !important;
+}
+
+.sourceDate {
+  margin-inline-start: 8px;
+  font-size: 12px;
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.sourceBlurb {
+  color: var(--fanyu-color-text-secondary);
+}
+
+.sourceIndex {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--fanyu-color-fill-secondary);
+  color: var(--fanyu-color-text-secondary);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.markdown {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.charCount {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fanyu-color-text-tertiary);
+  text-align: right;
+}
+
+.footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--fanyu-color-border-secondary);
+}
+
+.slotList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.slotCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--fanyu-color-border-secondary);
+  border-radius: 8px;
+}
+
+.slotActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.slotPreview {
+  max-width: 100%;
+  border-radius: 6px;
+}

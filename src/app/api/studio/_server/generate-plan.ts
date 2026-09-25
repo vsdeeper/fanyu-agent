@@ -11,6 +11,7 @@ import {
   buildProductViewPrompt,
   buildVisualPrompt,
   buildWechatInlinePrompt,
+  buildLongArticleInlinePrompt,
   buildImageTextPrompt,
 } from './generate-instructions';
 
@@ -116,6 +117,9 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
     ];
   } else if (body.kind === 'wechatInline') {
     prompt = buildWechatInlinePrompt(body.prompt, body.visualStyle);
+    referenceImageDataUrls = [];
+  } else if (body.kind === 'longArticleInline') {
+    prompt = buildLongArticleInlinePrompt(body.prompt, body.visualStyle);
     referenceImageDataUrls = [];
   } else if (body.kind === 'imageText') {
     prompt = buildImageTextPrompt(body.prompt, {

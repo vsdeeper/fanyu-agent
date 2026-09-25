@@ -14,6 +14,7 @@ export type StudioGenerateKind =
   | 'mainImage'
   | 'detailImage'
   | 'wechatInline'
+  | 'longArticleInline'
   | 'imageText';
 
 type StudioGenerateBase = {
@@ -161,6 +162,15 @@ export type StudioWechatInlineGenerateRequest = StudioGenerateBase & {
   visualStyle?: string;
 };
 
+/** 长文配图：纯文生图，由用户主动点击槽位触发。 */
+export type StudioLongArticleInlineGenerateRequest = StudioGenerateBase & {
+  kind: 'longArticleInline';
+  count: 1;
+  prompt: string;
+  /** 规划配图产出的整套视觉约束；有则生图时强制注入。 */
+  visualStyle?: string;
+};
+
 /** 图文工作室：按图文卡片正文出一张图，可选视觉参考。 */
 export type StudioImageTextGenerateRequest = StudioGenerateBase & {
   kind: 'imageText';
@@ -182,6 +192,7 @@ export type StudioGenerateRequest =
   | StudioMainImageGenerateRequest
   | StudioDetailImageGenerateRequest
   | StudioWechatInlineGenerateRequest
+  | StudioLongArticleInlineGenerateRequest
   | StudioImageTextGenerateRequest;
 
 /** 单张出图结果事件：以占位槽 id 寻址，客户端无需知道批次内位置。 */

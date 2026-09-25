@@ -92,6 +92,13 @@
       "when": 1790400000000,
       "tag": "0012_novel_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1790500000000,
+      "tag": "0013_long_article_tasks",
+      "breakpoints": true
     }
   ]
 }

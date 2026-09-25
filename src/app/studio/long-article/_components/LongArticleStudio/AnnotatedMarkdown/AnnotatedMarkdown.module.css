@@ -1,0 +1,65 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.marker {
+  align-self: flex-start;
+  height: auto !important;
+  padding: 4px 12px !important;
+  font-size: 13px;
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.figurePlain {
+  gap: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.figureClickable {
+  cursor: pointer;
+}
+
+.figureClickable:hover {
+  border-color: var(--fanyu-color-border);
+}
+
+.figureActive {
+  border-color: var(--fanyu-color-primary);
+  box-shadow: 0 0 0 1px var(--fanyu-color-primary);
+}
+
+.figureLabel {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--fanyu-color-color-fill-secondary, rgba(0, 0, 0, 0.04));
+  font-size: 12px;
+  color: var(--fanyu-color-text-secondary);
+}
+
+.figureImage {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.figureImage :global(.ant-image),
+.figureImage :global(img) {
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 0 !important;
+  object-fit: unset;
+}

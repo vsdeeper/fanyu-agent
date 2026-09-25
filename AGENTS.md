@@ -111,7 +111,7 @@ src/
       _utils/ / _hooks/ / _components/
       ecommerce/
       business-analysis/ / product-model/ / product-retouch/
-      wechat-article/
+      wechat-article/ / long-article/ / image-text/ / novel/
     api/
       chat/                # POST /api/chat
         route.ts           # HTTP 薄壳
@@ -125,7 +125,7 @@ src/
         generate/route.ts
         _shared/ / _server/
         ecommerce/ / business-analysis/ / product-model/
-        product-retouch/ / wechat-article/
+        product-retouch/ / wechat-article/ / long-article/ / image-text/ / novel/
       geo/ / images/ / docs/
     page.tsx / layout.tsx / global.css
   components/              # 全局通用 UI（无业务耦合）
@@ -196,8 +196,8 @@ lib/*、src/hooks     →  禁止依赖 app/ 与任何产品实现
 工作室子路由要点：
 
 - 共用：`generate`
-- 各产品：`{ecommerce,business-analysis,product-model,product-retouch,wechat-article}/tasks`
-- 另有：商业分析 `analyze`；电商 `analyze` / `rewrite-card`（主题规划，**不跑商业分析**）；公众号 `research` / `plan` / `draft` / `images`
+- 各产品：`{ecommerce,business-analysis,product-model,product-retouch,wechat-article,long-article,image-text,novel}/tasks`
+- 另有：商业分析 `analyze`；电商 `analyze` / `rewrite-card`（主题规划，**不跑商业分析**）；公众号 / 长文 `research` / `plan` / `draft` / `images`
 
 #### `route.ts` 职责上限
 

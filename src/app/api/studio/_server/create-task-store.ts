@@ -13,6 +13,8 @@ import {
   productRetouchTasks,
   imageTextTaskSteps,
   imageTextTasks,
+  longArticleTaskSteps,
+  longArticleTasks,
   novelTaskSteps,
   novelTasks,
   wechatArticleTaskSteps,
@@ -34,7 +36,8 @@ export type StudioTasksTable =
   | typeof businessAnalysisTasks
   | typeof wechatArticleTasks
   | typeof imageTextTasks
-  | typeof novelTasks;
+  | typeof novelTasks
+  | typeof longArticleTasks;
 
 export type StudioStepsTable =
   | typeof ecommerceTaskSteps
@@ -43,7 +46,8 @@ export type StudioStepsTable =
   | typeof businessAnalysisTaskSteps
   | typeof wechatArticleTaskSteps
   | typeof imageTextTaskSteps
-  | typeof novelTaskSteps;
+  | typeof novelTaskSteps
+  | typeof longArticleTaskSteps;
 
 type TaskRow = {
   id: string;

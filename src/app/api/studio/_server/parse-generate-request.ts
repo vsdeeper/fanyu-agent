@@ -141,6 +141,13 @@ const wechatInlineGenerateSchema = specFieldsSchema.extend({
   visualStyle: z.string().trim().min(1).optional(),
 });
 
+const longArticleInlineGenerateSchema = specFieldsSchema.extend({
+  kind: z.literal('longArticleInline'),
+  count: z.literal(1),
+  prompt: z.string().trim().min(1),
+  visualStyle: z.string().trim().min(1).optional(),
+});
+
 const imageTextGenerateSchema = specFieldsSchema.extend({
   kind: z.literal('imageText'),
   count: z.literal(1),
@@ -160,6 +167,7 @@ const generateBodySchema = z
     mainImageGenerateSchema,
     detailImageGenerateSchema,
     wechatInlineGenerateSchema,
+    longArticleInlineGenerateSchema,
     imageTextGenerateSchema,
   ])
   .superRefine((value, context) => {
