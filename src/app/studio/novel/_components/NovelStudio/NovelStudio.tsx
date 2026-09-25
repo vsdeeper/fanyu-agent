@@ -3,20 +3,25 @@
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Button, Layout, Steps, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
-import { STUDIO_PATH } from '@/components/AppLayout/constants';
+import type { NovelTaskDetail } from '@/app/api/studio/novel/_shared/task-types';
+import { NOVEL_PATH } from '@/components/AppLayout/constants';
 import ModeSwitch from '@/components/ModeSwitch';
 import ControlPanel from './ControlPanel';
 import PreviewPanel from './PreviewPanel';
 import ResultPanel from './ResultPanel';
-import { STUDIO_STEP_INDEX, STUDIO_STEPS, STUDIO_TITLE } from './constants';
+import { STUDIO_STEP_INDEX, STUDIO_STEPS } from './constants';
 import { useNovelStudio } from './hooks/useNovelStudio';
 import { buildPreviewDocument } from './utils';
 import styles from './NovelStudio.module.css';
 
-/** 小说写作工作台（静态）：选题调研 → 故事结构 → 写作 → 预览。 */
-export default function NovelStudio() {
+type NovelStudioProps = {
+  task: NovelTaskDetail;
+};
+
+/** 小说写作工作台：选题调研 → 故事结构 → 写作 → 预览。 */
+export default function NovelStudio({ task }: NovelStudioProps) {
   const router = useRouter();
-  const studio = useNovelStudio();
+  const studio = useNovelStudio(task);
   const previewDocument =
     studio.structure && studio.writing
       ? buildPreviewDocument(studio.structure, studio.writing)
@@ -29,12 +34,12 @@ export default function NovelStudio() {
           type="text"
           icon={<ArrowLeftOutlined />}
           shape="circle"
-          aria-label="返回工作室"
-          onClick={() => router.push(STUDIO_PATH)}
+          aria-label="返回小说任务列表"
+          onClick={() => router.push(NOVEL_PATH)}
         />
         <div className={styles.brand}>
           <Typography.Title level={5} className={styles.title} ellipsis>
-            {STUDIO_TITLE}
+            {task.name}
           </Typography.Title>
         </div>
         <div className={styles.headerSpacer} />
@@ -66,9 +71,12 @@ export default function NovelStudio() {
                 structure={studio.structure}
                 selectedUnitIds={studio.selectedUnitIds}
                 focusUnitId={studio.focusUnitId}
+                styleSelections={studio.writing?.styleSelections ?? {}}
+                writeBusy={studio.generatingUnitIds.length > 0}
                 onResearch={studio.handleResearch}
                 onGenerateStructure={studio.handleGenerateStructure}
                 onToggleWritingUnit={studio.toggleWritingUnit}
+                onStyleSelectionsChange={studio.updateStyleSelections}
               />
               <ResultPanel
                 phase={studio.phase}
@@ -78,12 +86,17 @@ export default function NovelStudio() {
                 writing={studio.writing}
                 selectedUnitIds={studio.selectedUnitIds}
                 generatingChapterId={studio.generatingChapterId}
+                generatingVolumeId={studio.generatingVolumeId}
+                generatingUnitIds={studio.generatingUnitIds}
                 onSelectTopic={studio.handleSelectTopic}
                 onPrev={studio.handlePrev}
                 onNext={studio.handleNext}
                 onUpdateSynopsis={studio.updateSynopsis}
                 onUpdateBeat={studio.updateBeat}
                 onRemoveBeat={studio.removeBeat}
+                onUpdateVolume={studio.updateVolume}
+                onRemoveVolume={studio.removeVolume}
+                onGenerateVolumeChapters={studio.handleGenerateVolumeChapters}
                 onUpdateChapter={studio.updateChapter}
                 onRemoveChapter={studio.removeChapter}
                 onGenerateChapterBeats={studio.handleGenerateChapterBeats}

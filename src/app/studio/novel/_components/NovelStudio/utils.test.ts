@@ -4,8 +4,9 @@ import {
   buildPreviewDocument,
   buildWritingEditorBlocks,
   canGenerateWriting,
-  defaultSelectedUnitIds,
   isChapterRowSelected,
+  areVolumesReadyForWrite,
+  listStructureChapters,
   resolveGenerateUnitIds,
   syncWritingUnits,
   toggleWritingSelection,
@@ -161,17 +162,6 @@ describe('buildWritingEditorBlocks', () => {
   });
 });
 
-describe('defaultSelectedUnitIds', () => {
-  it('短篇取首节拍，中长篇取首个有节拍的章及其节拍', () => {
-    expect(defaultSelectedUnitIds(shortStructure)).toEqual(['beat-1']);
-    expect(defaultSelectedUnitIds(chaptersStructure)).toEqual([
-      'ch-1',
-      'ch-1-beat-1',
-      'ch-1-beat-2',
-    ]);
-  });
-});
-
 describe('buildPreviewDocument', () => {
   it('短篇按节拍顺序拼接非空正文，无章标题', () => {
     const writing = syncWritingUnits(shortStructure, {
@@ -203,5 +193,47 @@ describe('buildPreviewDocument', () => {
       },
     ]);
     expect(doc.plainText).toBe('第一章　钥匙\n\n钥匙开了\n\n门后无人');
+  });
+});
+
+describe('volumes helpers', () => {
+  const volumesStructure: StructureSnapshot = {
+    kind: 'volumes',
+    volumes: [
+      {
+        id: 'vol-1',
+        title: '上卷',
+        purpose: '起',
+        chapters: [
+          {
+            id: 'ch-1',
+            title: '钥匙',
+            purpose: 'p1',
+            beats: [{ id: 'ch-1-beat-1', text: 'b1' }],
+          },
+        ],
+      },
+      {
+        id: 'vol-2',
+        title: '下卷',
+        purpose: '收',
+        chapters: [],
+      },
+    ],
+  };
+
+  it('flatten 跨卷章列表；写作 kind 为 chapters', () => {
+    expect(listStructureChapters(volumesStructure).map((ch) => ch.id)).toEqual(['ch-1']);
+    expect(syncWritingUnits(volumesStructure).kind).toBe('chapters');
+  });
+
+  it('至少一卷有章纲即可进入写作', () => {
+    expect(areVolumesReadyForWrite(volumesStructure)).toBe(true);
+    expect(
+      areVolumesReadyForWrite({
+        ...volumesStructure,
+        volumes: volumesStructure.volumes.map((vol) => ({ ...vol, chapters: [] })),
+      }),
+    ).toBe(false);
   });
 });

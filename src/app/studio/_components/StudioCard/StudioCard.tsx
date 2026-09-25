@@ -1,4 +1,4 @@
-import { Button, Card, Input, Popconfirm } from 'antd';
+import { Button, Card, Input, Popconfirm, type CardProps } from 'antd';
 import { useState, type MouseEvent, type MouseEventHandler, type ReactNode } from 'react';
 import {
   AI_ASSIST_BUTTON,
@@ -53,6 +53,10 @@ export type StudioCardProps = {
   onAiAssist?: (draft: string) => Promise<string>;
   /** 编辑区额外 class（如与自定义标题缩进对齐）。 */
   editorClassName?: string;
+  /** 透传至 antd Card root className。 */
+  className?: string;
+  /** 透传至 antd Card styles（head/body 间距等）。 */
+  styles?: CardProps['styles'];
 };
 
 /**
@@ -82,6 +86,8 @@ export default function StudioCard({
   textareaAutoSize,
   onAiAssist,
   editorClassName,
+  className,
+  styles: cardStyles,
 }: StudioCardProps) {
   const isControlled = editingProp !== undefined;
   const [uncontrolledEditing, setUncontrolledEditing] = useState(false);
@@ -96,6 +102,7 @@ export default function StudioCard({
     styles.card,
     canInteract ? styles.interactive : '',
     selected ? styles.selected : '',
+    className,
   ]
     .filter(Boolean)
     .join(' ');
@@ -279,6 +286,7 @@ export default function StudioCard({
       extra={renderExtraActions()}
       hoverable={canHover}
       className={rootClass}
+      styles={cardStyles}
       onClick={canInteract ? onClick : undefined}
     >
       {isEditing ? renderEditor() : renderDisplay()}

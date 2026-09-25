@@ -2,6 +2,17 @@
   width: 100%;
 }
 
+/* 卷卡内嵌：去掉章卡横向 padding，序号与「本卷章纲」左缘对齐 */
+.embedded :global(.ant-card-body) {
+  padding-inline: 0;
+}
+
+.embedded {
+  border-inline: none;
+  border-radius: 0;
+  background: transparent;
+}
+
 .titleText {
   margin: 0;
   font-size: 13px;

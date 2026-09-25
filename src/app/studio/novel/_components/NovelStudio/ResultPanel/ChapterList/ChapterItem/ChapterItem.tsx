@@ -25,6 +25,8 @@ type ChapterItemProps = {
   /** 1-based 章节序号，用于自动生成「第N章」。 */
   index: number;
   removable: boolean;
+  /** 嵌套在卷卡内时去掉横向 padding，使序号与卷纲对齐。 */
+  embedded?: boolean;
   generatingBeats?: boolean;
   onChange: (patch: { title?: string; purpose?: string }) => void;
   onRemove: () => void;
@@ -38,6 +40,7 @@ export default function ChapterItem({
   chapter,
   index,
   removable,
+  embedded = false,
   generatingBeats = false,
   onChange,
   onRemove,
@@ -82,7 +85,7 @@ export default function ChapterItem({
   const canSave = Boolean(titleDraft.trim() && purposeDraft.trim());
 
   return (
-    <Card size="small" className={styles.card}>
+    <Card size="small" className={embedded ? `${styles.card} ${styles.embedded}` : styles.card}>
       {editing ? (
         <div className={styles.editStack} onClick={(event) => event.stopPropagation()}>
           <div className={styles.titleEditRow}>

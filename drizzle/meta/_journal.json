@@ -85,6 +85,13 @@
       "when": 1790200000000,
       "tag": "0011_purge_ecom_chats",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1790400000000,
+      "tag": "0012_novel_tasks",
+      "breakpoints": true
     }
   ]
 }

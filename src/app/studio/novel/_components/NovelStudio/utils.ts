@@ -1,13 +1,27 @@
+import { NOVEL_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/novel/_shared/task-constants';
+import type { NovelStepKey, NovelTaskStepRecord } from '@/app/api/studio/novel/_shared/task-types';
+import { parseStyleSelections } from '@/app/studio/_components/StyleDimensionPicker';
+import { apiDelete, apiPut } from '@/lib/shared/client/api-client';
 import type {
+  NovelLongFormat,
+  NovelVolume,
+  ResearchStepSnapshot,
   StructureBeat,
   StructureChapter,
   StructureSnapshot,
+  StructureStepSnapshot,
+  StructureVolume,
+  StudioPhase,
+  TopicCard,
   WritingSnapshot,
   WritingUnit,
+  WriteStepSnapshot,
 } from './types';
 import { formatChapterPrefix, stripChapterPrefix } from './ResultPanel/ChapterList/utils';
 
 export { formatChapterPrefix, stripChapterPrefix };
+export { assertOkOrJsonFail, isAbortError } from '@/app/studio/_utils/generate-stream';
+export { createRafTextBuffer, consumeAnalyzeSse } from '@/app/studio/_utils/analyze-stream';
 
 export type WritingUnitKind = 'chapter' | 'beat';
 
@@ -22,18 +36,37 @@ export type ResolvedWritingUnit = {
   beatTexts?: string[];
 };
 
+/** 中篇 chapters 或长篇 volumes 扁平为章列表（全书顺序）。 */
+export function listStructureChapters(structure: StructureSnapshot): StructureChapter[] {
+  if (structure.kind === 'short') return [];
+  if (structure.kind === 'chapters') return structure.chapters;
+  return structure.volumes.flatMap((volume) => volume.chapters);
+}
+
+/** 写作快照 kind：volumes 扁平后与 chapters 相同。 */
+export function writingKindFromStructure(structure: StructureSnapshot): WritingSnapshot['kind'] {
+  return structure.kind === 'short' ? 'short' : 'chapters';
+}
+
+/** 长篇是否至少有一卷已生成章纲（进入写作门槛；允许分批补其余卷）。 */
+export function areVolumesReadyForWrite(structure: StructureSnapshot): boolean {
+  if (structure.kind !== 'volumes') return true;
+  if (structure.volumes.length === 0) return false;
+  return structure.volumes.some((volume) => volume.chapters.length > 0);
+}
+
 /** 收集结构中全部可写 unitId（短篇仅节拍；中长篇含章 id + 各章节拍 id）。 */
 export function listWritableUnitIds(structure: StructureSnapshot): string[] {
   if (structure.kind === 'short') {
     return structure.beats.map((beat) => beat.id);
   }
-  return structure.chapters.flatMap((chapter) => [
+  return listStructureChapters(structure).flatMap((chapter) => [
     chapter.id,
     ...chapter.beats.map((beat) => beat.id),
   ]);
 }
 
-/** 按当前结构对齐写作 units：保留仍存在的 body，新 id 补空串。 */
+/** 按当前结构对齐写作 units：保留仍存在的 body 与文风，新 id 补空串。 */
 export function syncWritingUnits(
   structure: StructureSnapshot,
   prev?: WritingSnapshot,
@@ -43,7 +76,13 @@ export function syncWritingUnits(
     unitId,
     body: prevMap.get(unitId) ?? '',
   }));
-  return { kind: structure.kind, units };
+  return {
+    kind: writingKindFromStructure(structure),
+    units,
+    ...(prev?.styleSelections && Object.keys(prev.styleSelections).length
+      ? { styleSelections: prev.styleSelections }
+      : {}),
+  };
 }
 
 /** 判断写作快照是否已有任一非空正文。 */
@@ -88,9 +127,10 @@ export function resolveWritingUnit(
     };
   }
 
-  const chapterIndex = structure.chapters.findIndex((chapter) => chapter.id === unitId);
+  const chapters = listStructureChapters(structure);
+  const chapterIndex = chapters.findIndex((chapter) => chapter.id === unitId);
   if (chapterIndex >= 0) {
-    const chapter = structure.chapters[chapterIndex];
+    const chapter = chapters[chapterIndex];
     const titleName = stripChapterPrefix(chapter.title);
     return {
       unitId,
@@ -103,10 +143,10 @@ export function resolveWritingUnit(
     };
   }
 
-  const chapter = findChapterByBeatId(structure.chapters, unitId);
-  const beat = findBeat(structure.chapters, unitId);
+  const chapter = findChapterByBeatId(chapters, unitId);
+  const beat = findBeat(chapters, unitId);
   if (!chapter || !beat) return undefined;
-  const chapterIndex2 = structure.chapters.findIndex((item) => item.id === chapter.id);
+  const chapterIndex2 = chapters.findIndex((item) => item.id === chapter.id);
   const beatIndex = chapter.beats.findIndex((item) => item.id === beat.id);
   const titleName = stripChapterPrefix(chapter.title);
   return {
@@ -118,17 +158,6 @@ export function resolveWritingUnit(
     chapterPurpose: chapter.purpose,
     beatText: beat.text,
   };
-}
-
-/** 进入写作步时的默认选中：短篇首节拍；中长篇首个有节拍的章（含全部节拍）。 */
-export function defaultSelectedUnitIds(structure: StructureSnapshot): string[] {
-  if (structure.kind === 'short') {
-    const first = structure.beats[0]?.id;
-    return first ? [first] : [];
-  }
-  const chapter = structure.chapters.find((item) => item.beats.length > 0);
-  if (!chapter) return [];
-  return [chapter.id, ...chapter.beats.map((beat) => beat.id)];
 }
 
 /**
@@ -149,9 +178,10 @@ export function toggleWritingSelection(
     return [...prevSelected, unitId];
   }
 
-  const chapterIndex = structure.chapters.findIndex((chapter) => chapter.id === unitId);
+  const chapters = listStructureChapters(structure);
+  const chapterIndex = chapters.findIndex((chapter) => chapter.id === unitId);
   if (chapterIndex >= 0) {
-    const chapter = structure.chapters[chapterIndex];
+    const chapter = chapters[chapterIndex];
     if (chapter.beats.length === 0) return prevSelected;
     const allIds = [chapter.id, ...chapter.beats.map((beat) => beat.id)];
     const allSelected = allIds.every((id) => prevSelected.includes(id));
@@ -159,7 +189,7 @@ export function toggleWritingSelection(
     return allIds;
   }
 
-  const owner = findChapterByBeatId(structure.chapters, unitId);
+  const owner = findChapterByBeatId(chapters, unitId);
   if (!owner || owner.beats.length === 0) return prevSelected;
 
   const ownerBeatIds = owner.beats.map((beat) => beat.id);
@@ -208,9 +238,10 @@ export function resolveGenerateUnitIds(
 ): string[] {
   if (structure.kind === 'short') return selectedUnitIds;
 
+  const chapters = listStructureChapters(structure);
   const beatIds: string[] = [];
   for (const id of selectedUnitIds) {
-    const chapter = structure.chapters.find((item) => item.id === id);
+    const chapter = chapters.find((item) => item.id === id);
     if (chapter) {
       for (const beat of chapter.beats) {
         if (!beatIds.includes(beat.id)) beatIds.push(beat.id);
@@ -284,7 +315,7 @@ export function buildPreviewDocument(
   const sections: PreviewSection[] = [];
   const plainParts: string[] = [];
 
-  structure.chapters.forEach((chapter, chapterIndex) => {
+  listStructureChapters(structure).forEach((chapter, chapterIndex) => {
     const paragraphs = chapter.beats
       .map((beat) => bodyOf(beat.id))
       .filter((body) => body.length > 0);
@@ -336,7 +367,7 @@ export function buildWritingEditorBlocks(
   const selected = new Set(selectedUnitIds);
   const blocks: WritingEditorBlock[] = [];
 
-  structure.chapters.forEach((chapter, chapterIndex) => {
+  listStructureChapters(structure).forEach((chapter, chapterIndex) => {
     const titleName = stripChapterPrefix(chapter.title);
     const chapterLabel = `${formatChapterPrefix(chapterIndex + 1)}${titleName ? `　${titleName}` : ''}`;
     let selectedBeats = chapter.beats
@@ -371,4 +402,309 @@ export function buildWritingEditorBlocks(
   });
 
   return blocks;
+}
+
+/** 流式展示用：去掉末尾 ```json 围栏（含尚未闭合的）。 */
+export function stripTrailingJsonFenceForDisplay(text: string): string {
+  const complete = text.match(/```json\s*[\s\S]*?```\s*$/i);
+  if (complete?.index != null) {
+    return text.slice(0, complete.index).trimEnd();
+  }
+  const open = /```json\b/i.exec(text);
+  if (open?.index != null) {
+    return text.slice(0, open.index).trimEnd();
+  }
+  return text;
+}
+
+/** 拆分流式全文末尾的 JSON 代码块。 */
+export function extractTrailingJsonBlock(text: string): {
+  prose: string;
+  json: unknown | null;
+} {
+  const match = text.match(/```json\s*([\s\S]*?)```\s*$/i);
+  if (match?.index != null) {
+    const prose = text.slice(0, match.index).trim();
+    try {
+      return { prose, json: JSON.parse(match[1]!) as unknown };
+    } catch {
+      return { prose, json: null };
+    }
+  }
+  const open = /```json\b/i.exec(text);
+  if (open?.index != null) {
+    const prose = text.slice(0, open.index).trim();
+    const raw = text
+      .slice(open.index + open[0].length)
+      .replace(/```\s*$/, '')
+      .trim();
+    try {
+      return { prose, json: JSON.parse(raw) as unknown };
+    } catch {
+      return { prose, json: null };
+    }
+  }
+  const bare = text.match(/```\s*([\s\S]*?)```\s*$/);
+  if (bare?.index != null) {
+    const inner = bare[1]!.trim();
+    if (inner.startsWith('{')) {
+      try {
+        return { prose: text.slice(0, bare.index).trim(), json: JSON.parse(inner) as unknown };
+      } catch {
+        /* 继续尝试无围栏 */
+      }
+    }
+  }
+  for (const key of ['"topics"', '"beats"', '"kind"', '"chapters"', '"volumes"'] as const) {
+    const at = text.lastIndexOf(key);
+    if (at < 0) continue;
+    const brace = text.lastIndexOf('{', at);
+    if (brace < 0) continue;
+    try {
+      const json = JSON.parse(text.slice(brace).trim()) as unknown;
+      if (json && typeof json === 'object') {
+        return { prose: text.slice(0, brace).trim(), json };
+      }
+    } catch {
+      /* 尝试下一关键字 */
+    }
+  }
+  return { prose: text.trim(), json: null };
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function isNovelVolume(value: unknown): value is NovelVolume {
+  return value === 'short' || value === 'medium' || value === 'long';
+}
+
+function isNovelLongFormat(value: unknown): value is NovelLongFormat {
+  return value === 'publish' || value === 'web';
+}
+
+function parseTopicCard(value: unknown): TopicCard | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const id = asString(record.id);
+  const title = asString(record.title);
+  const genreVolume = asString(record.genreVolume);
+  const why = asString(record.why);
+  const core = asString(record.core);
+  if (!id || !title || !genreVolume || !why || !core) return null;
+  const risk = asString(record.risk);
+  return { id, title, genreVolume, why, core, ...(risk ? { risk } : {}) };
+}
+
+function parseBeat(value: unknown): StructureBeat | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const id = asString(record.id);
+  const text = asString(record.text);
+  if (!id || !text) return null;
+  return { id, text };
+}
+
+function parseChapter(value: unknown): StructureChapter | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const id = asString(record.id);
+  const title = asString(record.title);
+  const purpose = asString(record.purpose);
+  if (!id || !title || !purpose) return null;
+  const beats: StructureBeat[] = [];
+  if (Array.isArray(record.beats)) {
+    for (const item of record.beats) {
+      const beat = parseBeat(item);
+      if (beat) beats.push(beat);
+    }
+  }
+  return { id, title, purpose, beats };
+}
+
+function parseVolume(value: unknown): StructureVolume | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const id = asString(record.id);
+  const title = asString(record.title);
+  const purpose = asString(record.purpose);
+  if (!id || !title || !purpose) return null;
+  const chapters: StructureChapter[] = [];
+  if (Array.isArray(record.chapters)) {
+    for (const item of record.chapters) {
+      const chapter = parseChapter(item);
+      if (chapter) chapters.push(chapter);
+    }
+  }
+  return { id, title, purpose, chapters };
+}
+
+/** 解析调研 JSON 为选题卡列表。 */
+export function parseResearchTopics(json: unknown): TopicCard[] {
+  if (!json || typeof json !== 'object') return [];
+  const record = json as Record<string, unknown>;
+  const topics: TopicCard[] = [];
+  if (!Array.isArray(record.topics)) return topics;
+  for (const item of record.topics) {
+    const topic = parseTopicCard(item);
+    if (topic) topics.push(topic);
+  }
+  return topics;
+}
+
+/** 解析结构 JSON；失败返回 null。 */
+export function parseStructurePayload(json: unknown): StructureSnapshot | null {
+  if (!json || typeof json !== 'object') return null;
+  const record = json as Record<string, unknown>;
+  if (record.kind === 'short') {
+    const synopsis = asString(record.synopsis) ?? '';
+    const beats: StructureBeat[] = [];
+    if (Array.isArray(record.beats)) {
+      for (const item of record.beats) {
+        const beat = parseBeat(item);
+        if (beat) beats.push(beat);
+      }
+    }
+    if (beats.length === 0) return null;
+    return { kind: 'short', synopsis, beats };
+  }
+  if (record.kind === 'chapters') {
+    const chapters: StructureChapter[] = [];
+    if (Array.isArray(record.chapters)) {
+      for (const item of record.chapters) {
+        const chapter = parseChapter(item);
+        if (chapter) chapters.push(chapter);
+      }
+    }
+    if (chapters.length === 0) return null;
+    return { kind: 'chapters', chapters };
+  }
+  if (record.kind === 'volumes') {
+    const volumes: StructureVolume[] = [];
+    if (Array.isArray(record.volumes)) {
+      for (const item of record.volumes) {
+        const volume = parseVolume(item);
+        if (volume) volumes.push(volume);
+      }
+    }
+    if (volumes.length === 0) return null;
+    return { kind: 'volumes', volumes };
+  }
+  return null;
+}
+
+/** 解析按卷章纲 JSON。 */
+export function parseVolumeChaptersPayload(json: unknown): StructureChapter[] {
+  if (!json || typeof json !== 'object') return [];
+  const record = json as Record<string, unknown>;
+  const chapters: StructureChapter[] = [];
+  if (!Array.isArray(record.chapters)) return chapters;
+  for (const item of record.chapters) {
+    const chapter = parseChapter(item);
+    if (chapter) chapters.push({ ...chapter, beats: [] });
+  }
+  return chapters;
+}
+
+/** 解析章内节拍 JSON。 */
+export function parseChapterBeatsPayload(json: unknown): StructureBeat[] {
+  if (!json || typeof json !== 'object') return [];
+  const record = json as Record<string, unknown>;
+  const beats: StructureBeat[] = [];
+  if (!Array.isArray(record.beats)) return beats;
+  for (const item of record.beats) {
+    const beat = parseBeat(item);
+    if (beat) beats.push(beat);
+  }
+  return beats;
+}
+
+/** 从落盘 data 读取调研快照。 */
+export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | undefined {
+  if (!data || typeof data !== 'object') return undefined;
+  const record = data as Record<string, unknown>;
+  const idea = asString(record.idea);
+  if (!idea) return undefined;
+  const volume = isNovelVolume(record.volume) ? record.volume : 'short';
+  const longFormat = isNovelLongFormat(record.longFormat) ? record.longFormat : 'publish';
+  const genres = Array.isArray(record.genres)
+    ? record.genres.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
+    : [];
+  const topics: TopicCard[] = [];
+  if (Array.isArray(record.topics)) {
+    for (const item of record.topics) {
+      const topic = parseTopicCard(item);
+      if (topic) topics.push(topic);
+    }
+  }
+  const selectedTopicId = asString(record.selectedTopicId);
+  const streamText = asString(record.streamText);
+  return {
+    idea,
+    genres,
+    volume,
+    longFormat,
+    topics,
+    ...(selectedTopicId ? { selectedTopicId } : {}),
+    ...(streamText ? { streamText } : {}),
+  };
+}
+
+/** 从落盘 data 读取结构快照。 */
+export function readStructureStepSnapshot(data: unknown): StructureStepSnapshot | undefined {
+  const parsed = parseStructurePayload(data);
+  if (!parsed) return undefined;
+  const streamText =
+    data && typeof data === 'object'
+      ? asString((data as Record<string, unknown>).streamText)
+      : undefined;
+  return streamText ? { ...parsed, streamText } : parsed;
+}
+
+/** 从落盘 data 读取写作快照。 */
+export function readWriteStepSnapshot(data: unknown): WriteStepSnapshot | undefined {
+  if (!data || typeof data !== 'object') return undefined;
+  const record = data as Record<string, unknown>;
+  if (record.kind !== 'short' && record.kind !== 'chapters') return undefined;
+  const units: WritingUnit[] = [];
+  if (Array.isArray(record.units)) {
+    for (const item of record.units) {
+      if (!item || typeof item !== 'object') continue;
+      const unit = item as Record<string, unknown>;
+      const unitId = asString(unit.unitId);
+      if (!unitId) continue;
+      const body = typeof unit.body === 'string' ? unit.body : '';
+      units.push({ unitId, body });
+    }
+  }
+  const styleSelections = parseStyleSelections(record.styleSelections);
+  return {
+    kind: record.kind,
+    units,
+    ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
+  };
+}
+
+/** 首次进入/刷新默认停在第一步选题调研；有选题卡则进入 researched 结果态。 */
+export function resolveInitialPhase(research: ResearchStepSnapshot | undefined): StudioPhase {
+  if (research?.topics.length) return 'researched';
+  return 'research';
+}
+
+/** 落盘小说步骤快照，返回服务端处理后的 data。 */
+export async function saveNovelStep<T>(taskId: string, stepKey: NovelStepKey, data: T): Promise<T> {
+  const record = await apiPut<NovelTaskStepRecord>(
+    `/api/studio/novel/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`,
+    {
+      snapshotVersion: NOVEL_STEP_SNAPSHOT_VERSION,
+      data,
+    },
+  );
+  return record.data as T;
+}
+
+/** 删除小说步骤快照；不存在时服务端仍返回成功信封。 */
+export async function deleteNovelStep(taskId: string, stepKey: NovelStepKey): Promise<void> {
+  await apiDelete(`/api/studio/novel/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`);
 }

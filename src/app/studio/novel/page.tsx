@@ -1,5 +1,5 @@
-import NovelStudio from './_components/NovelStudio';
+import NovelTaskList from './_components/NovelTaskList';
 
 export default function NovelPage() {
-  return <NovelStudio />;
+  return <NovelTaskList />;
 }

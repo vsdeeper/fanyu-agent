@@ -8,10 +8,18 @@ type BeatWritingCardProps = {
   index: number;
   summary: string;
   body: string;
+  /** 本节拍正在生成（显示 loading）。 */
   generating: boolean;
+  /** 任意写作生成进行中（禁用其它生成入口，避免打断）。 */
+  writeBusy: boolean;
   onSave: (value: string) => void;
   onGenerate: () => void;
 };
+
+const BEAT_CARD_STYLES = {
+  header: { padding: '14px 16px', minHeight: 'auto' },
+  body: { padding: '14px 16px' },
+} as const;
 
 /** 单节拍正文卡：标题区为摘要，正文区为生成内容；extra 生成。 */
 export default function BeatWritingCard({
@@ -19,6 +27,7 @@ export default function BeatWritingCard({
   summary,
   body,
   generating,
+  writeBusy,
   onSave,
   onGenerate,
 }: BeatWritingCardProps) {
@@ -27,6 +36,8 @@ export default function BeatWritingCard({
 
   return (
     <StudioCard
+      className={styles.beatCard}
+      styles={BEAT_CARD_STYLES}
       title={
         <span className={styles.summaryTitle}>
           <span className={styles.summaryIndex} aria-hidden>
@@ -43,7 +54,7 @@ export default function BeatWritingCard({
             size="small"
             className={styles.generateBtn}
             loading={generating}
-            disabled={generating}
+            disabled={writeBusy}
             onClick={(event) => {
               event.stopPropagation();
               onGenerate();

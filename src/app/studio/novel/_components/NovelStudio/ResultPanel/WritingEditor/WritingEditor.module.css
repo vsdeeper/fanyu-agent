@@ -80,6 +80,7 @@
   flex-shrink: 0;
   font-size: 12px;
   line-height: 1.65;
+  padding-left: 8px;
   color: var(--fanyu-color-text-tertiary);
   white-space: nowrap;
 }
@@ -97,6 +98,11 @@
   gap: 12px;
   padding-left: 16px;
   border-left: 2px solid var(--fanyu-color-border-secondary);
+}
+
+.beatCard :global(.ant-card-head-title) {
+  white-space: normal;
+  overflow: visible;
 }
 
 .summaryTitle {

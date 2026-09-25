@@ -27,8 +27,15 @@
 }
 
 .pick {
-  padding-inline: 0;
   height: auto;
+}
+
+.pick:global(.ant-btn) {
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.pick:global(.ant-btn):hover {
+  color: var(--fanyu-color-text-secondary);
 }
 
 .unselected {

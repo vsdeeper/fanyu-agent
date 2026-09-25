@@ -1,4 +1,4 @@
-import type { NovelPanelValues, NovelVolume, StudioPhase } from './types';
+import type { NovelLongFormat, NovelPanelValues, NovelVolume, StudioPhase } from './types';
 
 export const STUDIO_TITLE = '小说草稿';
 
@@ -41,10 +41,16 @@ export const VOLUME_OPTIONS: { label: string; value: NovelVolume }[] = [
   { label: '长篇', value: 'long' },
 ];
 
+export const LONG_FORMAT_OPTIONS: { label: string; value: NovelLongFormat }[] = [
+  { label: '出版', value: 'publish' },
+  { label: '网文', value: 'web' },
+];
+
 export const DEFAULT_PANEL_VALUES: NovelPanelValues = {
   idea: '',
   genres: [],
   volume: 'short',
+  longFormat: 'publish',
 };
 
 export const RESEARCH_BUTTON = '开始调研';
@@ -57,8 +63,10 @@ export const IDEA_PLACEHOLDER = '例如：小时候夏天停电，全家在院�
 export const GENRE_LABEL = '偏好类型';
 export const GENRE_PLACEHOLDER = '可选，多选';
 export const VOLUME_LABEL = '体量倾向';
+export const LONG_FORMAT_LABEL = '长篇赛道';
 export const SELECTED_TOPIC_LABEL = '选定选题';
 export const SELECTED_TOPIC_EMPTY = '尚未选择选题';
+export const STYLE_LABEL = '文风';
 
 export const MISSING_IDEA_WARNING = '请先填写我的想法';
 export const MISSING_TOPIC_WARNING = '请先点选一个选题';
@@ -85,6 +93,18 @@ export const PREVIEW_PANEL_TITLE = '预览';
 export const SYNOPSIS_TITLE = '一句话梗概';
 export const BEATS_TITLE = '节拍';
 export const CHAPTERS_TITLE = '章纲';
+export const VOLUMES_TITLE = '卷纲';
+export const VOLUME_PURPOSE_LABEL = '本卷目的';
+export const VOLUME_TITLE_PLACEHOLDER = '卷标题';
+export const VOLUME_CHAPTERS_LABEL = '本卷章纲';
+export const VOLUME_CHAPTERS_BUTTON = '生成章纲';
+export const VOLUME_CHAPTERS_REGENERATE_BUTTON = '重新生成章纲';
+export const VOLUME_CHAPTERS_EMPTY_HINT = '尚未生成章纲';
+export const VOLUME_DELETE_CONFIRM_TITLE = '删除这一卷？';
+export const VOLUME_CHAPTERS_REGENERATE_CONFIRM_TITLE = '重新生成本卷章纲？';
+export const VOLUME_CHAPTERS_REGENERATE_CONFIRM_CONTENT = '将覆盖本卷已有章纲及其中节拍与相关正文';
+export const MISSING_VOLUME_CHAPTERS_WARNING = '请先至少为其中一卷生成章纲后再进入写作';
+export const VOLUME_CHAPTERS_FAILED = '卷内章纲生成失败，请稍后重试';
 export const CHAPTER_PURPOSE_LABEL = '本章目的';
 export const CHAPTER_TITLE_PLACEHOLDER = '章节标题';
 export const CHAPTER_BEATS_LABEL = '章内节拍';
@@ -111,9 +131,9 @@ export const TOPIC_SLOT_WHY_LABEL = '为什么值得写';
 export const TOPIC_SLOT_CORE_LABEL = '故事核';
 export const TOPIC_SLOT_RISK_LABEL = '风险 / 难点';
 
-/** 静态调研 / 结构 / 节拍 / 正文模拟延迟（毫秒）。 */
-export const MOCK_RESEARCH_DELAY_MS = 600;
-export const MOCK_STRUCTURE_DELAY_MS = 600;
-export const MOCK_CHAPTER_BEATS_DELAY_MS = 600;
-export const MOCK_WRITING_STREAM_STEP_MS = 40;
-export const MOCK_WRITING_STREAM_STEPS = 24;
+export const RESEARCH_FAILED = '选题调研失败，请稍后重试';
+export const RESEARCH_NO_TOPICS = '未解析到选题卡，请重试调研';
+export const STRUCTURE_FAILED = '故事结构生成失败，请稍后重试';
+export const CHAPTER_BEATS_FAILED = '章内节拍生成失败，请稍后重试';
+export const WRITING_FAILED = '正文生成失败，请稍后重试';
+export const PERSIST_FAILED = '保存失败，请稍后重试';

@@ -13,6 +13,8 @@ import {
   productRetouchTasks,
   imageTextTaskSteps,
   imageTextTasks,
+  novelTaskSteps,
+  novelTasks,
   wechatArticleTaskSteps,
   wechatArticleTasks,
 } from '@/lib/db/schema';
@@ -31,7 +33,8 @@ export type StudioTasksTable =
   | typeof productRetouchTasks
   | typeof businessAnalysisTasks
   | typeof wechatArticleTasks
-  | typeof imageTextTasks;
+  | typeof imageTextTasks
+  | typeof novelTasks;
 
 export type StudioStepsTable =
   | typeof ecommerceTaskSteps
@@ -39,7 +42,8 @@ export type StudioStepsTable =
   | typeof productRetouchTaskSteps
   | typeof businessAnalysisTaskSteps
   | typeof wechatArticleTaskSteps
-  | typeof imageTextTaskSteps;
+  | typeof imageTextTaskSteps
+  | typeof novelTaskSteps;
 
 type TaskRow = {
   id: string;

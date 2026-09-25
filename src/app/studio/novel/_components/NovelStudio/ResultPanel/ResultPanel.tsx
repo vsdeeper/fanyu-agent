@@ -13,12 +13,14 @@ import {
   STRUCTURE_GENERATING_HINT,
   STRUCTURE_PANEL_TITLE,
   SYNOPSIS_TITLE,
+  VOLUMES_TITLE,
   WRITE_PANEL_TITLE,
 } from '../constants';
 import TopicCardView from '../TopicCardView';
 import type { StructureSnapshot, StudioPhase, TopicCard, WritingSnapshot } from '../types';
 import BeatList from './BeatList';
 import ChapterList from './ChapterList';
+import VolumeList from './VolumeList';
 import WritingEditor from './WritingEditor';
 import styles from './ResultPanel.module.css';
 
@@ -30,12 +32,17 @@ type ResultPanelProps = {
   writing?: WritingSnapshot;
   selectedUnitIds: string[];
   generatingChapterId?: string;
+  generatingVolumeId?: string;
+  generatingUnitIds?: string[];
   onSelectTopic: (id: string) => void;
   onPrev: () => void;
   onNext: () => void;
   onUpdateSynopsis: (synopsis: string) => void;
   onUpdateBeat: (beatId: string, text: string) => void;
   onRemoveBeat: (beatId: string) => void;
+  onUpdateVolume: (volumeId: string, patch: { title?: string; purpose?: string }) => void;
+  onRemoveVolume: (volumeId: string) => void;
+  onGenerateVolumeChapters: (volumeId: string) => void;
   onUpdateChapter: (chapterId: string, patch: { title?: string; purpose?: string }) => void;
   onRemoveChapter: (chapterId: string) => void;
   onGenerateChapterBeats: (chapterId: string) => void;
@@ -54,12 +61,17 @@ export default function ResultPanel({
   writing,
   selectedUnitIds,
   generatingChapterId,
+  generatingVolumeId,
+  generatingUnitIds = [],
   onSelectTopic,
   onPrev,
   onNext,
   onUpdateSynopsis,
   onUpdateBeat,
   onRemoveBeat,
+  onUpdateVolume,
+  onRemoveVolume,
+  onGenerateVolumeChapters,
   onUpdateChapter,
   onRemoveChapter,
   onGenerateChapterBeats,
@@ -74,7 +86,6 @@ export default function ResultPanel({
   const researching = phase === 'researching';
   const researched = phase === 'researched';
   const structuring = phase === 'structuring';
-  const writingBusy = phase === 'writing';
   const researchEmpty = researchView && !researching && topics.length === 0;
   const structureEmpty = structureView && !structuring && !structure;
 
@@ -152,6 +163,21 @@ export default function ResultPanel({
                     onRemoveBeat={onRemoveBeat}
                   />
                 </>
+              ) : structure.kind === 'volumes' ? (
+                <VolumeList
+                  volumes={structure.volumes}
+                  title={VOLUMES_TITLE}
+                  generatingVolumeId={generatingVolumeId}
+                  generatingChapterId={generatingChapterId}
+                  onChangeVolume={onUpdateVolume}
+                  onRemoveVolume={onRemoveVolume}
+                  onGenerateVolumeChapters={onGenerateVolumeChapters}
+                  onChangeChapter={onUpdateChapter}
+                  onRemoveChapter={onRemoveChapter}
+                  onGenerateChapterBeats={onGenerateChapterBeats}
+                  onChangeChapterBeat={onUpdateChapterBeat}
+                  onRemoveChapterBeat={onRemoveChapterBeat}
+                />
               ) : (
                 <ChapterList
                   chapters={structure.chapters}
@@ -177,7 +203,7 @@ export default function ResultPanel({
                 structure={structure}
                 writing={writing}
                 selectedUnitIds={selectedUnitIds}
-                generating={writingBusy}
+                generatingUnitIds={generatingUnitIds}
                 onSaveBody={onUpdateWritingBody}
                 onGenerateWriting={onGenerateWriting}
               />

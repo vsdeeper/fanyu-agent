@@ -9,7 +9,7 @@ type WritingEditorProps = {
   structure: StructureSnapshot;
   writing: WritingSnapshot;
   selectedUnitIds: string[];
-  generating: boolean;
+  generatingUnitIds: string[];
   onSaveBody: (unitId: string, body: string) => void;
   onGenerateWriting: (unitIds: string[]) => void;
 };
@@ -19,11 +19,13 @@ export default function WritingEditor({
   structure,
   writing,
   selectedUnitIds,
-  generating,
+  generatingUnitIds,
   onSaveBody,
   onGenerateWriting,
 }: WritingEditorProps) {
   const blocks = buildWritingEditorBlocks(structure, writing, selectedUnitIds);
+  const generatingSet = new Set(generatingUnitIds);
+  const writingBusy = generatingUnitIds.length > 0;
 
   if (blocks.length === 0) {
     return (
@@ -45,7 +47,8 @@ export default function WritingEditor({
                   index={beat.index}
                   summary={beat.summary}
                   body={beat.body}
-                  generating={generating}
+                  generating={generatingSet.has(beat.unitId)}
+                  writeBusy={writingBusy}
                   onSave={(value) => onSaveBody(beat.unitId, value)}
                   onGenerate={() => onGenerateWriting([beat.unitId])}
                 />
@@ -55,6 +58,7 @@ export default function WritingEditor({
         }
 
         const chapterBeatIds = block.beats.map((beat) => beat.unitId);
+        const chapterGenerating = chapterBeatIds.some((id) => generatingSet.has(id));
         const chapterCharCount = countTextChars(block.beats.map((beat) => beat.body).join(''));
 
         return (
@@ -66,8 +70,8 @@ export default function WritingEditor({
                 type="link"
                 size="small"
                 className={styles.generateBtn}
-                loading={generating}
-                disabled={generating || chapterBeatIds.length === 0}
+                loading={chapterGenerating}
+                disabled={writingBusy || chapterBeatIds.length === 0}
                 onClick={() => onGenerateWriting(chapterBeatIds)}
               >
                 {WRITE_BUTTON}
@@ -80,7 +84,8 @@ export default function WritingEditor({
                   index={beat.index}
                   summary={beat.summary}
                   body={beat.body}
-                  generating={generating}
+                  generating={generatingSet.has(beat.unitId)}
+                  writeBusy={writingBusy}
                   onSave={(value) => onSaveBody(beat.unitId, value)}
                   onGenerate={() => onGenerateWriting([beat.unitId])}
                 />

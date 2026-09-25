@@ -23,6 +23,66 @@
   gap: 6px;
 }
 
+.chapterRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  border: 1px solid var(--fanyu-color-border-secondary);
+  border-radius: 6px;
+  background: var(--fanyu-color-bg-container);
+}
+
+.chapterRow:hover {
+  border-color: var(--fanyu-color-primary-border-hover, var(--fanyu-color-primary));
+}
+
+.chapterRow.selected,
+.chapterRow.focus {
+  border-color: var(--fanyu-color-primary);
+  box-shadow: 0 0 0 1px var(--fanyu-color-primary);
+}
+
+.expandBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: 28px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fanyu-color-text-tertiary);
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.expandBtn:hover {
+  color: var(--fanyu-color-text);
+}
+
+.chapterTitleBtn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 8px 10px 8px 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--fanyu-color-text);
+  font-weight: 600;
+}
+
+.chapterTitleBtn:disabled {
+  cursor: not-allowed;
+}
+
 .beatList {
   display: flex;
   flex-direction: column;
@@ -57,7 +117,6 @@
 
 .disabled {
   opacity: 0.55;
-  cursor: not-allowed;
 }
 
 .chapterItem {

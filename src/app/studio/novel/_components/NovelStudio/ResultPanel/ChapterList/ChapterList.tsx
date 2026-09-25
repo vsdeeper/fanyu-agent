@@ -5,6 +5,10 @@ import styles from './ChapterList.module.css';
 type ChapterListProps = {
   chapters: StructureChapter[];
   title: string;
+  /** 全书章序号起始偏移（0-based 已占用章数）；跨卷连续编号。 */
+  chapterIndexOffset?: number;
+  /** 嵌套在卷卡内时与卷纲序号左缘对齐。 */
+  embedded?: boolean;
   generatingChapterId?: string;
   onChangeChapter: (chapterId: string, patch: { title?: string; purpose?: string }) => void;
   onRemoveChapter: (chapterId: string) => void;
@@ -17,6 +21,8 @@ type ChapterListProps = {
 export default function ChapterList({
   chapters,
   title,
+  chapterIndexOffset = 0,
+  embedded = false,
   generatingChapterId,
   onChangeChapter,
   onRemoveChapter,
@@ -29,14 +35,15 @@ export default function ChapterList({
 
   return (
     <div className={styles.section}>
-      <p className={styles.sectionTitle}>{title}</p>
+      {title ? <p className={styles.sectionTitle}>{title}</p> : null}
       <div className={styles.list}>
         {chapters.map((chapter, index) => (
           <ChapterItem
             key={chapter.id}
             chapter={chapter}
-            index={index + 1}
+            index={chapterIndexOffset + index + 1}
             removable={removable}
+            embedded={embedded}
             generatingBeats={generatingChapterId === chapter.id}
             onChange={(patch) => onChangeChapter(chapter.id, patch)}
             onRemove={() => onRemoveChapter(chapter.id)}
