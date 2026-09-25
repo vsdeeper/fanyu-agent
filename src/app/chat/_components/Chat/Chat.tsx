@@ -13,13 +13,7 @@ import ChatSender from './ChatSender';
 import UserBubbleContent from './UserBubbleContent';
 import styles from './Chat.module.css';
 import { AWAITING_ASSISTANT_BUBBLE_KEY, bubbleRole } from './constants';
-import {
-  collectStoppedMessageIds,
-  getPartsText,
-  isMessageStopped,
-  isNearBottom,
-  submitChatMessage,
-} from './utils';
+import { getPartsText, isMessageStopped, isNearBottom, submitChatMessage } from './utils';
 
 type ChatProps = {
   chat: ChatInstance<UIMessage>;
@@ -39,9 +33,6 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
   const composerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<BubbleListRef>(null);
   const sentOnceRef = useRef(false);
-  const [stoppedMessageIds, setStoppedMessageIds] = useState<ReadonlySet<string>>(() =>
-    collectStoppedMessageIds(chat.messages),
-  );
 
   const { messages, sendMessage, status, stop } = useChat({
     chat,
@@ -70,12 +61,8 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
   const loading = status === 'submitted' || status === 'streaming';
 
   const handleCancel = useCallback(() => {
-    const lastMessage = messages.at(-1);
-    if (lastMessage?.role === 'assistant') {
-      setStoppedMessageIds((prev) => new Set(prev).add(lastMessage.id));
-    }
     stop();
-  }, [messages, stop]);
+  }, [stop]);
 
   const bubbleItems = useMemo<BubbleItemType[]>(() => {
     // 修复：loading 延续到有可见 text/reasoning，避免 submitted→streaming 首包空 parts 时的真空期
@@ -88,8 +75,8 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
       const text = getPartsText(message, 'text');
       const reasoning = isAi ? getPartsText(message, 'reasoning') : '';
       const hasVisibleAiContent = Boolean(text || reasoning);
-      const stopped =
-        isAi && !streaming && (stoppedMessageIds.has(message.id) || isMessageStopped(message));
+      // 未完成中断才展示「已停止」；完整成功回答不提示
+      const stopped = isAi && !streaming && isMessageStopped(message);
       const bubbleLoading = isAwaitingAi && isAi && isLast && !hasVisibleAiContent;
 
       return {
@@ -142,7 +129,7 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
     }
 
     return items;
-  }, [messages, status, stoppedMessageIds]);
+  }, [messages, status]);
 
   const hasMessages = messages.length > 0;
 

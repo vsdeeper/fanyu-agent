@@ -13,7 +13,7 @@ export const TOOL_LABELS: Record<string, string> = {
   generate_image: '生成图片',
   analyze_image: '识图',
   web_search: '联网搜索',
-  save_design_md: '保存设计文档',
+  save_design_md: '生成设计文档',
 };
 
 /** 工具名 → 状态图标；调用中由 Think 的 loading 覆盖，失败时统一换 FAILED_ICON */

@@ -1,11 +1,12 @@
 import 'server-only';
 
-import { isFileUIPart, isToolUIPart, type UIMessage } from 'ai';
+import { isFileUIPart, isTextUIPart, isToolUIPart, type UIMessage } from 'ai';
 import mammoth from 'mammoth';
-import { IMAGE_TOOL_INTERRUPTED_ERROR } from '../_shared/tool-errors';
+import {
+  IMAGE_TOOL_INTERRUPTED_ERROR,
+  GENERIC_TOOL_INTERRUPTED_ERROR,
+} from '../_shared/tool-errors';
 import { getConfiguredAnalyzeImageModelId } from './tools/analyze-image-config';
-
-const GENERIC_TOOL_INTERRUPTED_ERROR = '已中断';
 
 /**
  * 把未完成 tool part 收尾为 output-available 失败结果，避免下次 convert 缺 result。
@@ -48,12 +49,25 @@ export function finalizeIncompleteToolParts(messages: UIMessage[]): UIMessage[] 
 
 /**
  * 给末条 assistant 写入 metadata.stopped，供刷新后展示「这条消息已停止」。
+ * 正文已收束完毕时不写入，避免流尾 abort 竞态把完整回答标成已停止。
  */
 export function markLastAssistantStopped(messages: UIMessage[]): UIMessage[] {
   const last = messages.at(-1);
   if (!last || last.role !== 'assistant') {
     return messages;
   }
+
+  const lastText = last.parts?.findLast(isTextUIPart);
+  const body =
+    last.parts
+      ?.filter((part) => part.type === 'text' && typeof part.text === 'string')
+      .map((part) => part.text)
+      .join('')
+      .trim() ?? '';
+  if (body && lastText?.state === 'done') {
+    return messages;
+  }
+
   const next = withStoppedMetadata(last);
   if (next === last) {
     return messages;

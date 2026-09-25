@@ -1,10 +1,15 @@
 import {
   isTextUIPart,
+  isToolUIPart,
   type ChatRequestOptions,
   type PrepareSendMessagesRequest,
   type UIMessage,
 } from 'ai';
 import type { BubbleListRef } from '@ant-design/x/es/bubble/interface';
+import {
+  GENERIC_TOOL_INTERRUPTED_ERROR,
+  IMAGE_TOOL_INTERRUPTED_ERROR,
+} from '@/app/api/chat/_shared/tool-errors';
 import { getCachedUserLocation } from './location';
 
 /** 提取消息 parts 中指定类型（text / reasoning）的文本 */
@@ -19,34 +24,49 @@ export function getPartsText(
     .join('');
 }
 
+/** 是否存在未完成或被中止收尾的 tool（此时即使正文 done 也应提示已停止） */
+function hasInterruptedToolPart(message: UIMessage): boolean {
+  for (const part of message.parts ?? []) {
+    if (!isToolUIPart(part)) continue;
+    if (part.state === 'input-streaming' || part.state === 'input-available') {
+      return true;
+    }
+    if (part.state !== 'output-available') continue;
+    const output = part.output as { ok?: boolean; error?: unknown } | undefined;
+    if (
+      output?.ok === false &&
+      (output.error === IMAGE_TOOL_INTERRUPTED_ERROR ||
+        output.error === GENERIC_TOOL_INTERRUPTED_ERROR)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * 判断 assistant 消息是否为用户终止的未完成回复。
- * 优先认落盘的 metadata.stopped（stop/刷新中断 tool）；
- * 否则完整消息须同时满足：非空正文 text（reasoning 不算）且最后一条 text part 的 state 为 done。
+ * 完整正文（非空 text 且末条 state=done）且无中断 tool 时不算停止，
+ * 避免流尾 abort / 误标 metadata.stopped 后完整回答仍提示「已停止」。
+ * 中断 tool（finalizeIncompleteToolParts）或正文未收束时仍提示。
  * 修复：旧逻辑只认末 part 仍 streaming，reasoning 已 done、尚无正文时刷新会丢「已停止」标记。
  */
 export function isMessageStopped(message: UIMessage): boolean {
   if (message.role !== 'assistant') return false;
 
+  const lastText = message.parts?.findLast(isTextUIPart);
+  const body = getPartsText(message, 'text').trim();
+  const replyComplete = Boolean(body && lastText?.state === 'done');
+
+  if (replyComplete && !hasInterruptedToolPart(message)) {
+    return false;
+  }
+
   if ((message.metadata as { stopped?: boolean } | undefined)?.stopped) {
     return true;
   }
 
-  const lastText = message.parts?.findLast(isTextUIPart);
-  const body = getPartsText(message, 'text').trim();
-
-  return !(body && lastText?.state === 'done');
-}
-
-/** 从消息列表收集已停止的 assistant 消息 id */
-export function collectStoppedMessageIds(messages: ReadonlyArray<UIMessage>): Set<string> {
-  const detected = new Set<string>();
-  for (const message of messages) {
-    if (isMessageStopped(message)) {
-      detected.add(message.id);
-    }
-  }
-  return detected;
+  return !replyComplete;
 }
 
 /** autoScroll 下贴底时 scrollTop≈0；不做正/倒序双分支 */

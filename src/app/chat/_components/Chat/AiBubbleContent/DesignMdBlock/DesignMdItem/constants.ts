@@ -1,1 +1,1 @@
-export const DESIGN_MD_FAILED_LABEL = '文档保存失败';
+export const DESIGN_MD_FAILED_LABEL = '文档生成失败';
