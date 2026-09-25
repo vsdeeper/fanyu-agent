@@ -1,0 +1,117 @@
+.card {
+  width: 100%;
+}
+
+.titleText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  font-weight: 600;
+  color: var(--fanyu-color-text);
+  word-break: break-word;
+}
+
+.purposeLabel {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--fanyu-color-text-secondary);
+}
+
+.purposeText {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fanyu-color-text);
+  word-break: break-word;
+}
+
+.index {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--fanyu-color-fill-secondary);
+  color: var(--fanyu-color-text-secondary);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.displayRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.displayMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.bodyStack {
+  flex: 1;
+  min-width: 0;
+}
+
+.actionBtn {
+  flex-shrink: 0;
+  padding-inline: 0;
+  height: auto;
+  line-height: 1.65;
+}
+
+.displayActions :global(.ant-btn) {
+  flex-shrink: 0;
+  padding-inline: 0;
+  height: auto;
+  line-height: 1.65;
+}
+
+.editStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.titleEditRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prefix {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  font-weight: 600;
+  color: var(--fanyu-color-text);
+}
+
+.titleInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.purposeEdit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.purposeEdit .purposeLabel {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

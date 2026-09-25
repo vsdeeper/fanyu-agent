@@ -70,6 +70,7 @@ export const SYNOPSIS_TITLE = '一句话梗概';
 export const BEATS_TITLE = '节拍';
 export const CHAPTERS_TITLE = '章纲';
 export const CHAPTER_PURPOSE_LABEL = '本章目的';
+export const CHAPTER_TITLE_PLACEHOLDER = '章节标题';
 export const BEAT_DELETE_CONFIRM_TITLE = '删除这条节拍？';
 export const CHAPTER_DELETE_CONFIRM_TITLE = '删除这一章？';
 

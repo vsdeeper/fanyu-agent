@@ -28,7 +28,7 @@ export type StructureBeat = {
   text: string;
 };
 
-/** 中长篇章纲条目。 */
+/** 中长篇章纲条目；title 为章节名（不含「第N章」，由列表按序号生成）。 */
 export type StructureChapter = {
   id: string;
   title: string;

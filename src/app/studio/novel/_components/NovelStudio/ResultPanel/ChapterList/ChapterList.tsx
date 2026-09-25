@@ -1,6 +1,5 @@
-import SelectableCard from '@/app/studio/_components/SelectableCard';
-import { CHAPTER_DELETE_CONFIRM_TITLE, CHAPTER_PURPOSE_LABEL } from '../../constants';
 import type { StructureChapter } from '../../types';
+import ChapterItem from './ChapterItem';
 import styles from './ChapterList.module.css';
 
 type ChapterListProps = {
@@ -10,7 +9,7 @@ type ChapterListProps = {
   onRemoveChapter: (chapterId: string) => void;
 };
 
-/** 中长篇章纲列表：标题与本章目的可编辑，至少保留一章。 */
+/** 中长篇章纲列表：每章一张卡（标题 + 目的），「第N章」按序号自动生成。 */
 export default function ChapterList({
   chapters,
   title,
@@ -25,24 +24,14 @@ export default function ChapterList({
       <p className={styles.sectionTitle}>{title}</p>
       <div className={styles.list}>
         {chapters.map((chapter, index) => (
-          <div key={chapter.id} className={styles.chapter}>
-            <SelectableCard
-              editable
-              index={index + 1}
-              value={chapter.title}
-              onSave={(value) => onChangeChapter(chapter.id, { title: value })}
-              removable={removable}
-              onRemove={() => onRemoveChapter(chapter.id)}
-              deleteConfirmTitle={CHAPTER_DELETE_CONFIRM_TITLE}
-            />
-            <SelectableCard
-              editable
-              title={CHAPTER_PURPOSE_LABEL}
-              value={chapter.purpose}
-              onSave={(value) => onChangeChapter(chapter.id, { purpose: value })}
-              textareaRows={3}
-            />
-          </div>
+          <ChapterItem
+            key={chapter.id}
+            chapter={chapter}
+            index={index + 1}
+            removable={removable}
+            onChange={(patch) => onChangeChapter(chapter.id, patch)}
+            onRemove={() => onRemoveChapter(chapter.id)}
+          />
         ))}
       </div>
     </div>

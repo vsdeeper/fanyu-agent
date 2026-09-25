@@ -18,22 +18,22 @@ const MOCK_CHAPTERS_MEDIUM: StructureSnapshot = {
   chapters: [
     {
       id: 'ch-1',
-      title: '第一章　钥匙',
+      title: '钥匙',
       purpose: '整理旧屋时发现对不上任何锁的钥匙，引出主人公的犹豫。',
     },
     {
       id: 'ch-2',
-      title: '第二章　旧址',
+      title: '旧址',
       purpose: '按模糊记忆找到可能相关的地方，第一次碰壁。',
     },
     {
       id: 'ch-3',
-      title: '第三章　证人',
+      title: '证人',
       purpose: '见到知情者，得知钥匙曾开过的门与一段未了结的关系。',
     },
     {
       id: 'ch-4',
-      title: '第四章　门',
+      title: '门',
       purpose: '真正面对那扇门与选择：打开，或把钥匙重新收起。',
     },
   ],
@@ -45,12 +45,12 @@ const MOCK_CHAPTERS_LONG: StructureSnapshot = {
     ...MOCK_CHAPTERS_MEDIUM.chapters,
     {
       id: 'ch-5',
-      title: '第五章　余响',
+      title: '余响',
       purpose: '开门之后的代价显现，主人公必须对当下生活做出回应。',
     },
     {
       id: 'ch-6',
-      title: '第六章　归还',
+      title: '归还',
       purpose: '钥匙回到它该在的位置，或永远成为随身之物；收束主题。',
     },
   ],
