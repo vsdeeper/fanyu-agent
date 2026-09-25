@@ -1,4 +1,4 @@
-import SelectableCard from '@/app/studio/_components/SelectableCard';
+import StudioCard from '@/app/studio/_components/StudioCard';
 import { BEAT_DELETE_CONFIRM_TITLE } from '../../constants';
 import type { StructureBeat } from '../../types';
 import styles from './BeatList.module.css';
@@ -20,7 +20,7 @@ export default function BeatList({ beats, title, onChangeBeat, onRemoveBeat }: B
       <p className={styles.sectionTitle}>{title}</p>
       <div className={styles.list}>
         {beats.map((beat, index) => (
-          <SelectableCard
+          <StudioCard
             key={beat.id}
             editable
             index={index + 1}

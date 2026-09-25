@@ -1,0 +1,27 @@
+---
+description: antd message/modal 必须用 App.useApp，禁止静态调用
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# antd 反馈 API
+
+组件与 Hook 内需要 `message` / `modal` / `notification` 时：
+
+```ts
+const { message, modal } = App.useApp();
+modal.confirm({ ... });
+message.warning('…');
+```
+
+**禁止**静态调用（吃不到动态主题，控制台告警）：
+
+```ts
+// ❌
+import { Modal, message } from 'antd';
+Modal.confirm({ ... });
+message.warning('…');
+```
+
+参考：`src/app/chat/_components/ChatManageList/hooks/useChatManageList.ts`  
+非 React 模块仅用 `lib/shared/client/antd-message` 注入的实例。

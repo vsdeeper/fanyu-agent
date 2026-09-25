@@ -1,4 +1,4 @@
-import SelectableCard from '@/app/studio/_components/SelectableCard';
+import StudioCard from '@/app/studio/_components/StudioCard';
 
 type TitleDirectionItemProps = {
   value: string;
@@ -15,7 +15,7 @@ export default function TitleDirectionItem({
   onSave,
 }: TitleDirectionItemProps) {
   return (
-    <SelectableCard
+    <StudioCard
       selected={selected}
       interactive
       onClick={onSelect}

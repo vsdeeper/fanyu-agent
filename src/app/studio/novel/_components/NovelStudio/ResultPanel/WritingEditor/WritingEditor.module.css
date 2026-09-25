@@ -1,0 +1,134 @@
+.center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  text-align: center;
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.emptyHint {
+  margin: 0;
+  padding-left: 28px; /* 与标题摘要对齐：index 20 + gap 8 */
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.bodyText {
+  margin: 0;
+  padding-left: 28px; /* 与标题摘要对齐：index 20 + gap 8 */
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fanyu-color-text);
+  word-break: break-word;
+}
+
+.editorIndent {
+  padding-left: 28px; /* 与标题摘要对齐：index 20 + gap 8 */
+}
+
+.editorIndent :global(textarea.ant-input) {
+  resize: vertical;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chapterHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chapterTitle {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--fanyu-color-text);
+}
+
+.extraRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.charCount {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--fanyu-color-text-tertiary);
+  white-space: nowrap;
+}
+
+.generateBtn {
+  flex-shrink: 0;
+  padding-inline: 0;
+  height: auto;
+  line-height: 1.65;
+}
+
+.beatNest {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 16px;
+  border-left: 2px solid var(--fanyu-color-border-secondary);
+}
+
+.summaryTitle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.summaryIndex {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--fanyu-color-fill-secondary);
+  color: var(--fanyu-color-text-secondary);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 400;
+}
+
+.summaryText {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--fanyu-color-text-secondary);
+  word-break: break-word;
+  white-space: pre-wrap;
+}

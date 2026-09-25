@@ -19,8 +19,7 @@ export const SAVE_BUTTON = '保存';
 export const CANCEL_BUTTON = '取消';
 export const CANCEL_GENERATE_BUTTON = '取消生成';
 export const CANCEL_GENERATE_CONFIRM_TITLE = '取消生成';
-export const CANCEL_GENERATE_CONFIRM_DESCRIPTION =
-  '已生成的图片会保留，当前生成将停止。确定取消吗？';
+export const CANCEL_GENERATE_CONFIRM_DESCRIPTION = '已生成的图片会保留，当前生成将停止';
 export const CANCEL_GENERATE_CONFIRM_OK = '取消生成';
 export const CANCEL_GENERATE_CONFIRM_BACK = '继续生成';
 

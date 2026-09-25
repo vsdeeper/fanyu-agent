@@ -1,5 +1,5 @@
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
-import SelectableCard from '@/app/studio/_components/SelectableCard';
+import StudioCard from '@/app/studio/_components/StudioCard';
 import styles from './SelectedPlanCards.module.css';
 
 type SelectedPlanCardsProps = {
@@ -13,7 +13,7 @@ export default function SelectedPlanCards({ cards }: SelectedPlanCardsProps) {
   return (
     <div className={styles.list}>
       {cards.map((card) => (
-        <SelectableCard key={card.themeId} title={card.title} value={card.requirement} />
+        <StudioCard key={card.themeId} title={card.title} value={card.requirement} />
       ))}
     </div>
   );

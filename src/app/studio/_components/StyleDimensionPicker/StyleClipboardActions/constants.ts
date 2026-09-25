@@ -12,7 +12,7 @@ export const PASTE_EMPTY_WARNING = '剪贴板是空的';
 export const PASTE_FAILED = '读取剪贴板失败，请检查浏览器的剪贴板权限';
 
 export const PASTE_CONFIRM_TITLE = '覆盖当前文风？';
-export const PASTE_CONFIRM_DESCRIPTION = '粘贴会替换本任务已选的文风卡片。';
+export const PASTE_CONFIRM_DESCRIPTION = '粘贴会替换本任务已选的文风卡片';
 export const PASTE_CONFIRM_OK = '覆盖';
 export const PASTE_CONFIRM_CANCEL = '取消';
 

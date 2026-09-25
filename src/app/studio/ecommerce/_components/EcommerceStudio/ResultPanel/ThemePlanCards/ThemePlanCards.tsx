@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
-import SelectableCard from '@/app/studio/_components/SelectableCard';
+import StudioCard from '@/app/studio/_components/StudioCard';
 import styles from './ThemePlanCards.module.css';
 
 export type ThemePlanSelectionMode = 'single' | 'multiple';
@@ -42,7 +42,7 @@ export default function ThemePlanCards({
         const interactive = canInteract && !editingKey;
         const editable = canInteract && (!editingKey || editing);
         return (
-          <SelectableCard
+          <StudioCard
             key={card.themeId}
             title={card.title}
             selected={selected}

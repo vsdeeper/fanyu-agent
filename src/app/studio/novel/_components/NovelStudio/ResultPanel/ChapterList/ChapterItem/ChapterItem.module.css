@@ -115,3 +115,34 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+.beatsBlock {
+  margin-top: 12px;
+  padding-top: 12px;
+  /* 与上方标题/目的左缘对齐：序号 20px + displayMain gap 8px */
+  padding-left: 28px;
+  border-top: 1px solid var(--fanyu-color-border-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.beatsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.beatsLabel {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--fanyu-color-text-secondary);
+}
+
+.beatsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

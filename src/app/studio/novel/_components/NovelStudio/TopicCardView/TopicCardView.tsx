@@ -1,4 +1,4 @@
-import SelectableCard from '@/app/studio/_components/SelectableCard';
+import StudioCard from '@/app/studio/_components/StudioCard';
 import {
   TOPIC_SLOT_CORE_LABEL,
   TOPIC_SLOT_GENRE_VOLUME_LABEL,
@@ -25,7 +25,7 @@ export default function TopicCardView({ topic, selected = false, onSelect }: Top
   ];
 
   return (
-    <SelectableCard
+    <StudioCard
       selected={selected}
       interactive={interactive}
       title={<span title={topic.title}>{topic.title}</span>}

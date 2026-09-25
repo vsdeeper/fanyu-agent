@@ -1,4 +1,4 @@
-import SelectableCard from '@/app/studio/_components/SelectableCard';
+import StudioCard from '@/app/studio/_components/StudioCard';
 import {
   ANGLE_SLOT_CONFLICT_LABEL,
   ANGLE_SLOT_RISK_LABEL,
@@ -23,7 +23,7 @@ export default function AngleCardView({ angle, selected = false, onSelect }: Ang
   ];
 
   return (
-    <SelectableCard
+    <StudioCard
       selected={selected}
       interactive={interactive}
       title={<span title={angle.claim}>{angle.claim}</span>}

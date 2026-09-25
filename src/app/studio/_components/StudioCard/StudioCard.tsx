@@ -9,16 +9,16 @@ import {
   SAVE_BUTTON,
 } from './constants';
 import { useCardAiAssist } from './hooks/useCardAiAssist';
-import styles from './SelectableCard.module.css';
+import styles from './StudioCard.module.css';
 
-export type SelectableCardEditPlacement = 'extra' | 'body';
+export type StudioCardEditPlacement = 'extra' | 'body';
 
-export type SelectableCardMetaItem = {
+export type StudioCardMetaItem = {
   label: string;
   value: string;
 };
 
-export type SelectableCardProps = {
+export type StudioCardProps = {
   title?: ReactNode;
   /** 自定义 extra；`editable` 且 `editPlacement="extra"` 时由组件接管。 */
   extra?: ReactNode;
@@ -30,7 +30,7 @@ export type SelectableCardProps = {
   /** 非编辑态正文；优先于 value / metaItems。样式由本组件提供，勿在调用方覆盖卡片样式。 */
   children?: ReactNode;
   /** 次要信息行（如切入卡张力/理由）；与 value 二选一或并存于 value 之下。 */
-  metaItems?: SelectableCardMetaItem[];
+  metaItems?: StudioCardMetaItem[];
   /** 正文左侧序号徽标（如写作要点）。 */
   index?: number;
 
@@ -41,7 +41,7 @@ export type SelectableCardProps = {
   onSave?: (value: string) => void;
   onEditingChange?: (editing: boolean) => void;
   /** 编辑入口与取消/保存位置；默认 body。 */
-  editPlacement?: SelectableCardEditPlacement;
+  editPlacement?: StudioCardEditPlacement;
   /** 传则开启删除（二次确认）；与 removable 配合可临时隐藏。 */
   onRemove?: () => void;
   /** 有 onRemove 时默认 true；置 false 可隐藏删除（如仅剩一条）。 */
@@ -51,13 +51,15 @@ export type SelectableCardProps = {
   textareaRows?: number;
   textareaAutoSize?: boolean | { minRows?: number; maxRows?: number };
   onAiAssist?: (draft: string) => Promise<string>;
+  /** 编辑区额外 class（如与自定义标题缩进对齐）。 */
+  editorClassName?: string;
 };
 
 /**
- * 工作室通用可选中小卡片：统一选中描边、点选交互、正文/次要文案样式与可选编辑/删除态。
+ * 工作室通用小卡片：统一选中描边、点选交互、正文/次要文案样式与可选编辑/删除态。
  * 卡片视觉以本组件为准，调用方不应再覆盖卡片相关样式。
  */
-export default function SelectableCard({
+export default function StudioCard({
   title,
   extra,
   selected = false,
@@ -79,7 +81,8 @@ export default function SelectableCard({
   textareaRows = 2,
   textareaAutoSize,
   onAiAssist,
-}: SelectableCardProps) {
+  editorClassName,
+}: StudioCardProps) {
   const isControlled = editingProp !== undefined;
   const [uncontrolledEditing, setUncontrolledEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -156,7 +159,9 @@ export default function SelectableCard({
     const withAiPad = Boolean(onAiAssist);
     return (
       <div
-        className={withAiPad ? styles.editorWrap : styles.editRow}
+        className={[withAiPad ? styles.editorWrap : styles.editRow, editorClassName]
+          .filter(Boolean)
+          .join(' ')}
         onClick={(event) => event.stopPropagation()}
       >
         <Input.TextArea

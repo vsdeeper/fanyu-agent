@@ -16,6 +16,9 @@ export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
   structure: 1,
   structuring: 1,
   structured: 1,
+  write: 2,
+  writing: 2,
+  written: 2,
 };
 
 export const GENRE_OPTIONS = [
@@ -45,6 +48,7 @@ export const DEFAULT_PANEL_VALUES: NovelPanelValues = {
 
 export const RESEARCH_BUTTON = '开始调研';
 export const STRUCTURE_BUTTON = '生成结构';
+export const WRITE_BUTTON = '生成正文';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
 export const IDEA_LABEL = '我的想法';
@@ -58,27 +62,52 @@ export const SELECTED_TOPIC_EMPTY = '尚未选择选题';
 export const MISSING_IDEA_WARNING = '请先填写我的想法';
 export const MISSING_TOPIC_WARNING = '请先点选一个选题';
 export const MISSING_STRUCTURE_WARNING = '请先生成故事结构';
-export const WRITING_STEP_COMING = '写作步骤即将开放';
+export const MISSING_WRITE_SELECTION_WARNING = '请先选择有节拍的章节或节拍';
+export const PREVIEW_STEP_COMING = '预览步骤即将开放';
 export const EMPTY_RESEARCH_HINT = '填写想法后点击「开始调研」，将产出若干选题卡供点选';
 export const EMPTY_STRUCTURE_HINT = '确认选题后点击「生成结构」，产出故事结构供编辑';
+export const EMPTY_WRITE_HINT = '在左侧选择有节拍的章节或节拍';
+export const WRITE_UNIT_EMPTY_HINT = '点击「生成正文」后将在此流式展示；也可直接编辑';
+export const WRITE_CHAR_COUNT = (count: number) => `共 ${count} 字`;
 export const RESEARCH_TOPICS_TITLE = '选题卡（点选一张）';
 export const RESEARCH_GENERATING_HINT = '正在生成选题…';
 export const STRUCTURE_GENERATING_HINT = '正在生成故事结构…';
+export const WRITE_GENERATING_HINT = '正在生成正文…';
 export const STRUCTURE_PANEL_TITLE = '故事结构';
 export const RESEARCH_PANEL_TITLE = '选题调研';
+export const WRITE_PANEL_TITLE = '正文写作';
 export const SYNOPSIS_TITLE = '一句话梗概';
 export const BEATS_TITLE = '节拍';
 export const CHAPTERS_TITLE = '章纲';
 export const CHAPTER_PURPOSE_LABEL = '本章目的';
 export const CHAPTER_TITLE_PLACEHOLDER = '章节标题';
+export const CHAPTER_BEATS_LABEL = '章内节拍';
+export const CHAPTER_BEATS_BUTTON = '生成节拍';
+export const CHAPTER_BEATS_REGENERATE_BUTTON = '重新生成节拍';
+export const CHAPTER_BEATS_EMPTY_HINT = '尚未生成节拍';
+export const WRITE_UNITS_LABEL = '写作单元';
+export const WRITE_CHAPTER_NO_BEATS_HINT = '请先回结构步生成节拍';
 export const BEAT_DELETE_CONFIRM_TITLE = '删除这条节拍？';
 export const CHAPTER_DELETE_CONFIRM_TITLE = '删除这一章？';
+export const RESEARCH_REGENERATE_CONFIRM_TITLE = '重新开始调研？';
+export const RESEARCH_REGENERATE_CONFIRM_CONTENT = '将覆盖当前选题及后续结构与正文';
+export const STRUCTURE_REGENERATE_CONFIRM_TITLE = '重新生成故事结构？';
+export const STRUCTURE_REGENERATE_CONFIRM_CONTENT = '将覆盖当前故事结构及已写正文';
+export const CHAPTER_BEATS_REGENERATE_CONFIRM_TITLE = '重新生成本章节拍？';
+export const CHAPTER_BEATS_REGENERATE_CONFIRM_CONTENT = '将覆盖本章已有节拍';
+export const WRITE_REGENERATE_CONFIRM_TITLE = '重新生成正文？';
+export const WRITE_REGENERATE_CONFIRM_CONTENT = '将覆盖已选单元的已有正文';
+export const CONFIRM_OK = '继续';
+export const CONFIRM_CANCEL = '取消';
 
 export const TOPIC_SLOT_GENRE_VOLUME_LABEL = '类型与体量';
 export const TOPIC_SLOT_WHY_LABEL = '为什么值得写';
 export const TOPIC_SLOT_CORE_LABEL = '故事核';
 export const TOPIC_SLOT_RISK_LABEL = '风险 / 难点';
 
-/** 静态调研 / 结构模拟延迟（毫秒）。 */
+/** 静态调研 / 结构 / 节拍 / 正文模拟延迟（毫秒）。 */
 export const MOCK_RESEARCH_DELAY_MS = 600;
 export const MOCK_STRUCTURE_DELAY_MS = 600;
+export const MOCK_CHAPTER_BEATS_DELAY_MS = 600;
+export const MOCK_WRITING_STREAM_STEP_MS = 40;
+export const MOCK_WRITING_STREAM_STEPS = 24;

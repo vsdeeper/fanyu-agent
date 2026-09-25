@@ -245,11 +245,11 @@ Client 需要的会话类型从 `app/api/chats/_shared/types.ts` 导入，**勿*
 
 ### 组件目录约定
 
-| 层级     | 路径                       | 判定                         | 示例                       |
-| -------- | -------------------------- | ---------------------------- | -------------------------- |
-| 全局通用 | `src/components/`          | 无业务耦合，可跨路由         | `theme/`、`ModeSwitch/`    |
-| 工作室共用 | `app/studio/_components/`  | 跨工作室产品子路由复用       | `StudioImageUpload/`       |
-| 页面级   | `app/<route>/_components/` | 仅该路由段；`_` 非 URL       | `app/chat/_components/`    |
+| 层级       | 路径                       | 判定                   | 示例                    |
+| ---------- | -------------------------- | ---------------------- | ----------------------- |
+| 全局通用   | `src/components/`          | 无业务耦合，可跨路由   | `theme/`、`ModeSwitch/` |
+| 工作室共用 | `app/studio/_components/`  | 跨工作室产品子路由复用 | `StudioImageUpload/`    |
+| 页面级     | `app/<route>/_components/` | 仅该路由段；`_` 非 URL | `app/chat/_components/` |
 
 页面级可引用全局 / 工作室共用；反向禁止。工作室产品页可引用 `app/studio/_components/`，勿反向依赖各产品 `_components`。
 
@@ -405,8 +405,8 @@ Button/
 
 #### 持久化与 SSR
 
-| 键                   | 存储         | 内容                                        |
-| -------------------- | ------------ | ------------------------------------------- |
+| 键                     | 存储         | 内容                                        |
+| ---------------------- | ------------ | ------------------------------------------- |
 | `fanyu-theme`          | localStorage | 偏好（可含 `'system'`）                     |
 | `fanyu-theme-resolved` | cookie       | 解析后的 `'light' \| 'dark'`（SSR 防 FOUC） |
 
@@ -439,6 +439,7 @@ Button/
 - 改完对改动文件执行格式化；提交前由 lint-staged 检查
 - 写 Next.js 相关代码前先查 `node_modules/next/dist/docs/`
 - **`types.ts` 与 `constants.ts` 分离**：types 只导出类型；运行时常量放 `constants.ts`
+- **antd 反馈 API**：组件 / Hook 内用 `App.useApp()` 取 `message` / `modal` / `notification`；**禁止** `Modal.confirm`、`message.xxx` 等静态调用（吃不到动态主题，控制台会告警）。非 React 模块仅经 `lib/shared/client/antd-message` 注入的实例。参考 `useChatManageList`
 
 ### AI SDK v7
 

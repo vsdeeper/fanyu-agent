@@ -40,8 +40,7 @@ export const NEXT_BUTTON = '下一步';
 export const COMPLETE_BUTTON = '完成';
 export const CANCEL_GENERATE_BUTTON = '取消生成';
 export const CANCEL_GENERATE_CONFIRM_TITLE = '取消生成';
-export const CANCEL_GENERATE_CONFIRM_DESCRIPTION =
-  '已生成的图片会保留，未生成的将停止。确定取消吗？';
+export const CANCEL_GENERATE_CONFIRM_DESCRIPTION = '已生成的图片会保留，未生成的将停止';
 export const CANCEL_GENERATE_CONFIRM_OK = '取消生成';
 export const CANCEL_GENERATE_CONFIRM_BACK = '继续生成';
 

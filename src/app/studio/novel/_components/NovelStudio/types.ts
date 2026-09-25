@@ -1,6 +1,14 @@
-/** 小说工作室 UI 阶段：选题调研 → 故事结构。 */
+/** 小说工作室 UI 阶段：选题调研 → 故事结构 → 写作。 */
 export type StudioPhase =
-  'research' | 'researching' | 'researched' | 'structure' | 'structuring' | 'structured';
+  | 'research'
+  | 'researching'
+  | 'researched'
+  | 'structure'
+  | 'structuring'
+  | 'structured'
+  | 'write'
+  | 'writing'
+  | 'written';
 
 export type NovelVolume = 'short' | 'medium' | 'long';
 
@@ -22,7 +30,7 @@ export type TopicCard = {
   risk?: string;
 };
 
-/** 短篇节拍。 */
+/** 短篇或章内节拍。 */
 export type StructureBeat = {
   id: string;
   text: string;
@@ -33,9 +41,23 @@ export type StructureChapter = {
   id: string;
   title: string;
   purpose: string;
+  /** 章内节拍；生成结构时默认为 []，由章卡「生成节拍」填充。 */
+  beats: StructureBeat[];
 };
 
 /** 故事结构快照：短篇节拍 vs 中长篇章纲。 */
 export type StructureSnapshot =
   | { kind: 'short'; synopsis: string; beats: StructureBeat[] }
   | { kind: 'chapters'; chapters: StructureChapter[] };
+
+/** 写作单元正文；unitId 为 chapter.id 或 beat.id。 */
+export type WritingUnit = {
+  unitId: string;
+  body: string;
+};
+
+/** 写作快照：与 structure.kind 对齐。 */
+export type WritingSnapshot = {
+  kind: 'short' | 'chapters';
+  units: WritingUnit[];
+};

@@ -1,4 +1,4 @@
-import SelectableCard from '@/app/studio/_components/SelectableCard';
+import StudioCard from '@/app/studio/_components/StudioCard';
 import { BEAT_DELETE_CONFIRM_TITLE } from '../../../constants';
 
 type BeatItemProps = {
@@ -13,7 +13,7 @@ type BeatItemProps = {
 /** 单条写作要点：Card 纯文本展示，编辑态可取消/保存，删除需二次确认。 */
 export default function BeatItem({ index, value, removable, onSave, onRemove }: BeatItemProps) {
   return (
-    <SelectableCard
+    <StudioCard
       editable
       index={index + 1}
       value={value}
