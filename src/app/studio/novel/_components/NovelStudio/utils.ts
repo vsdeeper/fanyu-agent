@@ -251,6 +251,62 @@ export type WritingEditorBlock =
       beats: WritingEditorBeatItem[];
     };
 
+/** 预览节：中长篇带章标题；短篇无章标题。 */
+export type PreviewSection = {
+  chapterLabel?: string;
+  paragraphs: string[];
+};
+
+/** 预览文稿：结构化节 + 一键复制用纯文本。 */
+export type PreviewDocument = {
+  sections: PreviewSection[];
+  plainText: string;
+};
+
+/** 按全结构顺序组装预览文稿：仅非空节拍正文；中长篇保留章标题分隔。 */
+export function buildPreviewDocument(
+  structure: StructureSnapshot,
+  writing: WritingSnapshot,
+): PreviewDocument {
+  const bodyOf = (unitId: string) =>
+    writing.units.find((unit) => unit.unitId === unitId)?.body.trim() ?? '';
+
+  if (structure.kind === 'short') {
+    const paragraphs = structure.beats
+      .map((beat) => bodyOf(beat.id))
+      .filter((body) => body.length > 0);
+    return {
+      sections: paragraphs.length > 0 ? [{ paragraphs }] : [],
+      plainText: paragraphs.join('\n\n'),
+    };
+  }
+
+  const sections: PreviewSection[] = [];
+  const plainParts: string[] = [];
+
+  structure.chapters.forEach((chapter, chapterIndex) => {
+    const paragraphs = chapter.beats
+      .map((beat) => bodyOf(beat.id))
+      .filter((body) => body.length > 0);
+    if (paragraphs.length === 0) return;
+
+    const titleName = stripChapterPrefix(chapter.title);
+    const chapterLabel = `${formatChapterPrefix(chapterIndex + 1)}${titleName ? `　${titleName}` : ''}`;
+    sections.push({ chapterLabel, paragraphs });
+    plainParts.push(`${chapterLabel}\n\n${paragraphs.join('\n\n')}`);
+  });
+
+  return {
+    sections,
+    plainText: plainParts.join('\n\n\n'),
+  };
+}
+
+/** 复制纯文本到剪贴板。 */
+export async function copyText(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
+}
+
 /** 按当前选中集合构建正文区嵌套展示块。 */
 export function buildWritingEditorBlocks(
   structure: StructureSnapshot,

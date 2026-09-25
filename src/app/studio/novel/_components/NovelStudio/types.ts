@@ -1,4 +1,4 @@
-/** 小说工作室 UI 阶段：选题调研 → 故事结构 → 写作。 */
+/** 小说工作室 UI 阶段：选题调研 → 故事结构 → 写作 → 预览。 */
 export type StudioPhase =
   | 'research'
   | 'researching'
@@ -8,7 +8,8 @@ export type StudioPhase =
   | 'structured'
   | 'write'
   | 'writing'
-  | 'written';
+  | 'written'
+  | 'preview';
 
 export type NovelVolume = 'short' | 'medium' | 'long';
 

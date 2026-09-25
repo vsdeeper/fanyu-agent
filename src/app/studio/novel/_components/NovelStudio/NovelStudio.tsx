@@ -6,15 +6,21 @@ import { useRouter } from 'next/navigation';
 import { STUDIO_PATH } from '@/components/AppLayout/constants';
 import ModeSwitch from '@/components/ModeSwitch';
 import ControlPanel from './ControlPanel';
+import PreviewPanel from './PreviewPanel';
 import ResultPanel from './ResultPanel';
 import { STUDIO_STEP_INDEX, STUDIO_STEPS, STUDIO_TITLE } from './constants';
 import { useNovelStudio } from './hooks/useNovelStudio';
+import { buildPreviewDocument } from './utils';
 import styles from './NovelStudio.module.css';
 
-/** 小说写作工作台（静态）：选题调研 → 故事结构 → 写作。 */
+/** 小说写作工作台（静态）：选题调研 → 故事结构 → 写作 → 预览。 */
 export default function NovelStudio() {
   const router = useRouter();
   const studio = useNovelStudio();
+  const previewDocument =
+    studio.structure && studio.writing
+      ? buildPreviewDocument(studio.structure, studio.writing)
+      : { sections: [], plainText: '' };
 
   return (
     <Layout className={styles.studio}>
@@ -44,40 +50,50 @@ export default function NovelStudio() {
       </div>
       <Layout.Content className={styles.content}>
         <div className={styles.workspace}>
-          <ControlPanel
-            form={studio.panelForm}
-            initialValues={studio.panelInitialValues}
-            phase={studio.phase}
-            selectedTopic={studio.selectedTopic}
-            structure={studio.structure}
-            selectedUnitIds={studio.selectedUnitIds}
-            focusUnitId={studio.focusUnitId}
-            onResearch={studio.handleResearch}
-            onGenerateStructure={studio.handleGenerateStructure}
-            onToggleWritingUnit={studio.toggleWritingUnit}
-          />
-          <ResultPanel
-            phase={studio.phase}
-            topics={studio.topics}
-            selectedTopicId={studio.selectedTopicId}
-            structure={studio.structure}
-            writing={studio.writing}
-            selectedUnitIds={studio.selectedUnitIds}
-            generatingChapterId={studio.generatingChapterId}
-            onSelectTopic={studio.handleSelectTopic}
-            onPrev={studio.handlePrev}
-            onNext={studio.handleNext}
-            onUpdateSynopsis={studio.updateSynopsis}
-            onUpdateBeat={studio.updateBeat}
-            onRemoveBeat={studio.removeBeat}
-            onUpdateChapter={studio.updateChapter}
-            onRemoveChapter={studio.removeChapter}
-            onGenerateChapterBeats={studio.handleGenerateChapterBeats}
-            onUpdateChapterBeat={studio.updateChapterBeat}
-            onRemoveChapterBeat={studio.removeChapterBeat}
-            onUpdateWritingBody={studio.updateWritingBody}
-            onGenerateWriting={studio.handleGenerateWriting}
-          />
+          {studio.phase === 'preview' ? (
+            <PreviewPanel
+              document={previewDocument}
+              onPrev={studio.handlePrev}
+              onCopy={studio.handleCopyPreview}
+            />
+          ) : (
+            <>
+              <ControlPanel
+                form={studio.panelForm}
+                initialValues={studio.panelInitialValues}
+                phase={studio.phase}
+                selectedTopic={studio.selectedTopic}
+                structure={studio.structure}
+                selectedUnitIds={studio.selectedUnitIds}
+                focusUnitId={studio.focusUnitId}
+                onResearch={studio.handleResearch}
+                onGenerateStructure={studio.handleGenerateStructure}
+                onToggleWritingUnit={studio.toggleWritingUnit}
+              />
+              <ResultPanel
+                phase={studio.phase}
+                topics={studio.topics}
+                selectedTopicId={studio.selectedTopicId}
+                structure={studio.structure}
+                writing={studio.writing}
+                selectedUnitIds={studio.selectedUnitIds}
+                generatingChapterId={studio.generatingChapterId}
+                onSelectTopic={studio.handleSelectTopic}
+                onPrev={studio.handlePrev}
+                onNext={studio.handleNext}
+                onUpdateSynopsis={studio.updateSynopsis}
+                onUpdateBeat={studio.updateBeat}
+                onRemoveBeat={studio.removeBeat}
+                onUpdateChapter={studio.updateChapter}
+                onRemoveChapter={studio.removeChapter}
+                onGenerateChapterBeats={studio.handleGenerateChapterBeats}
+                onUpdateChapterBeat={studio.updateChapterBeat}
+                onRemoveChapterBeat={studio.removeChapterBeat}
+                onUpdateWritingBody={studio.updateWritingBody}
+                onGenerateWriting={studio.handleGenerateWriting}
+              />
+            </>
+          )}
         </div>
       </Layout.Content>
     </Layout>

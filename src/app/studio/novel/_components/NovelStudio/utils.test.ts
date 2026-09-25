@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { StructureSnapshot } from './types';
 import {
+  buildPreviewDocument,
   buildWritingEditorBlocks,
   canGenerateWriting,
   defaultSelectedUnitIds,
@@ -168,5 +169,39 @@ describe('defaultSelectedUnitIds', () => {
       'ch-1-beat-1',
       'ch-1-beat-2',
     ]);
+  });
+});
+
+describe('buildPreviewDocument', () => {
+  it('短篇按节拍顺序拼接非空正文，无章标题', () => {
+    const writing = syncWritingUnits(shortStructure, {
+      kind: 'short',
+      units: [
+        { unitId: 'beat-1', body: '第一段' },
+        { unitId: 'beat-2', body: '  ' },
+      ],
+    });
+    const doc = buildPreviewDocument(shortStructure, writing);
+    expect(doc.sections).toEqual([{ paragraphs: ['第一段'] }]);
+    expect(doc.plainText).toBe('第一段');
+  });
+
+  it('中长篇按章分隔，跳过无正文的章与节拍', () => {
+    const writing = syncWritingUnits(chaptersStructure, {
+      kind: 'chapters',
+      units: [
+        { unitId: 'ch-1-beat-1', body: '钥匙开了' },
+        { unitId: 'ch-1-beat-2', body: '门后无人' },
+        { unitId: 'ch-2-beat-1', body: '' },
+      ],
+    });
+    const doc = buildPreviewDocument(chaptersStructure, writing);
+    expect(doc.sections).toEqual([
+      {
+        chapterLabel: '第一章　钥匙',
+        paragraphs: ['钥匙开了', '门后无人'],
+      },
+    ]);
+    expect(doc.plainText).toBe('第一章　钥匙\n\n钥匙开了\n\n门后无人');
   });
 });

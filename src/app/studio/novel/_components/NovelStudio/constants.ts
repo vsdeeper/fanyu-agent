@@ -19,6 +19,7 @@ export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
   write: 2,
   writing: 2,
   written: 2,
+  preview: 3,
 };
 
 export const GENRE_OPTIONS = [
@@ -63,12 +64,16 @@ export const MISSING_IDEA_WARNING = '请先填写我的想法';
 export const MISSING_TOPIC_WARNING = '请先点选一个选题';
 export const MISSING_STRUCTURE_WARNING = '请先生成故事结构';
 export const MISSING_WRITE_SELECTION_WARNING = '请先选择有节拍的章节或节拍';
-export const PREVIEW_STEP_COMING = '预览步骤即将开放';
+export const MISSING_PREVIEW_BODY_WARNING = '请先生成或填写正文后再预览';
 export const EMPTY_RESEARCH_HINT = '填写想法后点击「开始调研」，将产出若干选题卡供点选';
 export const EMPTY_STRUCTURE_HINT = '确认选题后点击「生成结构」，产出故事结构供编辑';
 export const EMPTY_WRITE_HINT = '在左侧选择有节拍的章节或节拍';
+export const EMPTY_PREVIEW_HINT = '暂无正文';
 export const WRITE_UNIT_EMPTY_HINT = '点击「生成正文」后将在此流式展示；也可直接编辑';
 export const WRITE_CHAR_COUNT = (count: number) => `共 ${count} 字`;
+export const COPY_BODY_BUTTON = '一键复制正文';
+export const COPY_BODY_OK = '已复制到剪贴板';
+export const COPY_BODY_FAILED = '复制失败，请手动选择文本';
 export const RESEARCH_TOPICS_TITLE = '选题卡（点选一张）';
 export const RESEARCH_GENERATING_HINT = '正在生成选题…';
 export const STRUCTURE_GENERATING_HINT = '正在生成故事结构…';
@@ -76,6 +81,7 @@ export const WRITE_GENERATING_HINT = '正在生成正文…';
 export const STRUCTURE_PANEL_TITLE = '故事结构';
 export const RESEARCH_PANEL_TITLE = '选题调研';
 export const WRITE_PANEL_TITLE = '正文写作';
+export const PREVIEW_PANEL_TITLE = '预览';
 export const SYNOPSIS_TITLE = '一句话梗概';
 export const BEATS_TITLE = '节拍';
 export const CHAPTERS_TITLE = '章纲';

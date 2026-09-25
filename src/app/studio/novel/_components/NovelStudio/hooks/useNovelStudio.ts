@@ -7,6 +7,8 @@ import {
   CHAPTER_BEATS_REGENERATE_CONFIRM_TITLE,
   CONFIRM_CANCEL,
   CONFIRM_OK,
+  COPY_BODY_FAILED,
+  COPY_BODY_OK,
   DEFAULT_PANEL_VALUES,
   MOCK_CHAPTER_BEATS_DELAY_MS,
   MOCK_RESEARCH_DELAY_MS,
@@ -14,10 +16,10 @@ import {
   MOCK_WRITING_STREAM_STEP_MS,
   MOCK_WRITING_STREAM_STEPS,
   MISSING_IDEA_WARNING,
+  MISSING_PREVIEW_BODY_WARNING,
   MISSING_STRUCTURE_WARNING,
   MISSING_TOPIC_WARNING,
   MISSING_WRITE_SELECTION_WARNING,
-  PREVIEW_STEP_COMING,
   RESEARCH_REGENERATE_CONFIRM_CONTENT,
   RESEARCH_REGENERATE_CONFIRM_TITLE,
   STRUCTURE_REGENERATE_CONFIRM_CONTENT,
@@ -38,6 +40,8 @@ import type {
   WritingSnapshot,
 } from '../types';
 import {
+  buildPreviewDocument,
+  copyText,
   defaultSelectedUnitIds,
   hasWritingBody,
   resolveGenerateUnitIds,
@@ -246,8 +250,12 @@ export function useNovelStudio() {
     }, MOCK_CHAPTER_BEATS_DELAY_MS);
   }
 
-  /** 上一步：写作 → 结构；结构 → 调研。 */
+  /** 上一步：预览→写作；写作→结构；结构→调研。 */
   function handlePrev() {
+    if (phase === 'preview') {
+      setPhase(hasWritingBody(writing) ? 'written' : 'write');
+      return;
+    }
     if (phase === 'write' || phase === 'writing' || phase === 'written') {
       clearWritingTimer();
       setPhase('structured');
@@ -261,7 +269,7 @@ export function useNovelStudio() {
     }
   }
 
-  /** 下一步：调研→结构；结构→写作；写作步提示预览未开放。 */
+  /** 下一步：调研→结构；结构→写作；写作→预览。 */
   function handleNext() {
     if (phase === 'researched') {
       if (!selectedTopicId) return;
@@ -289,7 +297,28 @@ export function useNovelStudio() {
     }
 
     if (phase === 'write' || phase === 'writing' || phase === 'written') {
-      message.info(PREVIEW_STEP_COMING);
+      if (!hasWritingBody(writing)) {
+        message.warning(MISSING_PREVIEW_BODY_WARNING);
+        return;
+      }
+      clearWritingTimer();
+      setPhase('preview');
+    }
+  }
+
+  /** 一键复制预览正文（全结构非空节拍，含章标题）。 */
+  async function handleCopyPreview() {
+    if (!structure || !writing) return;
+    const { plainText } = buildPreviewDocument(structure, writing);
+    if (!plainText.trim()) {
+      message.warning(MISSING_PREVIEW_BODY_WARNING);
+      return;
+    }
+    try {
+      await copyText(plainText);
+      message.success(COPY_BODY_OK);
+    } catch {
+      message.error(COPY_BODY_FAILED);
     }
   }
 
@@ -507,6 +536,7 @@ export function useNovelStudio() {
     handleGenerateWriting,
     handlePrev,
     handleNext,
+    handleCopyPreview,
     toggleWritingUnit,
     updateWritingBody,
     updateSynopsis,
