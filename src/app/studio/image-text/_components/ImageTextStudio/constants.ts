@@ -41,7 +41,7 @@ export const CHARACTER_REQUIREMENT_HINT =
   '优先级最高：可约束人物姿态与出镜，也可说明画面要展示哪些信息、禁止哪些板块；有填写时正文仅作知识库，按要求筛选上屏';
 export const CHARACTER_REQUIREMENT_PLACEHOLDER =
   '可选：人物姿态/着装；或如「保留步骤示意与要点摘要两个板块，其余精简」';
-export const CHARACTER_REQUIREMENT_MAX_LENGTH = 500;
+export const CHARACTER_REQUIREMENT_MAX_LENGTH = 1000;
 export const PREVIEW_MARK = '预览';
 export const RESULT_PLAN_TITLE = '图文内容';
 export const RESULT_GENERATE_TITLE = '图文生成';
