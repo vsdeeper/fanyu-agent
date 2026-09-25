@@ -11,6 +11,9 @@ export const IMAGE_TEXT_MAX_MATERIALS = 6;
 /** 左侧「内容」字段字数上限。 */
 export const IMAGE_TEXT_MAX_CONTENT_LENGTH = 8000;
 
+/** 左侧「我的要求」（内容步）字数上限，与生成步一致。 */
+export const IMAGE_TEXT_MAX_CONTENT_REQUIREMENT_LENGTH = 500;
+
 /**
  * 旧任务可能仍用 `## 配文` 小节；新格式在标题后直接写 `> 摘要`。
  * 解析时两者都认。

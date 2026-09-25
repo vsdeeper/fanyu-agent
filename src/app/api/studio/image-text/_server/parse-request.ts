@@ -1,7 +1,11 @@
 import 'server-only';
 
 import { z } from 'zod';
-import { IMAGE_TEXT_MAX_CONTENT_LENGTH, IMAGE_TEXT_MAX_MATERIALS } from '../_shared/constants';
+import {
+  IMAGE_TEXT_MAX_CONTENT_LENGTH,
+  IMAGE_TEXT_MAX_CONTENT_REQUIREMENT_LENGTH,
+  IMAGE_TEXT_MAX_MATERIALS,
+} from '../_shared/constants';
 import type { ImageTextPlanRequest } from '../_shared/types';
 
 const planBodySchema = z
@@ -12,6 +16,7 @@ const planBodySchema = z
       .optional()
       .default([]),
     content: z.string().trim().max(IMAGE_TEXT_MAX_CONTENT_LENGTH).optional(),
+    contentRequirement: z.string().trim().max(IMAGE_TEXT_MAX_CONTENT_REQUIREMENT_LENGTH).optional(),
   })
   .refine((data) => data.materialDataUrls.length > 0 || Boolean(data.content?.trim()));
 
@@ -20,8 +25,10 @@ export function parsePlanBody(json: unknown): ImageTextPlanRequest | null {
   const parsed = planBodySchema.safeParse(json);
   if (!parsed.success) return null;
   const content = parsed.data.content?.trim();
+  const contentRequirement = parsed.data.contentRequirement?.trim();
   return {
     materialDataUrls: parsed.data.materialDataUrls,
     ...(content ? { content } : {}),
+    ...(contentRequirement ? { contentRequirement } : {}),
   };
 }

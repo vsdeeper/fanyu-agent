@@ -22,6 +22,14 @@ export function buildPlanPrompt(body: ImageTextPlanRequest): string {
     lines.push('未填写内容：请只根据素材图整理图文卡片正文。');
   }
 
+  const contentRequirement = body.contentRequirement?.trim();
+  if (contentRequirement) {
+    lines.push(
+      '【我的要求】优先于默认的小节取舍与详略；请按其调整 ## 结构、必含小节与表述侧重：',
+      contentRequirement,
+    );
+  }
+
   lines.push(
     '请直接输出 Markdown 图文卡片正文（含 # 标题、紧随其后固定格式的 `> 配文摘要`、以及 ## 小节），不要 JSON，不要视觉风格，不要生图提示词。',
   );

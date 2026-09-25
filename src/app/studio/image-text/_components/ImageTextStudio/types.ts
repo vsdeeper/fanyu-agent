@@ -32,6 +32,8 @@ export type ImageTextPlanSnapshot = {
   /** 用户填写的输入内容；旧任务可能落在 requirement。 */
   content: string;
   materialUrls: string[];
+  /** 可选：对正文结构与详略的补充要求。 */
+  contentRequirement?: string;
   /** 模型整理后的图文卡片正文（Markdown）。 */
   body: string;
   /**
@@ -63,6 +65,8 @@ export type ImageTextGenerateSnapshot = {
 export type ImageTextPanelValues = {
   materials: StudioImageUploadItem[];
   content: string;
+  /** 可选：内容步对正文结构与详略的补充要求。 */
+  contentRequirement: string;
   styleReferenceImages: StudioImageUploadItem[];
   characterModelImages: StudioImageUploadItem[];
   /** 可选：人物模特补充要求。 */

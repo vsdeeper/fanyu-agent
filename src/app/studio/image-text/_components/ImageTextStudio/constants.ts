@@ -28,16 +28,22 @@ export const MATERIALS_LABEL = '素材';
 export const MATERIALS_HINT = '上传参考图以提炼主题与要点；也可只填内容';
 export const CONTENT_LABEL = '内容';
 export const CONTENT_PLACEHOLDER = '粘贴或填写主题、大纲、要点等，将整理成图文卡片';
+export const CONTENT_REQUIREMENT_LABEL = '我的要求';
+export const CONTENT_REQUIREMENT_HINT =
+  '可约束正文结构与详略，例如必须含某些 ## 小节、删减某类段落；有填写时优先于默认取舍';
+export const CONTENT_REQUIREMENT_PLACEHOLDER =
+  '可选：如「必须包含 ## 步骤说明 与 ## 注意事项」「删去背景介绍，只保留操作要点」';
+export const CONTENT_REQUIREMENT_MAX_LENGTH = 500;
 export const VISUAL_REFERENCE_LABEL = '视觉参考';
 export const VISUAL_REFERENCE_HINT =
-  '上传一张图，只对齐画风、配色、字体与气质；不作为穴位/标注位置依据';
+  '上传一张图，只对齐画风、配色、字体与气质；不作为标识点/标注位置依据';
 export const CHARACTER_MODEL_LABEL = '人物模特';
 export const CHARACTER_MODEL_HINT = '上传一张图，锁定人物形象';
 export const CHARACTER_REQUIREMENT_LABEL = '我的要求';
 export const CHARACTER_REQUIREMENT_HINT =
   '可约束人物姿态与出镜，也可说明画面要展示哪些信息、禁止哪些板块；有填写时正文仅作知识库，按要求筛选上屏';
 export const CHARACTER_REQUIREMENT_PLACEHOLDER =
-  '可选：人物姿态/着装；或如「仅穴位标识，不要信息框与其它板块」';
+  '可选：人物姿态/着装；或如「保留步骤示意与要点摘要两个板块，其余精简」';
 export const CHARACTER_REQUIREMENT_MAX_LENGTH = 500;
 export const PREVIEW_MARK = '预览';
 export const RESULT_PLAN_TITLE = '图文内容';

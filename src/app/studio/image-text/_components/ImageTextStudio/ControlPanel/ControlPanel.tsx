@@ -16,6 +16,10 @@ import {
   CHARACTER_REQUIREMENT_PLACEHOLDER,
   CONTENT_LABEL,
   CONTENT_PLACEHOLDER,
+  CONTENT_REQUIREMENT_HINT,
+  CONTENT_REQUIREMENT_LABEL,
+  CONTENT_REQUIREMENT_MAX_LENGTH,
+  CONTENT_REQUIREMENT_PLACEHOLDER,
   GENERATE_BUTTON,
   MATERIALS_HINT,
   MATERIALS_LABEL,
@@ -161,6 +165,32 @@ export default function ControlPanel({
                   maxLength={IMAGE_TEXT_MAX_CONTENT_LENGTH}
                   showCount
                   placeholder={CONTENT_PLACEHOLDER}
+                  disabled={planning}
+                />
+              </Form.Item>
+              <Form.Item
+                name="contentRequirement"
+                label={
+                  <span className={styles.labelWithTip}>
+                    {CONTENT_REQUIREMENT_LABEL}
+                    <Tooltip title={CONTENT_REQUIREMENT_HINT}>
+                      <span
+                        className={styles.labelTipIcon}
+                        role="img"
+                        aria-label={CONTENT_REQUIREMENT_HINT}
+                      >
+                        <QuestionCircleOutlined />
+                      </span>
+                    </Tooltip>
+                  </span>
+                }
+                preserve
+              >
+                <Input.TextArea
+                  rows={3}
+                  maxLength={CONTENT_REQUIREMENT_MAX_LENGTH}
+                  showCount
+                  placeholder={CONTENT_REQUIREMENT_PLACEHOLDER}
                   disabled={planning}
                 />
               </Form.Item>

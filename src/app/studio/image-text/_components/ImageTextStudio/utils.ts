@@ -206,6 +206,9 @@ export function readPlanSnapshot(data: unknown): ImageTextPlanSnapshot | undefin
   return {
     content: asString(record.content) ?? asString(record.requirement) ?? '',
     materialUrls,
+    ...(asString(record.contentRequirement)
+      ? { contentRequirement: asString(record.contentRequirement) }
+      : {}),
     body,
     caption,
     cards,

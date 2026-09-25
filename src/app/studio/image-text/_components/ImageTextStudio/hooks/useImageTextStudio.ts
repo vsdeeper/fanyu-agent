@@ -86,6 +86,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
     return {
       materials: toMaterialItems(initialPlan?.materialUrls ?? []),
       content: initialPlan?.content ?? '',
+      contentRequirement: initialPlan?.contentRequirement ?? '',
       styleReferenceImages: toImageItems(initialGenerate?.styleReferenceUrl),
       characterModelImages: toImageItems(initialGenerate?.characterModelUrl),
       characterRequirement: initialGenerate?.characterRequirement ?? '',
@@ -147,6 +148,9 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
     const saved = await saveImageTextStep<ImageTextPlanSnapshot>(task.id, 'plan', {
       content: values.content?.trim() ?? '',
       materialUrls,
+      ...(values.contentRequirement?.trim()
+        ? { contentRequirement: values.contentRequirement.trim() }
+        : {}),
       body: bodyRef.current,
       caption: captionRef.current,
       cards: [],
@@ -211,6 +215,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
         materials.map((item) => readUploadItemAsDataUrl(item)),
       );
       const content = String(panelForm.getFieldValue('content') ?? '').trim();
+      const contentRequirement = String(panelForm.getFieldValue('contentRequirement') ?? '').trim();
       const res = await fetch('/api/studio/image-text/plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -218,6 +223,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
         body: JSON.stringify({
           materialDataUrls,
           ...(content ? { content } : {}),
+          ...(contentRequirement ? { contentRequirement } : {}),
         }),
       });
       await assertOkOrJsonFail(res);
@@ -347,7 +353,9 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
       };
       const nextImages = [...imagesRef.current, created];
       imagesRef.current = nextImages;
+      // 须与 setImages 同批清掉 generating：若等 persist 后再清，中间一帧会「新图 + 骨架」并排闪一下。
       setImages(nextImages);
+      setGenerating(false);
       try {
         await persistGenerate();
       } catch (err) {
