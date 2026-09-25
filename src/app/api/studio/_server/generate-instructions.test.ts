@@ -1207,7 +1207,6 @@ describe('图文配图指令', () => {
   it('无「我的要求」时正文仅作来源，须取舍精简并留足边距，不含「我的要求」优先语义', () => {
     const prompt = buildImageTextPrompt(body, {
       hasStyleReference: true,
-      hasCharacterModel: true,
     });
 
     expect(prompt).toContain('【本张画面 / 图文内容】');
@@ -1222,7 +1221,7 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('禁止改成另一种渲染媒介');
     expect(prompt).not.toContain('勿复刻其具体五官身份与相貌');
     expect(prompt).not.toContain('勿因「不复刻相貌」而改掉参考图的画法媒介');
-    expect(prompt).toContain('人物模特');
+    expect(prompt).not.toContain('人物模特');
     expect(prompt).toContain('高密度信息墙');
     expect(prompt).toContain('反约束');
     expect(prompt).toContain('不作定位依据');
@@ -1230,14 +1229,12 @@ describe('图文配图指令', () => {
     expect(prompt).not.toContain('我的要求');
     expect(prompt).not.toContain('知识库');
     expect(prompt).not.toContain('优先于正文默认的信息密度');
-    expect(prompt).toContain('须全部出镜');
   });
 
   it('有「我的要求」时正文仅作知识库，要求优先于默认信息密度并保留明确板块', () => {
     const requirement = '必须保留「步骤示意」与「要点摘要」两个板块，其余精简';
     const prompt = buildImageTextPrompt(body, {
       hasStyleReference: true,
-      hasCharacterModel: true,
       characterRequirement: requirement,
     });
 
@@ -1253,9 +1250,8 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('画法媒介');
     expect(prompt).toContain('反约束');
     expect(prompt).toContain('不作定位依据');
-    expect(prompt).toContain('须全部出镜');
-    expect(prompt).toContain('不得只保留其中一人');
-    expect(prompt).toContain('不得因此删减人物模特中的任一人物');
+    expect(prompt).not.toContain('人物模特');
+    expect(prompt).not.toContain('不得因此删减人物模特中的任一人物');
     expect(prompt).not.toContain('不得据此把正文扩成');
     expect(prompt).toContain(body);
     const requirementIdx = prompt.indexOf('【我的要求】');

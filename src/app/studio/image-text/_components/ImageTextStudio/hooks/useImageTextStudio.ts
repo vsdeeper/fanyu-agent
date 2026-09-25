@@ -61,7 +61,7 @@ function defaultSpec(): GenerateSpecFields {
 
 function applySingleImageUrl(
   form: FormInstance<ImageTextPanelValues>,
-  field: 'styleReferenceImages' | 'characterModelImages',
+  field: 'styleReferenceImages',
   url: string | undefined,
 ) {
   const previous = (form.getFieldValue(field) ?? []) as StudioImageUploadItem[];
@@ -88,7 +88,6 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
       content: initialPlan?.content ?? '',
       contentRequirement: initialPlan?.contentRequirement ?? '',
       styleReferenceImages: toImageItems(initialGenerate?.styleReferenceUrl),
-      characterModelImages: toImageItems(initialGenerate?.characterModelUrl),
       characterRequirement: initialGenerate?.characterRequirement ?? '',
       spec: {
         ...base,
@@ -165,17 +164,14 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
     const values = panelForm.getFieldsValue(true) as ImageTextPanelValues;
     const currentSpec = values.spec ?? panelInitialValues.spec;
     const styleReferenceImages = values.styleReferenceImages ?? [];
-    const characterModelImages = values.characterModelImages ?? [];
     const characterRequirement = values.characterRequirement?.trim() ?? '';
     const styleReferenceUrl = await toPersistableImageUrl(styleReferenceImages);
-    const characterModelUrl = await toPersistableImageUrl(characterModelImages);
     const saved = await saveImageTextStep<ImageTextGenerateSnapshot>(task.id, 'generate', {
       model: currentSpec.model,
       aspectRatio: currentSpec.aspectRatio,
       clarity: currentSpec.clarity,
       images: imagesRef.current,
       ...(styleReferenceUrl ? { styleReferenceUrl } : {}),
-      ...(characterModelUrl ? { characterModelUrl } : {}),
       ...(characterRequirement ? { characterRequirement } : {}),
     });
     const urls = new Map(saved.images.map((item) => [item.id, item.url]));
@@ -191,9 +187,6 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
     });
     if (saved.styleReferenceUrl || styleReferenceImages.length === 0) {
       applySingleImageUrl(panelForm, 'styleReferenceImages', saved.styleReferenceUrl);
-    }
-    if (saved.characterModelUrl || characterModelImages.length === 0) {
-      applySingleImageUrl(panelForm, 'characterModelImages', saved.characterModelUrl);
     }
   }
 
@@ -305,13 +298,9 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
     setGenerating(true);
     try {
       const styleReference = (values.styleReferenceImages ?? [])[0];
-      const characterModel = (values.characterModelImages ?? [])[0];
       const characterRequirement = values.characterRequirement?.trim() ?? '';
       const styleReferenceDataUrl = styleReference
         ? await readUploadItemAsDataUrl(styleReference)
-        : undefined;
-      const characterModelDataUrl = characterModel
-        ? await readUploadItemAsDataUrl(characterModel)
         : undefined;
       if (controller.signal.aborted) return;
       const res = await fetch('/api/studio/generate', {
@@ -328,7 +317,6 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
           clarity: resolveClarityForModel(currentSpec.model, currentSpec.clarity),
           prompt,
           ...(styleReferenceDataUrl ? { styleReferenceDataUrl } : {}),
-          ...(characterModelDataUrl ? { characterModelDataUrl } : {}),
           ...(characterRequirement ? { characterRequirement } : {}),
           slotIds: [imageId],
         }),

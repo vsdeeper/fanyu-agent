@@ -120,15 +120,11 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
   } else if (body.kind === 'imageText') {
     prompt = buildImageTextPrompt(body.prompt, {
       hasStyleReference: Boolean(body.styleReferenceDataUrl),
-      hasCharacterModel: Boolean(body.characterModelDataUrl),
       ...(body.characterRequirement?.trim()
         ? { characterRequirement: body.characterRequirement.trim() }
         : {}),
     });
-    referenceImageDataUrls = [
-      ...(body.styleReferenceDataUrl ? [body.styleReferenceDataUrl] : []),
-      ...(body.characterModelDataUrl ? [body.characterModelDataUrl] : []),
-    ];
+    referenceImageDataUrls = [...(body.styleReferenceDataUrl ? [body.styleReferenceDataUrl] : [])];
   } else if (body.kind === 'visual') {
     // 参考图数组顺序固定为「产品精修图 → 品牌 Logo」，两者都可缺省，prompt 按真实张数点名序号
     prompt = buildVisualPrompt({

@@ -146,7 +146,6 @@ const imageTextGenerateSchema = specFieldsSchema.extend({
   count: z.literal(1),
   prompt: z.string().trim().min(1),
   styleReferenceDataUrl: imageDataUrlSchema.optional(),
-  characterModelDataUrl: imageDataUrlSchema.optional(),
   characterRequirement: z.string().trim().min(1).max(500).optional(),
 });
 

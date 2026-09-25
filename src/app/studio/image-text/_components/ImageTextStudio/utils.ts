@@ -253,9 +253,6 @@ export function readGenerateSnapshot(data: unknown): ImageTextGenerateSnapshot |
     ...(asString(record.styleReferenceUrl)
       ? { styleReferenceUrl: asString(record.styleReferenceUrl) }
       : {}),
-    ...(asString(record.characterModelUrl)
-      ? { characterModelUrl: asString(record.characterModelUrl) }
-      : {}),
     ...(asString(record.characterRequirement)
       ? { characterRequirement: asString(record.characterRequirement) }
       : {}),

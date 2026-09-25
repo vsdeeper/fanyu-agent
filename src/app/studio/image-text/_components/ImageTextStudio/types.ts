@@ -56,9 +56,7 @@ export type ImageTextGenerateSnapshot = {
   images: ImageTextGeneratedImage[];
   /** 可选视觉参考图。 */
   styleReferenceUrl?: string;
-  /** 可选人物模特参考图。 */
-  characterModelUrl?: string;
-  /** 可选人物相关补充要求。 */
+  /** 可选画面补充要求。 */
   characterRequirement?: string;
 };
 
@@ -68,8 +66,7 @@ export type ImageTextPanelValues = {
   /** 可选：内容步对正文结构与详略的补充要求。 */
   contentRequirement: string;
   styleReferenceImages: StudioImageUploadItem[];
-  characterModelImages: StudioImageUploadItem[];
-  /** 可选：人物模特补充要求。 */
+  /** 可选：生成步画面补充要求。 */
   characterRequirement: string;
   /** 生成步出图规格。 */
   spec: GenerateSpecFields;

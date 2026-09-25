@@ -8,8 +8,6 @@ import {
 import GenerateSpecFields from '@/app/studio/_components/GenerateSpecFields';
 import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import {
-  CHARACTER_MODEL_HINT,
-  CHARACTER_MODEL_LABEL,
   CHARACTER_REQUIREMENT_HINT,
   CHARACTER_REQUIREMENT_LABEL,
   CHARACTER_REQUIREMENT_MAX_LENGTH,
@@ -83,16 +81,6 @@ export default function ControlPanel({
                   subtitle=""
                   hint={VISUAL_REFERENCE_HINT}
                   ariaLabel="上传视觉参考"
-                  disabled={generating}
-                />
-              </Form.Item>
-              <Form.Item name="characterModelImages" preserve>
-                <StudioImageUpload
-                  max={1}
-                  label={CHARACTER_MODEL_LABEL}
-                  subtitle=""
-                  hint={CHARACTER_MODEL_HINT}
-                  ariaLabel="上传人物模特"
                   disabled={generating}
                 />
               </Form.Item>

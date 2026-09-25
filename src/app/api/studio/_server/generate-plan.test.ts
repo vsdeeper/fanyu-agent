@@ -448,22 +448,21 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.referenceImageDataUrls).toEqual([]);
   });
 
-  it('图文出图固定一张，视觉参考与人物模特按序作为参考图', () => {
+  it('图文出图固定一张，视觉参考作为参考图', () => {
     const plan = buildGeneratePlan({
       ...base,
       kind: 'imageText',
       count: 1,
       prompt: '一杯咖啡放在木桌上',
       styleReferenceDataUrl: img('style').dataUrl,
-      characterModelDataUrl: img('model').dataUrl,
       characterRequirement: '半身侧影，看向窗外',
     });
 
     expect(plan).toHaveLength(1);
-    expect(plan[0]?.referenceImageDataUrls).toEqual([img('style').dataUrl, img('model').dataUrl]);
+    expect(plan[0]?.referenceImageDataUrls).toEqual([img('style').dataUrl]);
     expect(plan[0]?.prompt).toContain('一杯咖啡放在木桌上');
     expect(plan[0]?.prompt).toContain('视觉参考图');
-    expect(plan[0]?.prompt).toContain('人物模特');
+    expect(plan[0]?.prompt).not.toContain('人物模特');
     expect(plan[0]?.prompt).toContain('我的要求');
     expect(plan[0]?.prompt).toContain('半身侧影，看向窗外');
     expect(plan[0]?.prompt).toContain('知识库');

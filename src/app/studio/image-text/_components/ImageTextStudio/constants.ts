@@ -37,8 +37,6 @@ export const CONTENT_REQUIREMENT_MAX_LENGTH = 500;
 export const VISUAL_REFERENCE_LABEL = '视觉参考';
 export const VISUAL_REFERENCE_HINT =
   '上传一张图，只对齐画风、配色、字体与气质；不作为标识点/标注位置依据';
-export const CHARACTER_MODEL_LABEL = '人物模特';
-export const CHARACTER_MODEL_HINT = '上传一张图，锁定人物形象';
 export const CHARACTER_REQUIREMENT_LABEL = '我的要求';
 export const CHARACTER_REQUIREMENT_HINT =
   '可约束人物姿态与出镜，也可说明画面要展示哪些信息、禁止哪些板块；有填写时正文仅作知识库，按要求筛选上屏';
