@@ -31,6 +31,7 @@ import type {
   AngleCard,
   ImageHistoryItem,
   ImageSlot,
+  LongArticleGenre,
   PlanStepSnapshot,
   ResearchSource,
   StudioPhase,
@@ -46,6 +47,7 @@ type ResultPanelProps = {
   researchStream: string;
   sources: ResearchSource[];
   angles: AngleCard[];
+  articleGenre: LongArticleGenre;
   selectedAngleId?: string;
   onSelectAngle: (id: string) => void;
   plan?: PlanStepSnapshot;
@@ -85,6 +87,7 @@ export default function ResultPanel({
   researchStream,
   sources,
   angles,
+  articleGenre,
   selectedAngleId,
   onSelectAngle,
   plan,
@@ -308,6 +311,7 @@ export default function ResultPanel({
                         <AngleCardView
                           key={angle.id}
                           angle={angle}
+                          articleGenre={articleGenre}
                           selected={selectedAngleId === angle.id}
                           onSelect={() => onSelectAngle(angle.id)}
                         />

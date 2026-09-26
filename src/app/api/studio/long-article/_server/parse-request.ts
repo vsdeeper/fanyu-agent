@@ -1,12 +1,15 @@
 import 'server-only';
 
 import { z } from 'zod';
+import { LONG_ARTICLE_GENRES } from '../_shared/constants';
 import type {
   LongArticleDraftRequest,
   LongArticleImagesRequest,
   LongArticlePlanRequest,
   LongArticleResearchRequest,
 } from '../_shared/types';
+
+const articleGenreSchema = z.enum(LONG_ARTICLE_GENRES);
 
 const angleSchema = z.object({
   id: z.string().trim().min(1),
@@ -29,19 +32,23 @@ const researchSchema = z
     idea: z.string().trim().optional().default(''),
     experience: z.string().trim().optional(),
     viewpoint: z.string().trim().optional(),
+    articleGenre: articleGenreSchema,
   })
   .refine((value) => Boolean(value.idea || value.experience || value.viewpoint));
 
 const planSchema = z.object({
   idea: z.string().trim().optional().default(''),
   experience: z.string().trim().optional(),
+  articleGenre: articleGenreSchema,
   angle: angleSchema,
   sources: z.array(sourceSchema),
+  lengthLimit: z.number().int().min(100).max(20000).optional(),
 });
 
 const draftSchema = z.object({
   idea: z.string().trim().optional().default(''),
   experience: z.string().trim().optional(),
+  articleGenre: articleGenreSchema,
   angle: angleSchema,
   plan: z.object({
     beats: z.array(z.string().trim().min(1)).min(1),

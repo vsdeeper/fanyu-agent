@@ -77,6 +77,7 @@ export default function LongArticleStudio({ task }: LongArticleStudioProps) {
                 researchStream={studio.researchStream}
                 sources={studio.sources}
                 angles={studio.angles}
+                articleGenre={studio.panelValues.articleGenre}
                 selectedAngleId={studio.selectedAngleId}
                 onSelectAngle={studio.setSelectedAngleId}
                 plan={studio.plan}

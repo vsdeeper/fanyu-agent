@@ -1,4 +1,8 @@
-import { Button, Form, Input, InputNumber, Space, type FormInstance } from 'antd';
+import { Button, Form, Input, InputNumber, Select, Space, type FormInstance } from 'antd';
+import {
+  LONG_ARTICLE_GENRES,
+  LONG_ARTICLE_GENRE_LABEL,
+} from '@/app/api/studio/long-article/_shared/constants';
 import StyleDimensionPicker, {
   StyleClipboardActions,
   hasStyleSelection,
@@ -7,6 +11,7 @@ import StyleDimensionPicker, {
 import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import AngleCardView from '../AngleCardView';
 import {
+  ARTICLE_GENRE_LABEL,
   DRAFT_BUTTON,
   DRAFT_TITLE_EMPTY,
   DRAFT_TITLE_LABEL,
@@ -15,6 +20,7 @@ import {
   LENGTH_LIMIT_MIN,
   LENGTH_LIMIT_PLACEHOLDER,
   LENGTH_LIMIT_SUFFIX,
+  MISSING_ARTICLE_GENRE_WARNING,
   MISSING_RESEARCH_INPUT_WARNING,
   MISSING_STYLE_WARNING,
   PLAN_BUTTON,
@@ -77,6 +83,8 @@ export default function ControlPanel({
   // 复制/粘贴按钮要拿到当前选择，故这里单独订一个字段
   const styleSelections =
     Form.useWatch('styleSelections', { form, preserve: true }) ?? initialValues.styleSelections;
+  const articleGenre =
+    Form.useWatch('articleGenre', { form, preserve: true }) ?? initialValues.articleGenre;
 
   /**
    * 粘贴整份文风。
@@ -135,26 +143,31 @@ export default function ControlPanel({
                   placeholder="例如：有个朋友失业了，月供六千，账上只剩三万"
                 />
               </Form.Item>
+              <Form.Item
+                name="articleGenre"
+                label={ARTICLE_GENRE_LABEL}
+                rules={[{ required: true, message: MISSING_ARTICLE_GENRE_WARNING }]}
+              >
+                <Select
+                  options={LONG_ARTICLE_GENRES.map((genre) => ({
+                    value: genre,
+                    label: LONG_ARTICLE_GENRE_LABEL[genre],
+                  }))}
+                />
+              </Form.Item>
             </>
           ) : null}
 
           {planStep ? (
-            <div className={styles.angleBlock}>
-              <div className={styles.angleLabel}>{SELECTED_ANGLE_LABEL}</div>
-              {selectedAngle ? (
-                <AngleCardView angle={selectedAngle} />
-              ) : (
-                <p className={styles.angleEmpty}>{SELECTED_ANGLE_EMPTY}</p>
-              )}
-            </div>
-          ) : null}
-
-          {draftStep ? (
             <>
-              {/* 标题在右栏点选标题方向时确定，这里只读回显；成稿前必须有，故标为必填 */}
-              <Form.Item label={DRAFT_TITLE_LABEL} required>
-                <Input value={draftTitle ?? ''} placeholder={DRAFT_TITLE_EMPTY} readOnly />
-              </Form.Item>
+              <div className={styles.angleBlock}>
+                <div className={styles.angleLabel}>{SELECTED_ANGLE_LABEL}</div>
+                {selectedAngle ? (
+                  <AngleCardView angle={selectedAngle} articleGenre={articleGenre} />
+                ) : (
+                  <p className={styles.angleEmpty}>{SELECTED_ANGLE_EMPTY}</p>
+                )}
+              </div>
               {/* 修复：name 必须挂在 InputNumber 上。Form.Item 只把 value/onChange 注入**直接子元素**，
                   隔一层 Space.Compact 时它们被透传到外层 div，字段收不到用户输入——
                   getFieldsValue 里 lengthLimit 恒为 undefined，成稿请求与快照都丢这个键 */}
@@ -177,6 +190,15 @@ export default function ControlPanel({
                   </Form.Item>
                   <Space.Addon>{LENGTH_LIMIT_SUFFIX}</Space.Addon>
                 </Space.Compact>
+              </Form.Item>
+            </>
+          ) : null}
+
+          {draftStep ? (
+            <>
+              {/* 标题在右栏点选标题方向时确定，这里只读回显；成稿前必须有，故标为必填 */}
+              <Form.Item label={DRAFT_TITLE_LABEL} required>
+                <Input value={draftTitle ?? ''} placeholder={DRAFT_TITLE_EMPTY} readOnly />
               </Form.Item>
               {/* 复制/粘贴浮在「文风」标签行右侧（见 module.css 的 styleActions）：
                   不进 Form.Item 的 label，否则 `<button>` 会被 label 隐式关联。 */}

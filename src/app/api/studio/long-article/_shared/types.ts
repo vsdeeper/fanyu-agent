@@ -1,14 +1,19 @@
-/** 选题调研请求：想法 / 经历 / 观点至少填一项。 */
+/** 长文写作文体（调研前选定；与文风语气维解耦）。 */
+export type LongArticleGenre = 'popular-science' | 'knowledge-story' | 'commentary' | 'narrative';
+
+/** 选题调研请求：想法 / 经历 / 观点至少填一项；文体必填。 */
 export type LongArticleResearchRequest = {
   idea?: string;
   experience?: string;
   viewpoint?: string;
+  articleGenre: LongArticleGenre;
 };
 
 /** 内容思路请求。 */
 export type LongArticlePlanRequest = {
   idea?: string;
   experience?: string;
+  articleGenre: LongArticleGenre;
   angle: {
     id: string;
     claim: string;
@@ -23,12 +28,15 @@ export type LongArticlePlanRequest = {
     kind: 'fact' | 'view' | 'case';
     publishedAt?: string;
   }>;
+  /** 正文篇幅下限；有则约束写作要点条数与展开粒度。 */
+  lengthLimit?: number;
 };
 
 /** 成稿请求。 */
 export type LongArticleDraftRequest = {
   idea?: string;
   experience?: string;
+  articleGenre: LongArticleGenre;
   angle: {
     id: string;
     claim: string;

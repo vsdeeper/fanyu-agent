@@ -1,5 +1,8 @@
+import type { LongArticleGenre } from '@/app/api/studio/long-article/_shared/types';
 import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 import type { StyleDimensionSelections } from '@/app/studio/_components/StyleDimensionPicker';
+
+export type { LongArticleGenre };
 
 /**
  * 左栏表单值：与 ControlPanel 的 Form.Item name 一一对应。
@@ -11,6 +14,7 @@ export type LongArticlePanelValues = {
   idea: string;
   experience: string;
   viewpoint: string;
+  articleGenre: LongArticleGenre;
   styleSelections: StyleDimensionSelections;
   lengthLimit?: number;
   watermarkImages: StudioImageUploadItem[];
@@ -53,6 +57,7 @@ export type ResearchStepSnapshot = {
   idea: string;
   experience?: string;
   viewpoint?: string;
+  articleGenre: LongArticleGenre;
   streamText?: string;
   sources: ResearchSource[];
   angles: AngleCard[];
@@ -65,6 +70,8 @@ export type PlanStepSnapshot = {
   titleDirections?: string[];
   /** 选定的标题方向下标，成稿时作为正文标题。 */
   selectedTitleIndex?: number;
+  /** 正文篇幅下限（去掉空白后的字数）；在思路步设定，成稿沿用。 */
+  lengthLimit?: number;
   streamText?: string;
 };
 

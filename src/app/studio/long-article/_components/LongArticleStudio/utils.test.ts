@@ -12,7 +12,44 @@ import {
   resolveWatermarkInk,
   resolveWatermarkRect,
   stripWatermarkBackdrop,
+  suggestArticleGenre,
+  readResearchStepSnapshot,
 } from './utils';
+
+describe('suggestArticleGenre', () => {
+  it('有经历时默认叙事散文', () => {
+    expect(suggestArticleGenre({ experience: '失业那个月' })).toBe('narrative');
+  });
+
+  it('无经历有观点时默认观点评论', () => {
+    expect(suggestArticleGenre({ viewpoint: '国内还在聊概念' })).toBe('commentary');
+  });
+
+  it('仅有想法时默认科普', () => {
+    expect(suggestArticleGenre({ idea: '经络到底是什么' })).toBe('popular-science');
+  });
+});
+
+describe('readResearchStepSnapshot', () => {
+  it('旧快照无 articleGenre 时按素材软默认补齐', () => {
+    const snap = readResearchStepSnapshot({
+      idea: '经络到底是什么',
+      sources: [],
+      angles: [],
+    });
+    expect(snap?.articleGenre).toBe('popular-science');
+  });
+
+  it('保留已落盘的 articleGenre', () => {
+    const snap = readResearchStepSnapshot({
+      idea: 'x',
+      articleGenre: 'commentary',
+      sources: [],
+      angles: [],
+    });
+    expect(snap?.articleGenre).toBe('commentary');
+  });
+});
 
 /** 长文正文的展示栏宽：正文配图都按它等比缩放，故「页面上一致」= 换到此宽度后一致。 */
 const DISPLAY_WIDTH = 677;

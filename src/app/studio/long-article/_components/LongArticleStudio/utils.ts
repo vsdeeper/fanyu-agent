@@ -1,8 +1,10 @@
+import { LONG_ARTICLE_GENRES } from '@/app/api/studio/long-article/_shared/constants';
 import { LONG_ARTICLE_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/long-article/_shared/task-constants';
 import type {
   LongArticleStepKey,
   LongArticleTaskStepRecord,
 } from '@/app/api/studio/long-article/_shared/task-types';
+import type { LongArticleGenre } from '@/app/api/studio/long-article/_shared/types';
 import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 import { parseStyleSelections } from '@/app/studio/_components/StyleDimensionPicker';
 import { apiPut } from '@/lib/shared/client/api-client';
@@ -381,6 +383,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object';
 }
 
+/** 根据素材软默认文体：有经历→叙事；否则有观点→评论；否则→知识故事。 */
+export function suggestArticleGenre(input: {
+  idea?: string;
+  experience?: string;
+  viewpoint?: string;
+}): LongArticleGenre {
+  if (input.experience?.trim()) return 'narrative';
+  if (input.viewpoint?.trim()) return 'commentary';
+  return 'popular-science';
+}
+
+function parseArticleGenre(value: unknown): LongArticleGenre | undefined {
+  return typeof value === 'string' && (LONG_ARTICLE_GENRES as readonly string[]).includes(value)
+    ? (value as LongArticleGenre)
+    : undefined;
+}
+
 /** 读取调研步快照。 */
 export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | undefined {
   if (!isRecord(data)) return undefined;
@@ -394,15 +413,27 @@ export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | 
   const experience = asString(data.experience);
   // 旧快照把观点写在 stance；新字段为 viewpoint，读取时兼容旧键。
   const viewpoint = asString(data.viewpoint) || asString(data.stance);
+  const articleGenre =
+    parseArticleGenre(data.articleGenre) ?? suggestArticleGenre({ idea, experience, viewpoint });
   return {
     idea,
     sources,
     angles,
+    articleGenre,
     ...(experience ? { experience } : {}),
     ...(viewpoint ? { viewpoint } : {}),
     ...(asString(data.streamText) ? { streamText: asString(data.streamText) } : {}),
     ...(asString(data.selectedAngleId) ? { selectedAngleId: asString(data.selectedAngleId) } : {}),
   };
+}
+
+function parseLengthLimit(value: unknown): number | undefined {
+  return typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= LENGTH_LIMIT_MIN &&
+    value <= LENGTH_LIMIT_MAX
+    ? value
+    : undefined;
 }
 
 /** 读取思路步快照。 */
@@ -411,7 +442,12 @@ export function readPlanStepSnapshot(data: unknown): PlanStepSnapshot | undefine
   const beats = asStringArray(data.beats);
   if (!beats?.length) {
     const parsed = parsePlanPayload(data);
-    return parsed ?? undefined;
+    if (!parsed) return undefined;
+    const lengthLimit = parseLengthLimit(data.lengthLimit);
+    return {
+      ...parsed,
+      ...(lengthLimit !== undefined ? { lengthLimit } : {}),
+    };
   }
   const titleDirections = asStringArray(data.titleDirections);
   const selectedFromData =
@@ -426,11 +462,13 @@ export function readPlanStepSnapshot(data: unknown): PlanStepSnapshot | undefine
       : titleDirections
         ? 0
         : undefined;
+  const lengthLimit = parseLengthLimit(data.lengthLimit);
   return {
     beats,
     ...(asString(data.audience) ? { audience: asString(data.audience) } : {}),
     ...(titleDirections ? { titleDirections } : {}),
     ...(selectedTitleIndex !== undefined ? { selectedTitleIndex } : {}),
+    ...(lengthLimit !== undefined ? { lengthLimit } : {}),
     ...(asString(data.streamText) ? { streamText: asString(data.streamText) } : {}),
   };
 }
@@ -444,13 +482,7 @@ export function readDraftStepSnapshot(data: unknown): DraftStepSnapshot | undefi
     imageSlots: data.imageSlots,
   });
   const styleSelections = parseStyleSelections(data.styleSelections);
-  const lengthLimit =
-    typeof data.lengthLimit === 'number' &&
-    Number.isInteger(data.lengthLimit) &&
-    data.lengthLimit >= LENGTH_LIMIT_MIN &&
-    data.lengthLimit <= LENGTH_LIMIT_MAX
-      ? data.lengthLimit
-      : undefined;
+  const lengthLimit = parseLengthLimit(data.lengthLimit);
   const imageHistory = parseImageHistory(data.imageHistory);
   return {
     markdown,

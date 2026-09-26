@@ -133,14 +133,15 @@ export async function handleLongArticleResearch(req: Request): Promise<Response>
   if (!hasResearchInput) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_RESEARCH_INPUT, 400);
   }
-  const narrative = Boolean(body.experience?.trim());
-  const maxSearchRounds = narrative
+  const isNarrativeGenre = body.articleGenre === 'narrative';
+  const forceWebSearch = !isNarrativeGenre;
+  const maxSearchRounds = isNarrativeGenre
     ? RESEARCH_NARRATIVE_MAX_SEARCH_ROUNDS
     : RESEARCH_MAX_SEARCH_ROUNDS;
-  const maxSearchCalls = narrative
+  const maxSearchCalls = isNarrativeGenre
     ? RESEARCH_NARRATIVE_MAX_SEARCH_CALLS
     : RESEARCH_MAX_SEARCH_CALLS;
-  const maxParallel = narrative
+  const maxParallel = isNarrativeGenre
     ? RESEARCH_NARRATIVE_MAX_PARALLEL_SEARCHES
     : RESEARCH_MAX_PARALLEL_SEARCHES;
 
@@ -152,9 +153,9 @@ export async function handleLongArticleResearch(req: Request): Promise<Response>
         const { provider, runtime, openaiOptions } = buildOpenaiOptions();
         const usesSdkWebSearch = runtime.getCapabilities().usesSdkWebSearchTool;
         // 轮数 + 总次数双约束；并行上限靠提示（Provider 原生工具无法在单步内截断并行）
-        const budgetHint = narrative
-          ? `叙事调研额外约束：web_search 按需、最多 ${maxSearchRounds} 轮且全程最多 ${maxSearchCalls} 次（每轮并行≤${maxParallel}）；经历已够写故事可不搜；达上限后必须输出短简报与切入 JSON。`
-          : `选题调研额外约束：web_search 最多 ${maxSearchRounds} 轮且全程最多 ${maxSearchCalls} 次（每轮并行≤${maxParallel} 个关键词，宜少而准）；达上限后立刻写简报与 JSON，禁止继续检索。`;
+        const budgetHint = isNarrativeGenre
+          ? `叙事散文调研额外约束：web_search 按需、最多 ${maxSearchRounds} 轮且全程最多 ${maxSearchCalls} 次（每轮并行≤${maxParallel}）；经历已够写故事可不搜；达上限后必须输出短简报与切入 JSON。`
+          : `选题调研额外约束（文体=${body.articleGenre}）：web_search 最多 ${maxSearchRounds} 轮且全程最多 ${maxSearchCalls} 次（每轮并行≤${maxParallel} 个关键词，宜少而准）；达上限后立刻写简报与 JSON，禁止继续检索。`;
         const searchHint = usesSdkWebSearch
           ? `\n\n${budgetHint}`
           : `\n\n${webSearch.getHint()}\n${budgetHint}`;
@@ -178,10 +179,10 @@ export async function handleLongArticleResearch(req: Request): Promise<Response>
             : {
                 web_search: localWebSearch,
               },
-          // 论证模式首步强制联网；叙事模式不强制。轮数或总次数触顶后关掉工具
+          // 知识故事 / 观点评论首步强制联网；叙事散文不强制。轮数或总次数触顶后关掉工具
           prepareStep: ({ steps }) => {
             if (steps.length === 0) {
-              if (narrative) return {};
+              if (!forceWebSearch) return {};
               return { toolChoice: { type: 'tool' as const, toolName: 'web_search' as const } };
             }
             const searchRounds = steps.filter((step) => step.toolCalls.length > 0).length;
@@ -208,7 +209,7 @@ export async function handleLongArticleResearch(req: Request): Promise<Response>
           console.info('[long-article/research] toolCalls', toolNames, {
             chars: fullText.length,
             hasJsonFence,
-            narrative,
+            articleGenre: body.articleGenre,
             maxSearchRounds,
             maxSearchCalls,
             searchCallCount: toolNames.filter((name) => name === 'web_search').length,

@@ -17,6 +17,8 @@ import {
   DEFAULT_IMAGE_CLARITY,
   DEFAULT_IMAGE_MODEL,
   DRAFT_FAILED,
+  DRAFT_REGENERATE_CONFIRM_CONTENT,
+  DRAFT_REGENERATE_CONFIRM_TITLE,
   GENERATE_FAILED,
   HISTORY_DELETE_FAILED,
   IMAGES_FAILED,
@@ -26,6 +28,10 @@ import {
   MISSING_PLAN_WARNING,
   MISSING_TITLE_WARNING,
   PLAN_FAILED,
+  PLAN_REGENERATE_CONFIRM_CONTENT,
+  PLAN_REGENERATE_CONFIRM_TITLE,
+  CONFIRM_OK,
+  CONFIRM_CANCEL,
   RESEARCH_FAILED,
   RESEARCH_NO_ANGLES,
   UPLOAD_FAILED,
@@ -66,6 +72,7 @@ import {
   readFileAsDataUrl,
   readPlanStepSnapshot,
   readResearchStepSnapshot,
+  suggestArticleGenre,
   resolveInitialPhase,
   resolvePlanTitle,
   saveLongArticleStep,
@@ -77,7 +84,7 @@ import { formatStyleSelections } from '@/app/studio/_components/StyleDimensionPi
 
 /** 管理长文五步：调研 → 思路 → 成稿 → 成稿配图 → 完成。 */
 export function useLongArticleStudio(task: LongArticleTaskDetail) {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const initialResearch = readResearchStepSnapshot(task.steps.research?.data);
   const initialPlan = readPlanStepSnapshot(task.steps.plan?.data);
   const initialDraft = readDraftStepSnapshot(task.steps.draft?.data);
@@ -90,8 +97,15 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
     idea: initialResearch?.idea ?? '',
     experience: initialResearch?.experience ?? '',
     viewpoint: initialResearch?.viewpoint ?? '',
+    articleGenre:
+      initialResearch?.articleGenre ??
+      suggestArticleGenre({
+        idea: initialResearch?.idea,
+        experience: initialResearch?.experience,
+        viewpoint: initialResearch?.viewpoint,
+      }),
     styleSelections: initialDraft?.styleSelections ?? {},
-    lengthLimit: initialDraft?.lengthLimit,
+    lengthLimit: initialPlan?.lengthLimit ?? initialDraft?.lengthLimit,
     watermarkImages: toImageItems(initialDraft?.watermarkUrl),
     styleReferenceImages: toImageItems(initialDraft?.styleReferenceUrl),
   }));
@@ -191,9 +205,10 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
   const selectedAngle: AngleCard | undefined = angles.find((item) => item.id === selectedAngleId);
 
   async function persistResearch() {
-    const { idea, experience, viewpoint } = panelValues;
+    const { idea, experience, viewpoint, articleGenre } = panelValues;
     const next: ResearchStepSnapshot = {
       idea: idea.trim(),
+      articleGenre,
       sources,
       angles,
       ...(experience.trim() ? { experience: experience.trim() } : {}),
@@ -209,8 +224,11 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
 
   async function persistPlan() {
     if (!plan) return undefined;
+    const values = panelForm.getFieldsValue(true);
+    const lengthLimit = values.lengthLimit;
     const next: PlanStepSnapshot = {
       ...plan,
+      ...(lengthLimit !== undefined ? { lengthLimit } : {}),
       ...(planStream.trim() ? { streamText: planStream.trim() } : {}),
     };
     if (isSamePlanSnapshot(next, lastPlanRef.current)) return next;
@@ -350,13 +368,14 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
 
   async function handleResearch() {
     if (!(await validateForm(panelForm))) return;
-    const { idea, experience, viewpoint } = panelValues;
+    const { idea, experience, viewpoint, articleGenre } = panelValues;
     setSources([]);
     setAngles([]);
     setSelectedAngleId(undefined);
     await runSse(
       '/api/studio/long-article/research',
       {
+        articleGenre,
         ...(idea.trim() ? { idea: idea.trim() } : {}),
         ...(experience.trim() ? { experience: experience.trim() } : {}),
         ...(viewpoint.trim() ? { viewpoint: viewpoint.trim() } : {}),
@@ -393,6 +412,7 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
         try {
           const next: ResearchStepSnapshot = {
             idea: idea.trim(),
+            articleGenre,
             sources: parsed.sources,
             angles: parsed.angles,
             streamText: brief,
@@ -411,19 +431,41 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
     );
   }
 
+  function confirmOverwrite(title: string, content: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      modal.confirm({
+        title,
+        content,
+        okText: CONFIRM_OK,
+        cancelText: CONFIRM_CANCEL,
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false),
+      });
+    });
+  }
+
   async function handlePlan() {
     if (!selectedAngle) {
       message.warning(MISSING_ANGLE_WARNING);
       return;
     }
-    const { idea, experience } = panelValues;
+    if (plan?.beats.length) {
+      const confirmed = await confirmOverwrite(
+        PLAN_REGENERATE_CONFIRM_TITLE,
+        PLAN_REGENERATE_CONFIRM_CONTENT,
+      );
+      if (!confirmed) return;
+    }
+    const { idea, experience, articleGenre, lengthLimit } = panelValues;
     await runSse(
       '/api/studio/long-article/plan',
       {
+        articleGenre,
         ...(idea.trim() ? { idea: idea.trim() } : {}),
         ...(experience.trim() ? { experience: experience.trim() } : {}),
         angle: selectedAngle,
         sources,
+        ...(lengthLimit !== undefined ? { lengthLimit } : {}),
       },
       planBuffer,
       PLAN_FAILED,
@@ -435,6 +477,7 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
           const nextPlan: PlanStepSnapshot = {
             ...parsed,
             streamText: prose || fullText,
+            ...(lengthLimit !== undefined ? { lengthLimit } : {}),
           };
           setPlan(nextPlan);
           setPhase('planned');
@@ -469,11 +512,19 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
       return;
     }
     if (!(await validateForm(panelForm))) return;
-    const { idea, experience, lengthLimit, styleSelections } = panelValues;
+    if (markdown.trim()) {
+      const confirmed = await confirmOverwrite(
+        DRAFT_REGENERATE_CONFIRM_TITLE,
+        DRAFT_REGENERATE_CONFIRM_CONTENT,
+      );
+      if (!confirmed) return;
+    }
+    const { idea, experience, lengthLimit, styleSelections, articleGenre } = panelValues;
     const stylePrompt = formatStyleSelections(styleSelections);
     await runSse(
       '/api/studio/long-article/draft',
       {
+        articleGenre,
         ...(idea.trim() ? { idea: idea.trim() } : {}),
         ...(experience.trim() ? { experience: experience.trim() } : {}),
         angle: selectedAngle,

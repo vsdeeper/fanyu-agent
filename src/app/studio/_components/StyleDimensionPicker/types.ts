@@ -1,11 +1,6 @@
-/** 文风维度键（叙事姿态 / 时空编排 / 情感质地 / 语言质地 / 主题风格 / 文体体例）。 */
+/** 文风维度键（叙事姿态 / 时空编排 / 情感质地 / 语言质地 / 主题风格）。 */
 export type StyleDimensionKey =
-  | 'narrativeStance'
-  | 'spacePerspective'
-  | 'emotionTexture'
-  | 'languageTexture'
-  | 'themeStyle'
-  | 'genre';
+  'narrativeStance' | 'spacePerspective' | 'emotionTexture' | 'languageTexture' | 'themeStyle';
 
 /** 一张文风卡片：tag 拼进提示词，description 只在弹框里给人看。 */
 export type StyleDimensionCard = {
