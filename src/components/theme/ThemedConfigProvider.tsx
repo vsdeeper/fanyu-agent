@@ -16,6 +16,7 @@ function AntdMessageBridge() {
  * 顶层组件（勿嵌套在 Provider 组件体内定义，否则每次渲染 remount 整棵子树丢失状态）。
  * 切换 algorithm 时 antd 会在 :root 重新输出暗色 --fanyu-* cssVar，走 token 的样式自动跟随。
  * cssVar 模式下 App 必须渲染真实节点（不能 component={false}），height:100% 把视口高度传给 Layout 壳。
+ * modal.centered：全局确认框 / Modal 相对视口垂直水平居中。
  */
 export default function ThemedConfigProvider({
   locale,
@@ -26,7 +27,11 @@ export default function ThemedConfigProvider({
 }) {
   const { mode } = useThemeMode();
   return (
-    <ConfigProvider locale={locale} theme={mode === 'dark' ? darkTheme : appTheme}>
+    <ConfigProvider
+      locale={locale}
+      theme={mode === 'dark' ? darkTheme : appTheme}
+      modal={{ centered: true }}
+    >
       <App style={{ height: '100%' }}>
         <AntdMessageBridge />
         {children}

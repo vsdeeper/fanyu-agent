@@ -161,7 +161,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
       modal.confirm({
         title,
         content,
-        centered: true,
         okText: CONFIRM_OK,
         cancelText: CONFIRM_CANCEL,
         onOk: () => resolve(true),
