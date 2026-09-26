@@ -34,6 +34,8 @@ import {
   CONFIRM_CANCEL,
   RESEARCH_FAILED,
   RESEARCH_NO_ANGLES,
+  RESEARCH_REGENERATE_CONFIRM_CONTENT,
+  RESEARCH_REGENERATE_CONFIRM_TITLE,
   UPLOAD_FAILED,
   WATERMARK_FAILED,
 } from '../constants';
@@ -368,6 +370,13 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
 
   async function handleResearch() {
     if (!(await validateForm(panelForm))) return;
+    if (angles.length > 0) {
+      const confirmed = await confirmOverwrite(
+        RESEARCH_REGENERATE_CONFIRM_TITLE,
+        RESEARCH_REGENERATE_CONFIRM_CONTENT,
+      );
+      if (!confirmed) return;
+    }
     const { idea, experience, viewpoint, articleGenre } = panelValues;
     setSources([]);
     setAngles([]);

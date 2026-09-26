@@ -15,7 +15,7 @@ function conflictSlotLabel(genre: LongArticleGenre): string {
     case 'narrative':
       return '处境';
     case 'popular-science':
-      return '易混点';
+      return '读者关心';
     default:
       return '卡点';
   }
@@ -43,8 +43,8 @@ function researchGenreHint(genre: LongArticleGenre): string {
       return [
         '科普：请先调用 web_search 联网检索，再输出简报 + 含 sources 与 angles 的 ```json（切入卡 3～5 张，不可省略）。',
         '检索偏事实、例子与常见误解：最多 3 轮、全程最多 6 次（每轮并行≤3 个关键词），够写 3～8 条 sources 即可。',
-        '四槽填法：claim=一句话说明路径（是什么/怎么回事）；conflict=读者常见误解/易混点；whyNow=为何现在值得讲清楚；risk=堆砌术语、说明书腔、过度简化失真（可选）。',
-        '语气清晰好懂；禁止文学散文腔与「存不存在」辩论式拆台。有【我的经历】时经历只作例子。',
+        '四槽填法：claim=一句话说明路径（是什么/怎么回事/怎么用）；conflict=读者关心（想解决什么、按完会怎样、怎么找/怎么用）；whyNow=为何现在值得讲清楚；risk=堆砌术语、说明书腔、过度简化失真（可选）。',
+        '语气清晰好懂；禁止文学散文腔；禁止主动写解剖存废、「找不到管子」等反向辩论，除非用户明确要求。有【我的经历】时经历只作例子。',
         '涉及「今天/新鲜事」须以检索为准。简报第一句就是结论；不要写检索预告或「检索简报」标题。',
       ].join('');
     default:
@@ -106,7 +106,7 @@ function planGenreHint(genre: LongArticleGenre): string {
     case 'commentary':
       return '请输出轻量内容思路：文体为观点评论；beats 写成论证要点（主张→理由→反方→取舍）；JSON 外最多两句导语，随即附完整 JSON（含 beats，以及至少 3 条 titleDirections）；不要写长文或分节大纲。';
     case 'popular-science':
-      return '请输出轻量内容思路：文体为科普；beats 写成说明节拍（是什么→易混点→例子/对照→清楚结论），清晰好懂，禁止文学散文骨架与存废辩论；JSON 外最多两句导语，随即附完整 JSON（含 beats，以及至少 3 条 titleDirections）。';
+      return '请输出轻量内容思路：文体为科普；beats 写成说明节拍（是什么/怎么用→读者关心→例子/对照→清楚结论），清晰好懂；禁止文学散文骨架；禁止解剖存废辩论骨架；JSON 外最多两句导语，随即附完整 JSON（含 beats，以及至少 3 条 titleDirections）。';
     default:
       return '请输出轻量内容思路：文体为知识故事；beats 写成故事化科普节拍（场景钩子→澄清易混点→可感结论），禁止百科大纲与存废辩论骨架；JSON 外最多两句导语，随即附完整 JSON（含 beats，以及至少 3 条 titleDirections）。';
   }
@@ -150,7 +150,7 @@ function draftGenreRule(genre: LongArticleGenre): string {
     case 'commentary':
       return '按观点评论写：立主张、给理由、接反方，落到取舍；勿写成中立综述或百科；';
     case 'popular-science':
-      return '按科普写：把概念讲清楚，例子与对照服务说明；语气清晰好懂，可略轻松；禁止文学散文腔、零聚焦实验写法与存废辩论拆台；有经历时经历只作例子；';
+      return '按科普写：把概念/用法讲清楚，围绕读者关心展开；例子与对照服务说明；语气清晰好懂，可略轻松；禁止文学散文腔、零聚焦实验写法；禁止主动写解剖存废、「找不到管子」等反向内容（除非用户明确要求）；禁止「缺的不是名词/术语/概念，是……」一类拿语词当对仗的说法；引用研究时用白话说清边界（如样本不大、只能当参考），禁止「方向上有提示，力度上不能夸大」一类论文免责声明腔；有经历时经历只作例子；';
     default:
       return '按知识故事写：用具体场景把知识讲清楚，有味可感；禁止百科说明书腔与存废辩论拆台；有经历时经历只作例子；';
   }

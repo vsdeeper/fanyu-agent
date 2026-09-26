@@ -69,6 +69,8 @@ export const LENGTH_LIMIT_MAX = 5000;
 export const RESEARCH_FAILED = '选题调研失败，请稍后重试';
 /** 简报写出来了，但末尾 sources/angles JSON 缺失或解析失败 */
 export const RESEARCH_NO_ANGLES = '未产出切入卡，请重新调研';
+export const RESEARCH_REGENERATE_CONFIRM_TITLE = '重新开始调研？';
+export const RESEARCH_REGENERATE_CONFIRM_CONTENT = '将覆盖当前检索简报、参考来源与切入卡';
 export const PLAN_FAILED = '内容思路生成失败，请稍后重试';
 export const PLAN_REGENERATE_CONFIRM_TITLE = '重新生成内容思路？';
 export const PLAN_REGENERATE_CONFIRM_CONTENT = '将覆盖当前写作要点与标题方向';
@@ -119,7 +121,7 @@ export const MISSING_ARTICLE_GENRE_WARNING = '请先选择文体';
 export const ANGLE_SLOT_WHY_NOW_LABEL = '读者理由';
 export const ANGLE_SLOT_RISK_LABEL = '注意';
 export const ANGLE_SLOT_CONFLICT_LABEL_BY_GENRE = {
-  'popular-science': '易混点',
+  'popular-science': '读者关心',
   'knowledge-story': '卡点',
   commentary: '张力',
   narrative: '处境',
