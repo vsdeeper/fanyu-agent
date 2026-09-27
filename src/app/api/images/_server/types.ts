@@ -17,7 +17,7 @@ export type ImageSpec = {
   maxPixels?: number;
   /** 上游是否接受 `output_format`（png/jpeg）参数。4.5 起方舟 Seedream 不支持该参数，传则 400；缺省视为 true。 */
   supportsOutputFormat?: boolean;
-  /** 生成质量档位（如 'high'）。仅支持 quality 的上游登记；缺省表示不支持 quality。 */
+  /** 生成质量档位（如 'max'）。仅支持 quality 的上游登记；缺省表示不支持 quality。 */
   quality?: { presets: readonly string[]; default: string };
 };
 

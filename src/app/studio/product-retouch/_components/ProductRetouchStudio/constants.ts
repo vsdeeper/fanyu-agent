@@ -24,7 +24,7 @@ export const DEFAULT_REFINE_FORM: RefineFormState = {
   requirement: DEFAULT_REFINE_REQUIREMENT,
   model: 'gpt-image-2.5-flare-vip',
   aspectRatio: '1:1',
-  quality: 'high',
+  quality: 'max',
   clarity: '2K',
   count: '1',
 };
@@ -32,7 +32,7 @@ export const DEFAULT_MULTIVIEW_FORM: MultiviewFormState = {
   requirement: DEFAULT_MULTIVIEW_REQUIREMENT,
   model: 'gpt-image-2.5-flare-vip',
   aspectRatio: '16:9',
-  quality: 'high',
+  quality: 'max',
   clarity: '2K',
   count: '1',
 };

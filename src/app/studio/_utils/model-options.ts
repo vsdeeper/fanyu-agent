@@ -2,10 +2,11 @@
  * 质量档位中文文案（前端展示用）。服务端档位串沿用 IMAGE_QUALITY_VALUES。
  */
 export const QUALITY_LABEL: Record<string, string> = {
-  high: '高质量',
-  medium: '中等质量',
   low: '低质量',
-  auto: '自动',
+  medium: '中等质量',
+  high: '高质量',
+  xhigh: '超高质量',
+  max: '最高质量',
 };
 
 /**
@@ -40,16 +41,16 @@ export const MODEL_CAPABILITIES: StudioModelCapability[] = [
     label: 'GPT Image 2.5 Flare VIP',
     clarityOptions: ['1K', '2K', '4K'],
     clarityDefault: '2K',
-    qualityOptions: ['high', 'medium', 'low', 'auto'],
-    qualityDefault: 'high',
+    qualityOptions: ['low', 'medium', 'high', 'xhigh', 'max'],
+    qualityDefault: 'max',
   },
   {
     id: 'gpt-image-2.5-sunburst-vip',
     label: 'GPT Image 2.5 Sunburst VIP',
     clarityOptions: ['1K', '2K', '4K'],
     clarityDefault: '2K',
-    qualityOptions: ['high', 'medium', 'low', 'auto'],
-    qualityDefault: 'high',
+    qualityOptions: ['low', 'medium', 'high', 'xhigh', 'max'],
+    qualityDefault: 'max',
   },
   {
     id: 'gemini-3.1-flash-image',

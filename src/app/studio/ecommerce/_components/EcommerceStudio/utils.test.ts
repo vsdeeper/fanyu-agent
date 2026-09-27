@@ -569,7 +569,7 @@ describe('步骤快照水合', () => {
       form: {
         model: 'gpt-image-2.5-flare-vip',
         aspectRatio: '1:1',
-        quality: 'high',
+        quality: 'max',
         clarity: '2K',
         count: '2',
       },

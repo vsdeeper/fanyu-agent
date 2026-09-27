@@ -16,7 +16,7 @@ export const DEFAULT_FORM: ProductModelFormState = {
   viewRequirement: DEFAULT_VIEW_REQUIREMENT,
   model: 'gpt-image-2.5-flare-vip',
   aspectRatio: '16:9',
-  quality: 'high',
+  quality: 'max',
   clarity: '2K',
   count: '1',
 };
