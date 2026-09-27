@@ -1215,6 +1215,9 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('安全边距');
     expect(prompt).toContain('禁止贴边排满');
     expect(prompt).toContain('禁止多栏信息框');
+    expect(prompt).toContain('手部解剖硬约束');
+    expect(prompt).toContain('恰好 1 拇指 + 4 指共 5 指');
+    expect(prompt).toContain('禁止多指、少指、融指、分叉指、悬浮指段');
     expect(prompt).toContain(body);
     expect(prompt).toContain('视觉参考图');
     expect(prompt).toContain('画法媒介');
@@ -1224,6 +1227,7 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('多人肢体须各自独立生成');
     expect(prompt).toContain('性别差异要一眼可辨');
     expect(prompt).toContain('禁止上下栏同一只手克隆');
+    expect(prompt).toContain('手形须按上方手部解剖硬约束独立画对');
     expect(prompt).toContain('禁止把参考图的姿态、手心朝向原样搬进成品');
     expect(prompt).toContain('文案硬约束');
     expect(prompt).toContain('主标题须采用正文 `#` 标题原文');
@@ -1252,10 +1256,13 @@ describe('图文配图指令', () => {
     expect(prompt).toContain(requirement);
     expect(prompt).toContain('优先级最高');
     expect(prompt).toContain('姿态硬约束');
+    expect(prompt).toContain('手部解剖硬约束');
+    expect(prompt).toContain('恰好 1 拇指 + 4 指共 5 指');
     expect(prompt).toContain('手心朝向释义');
     expect(prompt).toContain('仅旋转前臂使手掌平面朝向镜头');
     expect(prompt).toContain('禁止做成手指朝上、腕折约 90° 的竖掌「停车/制止」手势');
     expect(prompt).toContain('禁止掌心朝上朝天');
+    expect(prompt).toContain('改手势时仍须满足上方手部解剖硬约束');
     expect(prompt).toContain('手臂方向');
     expect(prompt).toContain('默认按画面左右');
     expect(prompt).toContain('知识库');
@@ -1266,6 +1273,7 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('版式密度以【我的要求】为准');
     expect(prompt).toContain('主要用于锁定身份、五官、发型、体型、着装气质');
     expect(prompt).toContain('禁止把参考图的姿态、手心朝向原样搬进成品');
+    expect(prompt).toContain('手形须按上方手部解剖硬约束独立画对');
     expect(prompt).toContain('多人肢体须各自独立生成');
     expect(prompt).toContain('性别差异要一眼可辨');
     expect(prompt).toContain('姿态优先级复核：【我的要求】＞【本张画面 / 图文内容】＞视觉参考');
