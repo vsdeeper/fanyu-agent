@@ -27,12 +27,6 @@ export const MATERIALS_LABEL = '素材';
 export const MATERIALS_HINT = '上传参考图以提炼主题与要点；也可只填内容';
 export const CONTENT_LABEL = '内容';
 export const CONTENT_PLACEHOLDER = '粘贴或填写主题、大纲、要点等，将整理成图文卡片';
-export const CONTENT_REQUIREMENT_LABEL = '我的要求';
-export const CONTENT_REQUIREMENT_HINT =
-  '可约束正文结构与详略，例如必须含某些 ## 小节、删减某类段落；有填写时优先于默认取舍';
-export const CONTENT_REQUIREMENT_PLACEHOLDER =
-  '可选：如「必须包含 ## 步骤说明 与 ## 注意事项」「删去背景介绍，只保留操作要点」';
-export const CONTENT_REQUIREMENT_MAX_LENGTH = 500;
 export const VISUAL_REFERENCE_LABEL = '视觉参考';
 export const VISUAL_REFERENCE_HINT =
   '对齐画风、配色与字体；人物主要用于锁定外貌；姿态以「我的要求」优先，其次按正文，不作标识点/标注位置依据';
