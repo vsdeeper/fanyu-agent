@@ -1225,6 +1225,11 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('性别差异要一眼可辨');
     expect(prompt).toContain('禁止上下栏同一只手克隆');
     expect(prompt).toContain('禁止把参考图的姿态、手心朝向原样搬进成品');
+    expect(prompt).toContain('文案硬约束');
+    expect(prompt).toContain('主标题须采用正文 `#` 标题原文');
+    expect(prompt).toContain('绝对禁止复刻、改写或拼贴参考图上的标题');
+    expect(prompt).toContain('唯一文案与事实来源');
+    expect(prompt).toContain('主标题必须用正文 `#` 标题原文');
     expect(prompt).not.toContain('勿复刻其具体五官身份与相貌');
     expect(prompt).not.toContain('人物模特');
     expect(prompt).toContain('高密度信息墙');
@@ -1268,6 +1273,9 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('画法媒介');
     expect(prompt).toContain('反约束');
     expect(prompt).toContain('不作定位依据');
+    expect(prompt).toContain('文案硬约束');
+    expect(prompt).toContain('绝对禁止复刻、改写或拼贴参考图上的标题');
+    expect(prompt).toContain('主标题必须用正文 `#` 标题');
     expect(prompt).not.toContain('人物模特');
     expect(prompt).not.toContain('不得据此把正文扩成');
     expect(prompt).toContain(body);
