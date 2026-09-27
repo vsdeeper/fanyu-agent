@@ -76,29 +76,6 @@ export function listImageModels(): ImageModelProfile[] {
   ];
 }
 
-/**
- * 主模型可读的可选生图模型清单（含默认标注），注入 generate_image 的 model 参数描述。
- */
-export function describeImageModels(): string {
-  const generateId = getConfiguredImageModelId();
-  const editId = getConfiguredEditImageModelId();
-  const header =
-    editId === generateId
-      ? `可选模型（全局生图/改图均为 ${generateId}，绝对优先）：`
-      : `可选模型（全局生图 ${generateId}、改图 ${editId}，绝对优先）：`;
-  return [
-    header,
-    ...listImageModels().map((m) => {
-      const tags: string[] = [];
-      if (m.id === generateId) tags.push('生图默认');
-      if (m.id === editId) tags.push('改图默认');
-      const tagText = tags.length ? `，${tags.join('·')}` : '';
-      return `- ${m.id}（${m.label}${tagText}）：${m.description}`;
-    }),
-    '- 尺寸档位随所选模型而异；自定义 WIDTHxHEIGHT 需落在所选模型像素区间内',
-  ].join('\n');
-}
-
 export function getImageModelProfile(modelId: string): ImageModelProfile | undefined {
   const normalized = modelId.trim();
   return listImageModels().find((item) => item.id === normalized);

@@ -66,10 +66,69 @@ export function getPendingTitle(title: string): string {
 
 /** 展开后的全量入参：按模型传参顺序逐行列出，空值字段跳过 */
 export function getToolInputRows(part: MessagePart): ToolInputRow[] {
-  const rows = toInputRows(getToolInput(part));
+  const name = getToolName(part);
+  const input = { ...getToolInput(part) };
+
+  // 生图模型由服务端 env 决定：丢弃 LLM 可能误传的 input.model，改用 output 真实值
+  if (name === 'generate_image') {
+    delete input.model;
+  }
+
+  const rows = toInputRows(input);
+  const modelRow = getGenerateImageModelRow(part);
+  if (modelRow) {
+    insertModelRow(rows, modelRow);
+  }
 
   // 原生联网由 provider 自己执行，query / url 不在 input 而在 output.action
   return rows.length > 0 ? rows : toSearchActionRows(part);
+}
+
+/**
+ * 从 generate_image 的 output 取出真实出图模型行。
+ * 优先顶层 modelLabel/modelId；旧落盘无顶层时回落到 assets[0].modelId。
+ */
+function getGenerateImageModelRow(part: MessagePart): ToolInputRow | null {
+  if (getToolName(part) !== 'generate_image') return null;
+
+  const output = part.output;
+  if (!isRecord(output)) return null;
+
+  const topId = typeof output.modelId === 'string' ? output.modelId : '';
+  const topLabel = typeof output.modelLabel === 'string' ? output.modelLabel : '';
+  if (topId || topLabel) {
+    return {
+      key: 'model',
+      label: FIELD_LABELS.model,
+      value: topLabel || topId,
+    };
+  }
+
+  // 兼容：较早成功落盘只有 assets[].modelId、无顶层 modelId
+  if (Array.isArray(output.assets)) {
+    for (const asset of output.assets) {
+      if (isRecord(asset) && typeof asset.modelId === 'string' && asset.modelId) {
+        return { key: 'model', label: FIELD_LABELS.model, value: asset.modelId };
+      }
+    }
+  }
+
+  return null;
+}
+
+/** 把模型行插到 prompt 后（无 prompt 则插到 mode 后，再否则置顶） */
+function insertModelRow(rows: ToolInputRow[], modelRow: ToolInputRow): void {
+  const afterPrompt = rows.findIndex((row) => row.key === 'prompt');
+  if (afterPrompt >= 0) {
+    rows.splice(afterPrompt + 1, 0, modelRow);
+    return;
+  }
+  const afterMode = rows.findIndex((row) => row.key === 'mode');
+  if (afterMode >= 0) {
+    rows.splice(afterMode + 1, 0, modelRow);
+    return;
+  }
+  rows.unshift(modelRow);
 }
 
 function toInputRows(input: Record<string, unknown>): ToolInputRow[] {

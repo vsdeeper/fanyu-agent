@@ -119,6 +119,64 @@ describe('getToolInputRows', () => {
   it('入参尚未到达时返回空数组', () => {
     expect(getToolInputRows(tool('web_search', { state: 'input-streaming' }))).toEqual([]);
   });
+
+  it('生图成功后用 output 真实模型覆盖 LLM 误传的 input.model', () => {
+    const rows = getToolInputRows(
+      tool('generate_image', {
+        state: 'output-available',
+        input: {
+          mode: 'edit',
+          prompt: '合成穴位图',
+          model: 'gpt-image-2.5-sunburst-vip',
+          size: '2K',
+        },
+        output: {
+          ok: true,
+          modelId: 'gpt-image-2.5-flare-vip',
+          modelLabel: 'GPT Image 2.5 Flare VIP',
+          assets: [{ assetId: 'a1', modelId: 'gpt-image-2.5-flare-vip' }],
+        },
+      }),
+    );
+
+    expect(rows).toEqual([
+      { key: 'mode', label: '模式', value: '改图' },
+      { key: 'prompt', label: '提示词', value: '合成穴位图' },
+      { key: 'model', label: '模型', value: 'GPT Image 2.5 Flare VIP' },
+      { key: 'size', label: '尺寸', value: '2K' },
+    ]);
+  });
+
+  it('旧落盘无顶层 modelId 时回落到 assets[].modelId', () => {
+    const rows = getToolInputRows(
+      tool('generate_image', {
+        state: 'output-available',
+        input: { mode: 'generate', prompt: '一只猫' },
+        output: {
+          ok: true,
+          assets: [{ assetId: 'a1', modelId: 'gpt-image-2.5-flare-vip' }],
+        },
+      }),
+    );
+
+    expect(rows.find((row) => row.key === 'model')).toEqual({
+      key: 'model',
+      label: '模型',
+      value: 'gpt-image-2.5-flare-vip',
+    });
+  });
+
+  it('生图进行中不展示未确认的模型行', () => {
+    const rows = getToolInputRows(
+      tool('generate_image', {
+        state: 'input-available',
+        input: { mode: 'edit', prompt: '去 logo', model: 'gpt-image-2.5-sunburst-vip' },
+      }),
+    );
+
+    expect(rows.find((row) => row.key === 'model')).toBeUndefined();
+    expect(rows.map((row) => row.key)).toEqual(['mode', 'prompt']);
+  });
 });
 
 describe('原生联网（providerExecuted，query 在 output.action）', () => {

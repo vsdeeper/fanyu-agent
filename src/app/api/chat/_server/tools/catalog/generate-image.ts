@@ -3,7 +3,6 @@ import { z } from 'zod';
 
 import { buildImageAssetUrl, saveImageAsset } from '@/app/api/images/_server/assets';
 import {
-  describeImageModels,
   getConfiguredEditImageModelId,
   getConfiguredImageModelId,
   getImageModelProfile,
@@ -55,6 +54,10 @@ export type ImageToolAsset = {
 export type ImageToolSuccess = {
   ok: true;
   assets: ImageToolAsset[];
+  /** 本轮实际出图模型（env 解析结果）；供思考区展示，勿与 LLM 入参混淆 */
+  modelId: string;
+  /** 模型可读名；有则思考区优先展示 label */
+  modelLabel?: string;
   // 旧落盘形状：重构前成功 part 为 { ok:true, assetId, url }，无 assets 数组。保留可选字段供兼容读取。
   assetId?: string;
   url?: string;
@@ -67,6 +70,9 @@ export type ImageToolSuccess = {
 export type ImageToolFailure = {
   ok: false;
   error: string;
+  /** 已解析出模型时附带，便于失败态思考区仍能展示真实模型 */
+  modelId?: string;
+  modelLabel?: string;
 };
 
 export type ImageToolResult = ImageToolSuccess | ImageToolFailure;
@@ -92,6 +98,11 @@ const IMAGE_PURPOSE_ALIASES = new Map<string, ImagePurpose>([
 function normalizeImagePurpose(type: string | undefined): ImagePurpose | undefined {
   if (!type) return undefined;
   return IMAGE_PURPOSE_ALIASES.get(type.trim().toLowerCase());
+}
+
+/** 思考区展示用：把已解析的 modelId 配上可读 label */
+function modelDisplayFields(modelId: string): { modelId: string; modelLabel?: string } {
+  return { modelId, modelLabel: getImageModelProfile(modelId)?.label };
 }
 
 /**
@@ -124,7 +135,7 @@ ${seeSourceLine}
 - 改刚生成的图：mode=edit，尽量传 sourceAssetIds（上一轮 tool 结果已含 assetId）；未传则服务端使用 working image
 - 用户说「改上面那张 / 第二张」且无法对应到已知 assetId、用户也未贴图时：不要猜测、不要调用 edit，请用户将要修改的图复制粘贴到对话框后再试
 - 生图成功后界面会自动展示图片；汇总回复时只用文字说明，勿在正文中插入 Markdown 图片或 URL
-- 给用户的汇总文字不要出现 assetId、模型 id、图片 URL、/api/images 链接等内部标识；这些仅供工具入参（sourceAssetIds / model / assetId）内部复用，用户不关心也不懂。确需说明来源或所用模型时用用户能懂的说法（如「你上传的参考图」「写实商拍模型」），不要写出模型 id 或资产 id
+- 给用户的汇总文字不要出现 assetId、模型 id、图片 URL、/api/images 链接等内部标识；这些仅供工具入参（sourceAssetIds / assetId）内部复用，用户不关心也不懂。确需说明来源或所用模型时用用户能懂的说法（如「你上传的参考图」「写实商拍模型」），不要写出模型 id 或资产 id
 - 用户明确要求透明背景、去底、抠图或 PNG alpha 时：transparent=true（GPT Image 2.5 原生支持透明 PNG）；未要求时不要传 true
 - 生成应用图标 / App Icon / logo / 标志 / 品牌标识等需要「方形满铺」的图时：prompt 必须写明背景为单一纯色、满铺到画布四边、无内缩白边/留白、无圆角或超椭圆、无投影/发光/描边边框、无纹理；图形居中置于中央约 80% 安全区。此类图标默认不透明（勿设 transparent=true），仅用户明确要透明背景时才设 true
 - 只在用户明确要求改变画面尺寸或比例时才传 size / aspectRatio（如「改成横版」「放大到 4K」）；改图不传时服务端会保持源图的尺寸与比例，生图不传时交由模型自选
@@ -172,7 +183,7 @@ function createGenerateImageTool(
     inputSchema: z.object({
       mode: z.enum(['generate', 'edit']).describe('generate=新图；edit=基于已有图修改'),
       prompt: z.string().min(1).describe('详细生图或改图描述；多参考时按顺序说明各图用途'),
-      model: z.string().optional().describe(describeImageModels()),
+      // 模型由 env 绝对决定，不收 LLM 入参，避免思考区展示与真实出图不一致
       sourceAssetIds: z
         .array(z.string())
         .optional()
@@ -283,7 +294,11 @@ function createGenerateImageTool(
             [];
           for (let i = 0; i < refs.dataUrls.length; i++) {
             if (abortSignal?.aborted) {
-              return { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR };
+              return {
+                ok: false,
+                error: IMAGE_TOOL_INTERRUPTED_ERROR,
+                ...modelDisplayFields(modelId),
+              };
             }
             const result = await generateImageViaRouter({
               modelId,
@@ -297,7 +312,11 @@ function createGenerateImageTool(
               abortSignal,
             });
             if (abortSignal?.aborted) {
-              return { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR };
+              return {
+                ok: false,
+                error: IMAGE_TOOL_INTERRUPTED_ERROR,
+                ...modelDisplayFields(modelId),
+              };
             }
             const first = result.images[0];
             if (!first) {
@@ -307,7 +326,11 @@ function createGenerateImageTool(
                 modelId,
                 size: resolvedSize,
               });
-              return { ok: false, error: '生图服务未返回图片' };
+              return {
+                ok: false,
+                error: '生图服务未返回图片',
+                ...modelDisplayFields(modelId),
+              };
             }
             generated.push({
               bytes: first.bytes,
@@ -335,6 +358,7 @@ function createGenerateImageTool(
           return {
             ok: true,
             assets,
+            ...modelDisplayFields(modelId),
             type: normalizedType,
             imageGrouping: imageGrouping || undefined,
           };
@@ -355,7 +379,7 @@ function createGenerateImageTool(
 
         // 请求已中断则不落盘，避免无消息引用的孤儿图
         if (abortSignal?.aborted) {
-          return { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR };
+          return { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR, ...modelDisplayFields(modelId) };
         }
 
         const first = result.images[0];
@@ -366,7 +390,7 @@ function createGenerateImageTool(
             modelId,
             size: resolvedSize,
           });
-          return { ok: false, error: '生图服务未返回图片' };
+          return { ok: false, error: '生图服务未返回图片', ...modelDisplayFields(modelId) };
         }
 
         const asset = await saveImageAsset({
@@ -388,12 +412,17 @@ function createGenerateImageTool(
               parentId: asset.parentId,
             },
           ],
+          ...modelDisplayFields(modelId),
           type: normalizedType,
           imageGrouping: imageGrouping || undefined,
         };
       } catch (err) {
         if (abortSignal?.aborted) {
-          return { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR };
+          return {
+            ok: false,
+            error: IMAGE_TOOL_INTERRUPTED_ERROR,
+            ...(modelId ? modelDisplayFields(modelId) : {}),
+          };
         }
         if (isImageAbortError(err)) {
           logImageToolFailure({
@@ -402,10 +431,18 @@ function createGenerateImageTool(
             modelId,
             size: resolvedSize,
           });
-          return { ok: false, error: '生图超时，请稍后重试' };
+          return {
+            ok: false,
+            error: '生图超时，请稍后重试',
+            ...(modelId ? modelDisplayFields(modelId) : {}),
+          };
         }
         if (isImageSafetyRejectedError(err)) {
-          return { ok: false, error: err.message };
+          return {
+            ok: false,
+            error: err.message,
+            ...(modelId ? modelDisplayFields(modelId) : {}),
+          };
         }
         logImageToolFailure({
           error: '生图服务暂不可用，请稍后重试',
@@ -414,7 +451,11 @@ function createGenerateImageTool(
           size: resolvedSize,
           cause: err,
         });
-        return { ok: false, error: '生图服务暂不可用，请稍后重试' };
+        return {
+          ok: false,
+          error: '生图服务暂不可用，请稍后重试',
+          ...(modelId ? modelDisplayFields(modelId) : {}),
+        };
       }
     },
     // 修复：execute 完整 output 供 UI part 落盘；toModelOutput 不含 url，避免主模型正文重复写 ![]()
