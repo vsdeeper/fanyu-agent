@@ -1,7 +1,7 @@
 import { inheritEditSourceGeometry } from './edit-geometry';
 import {
+  getConfiguredEditImageModelId,
   getConfiguredImageModelId,
-  getCurrentImageModelId,
   getImageModelProfile,
 } from './registry';
 import { arkSeedreamProvider } from './providers/ark-seedream';
@@ -14,27 +14,15 @@ function getProvider(providerId: string): ImageProvider {
   throw new Error(`未知生图 Provider: ${providerId}`);
 }
 
-export function resolveImageModelId({
-  requestedModelId,
-  parentModelId,
-}: {
-  requestedModelId?: string;
-  parentModelId?: string;
-}): string {
-  // 全局已设置 IMAGE_MODEL_ID：绝对优先，主模型自选（requestedModelId）不覆盖
-  const configured = getConfiguredImageModelId();
-  if (configured) {
-    return configured;
+/**
+ * 主对话生图/改图模型路由：generate → IMAGE_MODEL_ID；edit → EDIT_IMAGE_MODEL_ID（未设则同 IMAGE）。
+ * 全局 env 绝对优先，不再按场景自选或继承父图模型。
+ */
+export function resolveImageModelId({ mode }: { mode: 'generate' | 'edit' }): string {
+  if (mode === 'edit') {
+    return getConfiguredEditImageModelId();
   }
-  // 用户上传哨兵 / 未知 id 不在 registry：不能当真实生图模型继承，否则 getImageModelProfile 会失败。
-  if (requestedModelId?.trim() && getImageModelProfile(requestedModelId.trim())) {
-    return requestedModelId.trim();
-  }
-  // 修复：多轮改图默认沿用上一张 modelId，避免换模型丢风格一致性
-  if (parentModelId?.trim() && getImageModelProfile(parentModelId.trim())) {
-    return parentModelId.trim();
-  }
-  return getCurrentImageModelId();
+  return getConfiguredImageModelId();
 }
 
 export async function generateImageViaRouter(

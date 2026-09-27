@@ -12,6 +12,6 @@ describe('resolveChatProviderByModelId', () => {
   it('空串与未知前缀返回 null', () => {
     expect(resolveChatProviderByModelId('')).toBeNull();
     expect(resolveChatProviderByModelId('   ')).toBeNull();
-    expect(resolveChatProviderByModelId('gpt-image-2-vip')).toBeNull();
+    expect(resolveChatProviderByModelId('gpt-image-2.5-flare-vip')).toBeNull();
   });
 });

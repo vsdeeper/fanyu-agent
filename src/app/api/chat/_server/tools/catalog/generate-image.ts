@@ -1,15 +1,11 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 
-import {
-  buildImageAssetUrl,
-  resolveParentModelId,
-  saveImageAsset,
-} from '@/app/api/images/_server/assets';
+import { buildImageAssetUrl, saveImageAsset } from '@/app/api/images/_server/assets';
 import {
   describeImageModels,
+  getConfiguredEditImageModelId,
   getConfiguredImageModelId,
-  getCurrentImageModelId,
   getImageModelProfile,
 } from '@/app/api/images/_server/registry';
 import {
@@ -99,20 +95,21 @@ function normalizeImagePurpose(type: string | undefined): ImagePurpose | undefin
 }
 
 /**
- * 按当前生图模型的尺寸规格生成工具使用规则。
+ * 按当前生图/改图模型的尺寸规格生成工具使用规则。
  */
 function getImageSystemHint(): string {
-  const configured = getConfiguredImageModelId();
-  const modelLine = configured
-    ? `- 生图模型：全局设置为 ${configured}，绝对优先，勿改`
-    : `- 生图模型：未设置全局默认，请按场景自选。设计出图主力：写实/商拍/精细文字→gpt-image-2-vip，艺术插画/创意/色彩→gemini-3.1-flash-image（Nano Banana 2）；预算与速度优先→gemini-flash-lite 或 seedream-5-0-lite；仅对设计要求不高的一般场景→seedream-4-5。仅当确需换模型或编辑历史图需保持原模型时传 model`;
-  const spec = getImageSpec(getCurrentImageModelId());
+  const generateModel = getConfiguredImageModelId();
+  const editModel = getConfiguredEditImageModelId();
+  const modelLine =
+    editModel === generateModel
+      ? `- 生图/改图模型：全局设置为 ${generateModel}，绝对优先，勿改`
+      : `- 生图模型：全局设置为 ${generateModel}，绝对优先，勿改\n- 改图模型：全局设置为 ${editModel}，绝对优先，勿改`;
+  const spec = getImageSpec(generateModel);
   const presets = spec.size.presets.join('/');
-  const sizeLine = configured
-    ? spec.minPixels != null && spec.maxPixels != null
+  const sizeLine =
+    spec.minPixels != null && spec.maxPixels != null
       ? `- 生图尺寸只传 ${presets}，或总像素 ${spec.minPixels} ~ ${spec.maxPixels} 的 WIDTHxHEIGHT（默认 ${spec.size.default}）`
-      : `- 生图尺寸只传 ${presets}（默认 ${spec.size.default}）`
-    : `- 生图尺寸随所选模型而异（档位/像素区间见该模型说明），默认 2K；编辑历史图时以该图模型为准`;
+      : `- 生图尺寸只传 ${presets}（默认 ${spec.size.default}）`;
   const seeSourceLine = getConfiguredAnalyzeImageModelId()
     ? `- 有源图且改图/按图生图依赖画面内容（复刻风格、改文字、提取局部、指定元素）时：必须先调用 analyze_image，再按识图结果调用本工具；禁止仅凭主模型目视或猜测编造画面文字`
     : `- 有源图且改图/按图生图指令依赖画面内容（复刻风格、改文字、提取局部、指定元素）时：先看清源图画面，再按所见调用本工具`;
@@ -128,7 +125,7 @@ ${seeSourceLine}
 - 用户说「改上面那张 / 第二张」且无法对应到已知 assetId、用户也未贴图时：不要猜测、不要调用 edit，请用户将要修改的图复制粘贴到对话框后再试
 - 生图成功后界面会自动展示图片；汇总回复时只用文字说明，勿在正文中插入 Markdown 图片或 URL
 - 给用户的汇总文字不要出现 assetId、模型 id、图片 URL、/api/images 链接等内部标识；这些仅供工具入参（sourceAssetIds / model / assetId）内部复用，用户不关心也不懂。确需说明来源或所用模型时用用户能懂的说法（如「你上传的参考图」「写实商拍模型」），不要写出模型 id 或资产 id
-- 用户明确要求透明背景、去底、抠图或 PNG alpha 时：transparent=true；未要求时不要传 true
+- 用户明确要求透明背景、去底、抠图或 PNG alpha 时：transparent=true（GPT Image 2.5 原生支持透明 PNG）；未要求时不要传 true
 - 生成应用图标 / App Icon / logo / 标志 / 品牌标识等需要「方形满铺」的图时：prompt 必须写明背景为单一纯色、满铺到画布四边、无内缩白边/留白、无圆角或超椭圆、无投影/发光/描边边框、无纹理；图形居中置于中央约 80% 安全区。此类图标默认不透明（勿设 transparent=true），仅用户明确要透明背景时才设 true
 - 只在用户明确要求改变画面尺寸或比例时才传 size / aspectRatio（如「改成横版」「放大到 4K」）；改图不传时服务端会保持源图的尺寸与比例，生图不传时交由模型自选
 - 当前 skill 需要按类型分组展示图片时，每次调用显式传 type（如 main / detail / marketing）；不需要分组则不要传
@@ -136,22 +133,16 @@ ${modelLine}
 ${sizeLine}`;
 }
 
-/** size 参数描述：已设置全局模型给出其规格；自选模式给出通用说明 */
+/** size 参数描述：按全局生图模型规格说明 */
 function getSizeFieldDescribe(): string {
   const configured = getConfiguredImageModelId();
-  if (configured) {
-    return `${describeImageSize(getImageSpec(configured))}；改图不传时沿用源图尺寸，编辑历史图时档位以该图模型为准`;
-  }
-  return '生图尺寸随所选模型而异（档位与像素区间见所选模型说明），默认 2K；改图不传时沿用源图尺寸（历史图以该图模型为准）';
+  return `${describeImageSize(getImageSpec(configured))}；改图不传时沿用源图尺寸，档位以改图模型为准`;
 }
 
-/** quality 参数描述：按当前模型质量规格给出说明；仅支持 quality 的模型生效 */
+/** quality 参数描述：按全局生图模型质量规格说明；仅支持 quality 的模型生效 */
 function getQualityFieldDescribe(): string {
   const configured = getConfiguredImageModelId();
-  if (configured) {
-    return `${describeImageQuality(getImageSpec(configured))}；不支持 quality 的模型请在 prompt 用文字表达画质要求`;
-  }
-  return `生成质量：${IMAGE_QUALITY_VALUES.join('、')}（默认 high）；仅支持 quality 的模型生效，不支持时请在 prompt 用文字表达画质要求`;
+  return `${describeImageQuality(getImageSpec(configured))}；不支持 quality 的模型请在 prompt 用文字表达画质要求`;
 }
 
 const PASTE_IMAGE_EDIT_HINT =
@@ -213,7 +204,9 @@ function createGenerateImageTool(
       transparent: z
         .boolean()
         .optional()
-        .describe('仅当用户明确要求透明背景、去底、抠图或 PNG alpha 时为 true'),
+        .describe(
+          '仅当用户明确要求透明背景、去底、抠图或 PNG alpha 时为 true；GPT Image 2.5（flare/sunburst）原生支持透明 PNG',
+        ),
       quality: z.enum(IMAGE_QUALITY_VALUES).optional().describe(getQualityFieldDescribe()),
       type: z
         .string()
@@ -226,7 +219,6 @@ function createGenerateImageTool(
       {
         mode,
         prompt,
-        model,
         sourceAssetIds,
         pastedImageIndexes,
         strategy,
@@ -260,17 +252,8 @@ function createGenerateImageTool(
           refs = resolved;
         }
 
-        // 多参考时首项可能是用户上传哨兵（不在 registry）；取第一个真实生图模型，保持系列风格连续。
-        const referenceModelId = refs.parentIds
-          .map((parentId) => resolveParentModelId(parentId))
-          .find((candidate) => {
-            const trimmed = candidate?.trim();
-            return Boolean(trimmed && getImageModelProfile(trimmed));
-          });
-        modelId = resolveImageModelId({
-          requestedModelId: model,
-          parentModelId: referenceModelId,
-        });
+        // 全局 env 绝对优先：generate → IMAGE_MODEL_ID；edit → EDIT_IMAGE_MODEL_ID（未设则同 IMAGE）
+        modelId = resolveImageModelId({ mode });
 
         const spec = getImageSpec(modelId);
         resolvedSize =

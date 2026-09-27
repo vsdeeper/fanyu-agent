@@ -29,7 +29,7 @@ import {
 import { parseGenerateBody } from './parse-generate-request';
 
 const SPEC_FIELDS = {
-  model: 'gpt-image-2-vip',
+  model: 'gpt-image-2.5-flare-vip',
   aspectRatio: '16:9',
   quality: 'high',
   clarity: '2K',

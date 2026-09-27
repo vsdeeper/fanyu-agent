@@ -17,14 +17,14 @@
 
 ## 技术栈
 
-| 依赖 | 版本 | 用途 |
-| ---- | ---- | ---- |
-| Next.js | 16.x | App Router |
-| React | 19.x | UI |
-| Vercel AI SDK（`ai` / `@ai-sdk/react` / `@ai-sdk/openai`） | 7.x / 4.x | 流式对话、工具 |
-| Ant Design X + Ant Design | 2.x / 6.x | 对话 UI / 基础组件 |
-| Drizzle + better-sqlite3 | — | 会话与资产存储 |
-| TypeScript、ESLint、Prettier、Vitest、Husky、Commitlint | — | 工程化 |
+| 依赖                                                       | 版本      | 用途               |
+| ---------------------------------------------------------- | --------- | ------------------ |
+| Next.js                                                    | 16.x      | App Router         |
+| React                                                      | 19.x      | UI                 |
+| Vercel AI SDK（`ai` / `@ai-sdk/react` / `@ai-sdk/openai`） | 7.x / 4.x | 流式对话、工具     |
+| Ant Design X + Ant Design                                  | 2.x / 6.x | 对话 UI / 基础组件 |
+| Drizzle + better-sqlite3                                   | —         | 会话与资产存储     |
+| TypeScript、ESLint、Prettier、Vitest、Husky、Commitlint    | —         | 工程化             |
 
 ## 快速开始
 
@@ -33,7 +33,7 @@
 ```bash
 pnpm install
 cp .env.example .env.local
-# 按 .env.example 注释填写密钥（所列变量须非空；IMAGE_MODEL_ID 可留空）
+# 按 .env.example 注释填写密钥（所列变量须非空；`EDIT_IMAGE_MODEL_ID` / `ANALYZE_IMAGE_MODEL_ID` 可留空）
 pnpm run dev
 ```
 
@@ -41,15 +41,16 @@ pnpm run dev
 
 **环境变量要点**（完整列表以 [`.env.example`](./.env.example) 为准）：
 
-| 变量 | 说明 |
-| ---- | ---- |
-| `CHAT_PROVIDER` | `deepseek`（默认）/ `ark` / `zhipu` |
-| `DEEPSEEK_*` / `ARK_*` / `ZHIPU_*` | 对应 Provider 的 Key、Base URL、三档模型 ID |
-| `LAOZHANG_*` | 生图默认走老张；选用 Seedream 时另需 `ARK_*` |
-| `IMAGE_MODEL_ID` | 可选；设置则生图绝对优先该模型，留空由主模型自选 |
-| `AMAP_WEB_KEY` | 高德 Web 服务（逆地理等） |
-| `CHAT_STORE_DIR` | 会话资产目录（默认 `./data/chats`） |
-| `CHAT_SYNC_REMOTE_DIR` | 云盘备份对端（应指向 `.../chats`） |
+| 变量                               | 说明                                            |
+| ---------------------------------- | ----------------------------------------------- |
+| `CHAT_PROVIDER`                    | `deepseek`（默认）/ `ark` / `zhipu`             |
+| `DEEPSEEK_*` / `ARK_*` / `ZHIPU_*` | 对应 Provider 的 Key、Base URL、三档模型 ID     |
+| `LAOZHANG_*`                       | 生图默认走老张；选用 Seedream 时另需 `ARK_*`    |
+| `IMAGE_MODEL_ID`                   | **必填**；主对话生图模型                        |
+| `EDIT_IMAGE_MODEL_ID`              | 可选；主对话改图模型，留空则同 `IMAGE_MODEL_ID` |
+| `AMAP_WEB_KEY`                     | 高德 Web 服务（逆地理等）                       |
+| `CHAT_STORE_DIR`                   | 会话资产目录（默认 `./data/chats`）             |
+| `CHAT_SYNC_REMOTE_DIR`             | 云盘备份对端（应指向 `.../chats`）              |
 
 说明：
 
@@ -58,22 +59,22 @@ pnpm run dev
 
 ## 常用命令
 
-| 命令 | 说明 |
-| ---- | ---- |
-| `pnpm run dev` / `build` / `start` | 开发 / 构建 / 生产 |
-| `pnpm run lint` / `format` / `test` | ESLint / Prettier / Vitest |
-| `pnpm run db:generate` | 对照 `schema.ts` 生成 `drizzle/` 迁移 SQL（不改库） |
-| `pnpm run db:migrate` | CLI 把未应用迁移写入 `app.db`（不启动 Next 时用） |
-| `pnpm db:checkpoint` | 将 `app.db` 的 WAL 合回主库（同步前用） |
-| `pnpm sync:data:push` / `pull` | 本地 ↔ 云盘镜像（pull 会覆盖本地） |
+| 命令                                | 说明                                                |
+| ----------------------------------- | --------------------------------------------------- |
+| `pnpm run dev` / `build` / `start`  | 开发 / 构建 / 生产                                  |
+| `pnpm run lint` / `format` / `test` | ESLint / Prettier / Vitest                          |
+| `pnpm run db:generate`              | 对照 `schema.ts` 生成 `drizzle/` 迁移 SQL（不改库） |
+| `pnpm run db:migrate`               | CLI 把未应用迁移写入 `app.db`（不启动 Next 时用）   |
+| `pnpm db:checkpoint`                | 将 `app.db` 的 WAL 合回主库（同步前用）             |
+| `pnpm sync:data:push` / `pull`      | 本地 ↔ 云盘镜像（pull 会覆盖本地）                  |
 
 ## 数据与备份
 
-| 路径 | 内容 |
-| ---- | ---- |
-| `CHAT_STORE_DIR`（默认 `./data/chats`） | 会话图片、DESIGN.md |
-| `dirname(CHAT_STORE_DIR)/app.db` | 应用库（会话 + 工作室任务元数据，WAL） |
-| 同级 `studio/{product}/` | 工作室任务资产 |
+| 路径                                    | 内容                                   |
+| --------------------------------------- | -------------------------------------- |
+| `CHAT_STORE_DIR`（默认 `./data/chats`） | 会话图片、DESIGN.md                    |
+| `dirname(CHAT_STORE_DIR)/app.db`        | 应用库（会话 + 工作室任务元数据，WAL） |
+| 同级 `studio/{product}/`                | 工作室任务资产                         |
 
 ```bash
 # 同步前：先停掉 pnpm dev，再把 WAL 合回主库
@@ -125,10 +126,10 @@ pnpm run db:generate
 
 ### 如何应用到库（二选一）
 
-| 方式 | 说明 |
-| ---- | ---- |
+| 方式     | 说明                                                             |
+| -------- | ---------------------------------------------------------------- |
 | 日常开发 | `pnpm run dev` 后，首次访问数据库时 `getDb()` 会自动 `migrate()` |
-| CLI | `pnpm run db:migrate`，立刻写库、无需启动 Next |
+| CLI      | `pnpm run db:migrate`，立刻写库、无需启动 Next                   |
 
 两者效果同类：都只执行「还没跑过」的迁移。推荐习惯：
 
@@ -156,35 +157,35 @@ scripts/               # checkpoint / sync-data 等 Node 脚本
 
 入口 `/studio`。各产品任务资产落在 `data/studio/{product}/`：
 
-| 产品 | 路径 | 说明 |
-| ---- | ---- | ---- |
-| 产品精修 | `/studio/product-retouch` | 精修 / 多角度出图 |
-| 商业分析 | `/studio/business-analysis` | 定位、卖点与视觉方向 |
-| 产品模特 | `/studio/product-model` | 多角度模特图 |
-| 电商设计 | `/studio/ecommerce` | 主图 / 详情图 / 营销海报（主题规划，不跑商业分析） |
-| 公众号 | `/studio/wechat-article` | 选题调研、思路与成稿 |
+| 产品     | 路径                        | 说明                                               |
+| -------- | --------------------------- | -------------------------------------------------- |
+| 产品精修 | `/studio/product-retouch`   | 精修 / 多角度出图                                  |
+| 商业分析 | `/studio/business-analysis` | 定位、卖点与视觉方向                               |
+| 产品模特 | `/studio/product-model`     | 多角度模特图                                       |
+| 电商设计 | `/studio/ecommerce`         | 主图 / 详情图 / 营销海报（主题规划，不跑商业分析） |
+| 公众号   | `/studio/wechat-article`    | 选题调研、思路与成稿                               |
 
 ## 对话与工具
 
 主对话由 `CHAT_PROVIDER` 选择 Provider；工具跑完后主模型再汇总。
 
-| 工具 | 作用 |
-| ---- | ---- |
-| `generate_image` | 文生图 / 改图（多参考图）；按模型路由 Provider |
-| `save_design_md` | DESIGN.md 落盘，对话内仅下载卡片 |
-| `web_search` | 联网搜索（方舟侧透传；DeepSeek / 智谱走本地工具调智谱 Web Search） |
+| 工具             | 作用                                                               |
+| ---------------- | ------------------------------------------------------------------ |
+| `generate_image` | 文生图 / 改图（多参考图）；按模型路由 Provider                     |
+| `save_design_md` | DESIGN.md 落盘，对话内仅下载卡片                                   |
+| `web_search`     | 联网搜索（方舟侧透传；DeepSeek / 智谱走本地工具调智谱 Web Search） |
 
-生图模型优先级：`IMAGE_MODEL_ID`（若设置）→ 主模型自选 → 继承父图 → `FALLBACK_IMAGE_MODEL_ID`（`gemini-3.1-flash-image`）。清单见 [`registry.ts`](src/app/api/images/_server/registry.ts)（Seedream 4.5 / 5.0 Lite、Gemini Flash Image / Lite、GPT Image 2 VIP）。图片经 `GET /api/images/[assetId]` 展示，勿直链上游 CDN。
+生图模型：主对话 generate 用 `IMAGE_MODEL_ID`（必填），edit 用 `EDIT_IMAGE_MODEL_ID`（未设则同 IMAGE）。工作室由表单显式选择。清单见 [`registry.ts`](src/app/api/images/_server/registry.ts)（Seedream 4.5 / 5.0 Lite、Gemini Flash Image / Lite、GPT Image 2.5 Flare / Sunburst VIP）。图片经 `GET /api/images/[assetId]` 展示，勿直链上游 CDN。
 
 ## Skills
 
 `/<id>` 或 Suggestion 调用用户面向 skill；知识库 skill（`userInvocable: false`）由意图 / 伴随激活注入。
 
-| Skill | 说明 |
-| ----- | ---- |
-| `brandkit` | 品牌规范板 |
-| `mobile-design` / `web-design` | 移动端 / Web 设计参考图 |
-| `design-md` | 知识库：出图后按需落盘 DESIGN.md |
+| Skill                          | 说明                             |
+| ------------------------------ | -------------------------------- |
+| `brandkit`                     | 品牌规范板                       |
+| `mobile-design` / `web-design` | 移动端 / Web 设计参考图          |
+| `design-md`                    | 知识库：出图后按需落盘 DESIGN.md |
 
 新增与注入规则见 [AGENTS.md](./AGENTS.md)。
 

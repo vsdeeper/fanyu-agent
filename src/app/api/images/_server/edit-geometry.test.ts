@@ -18,7 +18,7 @@ function pngDataUrl(width: number, height: number): string {
 
 function editRequest(overrides: Partial<ImageGenerateRequest> = {}): ImageGenerateRequest {
   return {
-    modelId: 'gpt-image-2-vip',
+    modelId: 'gpt-image-2.5-flare-vip',
     prompt: '改图',
     mode: 'edit',
     referenceImageDataUrls: [pngDataUrl(1536, 2048)],
@@ -28,7 +28,7 @@ function editRequest(overrides: Partial<ImageGenerateRequest> = {}): ImageGenera
 
 describe('resolveInheritedEditGeometry', () => {
   it('像素入参模型原样沿用源图像素尺寸与比例', () => {
-    const spec = getImageSpec('gpt-image-2-vip');
+    const spec = getImageSpec('gpt-image-2.5-flare-vip');
 
     expect(resolveInheritedEditGeometry({ width: 1536, height: 2048 }, spec)).toEqual({
       size: '1536x2048',
@@ -45,7 +45,7 @@ describe('resolveInheritedEditGeometry', () => {
   });
 
   it('源图尺寸不符合对齐步长时只沿用比例', () => {
-    const spec = getImageSpec('gpt-image-2-vip');
+    const spec = getImageSpec('gpt-image-2.5-flare-vip');
 
     expect(resolveInheritedEditGeometry({ width: 1500, height: 2000 }, spec)).toEqual({
       aspectRatio: '3:4',
@@ -68,12 +68,15 @@ describe('resolveInheritedEditGeometry', () => {
 
   it('源图尺寸非法时返回 undefined', () => {
     expect(
-      resolveInheritedEditGeometry({ width: 0, height: 2048 }, getImageSpec('gpt-image-2-vip')),
+      resolveInheritedEditGeometry(
+        { width: 0, height: 2048 },
+        getImageSpec('gpt-image-2.5-flare-vip'),
+      ),
     ).toBeUndefined();
   });
 
   it('继承的源图尺寸按模型规格原样出站（不再落回默认档位的正方形）', () => {
-    const gpt = getImageSpec('gpt-image-2-vip');
+    const gpt = getImageSpec('gpt-image-2.5-flare-vip');
     const gptInherited = resolveInheritedEditGeometry({ width: 1536, height: 2048 }, gpt);
     expect(resolveOutboundImageSize(gptInherited?.size, gptInherited?.aspectRatio, gpt)).toBe(
       '1536x2048',
@@ -89,7 +92,7 @@ describe('resolveInheritedEditGeometry', () => {
 
 describe('inheritEditSourceGeometry', () => {
   it('未指定尺寸与比例时按源图补上像素尺寸与比例', () => {
-    expect(inheritEditSourceGeometry(editRequest(), 'gpt-image-2-vip')).toEqual({
+    expect(inheritEditSourceGeometry(editRequest(), 'gpt-image-2.5-flare-vip')).toEqual({
       size: '1536x2048',
       aspectRatio: '3:4',
     });
@@ -97,33 +100,38 @@ describe('inheritEditSourceGeometry', () => {
 
   it('调用方已给比例时不继承（用户明确要改比例）', () => {
     expect(
-      inheritEditSourceGeometry(editRequest({ aspectRatio: '16:9' }), 'gpt-image-2-vip'),
+      inheritEditSourceGeometry(editRequest({ aspectRatio: '16:9' }), 'gpt-image-2.5-flare-vip'),
     ).toEqual({});
   });
 
   it('比例为 auto 视为未指定', () => {
     expect(
-      inheritEditSourceGeometry(editRequest({ aspectRatio: 'auto' }), 'gpt-image-2-vip'),
+      inheritEditSourceGeometry(editRequest({ aspectRatio: 'auto' }), 'gpt-image-2.5-flare-vip'),
     ).toEqual({ size: '1536x2048', aspectRatio: '3:4' });
   });
 
   it('调用方已给尺寸时只继承比例', () => {
-    expect(inheritEditSourceGeometry(editRequest({ size: '4K' }), 'gpt-image-2-vip')).toEqual({
+    expect(
+      inheritEditSourceGeometry(editRequest({ size: '4K' }), 'gpt-image-2.5-flare-vip'),
+    ).toEqual({
       aspectRatio: '3:4',
     });
   });
 
   it('生图、无参考图、源图不可读时都不继承', () => {
-    expect(inheritEditSourceGeometry(editRequest({ mode: 'generate' }), 'gpt-image-2-vip')).toEqual(
-      {},
-    );
     expect(
-      inheritEditSourceGeometry(editRequest({ referenceImageDataUrls: [] }), 'gpt-image-2-vip'),
+      inheritEditSourceGeometry(editRequest({ mode: 'generate' }), 'gpt-image-2.5-flare-vip'),
+    ).toEqual({});
+    expect(
+      inheritEditSourceGeometry(
+        editRequest({ referenceImageDataUrls: [] }),
+        'gpt-image-2.5-flare-vip',
+      ),
     ).toEqual({});
     expect(
       inheritEditSourceGeometry(
         editRequest({ referenceImageDataUrls: ['https://example.com/a.png'] }),
-        'gpt-image-2-vip',
+        'gpt-image-2.5-flare-vip',
       ),
     ).toEqual({});
   });

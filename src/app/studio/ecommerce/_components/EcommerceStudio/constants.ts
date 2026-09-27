@@ -88,7 +88,7 @@ export const BRAND_LOGO_ARIA_LABEL = '上传品牌 Logo';
 export const VISUAL_PRODUCT_IMAGE_SUBTITLE = '可选；不上传时产品本体按商业分析描述生成';
 
 export const DEFAULT_FORM_STATE: StudioFormState = {
-  model: 'gpt-image-2-vip',
+  model: 'gpt-image-2.5-flare-vip',
   aspectRatio: '1:1',
   quality: 'high',
   clarity: '2K',
@@ -103,7 +103,7 @@ export const DEFAULT_CLARITY_BY_TASK_TYPE: Record<EcommerceTaskType, string> = {
 };
 
 export const DEFAULT_DESIGN_FORM_STATE: DesignFormState = {
-  model: 'gpt-image-2-vip',
+  model: 'gpt-image-2.5-flare-vip',
   taskType: '主图',
   aspectRatio: '1:1',
   quality: 'high',

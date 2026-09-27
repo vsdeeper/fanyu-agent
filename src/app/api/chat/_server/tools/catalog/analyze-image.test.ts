@@ -87,7 +87,7 @@ describe('analyze_image tool', () => {
   });
 
   it('未知模型前缀返回友好错误', async () => {
-    process.env.ANALYZE_IMAGE_MODEL_ID = 'gpt-image-2-vip';
+    process.env.ANALYZE_IMAGE_MODEL_ID = 'gpt-image-2.5-flare-vip';
 
     const result = await runAnalyze({});
 

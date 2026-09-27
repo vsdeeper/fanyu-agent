@@ -113,7 +113,7 @@ export const ANGLE_SLOT_RISK_LABEL = '注意';
 export const SELECTED_ANGLE_LABEL = '选定切入';
 export const SELECTED_ANGLE_EMPTY = '尚未选择切入';
 
-export const DEFAULT_IMAGE_MODEL = 'gpt-image-2-vip';
+export const DEFAULT_IMAGE_MODEL = 'gpt-image-2.5-flare-vip';
 /** 槽位默认比例：公众号头图就是 2.35:1，封面与正文配图统一按它出图。 */
 export const DEFAULT_IMAGE_ASPECT = '2.35:1';
 export const DEFAULT_IMAGE_CLARITY = '1K';

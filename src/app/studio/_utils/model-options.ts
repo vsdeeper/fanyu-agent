@@ -36,8 +36,16 @@ export type StudioModelCapability = {
 
 export const MODEL_CAPABILITIES: StudioModelCapability[] = [
   {
-    id: 'gpt-image-2-vip',
-    label: 'GPT Image 2 VIP',
+    id: 'gpt-image-2.5-flare-vip',
+    label: 'GPT Image 2.5 Flare VIP',
+    clarityOptions: ['1K', '2K', '4K'],
+    clarityDefault: '2K',
+    qualityOptions: ['high', 'medium', 'low', 'auto'],
+    qualityDefault: 'high',
+  },
+  {
+    id: 'gpt-image-2.5-sunburst-vip',
+    label: 'GPT Image 2.5 Sunburst VIP',
     clarityOptions: ['1K', '2K', '4K'],
     clarityDefault: '2K',
     qualityOptions: ['high', 'medium', 'low', 'auto'],

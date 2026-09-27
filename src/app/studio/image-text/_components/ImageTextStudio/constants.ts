@@ -54,7 +54,7 @@ export const EMPTY_PREVIEW_HINT = '还没有勾选预览图片';
 export const DEFAULT_GENERATE_CARD_ID = 'image-text';
 export const DEFAULT_GENERATE_CARD_TITLE = '图文配图';
 
-export const DEFAULT_IMAGE_MODEL = 'gpt-image-2-vip';
+export const DEFAULT_IMAGE_MODEL = 'gpt-image-2.5-flare-vip';
 export const DEFAULT_IMAGE_ASPECT = '3:4';
 export const DEFAULT_IMAGE_CLARITY = '2K';
 

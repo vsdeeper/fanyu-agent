@@ -9,7 +9,7 @@ export type ImageSpec = {
   sizeInput: 'tier' | 'pixel';
   /** 像素入参模型的档位长边表；存在时优先用长边 + 宽高比换算，而不是用正方形面积换算。 */
   tierLongEdges?: Record<string, number>;
-  /** 像素尺寸对齐步长；GPT Image 2 要求宽高为 16 的倍数。 */
+  /** 像素尺寸对齐步长；GPT Image 2.5 要求宽高为 16 的倍数。 */
   dimensionMultiple?: number;
   /** 像素入参模型支持的最大长短边比例。 */
   maxAspectRatio?: number;

@@ -567,7 +567,7 @@ describe('步骤快照水合', () => {
     });
     const visual = readVisualStepSnapshot({
       form: {
-        model: 'gpt-image-2-vip',
+        model: 'gpt-image-2.5-flare-vip',
         aspectRatio: '1:1',
         quality: 'high',
         clarity: '2K',

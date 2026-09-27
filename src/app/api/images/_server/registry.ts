@@ -1,19 +1,26 @@
+import { requireEnv } from '@/lib/shared/server/env';
+
 import type { ImageModelProfile } from './types';
 
-/** 无 env、主模型未自选、也无父图时的兜底模型（仅兜底，非固定「当前生图模型」） */
-export const FALLBACK_IMAGE_MODEL_ID = 'gemini-3.1-flash-image';
-
 /**
- * env 设置的全局「当前生图模型」（未来全局设置写入）。
- * 返回设置值；未设置返回 null → 本轮由主模型按场景自动选型（绝对优先，自选不再覆盖）。
+ * 全局生图模型（env `IMAGE_MODEL_ID`，必填）。
+ * 主对话 generate 绝对使用该值；工作室显式下拉不受此函数影响。
  */
-export function getConfiguredImageModelId(): string | null {
-  return process.env.IMAGE_MODEL_ID?.trim() || null;
+export function getConfiguredImageModelId(): string {
+  return requireEnv('IMAGE_MODEL_ID');
 }
 
-/** 当前生图模型：已设置取设置值，否则兜底；仅供尺寸/描述等默认参考 */
+/**
+ * 全局改图模型（env `EDIT_IMAGE_MODEL_ID`）。
+ * 未设置或空串时回落为 `IMAGE_MODEL_ID`。
+ */
+export function getConfiguredEditImageModelId(): string {
+  return process.env.EDIT_IMAGE_MODEL_ID?.trim() || getConfiguredImageModelId();
+}
+
+/** 当前生图模型（等同 `getConfiguredImageModelId`）；供尺寸/描述等默认参考 */
 export function getCurrentImageModelId(): string {
-  return getConfiguredImageModelId() ?? FALLBACK_IMAGE_MODEL_ID;
+  return getConfiguredImageModelId();
 }
 
 export function listImageModels(): ImageModelProfile[] {
@@ -51,12 +58,20 @@ export function listImageModels(): ImageModelProfile[] {
         '谷歌 Nano Banana 2，设计出图主力之一；擅长动漫插画、艺术风格化与色彩表达，画面更有手绘质感与情绪，出图更快（约 5–10 秒）且成本更低，支持 4K 与多角色一致性；适合艺术插画、创意设计、大胆配色的表现力画面。',
     },
     {
-      id: 'gpt-image-2-vip',
+      id: 'gpt-image-2.5-flare-vip',
       provider: 'laozhang',
       capabilities: ['t2i', 'i2i'],
-      label: 'GPT Image 2 VIP',
+      label: 'GPT Image 2.5 Flare VIP',
       description:
-        'OpenAI 出品，设计出图主力之一；极致的写实与指令遵从，光影层次、材质物理感与影棚布光模拟出色，复杂布局与中/日文等文字渲染精准，支持原生透明背景；适合电商产品图、商拍、营销海报、UI 截图与精细文字控制。',
+        'OpenAI 出品，设计出图主力；极致的写实与指令遵从，光影层次、材质物理感与影棚布光模拟出色，复杂布局与中/日文等文字渲染精准；原生支持透明背景（PNG alpha，transparent=true），适合电商产品图、商拍、营销海报、UI 截图、抠图去底与精细文字控制。',
+    },
+    {
+      id: 'gpt-image-2.5-sunburst-vip',
+      provider: 'laozhang',
+      capabilities: ['t2i', 'i2i'],
+      label: 'GPT Image 2.5 Sunburst VIP',
+      description:
+        'OpenAI 出品，改图主力；在保留源图主体与构图的前提下做局部修改、风格微调与文字替换，指令遵从与材质一致性出色；同样原生支持透明背景（PNG alpha，transparent=true），适合多轮改图、精修补丁、去底抠图与按参考编辑。',
     },
   ];
 }
@@ -65,13 +80,21 @@ export function listImageModels(): ImageModelProfile[] {
  * 主模型可读的可选生图模型清单（含默认标注），注入 generate_image 的 model 参数描述。
  */
 export function describeImageModels(): string {
-  const configured = getConfiguredImageModelId();
-  const defaultId = configured ?? getCurrentImageModelId();
+  const generateId = getConfiguredImageModelId();
+  const editId = getConfiguredEditImageModelId();
+  const header =
+    editId === generateId
+      ? `可选模型（全局生图/改图均为 ${generateId}，绝对优先）：`
+      : `可选模型（全局生图 ${generateId}、改图 ${editId}，绝对优先）：`;
   return [
-    `可选生图模型${configured ? `（全局设置为 ${configured}，绝对优先）` : '（未设置全局默认，请按场景自选）'}：`,
-    ...listImageModels().map(
-      (m) => `- ${m.id}（${m.label}${m.id === defaultId ? '，默认' : ''}）：${m.description}`,
-    ),
+    header,
+    ...listImageModels().map((m) => {
+      const tags: string[] = [];
+      if (m.id === generateId) tags.push('生图默认');
+      if (m.id === editId) tags.push('改图默认');
+      const tagText = tags.length ? `，${tags.join('·')}` : '';
+      return `- ${m.id}（${m.label}${tagText}）：${m.description}`;
+    }),
     '- 尺寸档位随所选模型而异；自定义 WIDTHxHEIGHT 需落在所选模型像素区间内',
   ].join('\n');
 }

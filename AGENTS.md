@@ -361,9 +361,9 @@ Button/
 
 #### 模型选型
 
-- env `IMAGE_MODEL_ID`：**设置则绝对优先**；未设置则主模型经 `generate_image` 的 `model` 回传，由 `resolveImageModelId` 路由
-- 未设置且无自选、无父图 → 兜底 `FALLBACK_IMAGE_MODEL_ID`
-- Provider：老张 Gemini（`LAOZHANG_*`）/ 方舟 Seedream（`ARK_*`）
+- env `IMAGE_MODEL_ID`：**必填**，主对话生图（`mode=generate`）绝对使用
+- env `EDIT_IMAGE_MODEL_ID`：可选改图模型；未设则与 `IMAGE_MODEL_ID` 相同；主对话改图（`mode=edit`）绝对使用
+- Provider：老张 Gemini / GPT Image（`LAOZHANG_*`）/ 方舟 Seedream（`ARK_*`）
 - 清单与能力：`registry.ts`（`listImageModels` / `describeImageModels`）；尺寸：`IMAGE_SPEC_BY_MODEL_ID`
 
 #### 资产与前端展示

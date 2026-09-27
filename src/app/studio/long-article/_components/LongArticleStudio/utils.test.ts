@@ -54,7 +54,7 @@ describe('readResearchStepSnapshot', () => {
 /** 长文正文的展示栏宽：正文配图都按它等比缩放，故「页面上一致」= 换到此宽度后一致。 */
 const DISPLAY_WIDTH = 677;
 
-/** gpt-image-2-vip 1K / 2K 档位各比例的成图尺寸（长边 1280 / 2048，16 倍数对齐）。 */
+/** gpt-image-2.5-flare-vip 1K / 2K 档位各比例的成图尺寸（长边 1280 / 2048，16 倍数对齐）。 */
 const IMAGE_SIZES = [
   { name: '1K 16:9', width: 1280, height: 720 },
   { name: '1K 1:1', width: 1280, height: 1280 },

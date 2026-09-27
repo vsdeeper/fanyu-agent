@@ -25,8 +25,8 @@ describe('resolveImageSize', () => {
     expect(resolveOutboundImageSize('4K', '16:9', spec)).toBe('4K');
   });
 
-  it('GPT Image 2 按模型约束把 K 档位换算成官方可用尺寸', () => {
-    const spec = getImageSpec('gpt-image-2-vip');
+  it('GPT Image 2.5 按模型约束把 K 档位换算成官方可用尺寸', () => {
+    const spec = getImageSpec('gpt-image-2.5-flare-vip');
 
     expect(resolveOutboundImageSize('1K', '16:9', spec)).toBe('1280x720');
     expect(resolveOutboundImageSize('2K', '16:9', spec)).toBe('2048x1152');
@@ -46,7 +46,7 @@ describe('resolveImageSize', () => {
   });
 
   it('小数比例（公众号头图 2.35:1）也换算得出像素尺寸', () => {
-    const gptImage = getImageSpec('gpt-image-2-vip');
+    const gptImage = getImageSpec('gpt-image-2.5-flare-vip');
     expect(resolveOutboundImageSize('1K', '2.35:1', gptImage)).toBe('1280x544');
 
     const seedream = getImageSpec('doubao-seedream-4-5-251128');
@@ -56,7 +56,7 @@ describe('resolveImageSize', () => {
   });
 
   it('小数比例反过来写（1:2.35 竖版）同样换算得出尺寸', () => {
-    const gptImage = getImageSpec('gpt-image-2-vip');
+    const gptImage = getImageSpec('gpt-image-2.5-flare-vip');
     expect(resolveOutboundImageSize('1K', '1:2.35', gptImage)).toBe('544x1280');
 
     const seedream = getImageSpec('doubao-seedream-4-5-251128');
