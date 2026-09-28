@@ -163,6 +163,20 @@
   line-height: 1.7;
 }
 
+.draftReferences {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--fanyu-color-border-secondary);
+}
+
+.draftReferencesMarkdown {
+  font-size: 13px;
+  color: var(--fanyu-color-text-secondary);
+}
+
 .charCount {
   margin: 0;
   font-size: 12px;

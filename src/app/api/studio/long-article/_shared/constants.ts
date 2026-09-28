@@ -22,3 +22,9 @@ export const LONG_ARTICLE_GENRE_LABEL: Record<LongArticleGenre, string> = {
   commentary: '观点评论',
   narrative: '叙事散文',
 };
+
+/**
+ * 成稿正文末尾「参考来源」二级标题文案（不含 `## `）。
+ * Client 按此标题拆分正文与来源区；Server 指令必须使用同一文案。
+ */
+export const DRAFT_REFERENCES_HEADING = '参考来源';

@@ -36,7 +36,13 @@ import type {
   ResearchSource,
   StudioPhase,
 } from '../types';
-import { cleanResearchBrief, countTextChars, stripTrailingJsonFenceForDisplay } from '../utils';
+import {
+  cleanResearchBrief,
+  countTextChars,
+  draftReferencesListMarkdown,
+  splitDraftBodyAndReferences,
+  stripTrailingJsonFenceForDisplay,
+} from '../utils';
 import { useStreamScroll } from './hooks/useStreamScroll';
 import TitleDirectionList from './TitleDirectionList';
 import BeatList from './BeatList';
@@ -169,8 +175,16 @@ export default function ResultPanel({
     phase === 'illustrating'
       ? stripTrailingJsonFenceForDisplay(imagesStream || markdown)
       : markdown;
-  const draftCharCount = draftDisplay.trim() ? countTextChars(draftDisplay) : 0;
-  const imagesCharCount = imagesDisplay.trim() ? countTextChars(imagesDisplay) : 0;
+  const { body: draftBodyMarkdown, referencesSection: draftReferencesSection } =
+    splitDraftBodyAndReferences(isEditing ? '' : draftDisplay);
+  const draftReferencesList = draftReferencesListMarkdown(draftReferencesSection);
+  const { body: imagesBodyMarkdown, referencesSection: imagesReferencesSection } =
+    splitDraftBodyAndReferences(imagesDisplay);
+  const imagesReferencesList = draftReferencesListMarkdown(imagesReferencesSection);
+  const draftCharCount = (isEditing ? draftDisplay : draftBodyMarkdown).trim()
+    ? countTextChars(isEditing ? draftDisplay : draftBodyMarkdown)
+    : 0;
+  const imagesCharCount = imagesBodyMarkdown.trim() ? countTextChars(imagesBodyMarkdown) : 0;
   const markdownClass = `${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`;
   const activeLabel = imageSlots.find((slot) => slot.id === activeSlotId)?.label;
   // 思路区没有流式正文，加载态一次性换成卡片，不参与贴底跟随
@@ -374,13 +388,27 @@ export default function ResultPanel({
             ) : hydrated ? (
               <>
                 <AnnotatedMarkdown
-                  markdown={imagesDisplay}
+                  markdown={imagesBodyMarkdown}
                   markdownClassName={markdownClass}
                   imageSlots={imageSlots}
                   activeLabel={activeLabel}
                   onMarkerClick={handleMarkerClick}
                 />
-                <p className={styles.charCount}>共 {imagesCharCount} 字</p>
+                {imagesReferencesList ? (
+                  <div className={styles.draftReferences}>
+                    <p className={styles.sectionTitle}>{RESEARCH_SOURCES_TITLE}</p>
+                    <XMarkdown
+                      className={`${markdownClass} ${styles.draftReferencesMarkdown}`}
+                      content={imagesReferencesList}
+                      paragraphTag="div"
+                      openLinksInNewTab
+                      escapeRawHtml
+                    />
+                  </div>
+                ) : null}
+                <p className={styles.charCount}>
+                  共 {imagesCharCount} 字{imagesReferencesList ? '（不含参考来源）' : ''}
+                </p>
               </>
             ) : null}
           </div>
@@ -401,17 +429,32 @@ export default function ResultPanel({
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
                   />
-                ) : draftDisplay.trim() && hydrated ? (
+                ) : draftBodyMarkdown.trim() && hydrated ? (
                   <XMarkdown
                     className={markdownClass}
-                    content={draftDisplay}
+                    content={draftBodyMarkdown}
                     paragraphTag="div"
                     openLinksInNewTab
                     escapeRawHtml
                   />
                 ) : null}
+                {!isEditing && draftReferencesList && hydrated ? (
+                  <div className={styles.draftReferences}>
+                    <p className={styles.sectionTitle}>{RESEARCH_SOURCES_TITLE}</p>
+                    <XMarkdown
+                      className={`${markdownClass} ${styles.draftReferencesMarkdown}`}
+                      content={draftReferencesList}
+                      paragraphTag="div"
+                      openLinksInNewTab
+                      escapeRawHtml
+                    />
+                  </div>
+                ) : null}
                 {draftDisplay.trim() ? (
-                  <p className={styles.charCount}>共 {draftCharCount} 字</p>
+                  <p className={styles.charCount}>
+                    共 {draftCharCount} 字
+                    {!isEditing && draftReferencesList ? '（不含参考来源）' : ''}
+                  </p>
                 ) : null}
               </>
             )}

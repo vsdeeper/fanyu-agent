@@ -1,4 +1,4 @@
-import { LONG_ARTICLE_GENRE_LABEL } from '../_shared/constants';
+import { DRAFT_REFERENCES_HEADING, LONG_ARTICLE_GENRE_LABEL } from '../_shared/constants';
 import type {
   LongArticleDraftRequest,
   LongArticleGenre,
@@ -165,6 +165,16 @@ export function buildDraftPrompt(body: LongArticleDraftRequest): string {
   const titleRule = title
     ? `第一行必须是 \`# ${title}\`（标题已定，勿改写），空一行后写正文；`
     : '';
+  const sources = body.sources
+    .map((item, index) => {
+      const date = item.publishedAt?.trim();
+      return `${index + 1}. [${item.kind}] ${item.title}${date ? `（${date}）` : ''} (${item.url})\n${item.blurb}`;
+    })
+    .join('\n');
+  const hasSources = body.sources.length > 0;
+  const referencesRule = hasSources
+    ? `正文写完后，全文最末另起 \`## ${DRAFT_REFERENCES_HEADING}\`，每行一条 \`[1] [标题](url)\`（方括号序号从 1 连续；行间空一行；禁止 -/*/1. 列表）；只列正文实际用到且 url 出自【参考来源】的条目；该节不计入篇幅；`
+    : '【参考来源】为空时不要输出参考来源节；';
   return [
     ...(idea ? ['【用户想法】', idea] : []),
     ...(experience ? ['【我的经历】', experience] : []),
@@ -175,14 +185,19 @@ export function buildDraftPrompt(body: LongArticleDraftRequest): string {
     '要点：',
     ...body.plan.beats.map((beat, index) => `${index + 1}. ${beat}`),
     ...(title ? ['【标题】', title] : []),
+    '【参考来源】',
+    sources || '（无）',
     '【文风】',
     body.stylePrompt.trim(),
     ...(body.lengthLimit
-      ? ['【篇幅】', `正文去掉空白后不少于 ${body.lengthLimit} 字；写够要点与展开，勿敷衍短写。`]
+      ? [
+          '【篇幅】',
+          `正文去掉空白后不少于 ${body.lengthLimit} 字（不含「${DRAFT_REFERENCES_HEADING}」节）；写够要点与展开，勿敷衍短写。`,
+        ]
       : []),
     ...(body.plan.audience ? ['【受众】', body.plan.audience] : []),
     '',
-    `请写长文正文 Markdown：${titleRule}${draftGenreRule(body.articleGenre)}正文须含若干 \`## \` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注。`,
+    `请写长文正文 Markdown：${titleRule}${draftGenreRule(body.articleGenre)}正文须含若干 \`## \` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注；${referencesRule}`,
   ].join('\n');
 }
 

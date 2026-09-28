@@ -50,6 +50,14 @@ export type LongArticleDraftRequest = {
     /** 内容思路中选定的成稿标题。 */
     title?: string;
   };
+  /** 调研步参考来源；有则成稿末尾须附「参考来源」节。 */
+  sources: Array<{
+    title: string;
+    url: string;
+    blurb: string;
+    kind: 'fact' | 'view' | 'case';
+    publishedAt?: string;
+  }>;
   /** 文风卡片拼成的提示文本，形如「叙事姿态：人称=第三人称；态度=低调陈述」。 */
   stylePrompt: string;
   /** 正文篇幅下限（去掉空白后的字数）；未传则不限制。 */

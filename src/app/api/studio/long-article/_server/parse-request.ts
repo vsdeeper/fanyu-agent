@@ -55,6 +55,7 @@ const draftSchema = z.object({
     audience: z.string().trim().optional(),
     title: z.string().trim().min(1).optional(),
   }),
+  sources: z.array(sourceSchema).default([]),
   stylePrompt: z.string().trim().min(1),
   lengthLimit: z.number().int().min(100).max(20000).optional(),
 });

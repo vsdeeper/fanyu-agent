@@ -7,10 +7,14 @@ import {
   WATERMARK_WIDTH_RATIO,
 } from './constants';
 import {
+  ensureDraftReferencesSection,
   findWatermarkInkBox,
+  formatDraftReferencesSection,
+  joinDraftBodyAndReferences,
   recolorWatermarkInk,
   resolveWatermarkInk,
   resolveWatermarkRect,
+  splitDraftBodyAndReferences,
   stripWatermarkBackdrop,
   suggestArticleGenre,
   readResearchStepSnapshot,
@@ -27,6 +31,51 @@ describe('suggestArticleGenre', () => {
 
   it('仅有想法时默认科普', () => {
     expect(suggestArticleGenre({ idea: '经络到底是什么' })).toBe('popular-science');
+  });
+});
+
+describe('splitDraftBodyAndReferences', () => {
+  it('无参考来源节时正文原样返回', () => {
+    const md = '# 标题\n\n正文一段。';
+    expect(splitDraftBodyAndReferences(md)).toEqual({
+      body: md,
+      referencesSection: '',
+    });
+  });
+
+  it('按最后一个「## 参考来源」拆分', () => {
+    const md = ['# 标题', '', '正文。', '', '## 参考来源', '', '[1] [A](https://a.com)'].join('\n');
+    const { body, referencesSection } = splitDraftBodyAndReferences(md);
+    expect(body).toBe('# 标题\n\n正文。');
+    expect(referencesSection).toBe('## 参考来源\n\n[1] [A](https://a.com)');
+  });
+
+  it('ensure：有 sources 且模型未写时补 [n] 前缀链接', () => {
+    const next = ensureDraftReferencesSection('# 标题\n\n正文。', [
+      { title: 'A', url: 'https://a.com' },
+      { title: 'B', url: 'https://b.com' },
+    ]);
+    expect(next).toContain('## 参考来源');
+    expect(next).toContain('[1] [A](https://a.com)');
+    expect(next).toContain('[2] [B](https://b.com)');
+    expect(next).not.toMatch(/^[-*+]\s/m);
+    expect(next).not.toMatch(/^\d+\.\s/m);
+  });
+
+  it('ensure：模型写了列表符号时改成 [n] 前缀', () => {
+    const md = ['# 标题', '', '正文。', '', '## 参考来源', '', '- [A](https://a.com)'].join('\n');
+    const next = ensureDraftReferencesSection(md, [{ title: 'A', url: 'https://a.com' }]);
+    expect(next).toContain('[1] [A](https://a.com)');
+    expect(next).not.toMatch(/^[-*+]\s/m);
+    expect(next).not.toMatch(/^\d+\.\s/m);
+  });
+
+  it('ensure：sources 为空时去掉误写的参考来源节', () => {
+    const md = joinDraftBodyAndReferences(
+      '# 标题\n\n正文。',
+      formatDraftReferencesSection([{ title: 'A', url: 'https://a.com' }]),
+    );
+    expect(ensureDraftReferencesSection(md, [])).toBe('# 标题\n\n正文。');
   });
 });
 

@@ -1,12 +1,14 @@
 import { CopyOutlined, StarOutlined } from '@ant-design/icons';
 import { Button, Empty } from 'antd';
+import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
 import { useThemeMode } from '@/components/theme';
 import AnnotatedMarkdown from '../AnnotatedMarkdown';
-import { COPY_ARTICLE_BUTTON, PREV_BUTTON } from '../constants';
+import { COPY_ARTICLE_BUTTON, PREV_BUTTON, RESEARCH_SOURCES_TITLE } from '../constants';
 import type { ImageSlot } from '../types';
+import { draftReferencesListMarkdown, splitDraftBodyAndReferences } from '../utils';
 import styles from './CompletionPanel.module.css';
 
 type CompletionPanelProps = {
@@ -25,6 +27,8 @@ export default function CompletionPanel({
 }: CompletionPanelProps) {
   const { mode, hydrated } = useThemeMode();
   const markdownClass = `${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`;
+  const { body, referencesSection } = splitDraftBodyAndReferences(markdown);
+  const referencesList = draftReferencesListMarkdown(referencesSection);
 
   return (
     <section className={styles.panel}>
@@ -38,12 +42,26 @@ export default function CompletionPanel({
         ) : (
           <div className={styles.phone} aria-label="长文手机预览">
             {hydrated ? (
-              <AnnotatedMarkdown
-                markdown={markdown}
-                markdownClassName={markdownClass}
-                imageSlots={imageSlots}
-                hideMarkerLabels
-              />
+              <>
+                <AnnotatedMarkdown
+                  markdown={body}
+                  markdownClassName={markdownClass}
+                  imageSlots={imageSlots}
+                  hideMarkerLabels
+                />
+                {referencesList ? (
+                  <div className={styles.references}>
+                    <p className={styles.referencesTitle}>{RESEARCH_SOURCES_TITLE}</p>
+                    <XMarkdown
+                      className={`${markdownClass} ${styles.referencesMarkdown}`}
+                      content={referencesList}
+                      paragraphTag="div"
+                      openLinksInNewTab
+                      escapeRawHtml
+                    />
+                  </div>
+                ) : null}
+              </>
             ) : null}
           </div>
         )}

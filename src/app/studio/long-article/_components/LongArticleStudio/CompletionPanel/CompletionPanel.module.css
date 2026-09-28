@@ -48,6 +48,25 @@
   line-height: 1.75;
 }
 
+.references {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--fanyu-color-border-secondary);
+}
+
+.referencesTitle {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fanyu-color-text-secondary);
+}
+
+.referencesMarkdown {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--fanyu-color-text-secondary);
+}
+
 .footer {
   flex-shrink: 0;
   display: flex;

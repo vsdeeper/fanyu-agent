@@ -1,4 +1,7 @@
-import { LONG_ARTICLE_GENRES } from '@/app/api/studio/long-article/_shared/constants';
+import {
+  DRAFT_REFERENCES_HEADING,
+  LONG_ARTICLE_GENRES,
+} from '@/app/api/studio/long-article/_shared/constants';
 import { LONG_ARTICLE_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/long-article/_shared/task-constants';
 import type {
   LongArticleStepKey,
@@ -567,6 +570,95 @@ export function defaultImageSpec() {
 /** 统计正文「字数」：去掉空白后的字符数。 */
 export function countTextChars(text: string): number {
   return text.replace(/\s/g, '').length;
+}
+
+/** 匹配成稿中「## 参考来源」标题行（文案与 Server 指令共用常量）。 */
+const DRAFT_REFERENCES_HEADING_RE = new RegExp(
+  `^##\\s*${DRAFT_REFERENCES_HEADING.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`,
+  'm',
+);
+
+/**
+ * 拆分成稿 Markdown：正文 vs 末尾「参考来源」节。
+ * 取最后一个「## 参考来源」标题行起拆分；referencesSection 含该标题行。
+ */
+export function splitDraftBodyAndReferences(markdown: string): {
+  body: string;
+  referencesSection: string;
+} {
+  const text = markdown.trim();
+  if (!text) return { body: '', referencesSection: '' };
+  let splitAt = -1;
+  const re = new RegExp(DRAFT_REFERENCES_HEADING_RE.source, 'gm');
+  for (const match of text.matchAll(re)) {
+    if (match.index != null) splitAt = match.index;
+  }
+  if (splitAt < 0) return { body: text, referencesSection: '' };
+  return {
+    body: text.slice(0, splitAt).trimEnd(),
+    referencesSection: text.slice(splitAt).trim(),
+  };
+}
+
+/** 拼接正文与参考来源节（来源节可为空）。 */
+export function joinDraftBodyAndReferences(body: string, referencesSection: string): string {
+  const main = body.trim();
+  const refs = referencesSection.trim();
+  if (!main) return refs;
+  if (!refs) return main;
+  return `${main}\n\n${refs}`;
+}
+
+/** 去掉「## 参考来源」标题行，只留列表正文供分区展示。 */
+export function draftReferencesListMarkdown(referencesSection: string): string {
+  return referencesSection.replace(DRAFT_REFERENCES_HEADING_RE, '').trim();
+}
+
+/** 将调研来源格式化为成稿末尾「参考来源」Markdown 节（`[n] [标题](url)`，不用 ul/ol）。 */
+export function formatDraftReferencesSection(
+  sources: Array<Pick<ResearchSource, 'title' | 'url'>>,
+): string {
+  const items = sources.filter((item) => item.title.trim() && item.url.trim());
+  if (!items.length) return '';
+  const list = items
+    .map((item, index) => `[${index + 1}] [${item.title.trim()}](${item.url.trim()})`)
+    .join('\n\n');
+  return `## ${DRAFT_REFERENCES_HEADING}\n\n${list}`;
+}
+
+/** 参考来源去掉列表符号，统一为 `[n] [标题](url)`（避免渲染成 ul）。 */
+export function normalizeDraftReferencesSection(referencesSection: string): string {
+  const trimmed = referencesSection.trim();
+  if (!trimmed) return '';
+  const list = draftReferencesListMarkdown(trimmed)
+    .split(/\r?\n/)
+    .map((line) => {
+      const item = line.trim();
+      if (!item) return '';
+      // 去掉 -/*/1. 列表符，以及已有的 [n] 前缀，稍后重编号
+      return item.replace(/^([-*+]|\d+\.)\s+/, '').replace(/^\[\d+\]\s+/, '');
+    })
+    .filter(Boolean)
+    .map((item, index) => `[${index + 1}] ${item}`)
+    .join('\n\n');
+  if (!list) return `## ${DRAFT_REFERENCES_HEADING}`;
+  return `## ${DRAFT_REFERENCES_HEADING}\n\n${list}`;
+}
+
+/**
+ * 成稿落盘前保证末尾有参考来源节：模型已写则保留并去序号；未写且有 sources 则补上。
+ * sources 为空时去掉误写的参考来源节。
+ */
+export function ensureDraftReferencesSection(
+  markdown: string,
+  sources: Array<Pick<ResearchSource, 'title' | 'url'>>,
+): string {
+  const { body, referencesSection } = splitDraftBodyAndReferences(markdown);
+  if (!sources.length) return body;
+  if (referencesSection) {
+    return joinDraftBodyAndReferences(body, normalizeDraftReferencesSection(referencesSection));
+  }
+  return joinDraftBodyAndReferences(body, formatDraftReferencesSection(sources));
 }
 
 /** 复制纯文本到剪贴板。 */

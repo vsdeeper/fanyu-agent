@@ -59,8 +59,11 @@ import {
   createRafTextBuffer,
   defaultImageSpec,
   cleanResearchBrief,
+  ensureDraftReferencesSection,
   ensureMarkdownLeadingTitle,
   extractTrailingJsonBlock,
+  joinDraftBodyAndReferences,
+  splitDraftBodyAndReferences,
   isAbortError,
   isSameDraftSnapshot,
   isSamePlanSnapshot,
@@ -542,6 +545,7 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
           ...(plan.audience ? { audience: plan.audience } : {}),
           ...(selectedTitle ? { title: selectedTitle } : {}),
         },
+        sources,
         stylePrompt,
         ...(lengthLimit !== undefined ? { lengthLimit } : {}),
       },
@@ -551,7 +555,10 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
         const { prose } = extractTrailingJsonBlock(fullText);
         const rawBody = prose || fullText;
         const nextTitles = selectedTitle ? [selectedTitle] : titles;
-        const body = ensureMarkdownLeadingTitle(nextTitles?.[0], rawBody);
+        const body = ensureDraftReferencesSection(
+          ensureMarkdownLeadingTitle(nextTitles?.[0], rawBody),
+          sources,
+        );
         const nextHistory = mergeSlotsIntoHistory(imageHistoryRef.current, imageSlotsRef.current);
         setDraftStream(fullText);
         setMarkdown(body);
@@ -605,10 +612,11 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
         return;
       }
     }
+    const { body: draftBody, referencesSection } = splitDraftBodyAndReferences(markdown);
     await runSse(
       '/api/studio/long-article/images',
       {
-        markdown: markdown.trim(),
+        markdown: draftBody.trim() || markdown.trim(),
         ...(selectedTitle ? { title: selectedTitle } : {}),
         ...(styleReferenceDataUrl ? { styleReferenceDataUrl } : {}),
       },
@@ -635,7 +643,8 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
         }
         const nextVisualStyle = parseImageVisualStyle(json) ?? '';
         const nextHistory = mergeSlotsIntoHistory(imageHistoryRef.current, imageSlotsRef.current);
-        const body = (prose || fullText).trim();
+        const illustratedBody = (prose || fullText).trim();
+        const body = joinDraftBodyAndReferences(illustratedBody, referencesSection);
         setImagesStream(fullText);
         setMarkdown(body);
         setImageSlots(nextSlots);
