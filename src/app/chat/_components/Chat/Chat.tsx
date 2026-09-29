@@ -9,7 +9,9 @@ import { Button, Typography } from 'antd';
 import { getUserLocation } from './location';
 import { resolveActiveSkillIds } from '@/lib/skills/context';
 import AiBubbleContent from './AiBubbleContent';
+import AiBubbleFooter from './AiBubbleFooter';
 import ChatSender from './ChatSender';
+import MessageCopyButton from './MessageCopyButton';
 import UserBubbleContent from './UserBubbleContent';
 import styles from './Chat.module.css';
 import { AWAITING_ASSISTANT_BUBBLE_KEY, bubbleRole } from './constants';
@@ -83,12 +85,7 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
         key: message.id,
         role: isAi ? ('ai' as const) : ('user' as const),
         content: isAi ? (
-          <AiBubbleContent
-            messageId={message.id}
-            text={text}
-            streaming={streaming}
-            messageParts={message.parts}
-          />
+          <AiBubbleContent streaming={streaming} messageParts={message.parts} />
         ) : (
           <UserBubbleContent text={text} parts={message.parts} />
         ),
@@ -97,10 +94,18 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
         classNames: {
           body: isAi ? styles.aiBubbleBody : undefined,
         },
-        footer: stopped ? (
-          <Typography.Text type="secondary" className={styles.stoppedHint}>
-            这条消息已停止
-          </Typography.Text>
+        footer: isAi ? (
+          <AiBubbleFooter
+            messageId={message.id}
+            text={text}
+            streaming={streaming}
+            stopped={stopped}
+            messageParts={message.parts}
+          />
+        ) : text.trim() ? (
+          <div className={styles.userFooter}>
+            <MessageCopyButton text={text} />
+          </div>
         ) : null,
       };
     });
@@ -111,14 +116,7 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
       items.push({
         key: AWAITING_ASSISTANT_BUBBLE_KEY,
         role: 'ai' as const,
-        content: (
-          <AiBubbleContent
-            messageId={AWAITING_ASSISTANT_BUBBLE_KEY}
-            text=""
-            streaming={false}
-            messageParts={[]}
-          />
-        ),
+        content: <AiBubbleContent streaming={false} messageParts={[]} />,
         streaming: false,
         loading: true,
         classNames: {

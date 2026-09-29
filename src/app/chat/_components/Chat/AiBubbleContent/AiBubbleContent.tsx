@@ -10,7 +10,6 @@ import DesignMdBlock from './DesignMdBlock';
 import GenerateImageBlock from './GenerateImageBlock';
 import { markdownComponents } from './MarkdownImage';
 import ReasoningThink from './ReasoningThink';
-import SourceBar from './SourceBar';
 import ToolCallBlock from './ToolCallBlock';
 import {
   type AiBubbleContentProps,
@@ -18,18 +17,16 @@ import {
   getContentBlocks,
   getDesignMdParts,
   getGenerateImageParts,
-  getSourceItems,
   stripReferenceSection,
 } from './utils';
 
 export type { AiBubbleContentProps };
 
-function AiBubbleContent({ messageId, text, streaming, messageParts }: AiBubbleContentProps) {
+function AiBubbleContent({ streaming, messageParts }: AiBubbleContentProps) {
   const { mode } = useThemeMode();
-  const sourceItems = useMemo(() => getSourceItems(messageParts, text), [messageParts, text]);
   const imageParts = useMemo(() => getGenerateImageParts(messageParts), [messageParts]);
   const designMdParts = useMemo(() => getDesignMdParts(messageParts), [messageParts]);
-  // 按 parts 顺序逐块渲染「思考-正文-思考-正文」；出图 / DESIGN.md 卡片与来源条仍在气泡末尾汇总
+  // 按 parts 顺序逐块渲染「思考-正文-思考-正文」；出图 / DESIGN.md 卡片仍在气泡末尾汇总
   const blocks = useMemo(() => getContentBlocks(messageParts), [messageParts]);
   // 「参考来源」只裁最后一个正文块：模型可能在前面的块里提到该词，逐块裁会误删那句正文
   const lastTextKey = useMemo(
@@ -69,9 +66,6 @@ function AiBubbleContent({ messageId, text, streaming, messageParts }: AiBubbleC
       })}
       {imageParts.length > 0 ? <GenerateImageBlock parts={imageParts} /> : null}
       {designMdParts.length > 0 ? <DesignMdBlock parts={designMdParts} /> : null}
-      {sourceItems.length > 0 && !streaming ? (
-        <SourceBar messageId={messageId} items={sourceItems} />
-      ) : null}
     </div>
   );
 }

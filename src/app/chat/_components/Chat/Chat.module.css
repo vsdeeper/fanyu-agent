@@ -25,14 +25,14 @@
   width: 100%;
 }
 
-.aiBubbleBody {
+.userFooter {
+  display: flex;
+  justify-content: flex-end;
   width: 100%;
 }
 
-.stoppedHint {
-  display: block;
-  font-size: 12px;
-  line-height: 1.5;
+.aiBubbleBody {
+  width: 100%;
 }
 
 /* 预留滚动条槽，避免出现滚动条时内容区变窄导致与 composer 错位 */

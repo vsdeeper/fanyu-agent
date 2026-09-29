@@ -4,9 +4,6 @@ import { isHttpUrl } from '@/app/chat/_components/SourceFavicon/utils';
 export type MessagePart = { type: string; [key: string]: unknown };
 
 export type AiBubbleContentProps = {
-  messageId: string;
-  /** 整条正文（聚合全部 text part）：来源条解析「参考来源」区块要按全文取最后一个标题 */
-  text: string;
   streaming: boolean;
   messageParts: ReadonlyArray<MessagePart> | undefined;
 };
@@ -366,12 +363,9 @@ export function aiBubbleContentPropsAreEqual(
   next: AiBubbleContentProps,
 ): boolean {
   return (
-    prev.messageId === next.messageId &&
-    prev.text === next.text &&
     prev.streaming === next.streaming &&
     contentPartsKey(prev.messageParts) === contentPartsKey(next.messageParts) &&
     toolPartsKey(prev.messageParts) === toolPartsKey(next.messageParts) &&
-    sourcePartsKey(prev.messageParts) === sourcePartsKey(next.messageParts) &&
     imagePartsKey(prev.messageParts) === imagePartsKey(next.messageParts) &&
     designMdPartsKey(prev.messageParts) === designMdPartsKey(next.messageParts)
   );
