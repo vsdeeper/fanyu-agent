@@ -253,6 +253,7 @@ export default function ChatSender({
                   <Button
                     type="text"
                     aria-label="上传附件"
+                    shape="circle"
                     icon={<LinkOutlined />}
                     disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
                     onClick={() => selectAttachments(attachmentsRef)}
