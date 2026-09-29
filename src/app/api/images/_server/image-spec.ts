@@ -13,8 +13,8 @@ const GPT_IMAGE_2_5_SPEC: ImageSpec = {
   maxAspectRatio: 3,
   minPixels: 655_360,
   maxPixels: 3840 * 2160,
-  // OpenAI gpt-image 2.5 支持 quality（low/medium/high/xhigh/max），默认 max；其余模型上游无该参数故不登记。
-  quality: { presets: [...IMAGE_QUALITY_VALUES], default: 'max' },
+  // OpenAI gpt-image 2.5 支持 quality（low/medium/high/xhigh/max），默认 xhigh；其余模型上游无该参数故不登记。
+  quality: { presets: [...IMAGE_QUALITY_VALUES], default: 'xhigh' },
 };
 
 /** 模型 ID → 生图输出规格。新增模型须同时改 registry 与本表，勿只改一处。 */

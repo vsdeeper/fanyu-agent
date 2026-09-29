@@ -42,7 +42,7 @@ export const MODEL_CAPABILITIES: StudioModelCapability[] = [
     clarityOptions: ['1K', '2K', '4K'],
     clarityDefault: '2K',
     qualityOptions: ['low', 'medium', 'high', 'xhigh', 'max'],
-    qualityDefault: 'max',
+    qualityDefault: 'xhigh',
   },
   {
     id: 'gpt-image-2.5-sunburst-vip',
@@ -50,7 +50,7 @@ export const MODEL_CAPABILITIES: StudioModelCapability[] = [
     clarityOptions: ['1K', '2K', '4K'],
     clarityDefault: '2K',
     qualityOptions: ['low', 'medium', 'high', 'xhigh', 'max'],
-    qualityDefault: 'max',
+    qualityDefault: 'xhigh',
   },
   {
     id: 'gemini-3.1-flash-image',

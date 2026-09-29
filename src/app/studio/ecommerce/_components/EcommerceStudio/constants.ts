@@ -90,7 +90,7 @@ export const VISUAL_PRODUCT_IMAGE_SUBTITLE = '可选；不上传时产品本体�
 export const DEFAULT_FORM_STATE: StudioFormState = {
   model: 'gpt-image-2.5-flare-vip',
   aspectRatio: '1:1',
-  quality: 'max',
+  quality: 'xhigh',
   clarity: '2K',
   count: '1',
 };
@@ -106,7 +106,7 @@ export const DEFAULT_DESIGN_FORM_STATE: DesignFormState = {
   model: 'gpt-image-2.5-flare-vip',
   taskType: '主图',
   aspectRatio: '1:1',
-  quality: 'max',
+  quality: 'xhigh',
   clarity: DEFAULT_CLARITY_BY_TASK_TYPE['主图'],
   count: '1',
   textlessVisual: false,
