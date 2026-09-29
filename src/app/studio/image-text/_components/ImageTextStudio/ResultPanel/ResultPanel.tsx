@@ -17,6 +17,9 @@ import {
   EDIT_BUTTON,
   EMPTY_GALLERY_HINT,
   EMPTY_PLAN_HINT,
+  EXPORT_BUTTON,
+  EXPORT_FILE_NAME,
+  EXPORT_MEDIA_TYPE,
   MARKDOWN_COMPONENTS,
   MARKDOWN_DISABLE_STYLES,
   MARKDOWN_STREAMING_OFF,
@@ -28,7 +31,7 @@ import {
   SAVE_BUTTON,
 } from '../constants';
 import type { ImageTextGeneratedImage, ImageTextPhase } from '../types';
-import { groupImagesByAspectRatio } from '../utils';
+import { downloadMarkdownFile, groupImagesByAspectRatio } from '../utils';
 import GeneratedGallery from './GeneratedGallery/GeneratedGallery';
 import { usePlanStreamScroll } from './hooks/usePlanStreamScroll';
 import styles from './ResultPanel.module.css';
@@ -98,6 +101,11 @@ export default function ResultPanel({
     setEditing(false);
   }
 
+  function handleExport() {
+    if (!body.trim()) return;
+    downloadMarkdownFile(body, EXPORT_FILE_NAME, EXPORT_MEDIA_TYPE);
+  }
+
   return (
     <section className={styles.panel}>
       <div className={styles.head}>
@@ -106,9 +114,14 @@ export default function ResultPanel({
           {showPlan ? RESULT_PLAN_TITLE : RESULT_GENERATE_TITLE}
         </span>
         {showPlan && phase === 'planned' && !planning && displayBody && !editing ? (
-          <Button size="small" type="link" className={styles.headAction} onClick={startEdit}>
-            {EDIT_BUTTON}
-          </Button>
+          <div className={styles.headActions}>
+            <Button size="small" type="link" className={styles.headAction} onClick={handleExport}>
+              {EXPORT_BUTTON}
+            </Button>
+            <Button size="small" type="link" className={styles.headAction} onClick={startEdit}>
+              {EDIT_BUTTON}
+            </Button>
+          </div>
         ) : null}
         {editing ? (
           <div className={styles.headActions}>

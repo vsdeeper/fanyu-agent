@@ -284,6 +284,16 @@ export function titleFromBody(body: string): string | undefined {
   return title || undefined;
 }
 
+/** 在浏览器中下载 Markdown 文件。 */
+export function downloadMarkdownFile(content: string, fileName: string, mediaType: string): void {
+  const url = URL.createObjectURL(new Blob([content], { type: mediaType }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 /** 已出图仅按比例分组，组内按出图时间。 */
 export function groupImagesByAspectRatio(
   images: readonly ImageTextGeneratedImage[],
