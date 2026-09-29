@@ -1,7 +1,7 @@
 import { NOVEL_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/novel/_shared/task-constants';
 import type { NovelStepKey, NovelTaskStepRecord } from '@/app/api/studio/novel/_shared/task-types';
 import { parseStyleSelections } from '@/app/studio/_components/StyleDimensionPicker';
-import { apiDelete, apiPut } from '@/lib/shared/client/api-client';
+import { apiDelete, apiPut } from '@/lib/client/api-client';
 import type {
   NovelLongFormat,
   NovelVolume,

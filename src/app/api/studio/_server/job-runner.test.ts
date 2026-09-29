@@ -22,6 +22,17 @@ const PENDING: StudioJobData['pending'] = {
   form: { model: 'seedream', aspectRatio: '1:1', quality: 'high', clarity: '2K', count: '2' },
 };
 
+const SETTINGS: StudioJobData['settings'] = {
+  providerConfigs: [
+    { provider: 'deepseek', apiKey: 'k', baseUrl: 'https://example.test' },
+    { provider: 'laozhang', apiKey: 'k', baseUrl: 'https://example.test' },
+  ],
+  chatProvider: 'deepseek',
+  chatModels: { modelPro: 'm', modelLite: 'm', modelMini: 'm' },
+  generateImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-flare-vip' },
+  editImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-sunburst-vip' },
+};
+
 type Calls = {
   updates: StudioJobData[];
   finished: StudioJobData[];
@@ -66,6 +77,7 @@ function start(
     {
       jobId: 'job-1',
       pending: PENDING,
+      settings: SETTINGS,
       producer: (ctx) => producer({ ...ctx, controller }),
       controller,
       deadlineMs,

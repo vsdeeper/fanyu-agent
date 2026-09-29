@@ -1,11 +1,7 @@
-import { requireEnv } from '@/lib/shared/server/env';
-import {
-  getChatSettings,
-  resolveCredentialFromSettings,
-} from '@/app/api/chat/_server/request-settings';
+import { resolveCredentialFromSettings } from '@/app/api/chat/_server/request-settings';
 
 /**
- * 智谱独立 Web Search API 出站封装（POST {ZHIPU_BASE_URL}/web_search）。
+ * 智谱独立 Web Search API 出站封装（POST {baseURL}/web_search）。
  *
  * 为何不用内置 web_search 工具（tools 数组注入形态）：实测 glm-5.3-flash 在
  * tools 里存在任何 function 工具时内置搜索完全不触发（放首位、改顶层参数均无效），
@@ -38,14 +34,8 @@ const SEARCH_ENGINE = 'search_std';
 const RESULT_COUNT = 5;
 
 function resolveZhipuWebCreds(): { apiKey: string; baseURL: string } {
-  if (getChatSettings()) {
-    const creds = resolveCredentialFromSettings('zhipu');
-    return { apiKey: creds.apiKey, baseURL: creds.baseUrl.replace(/\/$/, '') };
-  }
-  return {
-    apiKey: requireEnv('ZHIPU_API_KEY'),
-    baseURL: requireEnv('ZHIPU_BASE_URL').replace(/\/$/, ''),
-  };
+  const creds = resolveCredentialFromSettings('zhipu');
+  return { apiKey: creds.apiKey, baseURL: creds.baseUrl.replace(/\/$/, '') };
 }
 
 /** 调智谱 Web Search API 检索；失败上抛由工具 execute 层统一兜底文案 */

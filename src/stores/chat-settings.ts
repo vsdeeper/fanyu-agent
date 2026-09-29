@@ -1,7 +1,11 @@
 import 'client-only';
 
 import { create } from 'zustand';
-import type { ChatProviderId, ChatSettingsPayload } from '@/app/api/chat/_shared/chat-settings';
+import {
+  parseChatSettingsPayload,
+  type ChatProviderId,
+  type ChatSettingsPayload,
+} from '@/app/api/chat/_shared/chat-settings';
 
 export const CHAT_SETTINGS_STORAGE_KEY = 'fanyu-chat-settings';
 
@@ -19,7 +23,8 @@ function readStorage(): ChatSettingsPayload | null {
   try {
     const raw = window.localStorage.getItem(CHAT_SETTINGS_STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as ChatSettingsPayload;
+    const parsed = parseChatSettingsPayload(JSON.parse(raw) as unknown);
+    return parsed.ok ? parsed.settings : null;
   } catch {
     return null;
   }
@@ -30,7 +35,7 @@ function writeStorage(settings: ChatSettingsPayload) {
   window.localStorage.setItem(CHAT_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
 }
 
-/** 对话设置：localStorage 持久化 + 底栏/Modal 共享 */
+/** 对话设置：localStorage 持久化；chat / studio 跨路由共享 */
 export const useChatSettingsStore = create<ChatSettingsStore>((set, get) => ({
   settings: null,
   hydrated: false,
@@ -39,8 +44,10 @@ export const useChatSettingsStore = create<ChatSettingsStore>((set, get) => ({
     set({ settings: readStorage(), hydrated: true });
   },
   setSettings: (settings) => {
-    writeStorage(settings);
-    set({ settings, hydrated: true });
+    const parsed = parseChatSettingsPayload(settings);
+    if (!parsed.ok) return;
+    writeStorage(parsed.settings);
+    set({ settings: parsed.settings, hydrated: true });
   },
   setChatProvider: (chatProvider) => {
     const cur = get().settings;

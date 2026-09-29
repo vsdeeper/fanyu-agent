@@ -4,7 +4,7 @@ import type {
   EcommerceTaskListItem,
   EcommerceTaskType,
 } from '@/app/api/studio/ecommerce/_shared/task-types';
-import { apiPatch, apiPost } from '@/lib/shared/client/api-client';
+import { apiPatch, apiPost } from '@/lib/client/api-client';
 
 export type TaskFormValues = {
   name: string;

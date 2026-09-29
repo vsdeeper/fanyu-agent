@@ -15,8 +15,13 @@ import {
   formatDocumentsPrompt,
 } from '@/app/api/studio/business-analysis/_server/extract-documents';
 import { parseImageDataUrlToFilePart } from '@/app/api/studio/_server/parse-image-data-url';
-import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 import { INVALID_FORM, INVALID_JSON } from '@/app/api/studio/_server/constants';
+import {
+  settingsFailResponse,
+  splitChatSettings,
+  withStudioChatSettings,
+} from '@/app/api/studio/_server/with-chat-settings';
 import { buildAnalyzePrompt } from './analyze-prompt';
 import { ANALYZE_FAILED, EMPTY_ANALYSIS_DOC } from './constants';
 import {
@@ -135,7 +140,12 @@ export async function handleEcommerceAnalyze(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseEcommerceAnalyzeBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseEcommerceAnalyzeBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
@@ -145,7 +155,9 @@ export async function handleEcommerceAnalyze(req: Request): Promise<Response> {
     async (write) => {
       const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
       try {
-        await pipeAnalyzeEvents(body.kind, body.documents, body, req.signal, send);
+        await withStudioChatSettings(split.settings, () =>
+          pipeAnalyzeEvents(body.kind, body.documents, body, req.signal, send),
+        );
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[ecommerce/analyze]', err);

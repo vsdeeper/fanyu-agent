@@ -30,7 +30,7 @@ vi.mock('@/lib/db/client', async () => {
   return { getDb: () => drizzle(holders.sqlite as never) };
 });
 
-import { ApiErrorCode } from '@/lib/shared/server/api-response';
+import { ApiErrorCode } from '@/lib/server/api-response';
 import type { StudioGenerateRequest } from '../_shared/generate-types';
 import { ECOMMERCE_JOB_STEP_KEYS } from '../ecommerce/_shared/task-constants';
 import { createStudioJobHandlers } from './handle-jobs';
@@ -57,6 +57,17 @@ const PENDING = {
   form: { model: 'seedream', aspectRatio: '1:1', quality: 'high', clarity: '2K', count: '1' },
 };
 
+const SETTINGS = {
+  providerConfigs: [
+    { provider: 'deepseek' as const, apiKey: 'k', baseUrl: 'https://example.test' },
+    { provider: 'laozhang' as const, apiKey: 'k', baseUrl: 'https://example.test' },
+  ],
+  chatProvider: 'deepseek' as const,
+  chatModels: { modelPro: 'm', modelLite: 'm', modelMini: 'm' },
+  generateImage: { provider: 'laozhang' as const, modelId: 'gpt-image-2.5-flare-vip' },
+  editImage: { provider: 'laozhang' as const, modelId: 'gpt-image-2.5-sunburst-vip' },
+};
+
 function createRequest(overrides: Record<string, unknown> = {}): Request {
   return new Request('https://example.test/api/studio/ecommerce/tasks/task-1/jobs', {
     method: 'POST',
@@ -66,6 +77,7 @@ function createRequest(overrides: Record<string, unknown> = {}): Request {
       kind: 'generate',
       pending: PENDING,
       body: BODY,
+      settings: SETTINGS,
       ...overrides,
     }),
   });
@@ -154,13 +166,41 @@ describe('建作业', () => {
 });
 
 describe('列表与取消', () => {
-  it('列表返回该任务的作业，新在前', async () => {
+  it('列表返回该任务的作业，新在前，且不含 settings/密钥', async () => {
     const jobId = await createJobId();
     const res = handlers.handleListJobs('task-1');
     const body = await res.json();
 
     expect(res.status).toBe(200);
     expect(body.data.items.map((job: { id: string }) => job.id)).toEqual([jobId]);
+    const item = body.data.items[0] as {
+      data: { events: unknown; pending: unknown; settings?: unknown };
+    };
+    expect(item.data).toEqual({
+      events: [],
+      pending: PENDING,
+    });
+    expect(item.data).not.toHaveProperty('settings');
+    expect(JSON.stringify(body)).not.toContain('apiKey');
+  });
+
+  it('缺少 settings 建作业返回 400', async () => {
+    const res = await handlers.handleCreateJob(
+      'task-1',
+      new Request('https://example.test/x', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stepKey: 'visual',
+          kind: 'generate',
+          pending: PENDING,
+          body: BODY,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe(ApiErrorCode.INVALID_PARAMS);
   });
 
   it('取消运行中作业返回 cancelled', async () => {

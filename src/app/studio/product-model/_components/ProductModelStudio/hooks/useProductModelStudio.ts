@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { App, Form } from 'antd';
 import type { ProductModelTaskDetail } from '@/app/api/studio/product-model/_shared/task-types';
 import { validateForm } from '@/app/studio/_utils/form-validate';
-import { ApiClientError } from '@/lib/shared/client/api-client';
+import { ApiClientError } from '@/lib/client/api-client';
 import {
   revokeLocalUploadItemUrls,
   revokeReplacedLocalUploadItemUrls,
-} from '@/lib/shared/client/upload-items';
+} from '@/lib/client/upload-items';
 import { DEFAULT_FORM, GENERATE_FAILED, MODEL_RESULT_MISSING } from '../constants';
 import type {
   ProductModelPanelValues,
@@ -30,6 +30,7 @@ import {
   saveProductModelStep,
   toProductModelPayload,
 } from '../utils';
+import { withChatSettingsBody } from '@/app/studio/_utils/chat-settings';
 
 /** 管理产品模特两步工作流的上传、规格、生成、落盘与导出。 */
 export function useProductModelStudio(task: ProductModelTaskDetail) {
@@ -119,11 +120,13 @@ export function useProductModelStudio(task: ProductModelTaskDetail) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
-          await toProductModelPayload(
-            form,
-            productImages,
-            modelImages,
-            slots.map((slot) => slot.id),
+          withChatSettingsBody(
+            await toProductModelPayload(
+              form,
+              productImages,
+              modelImages,
+              slots.map((slot) => slot.id),
+            ),
           ),
         ),
         signal: controller.signal,

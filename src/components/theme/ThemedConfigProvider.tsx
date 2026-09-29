@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { App, ConfigProvider, type ConfigProviderProps } from 'antd';
-import { bindAntdMessage } from '@/lib/shared/client/antd-message';
+import { bindAntdMessage } from '@/lib/client/antd-message';
 import { appTheme, darkTheme } from '@/lib/theme';
 import { useThemeMode } from './theme-context';
 

@@ -3,7 +3,7 @@ import type { UIMessage } from 'ai';
 import { parseUserLocation } from '@/app/api/geo/_server/parse-request';
 import type { UserLocation } from '@/app/api/geo/_shared/types';
 import { loadChat, saveChat } from '@/app/api/chats/_server/store';
-import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 import { resolveTurnSkills } from '@/lib/skills/server/resolve-turn';
 import type { ChatPostBody } from './parse-request';
 import { parseChatPostBody } from './parse-request';

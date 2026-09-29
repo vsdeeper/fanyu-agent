@@ -16,7 +16,7 @@ import type {
   EcommerceTaskStepRecord,
   EcommerceTaskType,
 } from '@/app/api/studio/ecommerce/_shared/task-types';
-import { apiPut } from '@/lib/shared/client/api-client';
+import { apiPut } from '@/lib/client/api-client';
 import {
   applyGenerateEvent,
   pendingImages as pendingImagesFromCount,

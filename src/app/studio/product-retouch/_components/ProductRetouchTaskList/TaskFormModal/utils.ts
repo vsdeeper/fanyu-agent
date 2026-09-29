@@ -3,7 +3,7 @@ import type {
   ProductRetouchTaskDetail,
   ProductRetouchTaskListItem,
 } from '@/app/api/studio/product-retouch/_shared/task-types';
-import { apiPatch, apiPost } from '@/lib/shared/client/api-client';
+import { apiPatch, apiPost } from '@/lib/client/api-client';
 
 export type TaskFormValues = {
   name: string;

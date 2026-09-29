@@ -1,31 +1,18 @@
 import { createOpenAI } from '@ai-sdk/openai';
 
-import { requireEnv } from '@/lib/shared/server/env';
-import {
-  getChatSettings,
-  resolveCredentialFromSettings,
-} from '@/app/api/chat/_server/request-settings';
+import { resolveCredentialFromSettings } from '@/app/api/chat/_server/request-settings';
 import { patchArkRequestBody, type ArkRequestBody } from './request-patch';
 import { normalizeArkResponse } from './sse';
 
 const clientCache = new Map<string, ReturnType<typeof createOpenAI>>();
 
-function resolveArkCreds(): { apiKey: string; baseURL: string } {
-  if (getChatSettings()) {
-    const creds = resolveCredentialFromSettings('ark');
-    return { apiKey: creds.apiKey, baseURL: creds.baseUrl };
-  }
-  return {
-    apiKey: requireEnv('ARK_API_KEY'),
-    baseURL: requireEnv('ARK_BASE_URL'),
-  };
-}
-
 /**
- * 惰性构造方舟客户端；有请求 settings 时用其凭据，否则读 ARK_*。
+ * 惰性构造方舟客户端；凭据仅来自本轮对话 settings。
  */
 export function getArkClient() {
-  const { apiKey, baseURL } = resolveArkCreds();
+  const creds = resolveCredentialFromSettings('ark');
+  const apiKey = creds.apiKey;
+  const baseURL = creds.baseUrl;
   const cacheKey = `${apiKey}\0${baseURL}`;
   let instance = clientCache.get(cacheKey);
   if (!instance) {

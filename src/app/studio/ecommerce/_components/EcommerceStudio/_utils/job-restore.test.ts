@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { StudioGenerateImageEvent } from '@/app/api/studio/_shared/generate-types';
-import type { StudioJobPendingSlot, StudioJobSnapshot } from '@/app/api/studio/_shared/job-types';
+import type {
+  StudioJobPendingSlot,
+  StudioJobPublicSnapshot,
+} from '@/app/api/studio/_shared/job-types';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
 import {
   applyJobEvents,
@@ -23,7 +26,7 @@ const slot = (id: string, themeId?: string): StudioResultImage => ({
 function jobOf(
   events: StudioGenerateImageEvent[],
   slots: StudioJobPendingSlot[],
-): StudioJobSnapshot {
+): StudioJobPublicSnapshot {
   return {
     id: 'job-1',
     product: 'ecommerce',

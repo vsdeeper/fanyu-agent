@@ -3,7 +3,7 @@ import type {
   ImageTextTaskDetail,
   ImageTextTaskListItem,
 } from '@/app/api/studio/image-text/_shared/task-types';
-import { apiPatch, apiPost } from '@/lib/shared/client/api-client';
+import { apiPatch, apiPost } from '@/lib/client/api-client';
 
 export type TaskFormValues = {
   name: string;

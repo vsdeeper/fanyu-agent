@@ -7,7 +7,7 @@ import { readUploadItemAsDataUrl } from '@/app/studio/_utils/upload-items';
 import {
   revokeLocalUploadItemUrls,
   revokeReplacedLocalUploadItemUrls,
-} from '@/lib/shared/client/upload-items';
+} from '@/lib/client/upload-items';
 import {
   COPY_ARTICLE_OK,
   COPY_FAILED,
@@ -87,6 +87,7 @@ import {
 } from '../utils';
 import { buildArticleCopyHtml } from '../article-copy';
 import { formatStyleSelections } from '@/app/studio/_components/StyleDimensionPicker';
+import { withChatSettingsBody } from '@/app/studio/_utils/chat-settings';
 
 /** 管理长文五步：调研 → 思路 → 成稿 → 成稿配图 → 完成。 */
 export function useLongArticleStudio(task: LongArticleTaskDetail) {
@@ -351,7 +352,7 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(withChatSettingsBody(body)),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);
@@ -753,17 +754,19 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
       const res = await fetch('/api/studio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kind: 'longArticleInline',
-          count: 1,
-          model,
-          aspectRatio: slot.aspectRatio?.trim() || DEFAULT_IMAGE_ASPECT,
-          quality,
-          clarity,
-          prompt: slot.promptDraft.trim(),
-          ...(imageVisualStyle.trim() ? { visualStyle: imageVisualStyle.trim() } : {}),
-          slotIds: [slotId],
-        }),
+        body: JSON.stringify(
+          withChatSettingsBody({
+            kind: 'longArticleInline',
+            count: 1,
+            model,
+            aspectRatio: slot.aspectRatio?.trim() || DEFAULT_IMAGE_ASPECT,
+            quality,
+            clarity,
+            prompt: slot.promptDraft.trim(),
+            ...(imageVisualStyle.trim() ? { visualStyle: imageVisualStyle.trim() } : {}),
+            slotIds: [slotId],
+          }),
+        ),
       });
       await assertOkOrJsonFail(res);
       let nextUrl: string | undefined;

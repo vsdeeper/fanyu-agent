@@ -9,7 +9,12 @@ import {
 } from '@/app/api/chat/_server/providers/config';
 import { getChatProviderRuntimeFor } from '@/app/api/chat/_server/providers/resolve';
 import { INVALID_FORM, INVALID_JSON } from '@/app/api/studio/_server/constants';
-import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
+import {
+  settingsFailResponse,
+  splitChatSettings,
+  withStudioChatSettings,
+} from '@/app/api/studio/_server/with-chat-settings';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/server/api-response';
 import { EMPTY_ANALYSIS_DOC, REWRITE_FAILED } from './constants';
 import { parseRewriteCardBody } from './parse-rewrite-card-request';
 import { buildRewriteCardInstructions } from './rewrite-card-instructions';
@@ -30,7 +35,12 @@ export async function handleRewriteCard(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseRewriteCardBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseRewriteCardBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
@@ -43,38 +53,40 @@ export async function handleRewriteCard(req: Request): Promise<Response> {
   const otherCards = body.otherCards.filter((card) => card.themeId !== body.themeId);
 
   try {
-    const provider = getChatProvider();
-    const runtime = getChatProviderRuntimeFor(provider);
-    const capabilities = runtime.getCapabilities();
-    const openaiOptions = {
-      ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
-      ...runtime.getOpenAIOptions(),
-      reasoningEffort: getTitleReasoningEffort(provider),
-    };
+    return await withStudioChatSettings(split.settings, async () => {
+      const provider = getChatProvider();
+      const runtime = getChatProviderRuntimeFor(provider);
+      const capabilities = runtime.getCapabilities();
+      const openaiOptions = {
+        ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
+        ...runtime.getOpenAIOptions(),
+        reasoningEffort: getTitleReasoningEffort(provider),
+      };
 
-    const result = await generateText({
-      model: runtime.getMainModel(getModelId(provider, 'lite')),
-      instructions: buildRewriteCardInstructions(body.kind, body.themeId),
-      prompt: buildRewriteCardPrompt({
-        kind: body.kind,
-        themeId: body.themeId,
-        draft: body.draft,
-        otherCards,
-        analysisText,
-        productDocumentsText: body.productDocumentsText,
-      }),
-      temperature: rewriteCardTemperature(body.draft),
-      maxOutputTokens: 1024,
-      abortSignal: req.signal,
-      providerOptions: { openai: openaiOptions },
+      const result = await generateText({
+        model: runtime.getMainModel(getModelId(provider, 'lite')),
+        instructions: buildRewriteCardInstructions(body.kind, body.themeId),
+        prompt: buildRewriteCardPrompt({
+          kind: body.kind,
+          themeId: body.themeId,
+          draft: body.draft,
+          otherCards,
+          analysisText,
+          productDocumentsText: body.productDocumentsText,
+        }),
+        temperature: rewriteCardTemperature(body.draft),
+        maxOutputTokens: 1024,
+        abortSignal: req.signal,
+        providerOptions: { openai: openaiOptions },
+      });
+
+      const requirement = sanitizeRewriteCardOutput(result.text, body.kind);
+      if (!requirement) {
+        return jsonFail(ApiErrorCode.INTERNAL_ERROR, REWRITE_FAILED, 500);
+      }
+
+      return jsonOk({ requirement });
     });
-
-    const requirement = sanitizeRewriteCardOutput(result.text, body.kind);
-    if (!requirement) {
-      return jsonFail(ApiErrorCode.INTERNAL_ERROR, REWRITE_FAILED, 500);
-    }
-
-    return jsonOk({ requirement });
   } catch (err) {
     if (req.signal.aborted) {
       return jsonFail(ApiErrorCode.INTERNAL_ERROR, REWRITE_FAILED, 500);

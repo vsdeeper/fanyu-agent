@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { StudioGenerateImageEvent } from '@/app/api/studio/_shared/generate-types';
-import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 import {
   GENERATE_FAILED,
   INVALID_FORM,
@@ -13,6 +13,11 @@ import { buildGeneratePlan } from './generate-plan';
 import { generateStudioImage } from './generate-one';
 import { parseGenerateBody } from './parse-generate-request';
 import { createPushStreamResponse, encodeNdjsonLine, NDJSON_STREAM_HEADERS } from './stream-encode';
+import {
+  settingsFailResponse,
+  splitChatSettings,
+  withStudioChatSettings,
+} from './with-chat-settings';
 
 /**
  * POST /api/studio/generate：按 kind 出产品精修、多视角、主视觉、主图、模特或视觉设计图，NDJSON 推送每张 data URL。
@@ -28,7 +33,12 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseGenerateBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseGenerateBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
@@ -69,24 +79,26 @@ export async function handleStudioGenerate(req: Request): Promise<Response> {
   return createPushStreamResponse(NDJSON_STREAM_HEADERS, async (write) => {
     const send = (event: StudioGenerateImageEvent) => write(encodeNdjsonLine(event));
     try {
-      for (const item of plan) {
-        if (req.signal.aborted) return;
-        const result = await generateStudioImage({
-          prompt: item.prompt,
-          model: body.model,
-          aspectRatio: body.aspectRatio,
-          clarity: body.clarity,
-          quality: body.quality,
-          referenceImageDataUrls: item.referenceImageDataUrls,
-          abortSignal: req.signal,
-        });
-        if (req.signal.aborted) return;
-        if (result.ok) {
-          await send({ slotId: slotIdAt(item.index), url: result.url });
-        } else {
-          await send({ slotId: slotIdAt(item.index), error: result.error });
+      await withStudioChatSettings(split.settings, async () => {
+        for (const item of plan) {
+          if (req.signal.aborted) return;
+          const result = await generateStudioImage({
+            prompt: item.prompt,
+            model: body.model,
+            aspectRatio: body.aspectRatio,
+            clarity: body.clarity,
+            quality: body.quality,
+            referenceImageDataUrls: item.referenceImageDataUrls,
+            abortSignal: req.signal,
+          });
+          if (req.signal.aborted) return;
+          if (result.ok) {
+            await send({ slotId: slotIdAt(item.index), url: result.url });
+          } else {
+            await send({ slotId: slotIdAt(item.index), error: result.error });
+          }
         }
-      }
+      });
     } catch (err) {
       if (req.signal.aborted) return;
       console.error('[studio/generate]', err);

@@ -6,7 +6,7 @@ import { generateId, type UIMessage } from 'ai';
 import { Layout, Spin, Typography } from 'antd';
 import type { ChatListItem, ChatRecord } from '@/app/api/chats/_shared/types';
 import { useWorkspace } from '@/components/AppLayout/context';
-import { apiGet } from '@/lib/shared/client/api-client';
+import { apiGet } from '@/lib/client/api-client';
 import { resolveChatRouteId } from '@/app/chat/_utils/chat-id';
 import ModeSwitch from '@/components/ModeSwitch';
 import AuxiliaryPanel from '../AuxiliaryPanel';

@@ -1,6 +1,6 @@
 import { deleteChats } from '@/app/api/chats/_server/store';
 import { parseBatchDeleteRequest } from '@/app/api/chats/_server/parse-list-query';
-import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/server/api-response';
 
 /** 批量删除会话。 */
 export async function handleBatchDeleteChats(req: Request): Promise<Response> {

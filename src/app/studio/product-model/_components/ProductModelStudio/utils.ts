@@ -8,7 +8,7 @@ import type {
   ProductModelTaskStepRecord,
 } from '@/app/api/studio/product-model/_shared/task-types';
 import type { GenerateSpecFields } from '@/app/studio/_utils/model-options';
-import { apiPut } from '@/lib/shared/client/api-client';
+import { apiPut } from '@/lib/client/api-client';
 import { patchModel } from '@/app/studio/_utils/model-options';
 import { normalizeResultImages } from '@/app/studio/_utils/result-images';
 import {

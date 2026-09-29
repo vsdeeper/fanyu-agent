@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   App,
@@ -26,7 +26,6 @@ import {
   type ChatSettingsPayload,
   type ProviderKind,
 } from '@/app/api/chat/_shared/chat-settings';
-import { readApiData } from '@/lib/shared/server/api-response';
 import { listCapabilityProviderOptions, listChatProviderOptions } from '../chat-settings';
 import {
   ADD_PROVIDER,
@@ -42,7 +41,6 @@ import {
   GENERATE_SECTION,
   IMAGE_MODEL_FIELD,
   IMAGE_PROVIDER_FIELD,
-  LOAD_DEFAULTS_FAILED,
   MODEL_LITE_FIELD,
   MODEL_MINI_FIELD,
   MODEL_PRO_FIELD,
@@ -63,6 +61,21 @@ type ChatSettingsModalProps = {
 };
 
 type FormValues = ChatSettingsPayload;
+
+/** 无本地设置时的空表骨架（用户手动配置） */
+const EMPTY_SETTINGS_FORM: FormValues = {
+  providerConfigs: [],
+  chatProvider: 'deepseek',
+  chatModels: { modelPro: '', modelLite: '', modelMini: '' },
+  generateImage: {
+    provider: 'laozhang',
+    modelId: IMAGE_MODELS_BY_PROVIDER.laozhang[0].id,
+  },
+  editImage: {
+    provider: 'laozhang',
+    modelId: IMAGE_MODELS_BY_PROVIDER.laozhang[0].id,
+  },
+};
 
 function providerSelectLabel(kind: ProviderKind) {
   const caps = PROVIDER_CAPABILITIES[kind];
@@ -92,7 +105,6 @@ export default function ChatSettingsModal({
 }: ChatSettingsModalProps) {
   const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
-  const [loadingDefaults, setLoadingDefaults] = useState(false);
 
   const providerConfigs = Form.useWatch('providerConfigs', form) ?? [];
   const chatProvider = Form.useWatch('chatProvider', form) as ChatProviderId | undefined;
@@ -146,30 +158,8 @@ export default function ChatSettingsModal({
 
   useEffect(() => {
     if (!open) return;
-
-    let cancelled = false;
-    async function bootstrap() {
-      if (settings) {
-        form.setFieldsValue(settings);
-        return;
-      }
-      setLoadingDefaults(true);
-      try {
-        const res = await fetch('/api/chat/settings-defaults');
-        const data = await readApiData<ChatSettingsPayload>(res);
-        if (cancelled) return;
-        form.setFieldsValue(data);
-      } catch {
-        if (!cancelled) message.error(LOAD_DEFAULTS_FAILED);
-      } finally {
-        if (!cancelled) setLoadingDefaults(false);
-      }
-    }
-    void bootstrap();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, settings, form, message]);
+    form.setFieldsValue(settings ?? EMPTY_SETTINGS_FORM);
+  }, [open, settings, form]);
 
   // 上方列表变化时纠正非法的能力选中值
   useEffect(() => {
@@ -209,7 +199,6 @@ export default function ChatSettingsModal({
     <Modal
       title={SETTINGS_MODAL_TITLE}
       open={open}
-      confirmLoading={loadingDefaults}
       destroyOnHidden
       width={900}
       onCancel={() => onOpenChange(false)}
@@ -228,7 +217,7 @@ export default function ChatSettingsModal({
         }
       }}
     >
-      <Form form={form} layout="vertical" preserve={false} disabled={loadingDefaults}>
+      <Form form={form} layout="vertical" preserve={false}>
         <Divider titlePlacement="start">{PROVIDER_CONFIG_SECTION}</Divider>
         <Form.List name="providerConfigs">
           {(fields, { add, remove }) => {

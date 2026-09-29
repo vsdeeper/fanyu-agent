@@ -1,7 +1,7 @@
 import 'client-only';
 
 import { isDocAssetHref } from '@/app/api/docs/_shared/url';
-import { getAntdMessage } from '@/lib/shared/client/antd-message';
+import { getAntdMessage } from '@/lib/client/antd-message';
 import {
   estimateDataUrlBytes,
   FILE_PREVIEW_TOO_LARGE_MESSAGE,

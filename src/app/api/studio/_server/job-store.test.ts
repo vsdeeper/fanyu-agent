@@ -57,7 +57,20 @@ const PENDING = {
   form: { model: 'seedream', aspectRatio: '1:1', quality: 'high', clarity: '2K', count: '1' },
 };
 
-const DATA: StudioJobData = { events: [], pending: PENDING };
+const DATA: StudioJobData = {
+  events: [],
+  pending: PENDING,
+  settings: {
+    providerConfigs: [
+      { provider: 'deepseek', apiKey: 'k', baseUrl: 'https://example.test' },
+      { provider: 'laozhang', apiKey: 'k', baseUrl: 'https://example.test' },
+    ],
+    chatProvider: 'deepseek',
+    chatModels: { modelPro: 'm', modelLite: 'm', modelMini: 'm' },
+    generateImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-flare-vip' },
+    editImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-sunburst-vip' },
+  },
+};
 
 function createJobInput(taskId: string, stepKey: string, kind = 'generate') {
   return { product: 'ecommerce', taskId, stepKey, kind, data: DATA };

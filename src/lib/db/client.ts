@@ -5,7 +5,7 @@ import path from 'path';
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { requireEnv } from '@/lib/shared/server/env';
+import { requireEnv } from '@/lib/server/env';
 import { resolveAppDbPath } from './paths';
 import * as schema from './schema';
 

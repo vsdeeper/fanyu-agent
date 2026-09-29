@@ -2,21 +2,25 @@ import type {
   CreateStudioJobData,
   CreateStudioJobRequest,
   StudioJobListData,
-  StudioJobSnapshot,
+  StudioJobPublicSnapshot,
 } from '@/app/api/studio/_shared/job-types';
-import { apiDelete, apiGet, apiPost } from '@/lib/shared/client/api-client';
+import { apiDelete, apiGet, apiPost } from '@/lib/client/api-client';
+import { withChatSettingsBody } from './chat-settings';
 
 function jobsUrl(apiBase: string, taskId: string): string {
   return `${apiBase}/tasks/${encodeURIComponent(taskId)}/jobs`;
 }
 
-/** 建后台生图作业，返回作业 id；同任务同步骤已有运行中作业时服务端幂等返回它。 */
+/** 建后台生图作业，返回作业 id；自动附带对话 settings。 */
 export async function createStudioJob(
   apiBase: string,
   taskId: string,
-  payload: CreateStudioJobRequest,
+  payload: Omit<CreateStudioJobRequest, 'settings'>,
 ): Promise<string> {
-  const data = await apiPost<CreateStudioJobData>(jobsUrl(apiBase, taskId), payload);
+  const data = await apiPost<CreateStudioJobData>(
+    jobsUrl(apiBase, taskId),
+    withChatSettingsBody(payload),
+  );
   return data.jobId;
 }
 
@@ -27,7 +31,7 @@ export async function createStudioJob(
 export async function requestStudioJobs(
   apiBase: string,
   taskId: string,
-): Promise<StudioJobSnapshot[]> {
+): Promise<StudioJobPublicSnapshot[]> {
   const data = await apiGet<StudioJobListData>(jobsUrl(apiBase, taskId), { silent: true });
   return data.items;
 }

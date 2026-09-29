@@ -1,3 +1,4 @@
+import type { ChatSettingsPayload } from '@/app/api/chat/_shared/chat-settings';
 import type { STUDIO_JOB_KINDS, STUDIO_JOB_STATUSES } from './job-constants';
 import type { StudioGenerateImageEvent, StudioGenerateRequest } from './generate-types';
 
@@ -54,7 +55,12 @@ export type StudioJobData = {
   /** 已完成事件，按到达顺序；`url` 为站内资产 URL 而非 data URL */
   events: StudioGenerateImageEvent[];
   pending: StudioJobPendingPlan;
+  /** 建作业时的对话设置，后台出图凭据只用这份；**勿**经列表/RSC 回传客户端 */
+  settings: ChatSettingsPayload;
 };
+
+/** 面向客户端的作业 data：不含 settings（密钥不得出站） */
+export type StudioJobPublicData = Omit<StudioJobData, 'settings'>;
 
 export type StudioJobSnapshot = {
   id: string;
@@ -70,11 +76,37 @@ export type StudioJobSnapshot = {
   finishedAt?: string;
 };
 
+/** 列表轮询 / 首屏恢复用的作业快照（已剥离 settings） */
+export type StudioJobPublicSnapshot = Omit<StudioJobSnapshot, 'data'> & {
+  data: StudioJobPublicData;
+};
+
+/** 从完整快照去掉 settings，供 HTTP / RSC 出站 */
+export function toPublicStudioJobSnapshot(job: StudioJobSnapshot): StudioJobPublicSnapshot {
+  return {
+    id: job.id,
+    product: job.product,
+    taskId: job.taskId,
+    stepKey: job.stepKey,
+    kind: job.kind,
+    status: job.status,
+    data: {
+      events: job.data.events,
+      pending: job.data.pending,
+    },
+    error: job.error,
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
+    finishedAt: job.finishedAt,
+  };
+}
+
 export type CreateStudioJobRequest = {
   stepKey: string;
   kind: StudioJobKind;
   pending: StudioJobPendingPlan;
   body: StudioGenerateRequest;
+  settings: ChatSettingsPayload;
 };
 
 export type CreateStudioJobData = {
@@ -82,7 +114,7 @@ export type CreateStudioJobData = {
 };
 
 export type StudioJobListData = {
-  items: StudioJobSnapshot[];
+  items: StudioJobPublicSnapshot[];
 };
 
 export type CancelStudioJobData = {

@@ -10,7 +10,7 @@ import type {
 import type { LongArticleGenre } from '@/app/api/studio/long-article/_shared/types';
 import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 import { parseStyleSelections } from '@/app/studio/_components/StyleDimensionPicker';
-import { apiPut } from '@/lib/shared/client/api-client';
+import { apiPut } from '@/lib/client/api-client';
 import type {
   AngleCard,
   DraftStepSnapshot,

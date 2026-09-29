@@ -125,28 +125,6 @@ export default function ChatSender({
     return () => cancelAnimationFrame(frame);
   }, [isDraft, id]);
 
-  // 首次无本地设置时拉取 defaults
-  useEffect(() => {
-    if (settings) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch('/api/chat/settings-defaults');
-        const body = (await res.json()) as {
-          code: number;
-          data: ChatSettingsPayload | null;
-        };
-        if (cancelled || body.code !== 0 || !body.data) return;
-        updateSettings(body.data);
-      } catch {
-        /* 发送前再校验 */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [settings, updateSettings]);
-
   // 方向键 / 鼠标点选会移动光标但不触发 onChange，需监听选区变化重算菜单
   useEffect(() => {
     const handleSelectionChange = () => {

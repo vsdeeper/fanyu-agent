@@ -7,7 +7,7 @@ import type {
   ProductRetouchStepKey,
   ProductRetouchTaskStepRecord,
 } from '@/app/api/studio/product-retouch/_shared/task-types';
-import { apiPut } from '@/lib/shared/client/api-client';
+import { apiPut } from '@/lib/client/api-client';
 import { patchModel, type GenerateSpecFields } from '@/app/studio/_utils/model-options';
 import {
   keepExistingImageIds,

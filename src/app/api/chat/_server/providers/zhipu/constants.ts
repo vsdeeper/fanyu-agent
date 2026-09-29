@@ -16,9 +16,13 @@ const ZHIPU_REASONING_EFFORT_VALUES = new Set(['low', 'high', 'max']);
 
 export const DEFAULT_ZHIPU_REASONING_EFFORT = 'high' as const;
 
-/** 智谱思考强度：settings 优先，默认 high；仅 low|high|max */
+/** 智谱思考强度：须有 ALS settings；缺省用 high；仅 low|high|max */
 export function getZhipuReasoningEffort(): 'low' | 'high' | 'max' {
-  const fromSettings = getChatSettings()?.reasoningEffort?.trim();
+  const settings = getChatSettings();
+  if (!settings) {
+    throw new Error('缺少对话设置，无法解析思考强度');
+  }
+  const fromSettings = settings.reasoningEffort?.trim();
   if (fromSettings && ZHIPU_REASONING_EFFORT_VALUES.has(fromSettings)) {
     return fromSettings as 'low' | 'high' | 'max';
   }

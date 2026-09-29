@@ -1,6 +1,6 @@
 import { handleNovelVolumeChapters } from '@/app/api/studio/novel/_server/handle-stream';
 import { SERVICE_UNAVAILABLE } from '@/app/api/studio/_server/constants';
-import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 
 export const maxDuration = 600;
 export const runtime = 'nodejs';

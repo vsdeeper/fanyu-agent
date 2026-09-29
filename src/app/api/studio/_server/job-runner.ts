@@ -1,5 +1,6 @@
 import 'server-only';
 
+import type { ChatSettingsPayload } from '@/app/api/chat/_shared/chat-settings';
 import type { StudioGenerateImageEvent } from '../_shared/generate-types';
 import type { StudioJobData, StudioJobPendingPlan } from '../_shared/job-types';
 import {
@@ -57,6 +58,8 @@ const defaultDeps: JobRunnerDeps = {
 export type RunStudioJobInput = {
   jobId: string;
   pending: StudioJobPendingPlan;
+  /** 建作业时落盘的对话设置，进度快照需原样带回 */
+  settings: ChatSettingsPayload;
   producer: StudioJobProducer;
   /** 由 `beginStudioJob` 建好并登记；运行器不再自行创建 */
   controller: AbortController;
@@ -95,7 +98,11 @@ export async function runStudioJob(
   timer.unref?.();
 
   const events: StudioGenerateImageEvent[] = [];
-  const snapshot = (): StudioJobData => ({ events: [...events], pending: input.pending });
+  const snapshot = (): StudioJobData => ({
+    events: [...events],
+    pending: input.pending,
+    settings: input.settings,
+  });
   const timedOut = () => controller.signal.reason instanceof JobDeadlineExceededError;
 
   try {

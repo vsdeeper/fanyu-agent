@@ -3,7 +3,7 @@ import { App, Form } from 'antd';
 import { useRouter } from 'next/navigation';
 import type { ChatListItem } from '@/app/api/chats/_shared/types';
 import { CHAT_DRAFT_PATH } from '@/components/AppLayout/constants';
-import { apiDelete, apiPost } from '@/lib/shared/client/api-client';
+import { apiDelete, apiPost } from '@/lib/client/api-client';
 import { createChatColumns } from '../columns';
 import { BATCH_DELETE_CONFIRM_TITLE, DELETE_CONFIRM_DESCRIPTION } from '../constants';
 import { normalizeSearchTitle, requestManagedChats, toCreatedRangeIso } from '../utils';

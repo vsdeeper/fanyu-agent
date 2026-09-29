@@ -1,5 +1,3 @@
-import { requireEnv } from '@/lib/shared/server/env';
-
 import { getChatSettings } from '@/app/api/chat/_server/request-settings';
 
 /** 模型档次：pro（复杂推理/代码/长文）、lite（通用均衡）、mini（简单问候/短查询） */
@@ -8,56 +6,24 @@ export type ModelTier = 'pro' | 'lite' | 'mini';
 /** 聊天 Provider：deepseek（DeepSeek 直连，默认）| ark（火山方舟）| zhipu（智谱 BigModel） */
 export type ChatProvider = 'deepseek' | 'ark' | 'zhipu';
 
-/** 读取对话 Provider：有请求 settings 时用 chatProvider，否则读 CHAT_PROVIDER */
+/** 读取对话 Provider：仅本轮请求 settings */
 export function getChatProvider(): ChatProvider {
   const fromSettings = getChatSettings()?.chatProvider;
   if (fromSettings === 'deepseek' || fromSettings === 'ark' || fromSettings === 'zhipu') {
     return fromSettings;
   }
-  const raw = process.env.CHAT_PROVIDER?.trim().toLowerCase();
-  if (!raw || raw === 'deepseek') return 'deepseek';
-  if (raw === 'ark') return 'ark';
-  if (raw === 'zhipu') return 'zhipu';
-  console.warn(`[chat-provider] 未知 CHAT_PROVIDER="${raw}"，回退默认 deepseek`);
-  return 'deepseek';
+  throw new Error('缺少对话设置，无法解析对话供应商');
 }
 
-/** DeepSeek 三档模型 ID 环境变量映射（均须配置，缺失抛错） */
-const DEEPSEEK_MODEL_TIER_ENV: Record<ModelTier, string> = {
-  pro: 'DEEPSEEK_MODEL_PRO',
-  lite: 'DEEPSEEK_MODEL_LITE',
-  mini: 'DEEPSEEK_MODEL_MINI',
-};
-
-/** Ark 三档模型 ID 环境变量映射（均须配置，缺失抛错） */
-const ARK_MODEL_TIER_ENV: Record<ModelTier, string> = {
-  pro: 'ARK_MODEL_PRO',
-  lite: 'ARK_MODEL_LITE',
-  mini: 'ARK_MODEL_MINI',
-};
-
-/** 智谱三档模型 ID 环境变量映射（均须配置，缺失抛错；单一多模态模型时三项可填同值） */
-const ZHIPU_MODEL_TIER_ENV: Record<ModelTier, string> = {
-  pro: 'ZHIPU_MODEL_PRO',
-  lite: 'ZHIPU_MODEL_LITE',
-  mini: 'ZHIPU_MODEL_MINI',
-};
-
-/** 按 Provider + 档位获取模型 ID；有 settings 时读 chatModels，否则 requireEnv */
+/** 按 Provider + 档位获取模型 ID；仅本轮请求 settings.chatModels */
 export function getModelId(provider: ChatProvider, tier: ModelTier): string {
   const settings = getChatSettings();
-  if (settings) {
-    if (tier === 'pro') return settings.chatModels.modelPro;
-    if (tier === 'lite') return settings.chatModels.modelLite;
-    return settings.chatModels.modelMini;
+  if (!settings) {
+    throw new Error('缺少对话设置，无法解析模型 ID');
   }
-  if (provider === 'deepseek') {
-    return requireEnv(DEEPSEEK_MODEL_TIER_ENV[tier]);
-  }
-  if (provider === 'zhipu') {
-    return requireEnv(ZHIPU_MODEL_TIER_ENV[tier]);
-  }
-  return requireEnv(ARK_MODEL_TIER_ENV[tier]);
+  if (tier === 'pro') return settings.chatModels.modelPro;
+  if (tier === 'lite') return settings.chatModels.modelLite;
+  return settings.chatModels.modelMini;
 }
 
 /** 生标题这类低要求出调的 reasoningEffort：deepseek/ark 支持 none（关闭思考），zhipu 只收 low/high/max */

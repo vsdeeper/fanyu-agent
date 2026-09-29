@@ -3,7 +3,7 @@ import type {
   BusinessAnalysisAnalyzeErrorEvent,
   BusinessAnalysisAnalyzeTextEvent,
 } from '@/app/api/studio/business-analysis/_shared/types';
-import { ApiClientError } from '@/lib/shared/client/api-client';
+import { ApiClientError } from '@/lib/client/api-client';
 
 type AnalyzeStreamHandlers = {
   onText: (delta: string) => void;

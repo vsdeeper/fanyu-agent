@@ -1,4 +1,4 @@
-import type { LocalUploadItem } from '@/lib/shared/client/upload-items';
+import type { LocalUploadItem } from '@/lib/client/upload-items';
 
 /** 将本地文件读取为 API 可接收的 data URL。 */
 export function readFileAsDataUrl(file: Blob): Promise<string> {

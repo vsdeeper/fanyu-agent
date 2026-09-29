@@ -1,6 +1,6 @@
 import { handleRewriteCard } from '@/app/api/studio/ecommerce/_server/handle-rewrite-card';
 import { SERVICE_UNAVAILABLE } from '@/app/api/studio/_server/constants';
-import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 
 export const maxDuration = 60;
 

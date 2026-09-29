@@ -11,7 +11,12 @@ import {
   encodeSsePrelude,
   SSE_STREAM_HEADERS,
 } from '@/app/api/studio/_server/stream-encode';
-import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import {
+  settingsFailResponse,
+  splitChatSettings,
+  withStudioChatSettings,
+} from '@/app/api/studio/_server/with-chat-settings';
+import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 import { IMAGE_TEXT_SSE_EVENT } from '../_shared/constants';
 import type { ImageTextSseTextEvent } from '../_shared/types';
 import {
@@ -37,7 +42,12 @@ export async function handleImageTextPlan(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parsePlanBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parsePlanBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_INPUT, 400);
   }
@@ -53,59 +63,63 @@ export async function handleImageTextPlan(req: Request): Promise<Response> {
     async (write) => {
       const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
       try {
-        const provider = getChatProvider();
-        const runtime = getChatProviderRuntimeFor(provider);
-        const capabilities = runtime.getCapabilities();
-        const openaiOptions = {
-          ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
-          ...runtime.getOpenAIOptions(),
-        };
-        const result = streamText({
-          model: runtime.getMainModel(getModelId(provider, 'pro')),
-          instructions: PLAN_INSTRUCTIONS,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: buildPlanPrompt(body) },
-                ...(materialParts.length
-                  ? [
-                      {
-                        type: 'text' as const,
-                        text: '以下附件是【素材图】，提供主题、主体与画风参考，不要照搬其版面：',
-                      },
-                      ...materialParts,
-                    ]
-                  : []),
-              ],
-            },
-          ],
-          abortSignal: req.signal,
-          maxOutputTokens: IMAGE_TEXT_PLAN_MAX_OUTPUT_TOKENS,
-          providerOptions: { openai: openaiOptions },
-        });
-        for await (const delta of result.textStream) {
+        await withStudioChatSettings(split.settings, async () => {
+          const provider = getChatProvider();
+          const runtime = getChatProviderRuntimeFor(provider);
+          const capabilities = runtime.getCapabilities();
+          const openaiOptions = {
+            ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
+            ...runtime.getOpenAIOptions(),
+          };
+          const result = streamText({
+            model: runtime.getMainModel(getModelId(provider, 'pro')),
+            instructions: PLAN_INSTRUCTIONS,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: buildPlanPrompt(body) },
+                  ...(materialParts.length
+                    ? [
+                        {
+                          type: 'text' as const,
+                          text: '以下附件是【素材图】，提供主题、主体与画风参考，不要照搬其版面：',
+                        },
+                        ...materialParts,
+                      ]
+                    : []),
+                ],
+              },
+            ],
+            abortSignal: req.signal,
+            maxOutputTokens: IMAGE_TEXT_PLAN_MAX_OUTPUT_TOKENS,
+            providerOptions: { openai: openaiOptions },
+          });
+          for await (const delta of result.textStream) {
+            if (req.signal.aborted) return;
+            if (!delta) continue;
+            const payload: ImageTextSseTextEvent = { delta };
+            await send(IMAGE_TEXT_SSE_EVENT.text, payload);
+          }
           if (req.signal.aborted) return;
-          if (!delta) continue;
-          const payload: ImageTextSseTextEvent = { delta };
-          await send(IMAGE_TEXT_SSE_EVENT.text, payload);
-        }
-        if (req.signal.aborted) return;
-        const [fullText, finishReason] = await Promise.all([
-          Promise.resolve(result.text).then((text) => (text || '').trim()),
-          Promise.resolve(result.finishReason).catch(() => undefined),
-        ]);
-        if (finishReason === 'length') {
-          console.warn('[image-text/plan] output truncated by length', { chars: fullText.length });
-          await send(IMAGE_TEXT_SSE_EVENT.error, { message: PLAN_TRUNCATED });
-          return;
-        }
-        if (!fullText) {
-          console.warn('[image-text/plan] empty text after stream');
-          await send(IMAGE_TEXT_SSE_EVENT.error, { message: PLAN_FAILED });
-          return;
-        }
-        await send(IMAGE_TEXT_SSE_EVENT.done, {});
+          const [fullText, finishReason] = await Promise.all([
+            Promise.resolve(result.text).then((text) => (text || '').trim()),
+            Promise.resolve(result.finishReason).catch(() => undefined),
+          ]);
+          if (finishReason === 'length') {
+            console.warn('[image-text/plan] output truncated by length', {
+              chars: fullText.length,
+            });
+            await send(IMAGE_TEXT_SSE_EVENT.error, { message: PLAN_TRUNCATED });
+            return;
+          }
+          if (!fullText) {
+            console.warn('[image-text/plan] empty text after stream');
+            await send(IMAGE_TEXT_SSE_EVENT.error, { message: PLAN_FAILED });
+            return;
+          }
+          await send(IMAGE_TEXT_SSE_EVENT.done, {});
+        });
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[image-text/plan]', err);

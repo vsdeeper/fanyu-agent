@@ -4,7 +4,7 @@ import {
   appendLocalUploadItems,
   interceptLocalFiles,
   removeLocalUploadItem,
-} from '@/lib/shared/client/upload-items';
+} from '@/lib/client/upload-items';
 import {
   MAX_STUDIO_IMAGES,
   STUDIO_IMAGE_ACCEPT,

@@ -24,4 +24,4 @@ message.warning('…');
 ```
 
 参考：`src/app/chat/_components/ChatManageList/hooks/useChatManageList.ts`  
-非 React 模块仅用 `lib/shared/client/antd-message` 注入的实例。
+非 React 模块仅用 `lib/client/antd-message` 注入的实例。

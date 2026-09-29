@@ -13,11 +13,16 @@ import type {
   BusinessAnalysisAnalyzeRequest,
   BusinessAnalysisAnalyzeTextEvent,
 } from '@/app/api/studio/business-analysis/_shared/types';
-import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 import { parseImageDataUrlToFilePart } from '@/app/api/studio/_server/parse-image-data-url';
 import { ANALYZE_INSTRUCTIONS } from './analyze-instructions';
 import { ANALYZE_FAILED, MISSING_ANALYZE_MATERIAL } from './constants';
 import { INVALID_FORM, INVALID_JSON } from '@/app/api/studio/_server/constants';
+import {
+  settingsFailResponse,
+  splitChatSettings,
+  withStudioChatSettings,
+} from '@/app/api/studio/_server/with-chat-settings';
 import { buildAnalyzePrompt } from './analyze-prompt';
 import { extractStudioDocuments, formatDocumentsPrompt } from './extract-documents';
 import { parseAnalyzeBody } from './parse-analyze-request';
@@ -141,7 +146,12 @@ export async function handleBusinessAnalysisAnalyze(req: Request): Promise<Respo
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseAnalyzeBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseAnalyzeBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
@@ -151,7 +161,9 @@ export async function handleBusinessAnalysisAnalyze(req: Request): Promise<Respo
     async (write) => {
       const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
       try {
-        await pipeAnalyzeEvents(body, req.signal, send);
+        await withStudioChatSettings(split.settings, () =>
+          pipeAnalyzeEvents(body, req.signal, send),
+        );
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[business-analysis/analyze]', err);

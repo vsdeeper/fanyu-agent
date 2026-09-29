@@ -1,6 +1,6 @@
 import { createChat, queryChats } from '@/app/api/chats/_server/store';
 import { parseChatListQuery } from '@/app/api/chats/_server/parse-list-query';
-import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/server/api-response';
 
 /** 对话管理列表：按标题与创建日期筛选，全量返回。 */
 export async function handleListChats(req: Request): Promise<Response> {

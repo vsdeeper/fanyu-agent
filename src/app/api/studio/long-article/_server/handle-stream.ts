@@ -5,6 +5,11 @@ import { getChatProvider, getModelId } from '@/app/api/chat/_server/providers/co
 import { getChatProviderRuntimeFor } from '@/app/api/chat/_server/providers/resolve';
 import { webSearch } from '@/app/api/chat/_server/tools/catalog/web-search';
 import { INVALID_FORM, INVALID_JSON } from '@/app/api/studio/_server/constants';
+import {
+  settingsFailResponse,
+  splitChatSettings,
+  withStudioChatSettings,
+} from '@/app/api/studio/_server/with-chat-settings';
 import { parseImageDataUrlToFilePart } from '@/app/api/studio/_server/parse-image-data-url';
 import {
   createPushStreamResponse,
@@ -12,7 +17,7 @@ import {
   encodeSsePrelude,
   SSE_STREAM_HEADERS,
 } from '@/app/api/studio/_server/stream-encode';
-import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 import { LONG_ARTICLE_SSE_EVENT } from '../_shared/constants';
 import type { LongArticleSseTextEvent } from '../_shared/types';
 import {
@@ -134,7 +139,12 @@ export async function handleLongArticleResearch(req: Request): Promise<Response>
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseResearchBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseResearchBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
@@ -161,76 +171,78 @@ export async function handleLongArticleResearch(req: Request): Promise<Response>
     async (write) => {
       const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
       try {
-        const { provider, runtime, openaiOptions } = buildOpenaiOptions();
-        const usesSdkWebSearch = runtime.getCapabilities().usesSdkWebSearchTool;
-        // 轮数 + 总次数双约束；并行上限靠提示（Provider 原生工具无法在单步内截断并行）
-        const budgetHint = isNarrativeGenre
-          ? `叙事散文调研额外约束：web_search 按需、最多 ${maxSearchRounds} 轮且全程最多 ${maxSearchCalls} 次（每轮并行≤${maxParallel}）；经历已够写故事可不搜；达上限后必须输出短简报与切入 JSON。`
-          : `选题调研额外约束（文体=${body.articleGenre}）：web_search 最多 ${maxSearchRounds} 轮且全程最多 ${maxSearchCalls} 次（每轮并行≤${maxParallel} 个关键词，宜少而准）；达上限后立刻写简报与 JSON，禁止继续检索。`;
-        const searchHint = usesSdkWebSearch
-          ? `\n\n${budgetHint}`
-          : `\n\n${webSearch.getHint()}\n${budgetHint}`;
-        const localWebSearch = withWebSearchCallBudget(
-          webSearch.create({ chatId: 'long-article-research' }),
-          maxSearchCalls,
-        );
-        const result = streamText({
-          model: runtime.getMainModel(getModelId(provider, 'pro')),
-          instructions: RESEARCH_INSTRUCTIONS + searchHint,
-          prompt: buildResearchPrompt(body),
-          abortSignal: req.signal,
-          maxOutputTokens: LONG_ARTICLE_RESEARCH_MAX_OUTPUT_TOKENS,
-          providerOptions: { openai: openaiOptions },
-          tools: usesSdkWebSearch
-            ? {
-                web_search: runtime
-                  .getClient()
-                  .tools.webSearch(runtime.getWebSearchArgs(undefined)),
-              }
-            : {
-                web_search: localWebSearch,
-              },
-          // 知识故事 / 观点评论首步强制联网；叙事散文不强制。轮数或总次数触顶后关掉工具
-          prepareStep: ({ steps }) => {
-            if (steps.length === 0) {
-              if (!forceWebSearch) return {};
-              return { toolChoice: { type: 'tool' as const, toolName: 'web_search' as const } };
-            }
-            const searchRounds = steps.filter((step) => step.toolCalls.length > 0).length;
-            const searchCalls = steps.reduce(
-              (sum, step) =>
-                sum + step.toolCalls.filter((call) => call.toolName === 'web_search').length,
-              0,
-            );
-            if (searchRounds >= maxSearchRounds || searchCalls >= maxSearchCalls) {
-              return { toolChoice: 'none' as const };
-            }
-            return {};
-          },
-          stopWhen: stepCountIs(RESEARCH_MAX_STEPS),
-        });
-        await pipeTextStream(result, req.signal, send, RESEARCH_FAILED, RESEARCH_TRUNCATED);
-        try {
-          const [steps, fullText] = await Promise.all([
-            result.steps,
-            Promise.resolve(result.text).then((text) => (text || '').trim()),
-          ]);
-          const toolNames = steps.flatMap((step) => step.toolCalls.map((call) => call.toolName));
-          const hasJsonFence = /```json\b/i.test(fullText);
-          console.info('[long-article/research] toolCalls', toolNames, {
-            chars: fullText.length,
-            hasJsonFence,
-            articleGenre: body.articleGenre,
-            maxSearchRounds,
+        await withStudioChatSettings(split.settings, async () => {
+          const { provider, runtime, openaiOptions } = buildOpenaiOptions();
+          const usesSdkWebSearch = runtime.getCapabilities().usesSdkWebSearchTool;
+          // 轮数 + 总次数双约束；并行上限靠提示（Provider 原生工具无法在单步内截断并行）
+          const budgetHint = isNarrativeGenre
+            ? `叙事散文调研额外约束：web_search 按需、最多 ${maxSearchRounds} 轮且全程最多 ${maxSearchCalls} 次（每轮并行≤${maxParallel}）；经历已够写故事可不搜；达上限后必须输出短简报与切入 JSON。`
+            : `选题调研额外约束（文体=${body.articleGenre}）：web_search 最多 ${maxSearchRounds} 轮且全程最多 ${maxSearchCalls} 次（每轮并行≤${maxParallel} 个关键词，宜少而准）；达上限后立刻写简报与 JSON，禁止继续检索。`;
+          const searchHint = usesSdkWebSearch
+            ? `\n\n${budgetHint}`
+            : `\n\n${webSearch.getHint()}\n${budgetHint}`;
+          const localWebSearch = withWebSearchCallBudget(
+            webSearch.create({ chatId: 'long-article-research' }),
             maxSearchCalls,
-            searchCallCount: toolNames.filter((name) => name === 'web_search').length,
+          );
+          const result = streamText({
+            model: runtime.getMainModel(getModelId(provider, 'pro')),
+            instructions: RESEARCH_INSTRUCTIONS + searchHint,
+            prompt: buildResearchPrompt(body),
+            abortSignal: req.signal,
+            maxOutputTokens: LONG_ARTICLE_RESEARCH_MAX_OUTPUT_TOKENS,
+            providerOptions: { openai: openaiOptions },
+            tools: usesSdkWebSearch
+              ? {
+                  web_search: runtime
+                    .getClient()
+                    .tools.webSearch(runtime.getWebSearchArgs(undefined)),
+                }
+              : {
+                  web_search: localWebSearch,
+                },
+            // 知识故事 / 观点评论首步强制联网；叙事散文不强制。轮数或总次数触顶后关掉工具
+            prepareStep: ({ steps }) => {
+              if (steps.length === 0) {
+                if (!forceWebSearch) return {};
+                return { toolChoice: { type: 'tool' as const, toolName: 'web_search' as const } };
+              }
+              const searchRounds = steps.filter((step) => step.toolCalls.length > 0).length;
+              const searchCalls = steps.reduce(
+                (sum, step) =>
+                  sum + step.toolCalls.filter((call) => call.toolName === 'web_search').length,
+                0,
+              );
+              if (searchRounds >= maxSearchRounds || searchCalls >= maxSearchCalls) {
+                return { toolChoice: 'none' as const };
+              }
+              return {};
+            },
+            stopWhen: stepCountIs(RESEARCH_MAX_STEPS),
           });
-          if (!hasJsonFence) {
-            console.warn('[long-article/research] missing trailing ```json block');
+          await pipeTextStream(result, req.signal, send, RESEARCH_FAILED, RESEARCH_TRUNCATED);
+          try {
+            const [steps, fullText] = await Promise.all([
+              result.steps,
+              Promise.resolve(result.text).then((text) => (text || '').trim()),
+            ]);
+            const toolNames = steps.flatMap((step) => step.toolCalls.map((call) => call.toolName));
+            const hasJsonFence = /```json\b/i.test(fullText);
+            console.info('[long-article/research] toolCalls', toolNames, {
+              chars: fullText.length,
+              hasJsonFence,
+              articleGenre: body.articleGenre,
+              maxSearchRounds,
+              maxSearchCalls,
+              searchCallCount: toolNames.filter((name) => name === 'web_search').length,
+            });
+            if (!hasJsonFence) {
+              console.warn('[long-article/research] missing trailing ```json block');
+            }
+          } catch (err) {
+            console.warn('[long-article/research] steps log failed', err);
           }
-        } catch (err) {
-          console.warn('[long-article/research] steps log failed', err);
-        }
+        });
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[long-article/research]', err);
@@ -256,7 +268,12 @@ export async function handleLongArticlePlan(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parsePlanBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parsePlanBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
@@ -266,16 +283,18 @@ export async function handleLongArticlePlan(req: Request): Promise<Response> {
     async (write) => {
       const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
       try {
-        const { provider, runtime, openaiOptions } = buildOpenaiOptions();
-        const result = streamText({
-          model: runtime.getMainModel(getModelId(provider, 'pro')),
-          instructions: PLAN_INSTRUCTIONS,
-          prompt: buildPlanPrompt(body),
-          abortSignal: req.signal,
-          maxOutputTokens: LONG_ARTICLE_PLAN_MAX_OUTPUT_TOKENS,
-          providerOptions: { openai: openaiOptions },
+        await withStudioChatSettings(split.settings, async () => {
+          const { provider, runtime, openaiOptions } = buildOpenaiOptions();
+          const result = streamText({
+            model: runtime.getMainModel(getModelId(provider, 'pro')),
+            instructions: PLAN_INSTRUCTIONS,
+            prompt: buildPlanPrompt(body),
+            abortSignal: req.signal,
+            maxOutputTokens: LONG_ARTICLE_PLAN_MAX_OUTPUT_TOKENS,
+            providerOptions: { openai: openaiOptions },
+          });
+          await pipeTextStream(result, req.signal, send, PLAN_FAILED, PLAN_TRUNCATED);
         });
-        await pipeTextStream(result, req.signal, send, PLAN_FAILED, PLAN_TRUNCATED);
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[long-article/plan]', err);
@@ -301,7 +320,12 @@ export async function handleLongArticleDraft(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseDraftBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseDraftBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
@@ -311,16 +335,18 @@ export async function handleLongArticleDraft(req: Request): Promise<Response> {
     async (write) => {
       const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
       try {
-        const { provider, runtime, openaiOptions } = buildOpenaiOptions();
-        const result = streamText({
-          model: runtime.getMainModel(getModelId(provider, 'pro')),
-          instructions: DRAFT_INSTRUCTIONS,
-          prompt: buildDraftPrompt(body),
-          abortSignal: req.signal,
-          maxOutputTokens: LONG_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS,
-          providerOptions: { openai: openaiOptions },
+        await withStudioChatSettings(split.settings, async () => {
+          const { provider, runtime, openaiOptions } = buildOpenaiOptions();
+          const result = streamText({
+            model: runtime.getMainModel(getModelId(provider, 'pro')),
+            instructions: DRAFT_INSTRUCTIONS,
+            prompt: buildDraftPrompt(body),
+            abortSignal: req.signal,
+            maxOutputTokens: LONG_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS,
+            providerOptions: { openai: openaiOptions },
+          });
+          await pipeTextStream(result, req.signal, send, DRAFT_FAILED, DRAFT_TRUNCATED);
         });
-        await pipeTextStream(result, req.signal, send, DRAFT_FAILED, DRAFT_TRUNCATED);
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[long-article/draft]', err);
@@ -346,7 +372,12 @@ export async function handleLongArticlePolish(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parsePolishBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parsePolishBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
@@ -356,16 +387,18 @@ export async function handleLongArticlePolish(req: Request): Promise<Response> {
     async (write) => {
       const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
       try {
-        const { provider, runtime, openaiOptions } = buildOpenaiOptions();
-        const result = streamText({
-          model: runtime.getMainModel(getModelId(provider, 'pro')),
-          instructions: POLISH_INSTRUCTIONS,
-          prompt: buildPolishPrompt(body),
-          abortSignal: req.signal,
-          maxOutputTokens: LONG_ARTICLE_POLISH_MAX_OUTPUT_TOKENS,
-          providerOptions: { openai: openaiOptions },
+        await withStudioChatSettings(split.settings, async () => {
+          const { provider, runtime, openaiOptions } = buildOpenaiOptions();
+          const result = streamText({
+            model: runtime.getMainModel(getModelId(provider, 'pro')),
+            instructions: POLISH_INSTRUCTIONS,
+            prompt: buildPolishPrompt(body),
+            abortSignal: req.signal,
+            maxOutputTokens: LONG_ARTICLE_POLISH_MAX_OUTPUT_TOKENS,
+            providerOptions: { openai: openaiOptions },
+          });
+          await pipeTextStream(result, req.signal, send, POLISH_FAILED, POLISH_TRUNCATED);
         });
-        await pipeTextStream(result, req.signal, send, POLISH_FAILED, POLISH_TRUNCATED);
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[long-article/polish]', err);
@@ -391,7 +424,12 @@ export async function handleLongArticleImages(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseImagesBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseImagesBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
@@ -401,36 +439,38 @@ export async function handleLongArticleImages(req: Request): Promise<Response> {
     async (write) => {
       const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
       try {
-        const { provider, runtime, openaiOptions } = buildOpenaiOptions();
-        const promptText = buildImagesPrompt(body);
-        const stylePart = body.styleReferenceDataUrl
-          ? parseImageDataUrlToFilePart(body.styleReferenceDataUrl)
-          : null;
-        const result = streamText({
-          model: runtime.getMainModel(getModelId(provider, 'pro')),
-          instructions: IMAGES_INSTRUCTIONS,
-          ...(stylePart
-            ? {
-                messages: [
-                  {
-                    role: 'user' as const,
-                    content: [
-                      { type: 'text' as const, text: promptText },
-                      {
-                        type: 'text' as const,
-                        text: '以下附件是【风格参考图】，请据此提炼 visualStyle：',
-                      },
-                      stylePart,
-                    ],
-                  },
-                ],
-              }
-            : { prompt: promptText }),
-          abortSignal: req.signal,
-          maxOutputTokens: LONG_ARTICLE_IMAGES_MAX_OUTPUT_TOKENS,
-          providerOptions: { openai: openaiOptions },
+        await withStudioChatSettings(split.settings, async () => {
+          const { provider, runtime, openaiOptions } = buildOpenaiOptions();
+          const promptText = buildImagesPrompt(body);
+          const stylePart = body.styleReferenceDataUrl
+            ? parseImageDataUrlToFilePart(body.styleReferenceDataUrl)
+            : null;
+          const result = streamText({
+            model: runtime.getMainModel(getModelId(provider, 'pro')),
+            instructions: IMAGES_INSTRUCTIONS,
+            ...(stylePart
+              ? {
+                  messages: [
+                    {
+                      role: 'user' as const,
+                      content: [
+                        { type: 'text' as const, text: promptText },
+                        {
+                          type: 'text' as const,
+                          text: '以下附件是【风格参考图】，请据此提炼 visualStyle：',
+                        },
+                        stylePart,
+                      ],
+                    },
+                  ],
+                }
+              : { prompt: promptText }),
+            abortSignal: req.signal,
+            maxOutputTokens: LONG_ARTICLE_IMAGES_MAX_OUTPUT_TOKENS,
+            providerOptions: { openai: openaiOptions },
+          });
+          await pipeTextStream(result, req.signal, send, IMAGES_FAILED, IMAGES_TRUNCATED);
         });
-        await pipeTextStream(result, req.signal, send, IMAGES_FAILED, IMAGES_TRUNCATED);
       } catch (err) {
         if (req.signal.aborted) return;
         console.error('[long-article/images]', err);

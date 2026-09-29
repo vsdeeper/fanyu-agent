@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
+import type { ChatSettingsPayload } from '@/app/api/chat/_shared/chat-settings';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/server/api-response';
 import type { StudioGenerateRequest } from '../_shared/generate-types';
 import {
   JOB_CANCEL_SETTLED_MESSAGE,
@@ -8,7 +9,11 @@ import {
   JOB_INVALID_MESSAGE,
   JOB_NOT_FOUND_MESSAGE,
 } from '../_shared/job-constants';
-import type { StudioJobPendingPlan, StudioJobSnapshot } from '../_shared/job-types';
+import {
+  toPublicStudioJobSnapshot,
+  type StudioJobPendingPlan,
+  type StudioJobSnapshot,
+} from '../_shared/job-types';
 import { abortJobController, isJobRegistered } from './job-registry';
 import { beginStudioJob, runStudioJob, type StudioJobProducer } from './job-runner';
 import {
@@ -28,6 +33,7 @@ export type StudioJobProducerFactory = (input: {
   body: StudioGenerateRequest;
   /** 本批占位槽，顺序即出图清单顺序；生产者据此把每张图回传给对应槽位 */
   pending: StudioJobPendingPlan;
+  settings: ChatSettingsPayload;
 }) => StudioJobProducer;
 
 export type StudioJobHandlersContext = {
@@ -62,11 +68,13 @@ export function createStudioJobHandlers(ctx: StudioJobHandlersContext) {
       runStudioJob({
         jobId: job.id,
         pending: job.data.pending,
+        settings: job.data.settings,
         producer: ctx.producer({
           taskId,
           stepKey: job.stepKey,
           body,
           pending: job.data.pending,
+          settings: job.data.settings,
         }),
         controller,
       }),
@@ -97,7 +105,7 @@ export function createStudioJobHandlers(ctx: StudioJobHandlersContext) {
         taskId,
         stepKey: parsed.stepKey,
         kind: parsed.kind,
-        data: { events: [], pending: parsed.pending },
+        data: { events: [], pending: parsed.pending, settings: parsed.settings },
       };
 
       const first = createJob(input);
@@ -129,7 +137,9 @@ export function createStudioJobHandlers(ctx: StudioJobHandlersContext) {
         return jsonFail(ApiErrorCode.TASK_NOT_FOUND, ctx.notFoundMessage, 404);
       }
       sweepStaleJobs();
-      return jsonOk({ items: listJobsByTask(taskId) });
+      return jsonOk({
+        items: listJobsByTask(taskId).map(toPublicStudioJobSnapshot),
+      });
     } catch (error) {
       console.error(`[${ctx.logTag}] list jobs`, error);
       return jsonFail(ApiErrorCode.INTERNAL_ERROR, '服务暂时不可用，请稍后重试', 500);

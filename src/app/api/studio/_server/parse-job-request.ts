@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { STUDIO_JOB_KINDS } from '../_shared/job-constants';
 import type { CreateStudioJobRequest } from '../_shared/job-types';
 import { parseGenerateBody } from './parse-generate-request';
+import { splitChatSettings } from './with-chat-settings';
 
 const slotSchema = z.object({
   id: z.string().min(1),
@@ -39,11 +40,13 @@ const createJobSchema = z.object({
 });
 
 /**
- * 校验建作业请求体；内层生图体复用 `parseGenerateBody`，与流式路由同一套规则。
+ * 校验建作业请求体；须含顶层 settings；内层生图体复用 `parseGenerateBody`。
  * 任一步失败返回 null，由调用方转 400。
  */
 export function parseCreateJobBody(json: unknown): CreateStudioJobRequest | null {
-  const parsed = createJobSchema.safeParse(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) return null;
+  const parsed = createJobSchema.safeParse(split.rest);
   if (!parsed.success) return null;
   const body = parseGenerateBody(parsed.data.body);
   if (!body) return null;
@@ -52,5 +55,6 @@ export function parseCreateJobBody(json: unknown): CreateStudioJobRequest | null
     kind: parsed.data.kind,
     pending: parsed.data.pending,
     body,
+    settings: split.settings,
   };
 }

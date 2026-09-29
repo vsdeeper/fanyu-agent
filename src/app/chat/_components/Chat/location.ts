@@ -1,6 +1,6 @@
 import 'client-only';
 
-import { apiPost } from '@/lib/shared/client/api-client';
+import { apiPost } from '@/lib/client/api-client';
 
 import type { UserLocation } from '@/app/api/geo/_shared/types';
 

@@ -5,7 +5,7 @@ import {
   appendLocalUploadItems,
   interceptLocalFiles,
   removeLocalUploadItem,
-} from '@/lib/shared/client/upload-items';
+} from '@/lib/client/upload-items';
 import FileCard from '@/components/FileCard';
 import ProductDocPreview from './ProductDocPreview';
 import {

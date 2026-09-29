@@ -1,5 +1,5 @@
 import type { StudioGenerateImageEvent } from '@/app/api/studio/_shared/generate-types';
-import { ApiClientError } from '@/lib/shared/client/api-client';
+import { ApiClientError } from '@/lib/client/api-client';
 import type { StudioResultImage } from './result-images';
 
 /** 去掉尚未完成的占位图，保留已成功或失败的结果。 */

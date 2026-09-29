@@ -25,7 +25,6 @@ export const CAPABILITY_TAG_LABEL: Record<'chat' | 'generate' | 'edit', string> 
 };
 
 export const SAVE_OK = '设置已保存';
-export const LOAD_DEFAULTS_FAILED = '加载默认设置失败';
 export const NEED_CHAT_PROVIDER = '请先在上方添加支持对话的供应商';
 export const DELETE_PROVIDER_CONFIRM = '确认删除该供应商配置？';
 export const DELETE_PROVIDER_OK = '删除';

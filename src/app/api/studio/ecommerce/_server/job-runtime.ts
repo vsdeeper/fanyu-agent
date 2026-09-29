@@ -1,7 +1,8 @@
 import 'server-only';
 
 import { after } from 'next/server';
-import type { StudioJobSnapshot } from '@/app/api/studio/_shared/job-types';
+import type { StudioJobPublicSnapshot } from '@/app/api/studio/_shared/job-types';
+import { toPublicStudioJobSnapshot } from '@/app/api/studio/_shared/job-types';
 import { createStudioJobHandlers } from '@/app/api/studio/_server/handle-jobs';
 import { listJobsByTask, sweepStaleJobs } from '@/app/api/studio/_server/job-store';
 import type { EcommerceStepKey, EcommerceTaskDetail } from '../_shared/task-types';
@@ -39,12 +40,15 @@ export const handleCancelEcommerceJob = handlers.handleCancelJob;
  *
  * 优先运行中的；其次是在用户离开期间已结束、但结果尚未写进步骤快照的作业
  * （客户端是快照的唯一写入者，没人看过就还没落库，需要补一次结算）。
+ * 返回公开快照（不含 settings），避免 RSC 把密钥序列化到客户端。
  */
-export function selectEcommerceRestorableJob(task: EcommerceTaskDetail): StudioJobSnapshot | null {
+export function selectEcommerceRestorableJob(
+  task: EcommerceTaskDetail,
+): StudioJobPublicSnapshot | null {
   sweepStaleJobs();
   const jobs = listJobsByTask(task.id);
   const running = jobs.find((job) => job.status === 'running');
-  if (running) return running;
+  if (running) return toPublicStudioJobSnapshot(running);
 
   const unconsumed = jobs.find((job) => {
     // 没有任何产出的作业接回去也无内容可展示
@@ -52,5 +56,5 @@ export function selectEcommerceRestorableJob(task: EcommerceTaskDetail): StudioJ
     const step = task.steps[job.stepKey as EcommerceStepKey];
     return !step || (job.finishedAt ?? job.updatedAt) > step.updatedAt;
   });
-  return unconsumed ?? null;
+  return unconsumed ? toPublicStudioJobSnapshot(unconsumed) : null;
 }

@@ -76,6 +76,7 @@ import {
   syncWritingUnits,
   toggleWritingSelection,
 } from '../utils';
+import { withChatSettingsBody } from '@/app/studio/_utils/chat-settings';
 
 function isNovelVolume(value: unknown): value is NovelVolume {
   return value === 'short' || value === 'medium' || value === 'long';
@@ -248,7 +249,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(withChatSettingsBody(body)),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);
@@ -454,23 +455,25 @@ export function useNovelStudio(task: NovelTaskDetail) {
       const res = await fetch('/api/studio/novel/volume-chapters', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify({
-          topic: selectedTopic,
-          ...longFormatBody(readPanelValues()),
-          volume: {
-            id: volume.id,
-            title: volume.title,
-            purpose: volume.purpose,
-          },
-          existingChapterCount,
-          siblingVolumes: structure.volumes
-            .filter((item) => item.id !== volumeId)
-            .map((item) => ({
-              id: item.id,
-              title: item.title,
-              purpose: item.purpose,
-            })),
-        }),
+        body: JSON.stringify(
+          withChatSettingsBody({
+            topic: selectedTopic,
+            ...longFormatBody(readPanelValues()),
+            volume: {
+              id: volume.id,
+              title: volume.title,
+              purpose: volume.purpose,
+            },
+            existingChapterCount,
+            siblingVolumes: structure.volumes
+              .filter((item) => item.id !== volumeId)
+              .map((item) => ({
+                id: item.id,
+                title: item.title,
+                purpose: item.purpose,
+              })),
+          }),
+        ),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);
@@ -543,22 +546,24 @@ export function useNovelStudio(task: NovelTaskDetail) {
       const res = await fetch('/api/studio/novel/chapter-beats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify({
-          topic: selectedTopic,
-          ...(structure.kind === 'volumes' ? longFormatBody(readPanelValues()) : {}),
-          chapter: {
-            id: chapter.id,
-            title: chapter.title,
-            purpose: chapter.purpose,
-          },
-          siblingChapters: chapters
-            .filter((item) => item.id !== chapterId)
-            .map((item) => ({
-              id: item.id,
-              title: item.title,
-              purpose: item.purpose,
-            })),
-        }),
+        body: JSON.stringify(
+          withChatSettingsBody({
+            topic: selectedTopic,
+            ...(structure.kind === 'volumes' ? longFormatBody(readPanelValues()) : {}),
+            chapter: {
+              id: chapter.id,
+              title: chapter.title,
+              purpose: chapter.purpose,
+            },
+            siblingChapters: chapters
+              .filter((item) => item.id !== chapterId)
+              .map((item) => ({
+                id: item.id,
+                title: item.title,
+                purpose: item.purpose,
+              })),
+          }),
+        ),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);
@@ -769,16 +774,18 @@ export function useNovelStudio(task: NovelTaskDetail) {
         const res = await fetch('/api/studio/novel/writing', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-          body: JSON.stringify({
-            unitId,
-            beatText: resolved.beatText,
-            topic: selectedTopic,
-            volume: panel.volume,
-            ...longFormatBody(panel),
-            ...(stylePrompt ? { stylePrompt } : {}),
-            ...(resolved.chapterTitle ? { chapterTitle: resolved.chapterTitle } : {}),
-            ...(resolved.chapterPurpose ? { chapterPurpose: resolved.chapterPurpose } : {}),
-          }),
+          body: JSON.stringify(
+            withChatSettingsBody({
+              unitId,
+              beatText: resolved.beatText,
+              topic: selectedTopic,
+              volume: panel.volume,
+              ...longFormatBody(panel),
+              ...(stylePrompt ? { stylePrompt } : {}),
+              ...(resolved.chapterTitle ? { chapterTitle: resolved.chapterTitle } : {}),
+              ...(resolved.chapterPurpose ? { chapterPurpose: resolved.chapterPurpose } : {}),
+            }),
+          ),
           signal: controller.signal,
         });
         await assertOkOrJsonFail(res);

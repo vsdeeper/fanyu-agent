@@ -1,7 +1,7 @@
 import 'server-only';
 
-import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
-import { requireEnv } from '@/lib/shared/server/env';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/server/api-response';
+import { requireEnv } from '@/lib/server/env';
 
 import type { UserLocation } from '../_shared/types';
 

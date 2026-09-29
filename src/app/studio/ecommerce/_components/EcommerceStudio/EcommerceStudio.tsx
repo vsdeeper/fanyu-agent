@@ -9,18 +9,18 @@ import type {
   EcommerceTaskDetail,
   EcommerceTaskType,
 } from '@/app/api/studio/ecommerce/_shared/task-types';
-import type { StudioJobSnapshot } from '@/app/api/studio/_shared/job-types';
+import type { StudioJobPublicSnapshot } from '@/app/api/studio/_shared/job-types';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { RewriteCardResult } from '@/app/api/studio/ecommerce/_shared/rewrite-card';
 import { MAIN_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import { useStudioJob } from '@/app/studio/_hooks/useStudioJob';
 import { validateForm } from '@/app/studio/_utils/form-validate';
 import { ECOMMERCE_PATH } from '@/components/AppLayout/constants';
-import { apiPost } from '@/lib/shared/client/api-client';
+import { apiPost } from '@/lib/client/api-client';
 import {
   revokeLocalUploadItemUrls,
   revokeReplacedLocalUploadItemUrls,
-} from '@/lib/shared/client/upload-items';
+} from '@/lib/client/upload-items';
 import ModeSwitch from '@/components/ModeSwitch';
 import CompletionPanel from './CompletionPanel';
 import {
@@ -113,6 +113,7 @@ import {
   resolveEcommerceWorkflow,
 } from './workflow';
 import styles from './EcommerceStudio.module.css';
+import { withChatSettingsBody } from '@/app/studio/_utils/chat-settings';
 
 /**
  * 电商设计工作台：左侧参数，右侧规划与出图。
@@ -121,7 +122,7 @@ import styles from './EcommerceStudio.module.css';
 type EcommerceStudioProps = {
   task: EcommerceTaskDetail;
   /** 首屏已存在的后台生图作业，用于重新进入任务时接上进度 */
-  initialJob?: StudioJobSnapshot | null;
+  initialJob?: StudioJobPublicSnapshot | null;
 };
 
 export default function EcommerceStudio({ task, initialJob = null }: EcommerceStudioProps) {
@@ -457,7 +458,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
    * 同一帧里读 state 会漏掉最后到达的那批事件。
    */
   const settleJob = useCallback(
-    async (snap: StudioJobSnapshot) => {
+    async (snap: StudioJobPublicSnapshot) => {
       const succeeded = snap.status === 'succeeded';
       const batch = restoreBatchImages(snap);
       // 生成中可以点上一步：用户若已退回其它步骤，只落库、不把相位推回去把他拽回来
@@ -557,7 +558,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(withChatSettingsBody(payload)),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);
@@ -656,7 +657,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       }
     } catch (err) {
       console.error('[ecommerce-studio] start visual job', err);
-      // 建作业失败（api-client 已 Toast）：撤回占位并退回稳定相位
+      // 缺 settings / 建作业失败：Toast 已由 withChatSettingsBody 或 api-client 发出
       setVisualImages(visualImages);
       setPhase('visual');
     }
@@ -777,7 +778,7 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
       }
     } catch (err) {
       console.error('[ecommerce-studio] start design job', err);
-      // 建作业失败（api-client 已 Toast）：撤回占位并退回稳定相位
+      // 缺 settings / 建作业失败：Toast 已由 withChatSettingsBody 或 api-client 发出
       setDesignResultGroups(designResultGroups);
       setPhase('design');
     }
@@ -987,25 +988,34 @@ export default function EcommerceStudio({ task, initialJob = null }: EcommerceSt
         message.warning(ANALYSIS_UPLOAD_MISSING);
         return '';
       }
-      const productDocumentsText =
-        productDocs.length > 0 ? await readProductDocsAsText(productDocs) : '';
-      const data = await apiPost<RewriteCardResult>('/api/studio/ecommerce/rewrite-card', {
-        kind: detailImage ? 'detailImage' : 'mainImage',
-        themeId,
-        draft,
-        otherCards: planCards
-          .filter((card) => card.themeId !== themeId)
-          .map((card) => ({
-            themeId: card.themeId,
-            title: card.title,
-            requirement: card.requirement,
-          })),
-        analysisText: analysisFromDocs,
-        ...(productDocumentsText.trim()
-          ? { productDocumentsText: productDocumentsText.trim() }
-          : {}),
-      });
-      return data.requirement;
+      try {
+        const productDocumentsText =
+          productDocs.length > 0 ? await readProductDocsAsText(productDocs) : '';
+        const data = await apiPost<RewriteCardResult>(
+          '/api/studio/ecommerce/rewrite-card',
+          withChatSettingsBody({
+            kind: detailImage ? 'detailImage' : 'mainImage',
+            themeId,
+            draft,
+            otherCards: planCards
+              .filter((card) => card.themeId !== themeId)
+              .map((card) => ({
+                themeId: card.themeId,
+                title: card.title,
+                requirement: card.requirement,
+              })),
+            analysisText: analysisFromDocs,
+            ...(productDocumentsText.trim()
+              ? { productDocumentsText: productDocumentsText.trim() }
+              : {}),
+          }),
+        );
+        return data.requirement;
+      } catch (err) {
+        // 缺 settings 时 withChatSettingsBody 已 Toast；api 错误由 api-client Toast
+        console.error('[ecommerce-studio] rewrite card', err);
+        return '';
+      }
     },
     [detailImage, documents, message, planCards, productDocs],
   );

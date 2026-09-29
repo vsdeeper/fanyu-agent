@@ -1,8 +1,4 @@
-import { requireEnv } from '@/lib/shared/server/env';
-import {
-  getChatSettings,
-  resolveCredentialFromSettings,
-} from '@/app/api/chat/_server/request-settings';
+import { resolveCredentialFromSettings } from '@/app/api/chat/_server/request-settings';
 import {
   buildImagePrompt,
   createRequestAbortSignal,
@@ -19,14 +15,8 @@ type ArkImageResponse = {
 };
 
 function resolveArkImageCreds(): { apiKey: string; baseURL: string } {
-  if (getChatSettings()) {
-    const creds = resolveCredentialFromSettings('ark');
-    return { apiKey: creds.apiKey, baseURL: creds.baseUrl.replace(/\/$/, '') };
-  }
-  return {
-    apiKey: requireEnv('ARK_API_KEY'),
-    baseURL: requireEnv('ARK_BASE_URL').replace(/\/$/, ''),
-  };
+  const creds = resolveCredentialFromSettings('ark');
+  return { apiKey: creds.apiKey, baseURL: creds.baseUrl.replace(/\/$/, '') };
 }
 
 export const arkSeedreamProvider: ImageProvider = {

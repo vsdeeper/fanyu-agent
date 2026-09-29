@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
+vi.mock('@/app/api/chat/_server/request-settings', () => ({
+  getChatSettings: vi.fn(),
+}));
+
+import { getChatSettings } from '@/app/api/chat/_server/request-settings';
 import { arkSeedreamProvider } from './providers/ark-seedream';
 import { laozhangProvider } from './providers/laozhang';
 import { generateImageViaRouter, resolveImageModelId } from './router';
@@ -17,9 +22,6 @@ function pngDataUrl(width: number, height: number): string {
   return `data:image/png;base64,${Buffer.from(bytes).toString('base64')}`;
 }
 
-const ORIGINAL_IMAGE_MODEL_ID = process.env.IMAGE_MODEL_ID;
-const ORIGINAL_EDIT_IMAGE_MODEL_ID = process.env.EDIT_IMAGE_MODEL_ID;
-
 const generateResult: ImageGenerateResult = {
   images: [{ bytes: new Uint8Array([1]), mimeType: 'image/png' }],
 };
@@ -27,34 +29,33 @@ const generateResult: ImageGenerateResult = {
 let generateSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
-  process.env.IMAGE_MODEL_ID = 'gpt-image-2.5-flare-vip';
-  process.env.EDIT_IMAGE_MODEL_ID = 'gpt-image-2.5-sunburst-vip';
+  vi.mocked(getChatSettings).mockReturnValue({
+    providerConfigs: [],
+    chatProvider: 'deepseek',
+    chatModels: { modelPro: 'x', modelLite: 'x', modelMini: 'x' },
+    generateImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-flare-vip' },
+    editImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-sunburst-vip' },
+  });
   generateSpy = vi.spyOn(laozhangProvider, 'generate').mockResolvedValue(generateResult);
   vi.spyOn(arkSeedreamProvider, 'generate').mockResolvedValue(generateResult);
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  process.env.IMAGE_MODEL_ID = ORIGINAL_IMAGE_MODEL_ID;
-  if (ORIGINAL_EDIT_IMAGE_MODEL_ID === undefined) {
-    delete process.env.EDIT_IMAGE_MODEL_ID;
-  } else {
-    process.env.EDIT_IMAGE_MODEL_ID = ORIGINAL_EDIT_IMAGE_MODEL_ID;
-  }
 });
 
 describe('resolveImageModelId', () => {
-  it('generate 使用 IMAGE_MODEL_ID', () => {
+  it('generate 使用 settings.generateImage.modelId', () => {
     expect(resolveImageModelId({ mode: 'generate' })).toBe('gpt-image-2.5-flare-vip');
   });
 
-  it('edit 使用 EDIT_IMAGE_MODEL_ID', () => {
+  it('edit 使用 settings.editImage.modelId', () => {
     expect(resolveImageModelId({ mode: 'edit' })).toBe('gpt-image-2.5-sunburst-vip');
   });
 
-  it('EDIT 未设时回落 IMAGE', () => {
-    delete process.env.EDIT_IMAGE_MODEL_ID;
-    expect(resolveImageModelId({ mode: 'edit' })).toBe('gpt-image-2.5-flare-vip');
+  it('无 settings 时抛错', () => {
+    vi.mocked(getChatSettings).mockReturnValue(undefined);
+    expect(() => resolveImageModelId({ mode: 'generate' })).toThrow(/对话设置/);
   });
 });
 

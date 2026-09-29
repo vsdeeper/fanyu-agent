@@ -5,12 +5,17 @@ import { getChatProvider, getModelId } from '@/app/api/chat/_server/providers/co
 import { getChatProviderRuntimeFor } from '@/app/api/chat/_server/providers/resolve';
 import { INVALID_JSON } from '@/app/api/studio/_server/constants';
 import {
+  settingsFailResponse,
+  splitChatSettings,
+  withStudioChatSettings,
+} from '@/app/api/studio/_server/with-chat-settings';
+import {
   createPushStreamResponse,
   encodeSseEvent,
   encodeSsePrelude,
   SSE_STREAM_HEADERS,
 } from '@/app/api/studio/_server/stream-encode';
-import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 import { NOVEL_SSE_EVENT } from '../_shared/constants';
 import type { NovelSseTextEvent } from '../_shared/types';
 import {
@@ -154,29 +159,35 @@ export async function handleNovelResearch(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseResearchBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseResearchBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_RESEARCH_INPUT, 400);
   }
 
   return createNovelSse('novel/research', RESEARCH_FAILED, async (send) => {
-    const result = createProStream({
-      instructions: RESEARCH_INSTRUCTIONS,
-      prompt: buildResearchPrompt(body),
-      maxOutputTokens: NOVEL_RESEARCH_MAX_OUTPUT_TOKENS,
-      abortSignal: req.signal,
+    await withStudioChatSettings(split.settings, async () => {
+      const result = createProStream({
+        instructions: RESEARCH_INSTRUCTIONS,
+        prompt: buildResearchPrompt(body),
+        maxOutputTokens: NOVEL_RESEARCH_MAX_OUTPUT_TOKENS,
+        abortSignal: req.signal,
+      });
+      await pipeTextStream(
+        result,
+        req.signal,
+        send,
+        RESEARCH_FAILED,
+        RESEARCH_TRUNCATED,
+        'novel/research',
+      );
     });
-    await pipeTextStream(
-      result,
-      req.signal,
-      send,
-      RESEARCH_FAILED,
-      RESEARCH_TRUNCATED,
-      'novel/research',
-    );
   });
 }
-
 /** POST /api/studio/novel/structure：流式产出故事结构。 */
 export async function handleNovelStructure(req: Request): Promise<Response> {
   let json: unknown;
@@ -186,29 +197,35 @@ export async function handleNovelStructure(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseStructureBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseStructureBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_STRUCTURE_INPUT, 400);
   }
 
   return createNovelSse('novel/structure', STRUCTURE_FAILED, async (send) => {
-    const result = createProStream({
-      instructions: STRUCTURE_INSTRUCTIONS,
-      prompt: buildStructurePrompt(body),
-      maxOutputTokens: NOVEL_STRUCTURE_MAX_OUTPUT_TOKENS,
-      abortSignal: req.signal,
+    await withStudioChatSettings(split.settings, async () => {
+      const result = createProStream({
+        instructions: STRUCTURE_INSTRUCTIONS,
+        prompt: buildStructurePrompt(body),
+        maxOutputTokens: NOVEL_STRUCTURE_MAX_OUTPUT_TOKENS,
+        abortSignal: req.signal,
+      });
+      await pipeTextStream(
+        result,
+        req.signal,
+        send,
+        STRUCTURE_FAILED,
+        STRUCTURE_TRUNCATED,
+        'novel/structure',
+      );
     });
-    await pipeTextStream(
-      result,
-      req.signal,
-      send,
-      STRUCTURE_FAILED,
-      STRUCTURE_TRUNCATED,
-      'novel/structure',
-    );
   });
 }
-
 /** POST /api/studio/novel/volume-chapters：流式产出指定卷的章纲。 */
 export async function handleNovelVolumeChapters(req: Request): Promise<Response> {
   let json: unknown;
@@ -218,29 +235,35 @@ export async function handleNovelVolumeChapters(req: Request): Promise<Response>
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseVolumeChaptersBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseVolumeChaptersBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_VOLUME_CHAPTERS_INPUT, 400);
   }
 
   return createNovelSse('novel/volume-chapters', VOLUME_CHAPTERS_FAILED, async (send) => {
-    const result = createProStream({
-      instructions: VOLUME_CHAPTERS_INSTRUCTIONS,
-      prompt: buildVolumeChaptersPrompt(body),
-      maxOutputTokens: NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS,
-      abortSignal: req.signal,
+    await withStudioChatSettings(split.settings, async () => {
+      const result = createProStream({
+        instructions: VOLUME_CHAPTERS_INSTRUCTIONS,
+        prompt: buildVolumeChaptersPrompt(body),
+        maxOutputTokens: NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS,
+        abortSignal: req.signal,
+      });
+      await pipeTextStream(
+        result,
+        req.signal,
+        send,
+        VOLUME_CHAPTERS_FAILED,
+        VOLUME_CHAPTERS_TRUNCATED,
+        'novel/volume-chapters',
+      );
     });
-    await pipeTextStream(
-      result,
-      req.signal,
-      send,
-      VOLUME_CHAPTERS_FAILED,
-      VOLUME_CHAPTERS_TRUNCATED,
-      'novel/volume-chapters',
-    );
   });
 }
-
 /** POST /api/studio/novel/chapter-beats：流式产出章内节拍。 */
 export async function handleNovelChapterBeats(req: Request): Promise<Response> {
   let json: unknown;
@@ -250,29 +273,35 @@ export async function handleNovelChapterBeats(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseChapterBeatsBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseChapterBeatsBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_CHAPTER_BEATS_INPUT, 400);
   }
 
   return createNovelSse('novel/chapter-beats', CHAPTER_BEATS_FAILED, async (send) => {
-    const result = createProStream({
-      instructions: CHAPTER_BEATS_INSTRUCTIONS,
-      prompt: buildChapterBeatsPrompt(body),
-      maxOutputTokens: NOVEL_CHAPTER_BEATS_MAX_OUTPUT_TOKENS,
-      abortSignal: req.signal,
+    await withStudioChatSettings(split.settings, async () => {
+      const result = createProStream({
+        instructions: CHAPTER_BEATS_INSTRUCTIONS,
+        prompt: buildChapterBeatsPrompt(body),
+        maxOutputTokens: NOVEL_CHAPTER_BEATS_MAX_OUTPUT_TOKENS,
+        abortSignal: req.signal,
+      });
+      await pipeTextStream(
+        result,
+        req.signal,
+        send,
+        CHAPTER_BEATS_FAILED,
+        CHAPTER_BEATS_TRUNCATED,
+        'novel/chapter-beats',
+      );
     });
-    await pipeTextStream(
-      result,
-      req.signal,
-      send,
-      CHAPTER_BEATS_FAILED,
-      CHAPTER_BEATS_TRUNCATED,
-      'novel/chapter-beats',
-    );
   });
 }
-
 /** POST /api/studio/novel/writing：流式产出单节拍正文。 */
 export async function handleNovelWriting(req: Request): Promise<Response> {
   let json: unknown;
@@ -282,26 +311,33 @@ export async function handleNovelWriting(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
 
-  const body = parseWritingBody(json);
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseWritingBody(split.rest);
   if (!body) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_WRITING_INPUT, 400);
   }
 
   return createNovelSse('novel/writing', WRITING_FAILED, async (send) => {
-    if (req.signal.aborted) return;
-    const result = createProStream({
-      instructions: WRITING_INSTRUCTIONS,
-      prompt: buildWritingPrompt(body),
-      maxOutputTokens: NOVEL_WRITING_MAX_OUTPUT_TOKENS,
-      abortSignal: req.signal,
+    await withStudioChatSettings(split.settings, async () => {
+      if (req.signal.aborted) return;
+      const result = createProStream({
+        instructions: WRITING_INSTRUCTIONS,
+        prompt: buildWritingPrompt(body),
+        maxOutputTokens: NOVEL_WRITING_MAX_OUTPUT_TOKENS,
+        abortSignal: req.signal,
+      });
+      await pipeTextStream(
+        result,
+        req.signal,
+        send,
+        WRITING_FAILED,
+        WRITING_TRUNCATED,
+        'novel/writing',
+      );
     });
-    await pipeTextStream(
-      result,
-      req.signal,
-      send,
-      WRITING_FAILED,
-      WRITING_TRUNCATED,
-      'novel/writing',
-    );
   });
 }

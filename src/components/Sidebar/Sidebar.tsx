@@ -14,7 +14,7 @@ import { useWorkspace } from '@/components/AppLayout/context';
 import { CHAT_MANAGE_PATH, STUDIO_PATH } from './constants';
 import { getActiveChatIdFromPathname, getChatGroupLabel } from './utils';
 import type { ChatListItem } from '@/app/api/chats/_shared/types';
-import { apiDelete } from '@/lib/shared/client/api-client';
+import { apiDelete } from '@/lib/client/api-client';
 import styles from './Sidebar.module.css';
 
 type SidebarProps = {

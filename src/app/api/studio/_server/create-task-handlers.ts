@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { ZodError } from 'zod';
-import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail, jsonOk } from '@/lib/server/api-response';
 import { TASK_NAME_CONFLICT_MESSAGE } from '../_shared/task-constants';
 import type {
   SaveStudioTaskStepRequest,

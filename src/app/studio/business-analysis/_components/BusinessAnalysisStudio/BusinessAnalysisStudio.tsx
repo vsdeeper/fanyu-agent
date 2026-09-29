@@ -10,7 +10,7 @@ import ModeSwitch from '@/components/ModeSwitch';
 import {
   revokeLocalUploadItemUrls,
   revokeReplacedLocalUploadItemUrls,
-} from '@/lib/shared/client/upload-items';
+} from '@/lib/client/upload-items';
 import CompletionPanel from './CompletionPanel';
 import ControlPanel from './ControlPanel';
 import ResultPanel from './ResultPanel';
@@ -30,6 +30,7 @@ import {
   toAnalyzePayload,
 } from './utils';
 import styles from './BusinessAnalysisStudio.module.css';
+import { withChatSettingsBody } from '@/app/studio/_utils/chat-settings';
 
 type BusinessAnalysisStudioProps = {
   task: BusinessAnalysisTaskDetail;
@@ -123,7 +124,7 @@ export default function BusinessAnalysisStudio({ task }: BusinessAnalysisStudioP
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(withChatSettingsBody(payload)),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);

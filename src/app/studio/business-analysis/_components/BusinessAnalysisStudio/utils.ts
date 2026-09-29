@@ -8,7 +8,7 @@ import type {
   BusinessAnalysisStepKey,
   BusinessAnalysisTaskStepRecord,
 } from '@/app/api/studio/business-analysis/_shared/task-types';
-import { apiPut } from '@/lib/shared/client/api-client';
+import { apiPut } from '@/lib/client/api-client';
 import { readUploadItemAsDataUrl, serializeUploadItem } from '@/app/studio/_utils/upload-items';
 import { downloadZipBlob, zipFiles } from '@/app/studio/_utils/export-archive';
 import { EXPORT_ARCHIVE_NAME, ANALYSIS_FILE_NAME } from './constants';

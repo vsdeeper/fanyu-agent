@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 
 import type { UserLocation } from '../_shared/types';
 

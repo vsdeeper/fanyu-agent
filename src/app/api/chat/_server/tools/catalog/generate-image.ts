@@ -254,7 +254,7 @@ function createGenerateImageTool(
           refs = resolved;
         }
 
-        // 全局 env 绝对优先：generate → IMAGE_MODEL_ID；edit → EDIT_IMAGE_MODEL_ID（未设则同 IMAGE）
+        // 模型 id 一律来自 ALS 对话设置（generate / edit 各自字段）
         modelId = resolveImageModelId({ mode });
 
         const spec = getImageSpec(modelId);

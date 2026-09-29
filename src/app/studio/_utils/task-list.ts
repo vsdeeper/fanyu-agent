@@ -1,4 +1,4 @@
-import { apiGet } from '@/lib/shared/client/api-client';
+import { apiGet } from '@/lib/client/api-client';
 
 type StudioTaskListData<TItem> = {
   items: TItem[];

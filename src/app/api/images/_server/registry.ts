@@ -1,27 +1,4 @@
-import { requireEnv } from '@/lib/shared/server/env';
-
 import type { ImageModelProfile } from './types';
-
-/**
- * 全局生图模型（env `IMAGE_MODEL_ID`，必填）。
- * 主对话 generate 绝对使用该值；工作室显式下拉不受此函数影响。
- */
-export function getConfiguredImageModelId(): string {
-  return requireEnv('IMAGE_MODEL_ID');
-}
-
-/**
- * 全局改图模型（env `EDIT_IMAGE_MODEL_ID`）。
- * 未设置或空串时回落为 `IMAGE_MODEL_ID`。
- */
-export function getConfiguredEditImageModelId(): string {
-  return process.env.EDIT_IMAGE_MODEL_ID?.trim() || getConfiguredImageModelId();
-}
-
-/** 当前生图模型（等同 `getConfiguredImageModelId`）；供尺寸/描述等默认参考 */
-export function getCurrentImageModelId(): string {
-  return getConfiguredImageModelId();
-}
 
 export function listImageModels(): ImageModelProfile[] {
   return [
@@ -82,7 +59,7 @@ export function getImageModelProfile(modelId: string): ImageModelProfile | undef
 }
 
 /**
- * 解析用户显式选择的模型；不读取 IMAGE_MODEL_ID，供有固定模型下拉的工作台类入口使用。
+ * 解析用户显式选择的模型；供有固定模型下拉的工作台类入口使用。
  */
 export function resolveExplicitImageModelId(requestedModelId: string | undefined): string | null {
   const normalized = requestedModelId?.trim();

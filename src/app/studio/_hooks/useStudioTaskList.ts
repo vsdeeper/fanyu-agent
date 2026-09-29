@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { App, Form, type TableColumnsType, type TableProps } from 'antd';
 import { useRouter } from 'next/navigation';
-import { apiDelete } from '@/lib/shared/client/api-client';
+import { apiDelete } from '@/lib/client/api-client';
 import { TASK_LIST_RUNNING_REFRESH_MS } from '@/app/api/studio/_shared/job-constants';
 import { requestStudioTasks, normalizeSearchName } from '@/app/studio/_utils/task-list';
 import { DEFAULT_PAGE_SIZE } from '@/app/studio/_components/StudioTaskList/constants';

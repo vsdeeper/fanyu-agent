@@ -1,31 +1,18 @@
 import { createOpenAI } from '@ai-sdk/openai';
 
-import { requireEnv } from '@/lib/shared/server/env';
-import {
-  getChatSettings,
-  resolveCredentialFromSettings,
-} from '@/app/api/chat/_server/request-settings';
+import { resolveCredentialFromSettings } from '@/app/api/chat/_server/request-settings';
 import { patchDeepSeekRequestBody, type DeepSeekRequestBody } from './request-patch';
 import { normalizeDeepseekSse } from './sse';
 
 const clientCache = new Map<string, ReturnType<typeof createOpenAI>>();
 
-function resolveDeepseekCreds(): { apiKey: string; baseURL: string } {
-  if (getChatSettings()) {
-    const creds = resolveCredentialFromSettings('deepseek');
-    return { apiKey: creds.apiKey, baseURL: creds.baseUrl };
-  }
-  return {
-    apiKey: requireEnv('DEEPSEEK_API_KEY'),
-    baseURL: requireEnv('DEEPSEEK_BASE_URL'),
-  };
-}
-
 /**
- * 惰性构造 DeepSeek 客户端；有请求 settings 时用其凭据（按 key+url 缓存），否则读 env。
+ * 惰性构造 DeepSeek 客户端；凭据仅来自本轮对话 settings。
  */
 export function getDeepseekClient() {
-  const { apiKey, baseURL } = resolveDeepseekCreds();
+  const creds = resolveCredentialFromSettings('deepseek');
+  const apiKey = creds.apiKey;
+  const baseURL = creds.baseUrl;
   const cacheKey = `${apiKey}\0${baseURL}`;
   let instance = clientCache.get(cacheKey);
   if (!instance) {

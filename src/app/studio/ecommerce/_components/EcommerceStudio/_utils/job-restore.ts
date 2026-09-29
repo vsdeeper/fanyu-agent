@@ -1,5 +1,8 @@
 import type { StudioGenerateImageEvent } from '@/app/api/studio/_shared/generate-types';
-import type { StudioJobPendingSlot, StudioJobSnapshot } from '@/app/api/studio/_shared/job-types';
+import type {
+  StudioJobPendingSlot,
+  StudioJobPublicSnapshot,
+} from '@/app/api/studio/_shared/job-types';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
 import { applyGenerateEvent } from '@/app/studio/_utils/generate-stream';
 import type { StudioResultImage } from '@/app/studio/_utils/result-images';
@@ -55,7 +58,7 @@ export function mergeBatchGroups(
 }
 
 /** 从作业快照重建该批次的占位槽（含已产出的结果）。 */
-export function restoreBatchImages(job: StudioJobSnapshot): StudioResultImage[] {
+export function restoreBatchImages(job: StudioJobPublicSnapshot): StudioResultImage[] {
   return applyJobEvents(job.data.pending.slots.map(toResultImage), job.data.events);
 }
 

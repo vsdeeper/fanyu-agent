@@ -20,7 +20,7 @@ export const DEEPSEEK_UNSUPPORTED_INCLUDES = new Set([
 export const DEEPSEEK_IMAGE_DETAIL = 'original';
 
 /** deepseek-v4-flash 实际 effort 映射：low→low, high→high, xhigh→high, max→max */
-export const DEFAULT_DEEPSEEK_REASONING_EFFORT = 'high';
+export const DEFAULT_DEEPSEEK_REASONING_EFFORT = 'high' as const;
 
 /** 与 @ai-sdk/openai reasoningEffort 枚举保持一致，防手滑传非法值 */
 const DEEPSEEK_REASONING_EFFORT_VALUES = new Set([
@@ -33,19 +33,16 @@ const DEEPSEEK_REASONING_EFFORT_VALUES = new Set([
   'max',
 ]);
 
-/** 读取思考强度：请求 settings 优先，否则 DEEPSEEK_REASONING_EFFORT（默认 high） */
+/** 读取思考强度：须有 ALS settings；缺省或非法时用 DEFAULT */
 export function getDeepseekReasoningEffort():
   'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' {
-  const fromSettings = getChatSettings()?.reasoningEffort?.trim();
+  const settings = getChatSettings();
+  if (!settings) {
+    throw new Error('缺少对话设置，无法解析思考强度');
+  }
+  const fromSettings = settings.reasoningEffort?.trim();
   if (fromSettings && DEEPSEEK_REASONING_EFFORT_VALUES.has(fromSettings)) {
     return fromSettings as ReturnType<typeof getDeepseekReasoningEffort>;
   }
-  const raw = process.env.DEEPSEEK_REASONING_EFFORT?.trim();
-  if (!raw) return DEFAULT_DEEPSEEK_REASONING_EFFORT;
-  if (DEEPSEEK_REASONING_EFFORT_VALUES.has(raw))
-    return raw as ReturnType<typeof getDeepseekReasoningEffort>;
-  console.warn(
-    `[deepseek] DEEPSEEK_REASONING_EFFORT="${raw}" 非法，回退 ${DEFAULT_DEEPSEEK_REASONING_EFFORT}`,
-  );
   return DEFAULT_DEEPSEEK_REASONING_EFFORT;
 }

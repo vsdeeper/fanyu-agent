@@ -1,6 +1,6 @@
 import { handleBusinessAnalysisAnalyze } from '@/app/api/studio/business-analysis/_server/handle-analyze';
 import { SERVICE_UNAVAILABLE } from '@/app/api/studio/_server/constants';
-import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
+import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 
 export const maxDuration = 600;
 

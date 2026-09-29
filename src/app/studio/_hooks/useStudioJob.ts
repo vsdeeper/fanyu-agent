@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { JOB_POLL_INTERVAL_MS } from '@/app/api/studio/_shared/job-constants';
-import type { CreateStudioJobRequest, StudioJobSnapshot } from '@/app/api/studio/_shared/job-types';
+import type {
+  CreateStudioJobRequest,
+  StudioJobPublicSnapshot,
+} from '@/app/api/studio/_shared/job-types';
 import {
   cancelStudioJob,
   createStudioJob,
@@ -11,7 +14,7 @@ type UseStudioJobOptions = {
   apiBase: string;
   taskId: string;
   /** 首屏已存在的作业（由 RSC 读库传入），用于重新进入任务时接着看进度 */
-  initialJob?: StudioJobSnapshot | null;
+  initialJob?: StudioJobPublicSnapshot | null;
 };
 
 /**
@@ -21,7 +24,7 @@ type UseStudioJobOptions = {
  * 下次进入任务时由 `initialJob` 重新接上。岗位后请勿在此处添加取消逻辑。
  */
 export function useStudioJob({ apiBase, taskId, initialJob = null }: UseStudioJobOptions) {
-  const [job, setJob] = useState<StudioJobSnapshot | null>(initialJob);
+  const [job, setJob] = useState<StudioJobPublicSnapshot | null>(initialJob);
   const [cancelling, setCancelling] = useState(false);
 
   const jobId = job?.id ?? null;
@@ -53,7 +56,9 @@ export function useStudioJob({ apiBase, taskId, initialJob = null }: UseStudioJo
 
   /** 建作业并把追踪目标切到它；服务端幂等，重复调用会拿到同一个运行中作业。 */
   const start = useCallback(
-    async (payload: CreateStudioJobRequest): Promise<StudioJobSnapshot | null> => {
+    async (
+      payload: Omit<CreateStudioJobRequest, 'settings'>,
+    ): Promise<StudioJobPublicSnapshot | null> => {
       const id = await createStudioJob(apiBase, taskId, payload);
       const items = await requestStudioJobs(apiBase, taskId);
       const snapshot = items.find((item) => item.id === id) ?? null;

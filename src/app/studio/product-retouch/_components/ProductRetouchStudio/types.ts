@@ -5,7 +5,7 @@ import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImage
 export type ProductRetouchPhase =
   'refine' | 'refineGenerating' | 'multiview' | 'multiviewGenerating' | 'complete';
 
-/** 上传项与本地文件生命周期共用同一份定义，见 lib/shared/client/upload-items。 */
+/** 上传项与本地文件生命周期共用同一份定义，见 lib/client/upload-items。 */
 export type ProductImageItem = StudioImageUploadItem;
 
 export type RefineFormState = GenerateSpecFields & {

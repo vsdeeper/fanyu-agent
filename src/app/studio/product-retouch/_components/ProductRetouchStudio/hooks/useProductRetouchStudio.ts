@@ -3,11 +3,11 @@ import { App, Form } from 'antd';
 import { MAX_STUDIO_IMAGES } from '@/app/studio/_components/StudioImageUpload';
 import type { ProductRetouchTaskDetail } from '@/app/api/studio/product-retouch/_shared/task-types';
 import { validateForm } from '@/app/studio/_utils/form-validate';
-import { ApiClientError } from '@/lib/shared/client/api-client';
+import { ApiClientError } from '@/lib/client/api-client';
 import {
   revokeLocalUploadItemUrls,
   revokeReplacedLocalUploadItemUrls,
-} from '@/lib/shared/client/upload-items';
+} from '@/lib/client/upload-items';
 import {
   DEFAULT_MULTIVIEW_FORM,
   DEFAULT_REFINE_FORM,
@@ -48,6 +48,7 @@ import {
   toRefinePayload,
   toggleSelectedId,
 } from '../utils';
+import { withChatSettingsBody } from '@/app/studio/_utils/chat-settings';
 
 /** 管理产品精修三步工作流的表单、选择、请求、结果与任务快照持久化。 */
 export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
@@ -156,10 +157,12 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
-          await toRefinePayload(
-            refineForm,
-            images,
-            slots.map((slot) => slot.id),
+          withChatSettingsBody(
+            await toRefinePayload(
+              refineForm,
+              images,
+              slots.map((slot) => slot.id),
+            ),
           ),
         ),
         signal: controller.signal,
@@ -215,10 +218,12 @@ export function useProductRetouchStudio(task: ProductRetouchTaskDetail) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
-          toMultiviewPayload(
-            multiviewForm,
-            refinedImageDataUrls,
-            slots.map((slot) => slot.id),
+          withChatSettingsBody(
+            toMultiviewPayload(
+              multiviewForm,
+              refinedImageDataUrls,
+              slots.map((slot) => slot.id),
+            ),
           ),
         ),
         signal: controller.signal,

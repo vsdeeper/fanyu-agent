@@ -6,7 +6,7 @@ import type { GenerateSpecFields } from '@/app/studio/_utils/model-options';
 import { validateForm } from '@/app/studio/_utils/form-validate';
 import { getModelCapability, resolveClarityForModel } from '@/app/studio/_utils/model-options';
 import { readUploadItemAsDataUrl } from '@/app/studio/_utils/upload-items';
-import { revokeReplacedLocalUploadItemUrls } from '@/lib/shared/client/upload-items';
+import { revokeReplacedLocalUploadItemUrls } from '@/lib/client/upload-items';
 import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 import {
   DEFAULT_GENERATE_CARD_ID,
@@ -48,6 +48,7 @@ import {
   toMaterialItems,
   toPersistableImageUrl,
 } from '../utils';
+import { withChatSettingsBody } from '@/app/studio/_utils/chat-settings';
 
 function defaultSpec(): GenerateSpecFields {
   const capability = getModelCapability(DEFAULT_IMAGE_MODEL);
@@ -209,10 +210,12 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({
-          materialDataUrls,
-          ...(content ? { content } : {}),
-        }),
+        body: JSON.stringify(
+          withChatSettingsBody({
+            materialDataUrls,
+            ...(content ? { content } : {}),
+          }),
+        ),
       });
       await assertOkOrJsonFail(res);
       let receivedDone = false;
@@ -302,21 +305,23 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({
-          kind: 'imageText',
-          count: 1,
-          model: currentSpec.model,
-          aspectRatio: currentSpec.aspectRatio,
-          quality:
-            getModelCapability(currentSpec.model)?.qualityDefault ??
-            currentSpec.quality ??
-            DEFAULT_IMAGE_QUALITY,
-          clarity: resolveClarityForModel(currentSpec.model, currentSpec.clarity),
-          prompt,
-          ...(styleReferenceDataUrl ? { styleReferenceDataUrl } : {}),
-          ...(characterRequirement ? { characterRequirement } : {}),
-          slotIds: [imageId],
-        }),
+        body: JSON.stringify(
+          withChatSettingsBody({
+            kind: 'imageText',
+            count: 1,
+            model: currentSpec.model,
+            aspectRatio: currentSpec.aspectRatio,
+            quality:
+              getModelCapability(currentSpec.model)?.qualityDefault ??
+              currentSpec.quality ??
+              DEFAULT_IMAGE_QUALITY,
+            clarity: resolveClarityForModel(currentSpec.model, currentSpec.clarity),
+            prompt,
+            ...(styleReferenceDataUrl ? { styleReferenceDataUrl } : {}),
+            ...(characterRequirement ? { characterRequirement } : {}),
+            slotIds: [imageId],
+          }),
+        ),
       });
       await assertOkOrJsonFail(res);
       let nextUrl: string | undefined;

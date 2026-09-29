@@ -1,5 +1,5 @@
 import type { ChatListItem } from '@/app/api/chats/_shared/types';
-import { apiGet } from '@/lib/shared/client/api-client';
+import { apiGet } from '@/lib/client/api-client';
 
 type ChatListData = {
   items: ChatListItem[];

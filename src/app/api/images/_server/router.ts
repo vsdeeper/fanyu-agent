@@ -1,9 +1,5 @@
 import { inheritEditSourceGeometry } from './edit-geometry';
-import {
-  getConfiguredEditImageModelId,
-  getConfiguredImageModelId,
-  getImageModelProfile,
-} from './registry';
+import { getImageModelProfile } from './registry';
 import { arkSeedreamProvider } from './providers/ark-seedream';
 import { laozhangProvider } from './providers/laozhang';
 import type { ImageGenerateRequest, ImageGenerateResult, ImageProvider } from './types';
@@ -16,17 +12,14 @@ function getProvider(providerId: string): ImageProvider {
 }
 
 /**
- * 主对话生图/改图模型：有 chat settings 时用 generateImage/editImage；否则 IMAGE_/EDIT_IMAGE_MODEL_ID。
+ * 主对话生图/改图模型：仅本轮 chat settings 的 generateImage / editImage。
  */
 export function resolveImageModelId({ mode }: { mode: 'generate' | 'edit' }): string {
   const settings = getChatSettings();
-  if (settings) {
-    return mode === 'edit' ? settings.editImage.modelId : settings.generateImage.modelId;
+  if (!settings) {
+    throw new Error('缺少对话设置，无法解析生图模型');
   }
-  if (mode === 'edit') {
-    return getConfiguredEditImageModelId();
-  }
-  return getConfiguredImageModelId();
+  return mode === 'edit' ? settings.editImage.modelId : settings.generateImage.modelId;
 }
 
 export async function generateImageViaRouter(

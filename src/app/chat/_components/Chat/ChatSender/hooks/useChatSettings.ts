@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { useChatSettingsStore } from '../store';
+import { useChatSettingsStore } from '@/stores/chat-settings';
 
 /** 对话设置：localStorage 持久化 + 底栏/Modal 共享 */
 export function useChatSettings() {

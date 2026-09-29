@@ -90,7 +90,7 @@ chore(deps): 升级 eslint 与 prettier
 
 ## 目录与分层约定
 
-实现**跟路由走**：前端在 `app/<页面域>/`，服务端在 `app/api/<域>/`。`src/lib/` 只放无独立产品面的平台内核（`db` / `shared` / `theme` / `skills`）。
+实现**跟路由走**：前端在 `app/<页面域>/`，服务端在 `app/api/<域>/`。`src/lib/` 只放无独立产品面的平台内核（`db` / `client` / `server` / `theme` / `skills`）。跨路由 zustand 放 `src/stores/`。
 
 skills 同时被 Sender UI 与 `stream-chat` 使用，故留在 `lib/`。本地 tool 是 chat 这一轮 `streamText` 的适配器，放在 `app/api/chat/_server/tools/`，`execute` 再调 `app/api/images/_server`、`app/api/docs/_server` 等。
 
@@ -130,7 +130,8 @@ src/
     page.tsx / layout.tsx / global.css
   components/              # 全局通用 UI（无业务耦合）
   hooks/                   # 全局通用 Hook
-  lib/                     # 平台内核：db / skills / shared / theme
+  stores/                  # 跨路由 zustand（如 chat-settings）；组件私有 store 仍 colocate
+  lib/                     # 平台内核：db / skills / client / server / theme
 public/
 drizzle/                   # SQL migrations
 ```
@@ -144,9 +145,10 @@ drizzle/                   # SQL migrations
 | 3   | 页面级共享 Hook                                       | `app/<页面域>/_hooks/`（勿叫 `hooks/`，否则成 URL 段）                            |
 | 4   | 仅 Node / Route                                       | `app/api/<域>/_server/`（`import 'server-only'`）                                 |
 | 5   | Client + Server 共用类型 / 纯函数 / 常量              | 该 API 域 `_shared/`（Client **只允许** import `_shared`）                        |
-| 6   | 无独立产品面                                          | `src/lib/`                                                                        |
+| 6   | 无独立产品面                                          | `src/lib/`（横切：浏览器 `lib/client/`，Node `lib/server/`）                      |
 | 7   | 跨路由、无业务耦合 UI / Hook                          | `src/components/` / `src/hooks/`                                                  |
 | 8   | 工作室跨产品子路由复用 UI                             | `app/studio/_components/`（专属 Hook/常量仍放该组件目录）                         |
+| 9   | 跨路由共享 zustand                                    | `src/stores/`（组件私有 UI store 仍放 `_components/<Component>/store.ts`）        |
 
 **命名约束：**
 
@@ -162,18 +164,19 @@ drizzle/                   # SQL migrations
 - 页面 import 另一页面的 `_components` / `_hooks` / `_utils`
 - 把 store / Provider / stream-chat 放进 `_utils` 或 `_hooks`
 - 把页面/组件私有 Hook 放进 `src/hooks`
+- 把组件私有 UI store 塞进 `src/stores/`（仅跨路由共享才进 stores）
 
 ### 依赖方向
 
 ```text
-app/chat Client      →  _hooks、_utils、_components、lib/skills、lib/shared/client、
+app/chat Client      →  _hooks、_utils、_components、lib/skills、lib/client、stores、
                         api/*/ _shared、components、hooks
 app/chat RSC         →  同上 + app/api/chats/_server/store
-app/studio Client    →  studio/_hooks、_utils、_components、
+app/studio Client    →  studio/_hooks、_utils、_components、stores、
                         api/studio/_shared、api/studio/{product}/_shared、
                         components
-app/api/<域>/_server →  本域 _shared、lib/db、lib/shared/server、其他域 _server（仅能力调用）
-lib/*、src/hooks     →  禁止依赖 app/ 与任何产品实现
+app/api/<域>/_server →  本域 _shared、lib/db、lib/server、其他域 _server（仅能力调用）
+lib/*、src/hooks、src/stores →  禁止依赖 app/ 与任何产品实现
 ```
 
 工作室：共用放 `api/studio/_server` + `_shared`；产品差异放 `api/studio/{product}/_server` 与 `_shared`。禁止共用层与子域混进同一 barrel `index.ts`。
@@ -223,10 +226,11 @@ Client 需要的会话类型从 `app/api/chats/_shared/types.ts` 导入，**勿*
 
 #### 跨域复用
 
-- 横切工具 → `lib/shared/`（浏览器 `shared/client/`，服务端 `shared/server/`）
+- 横切工具 → `lib/client/`（浏览器）/ `lib/server/`（Node）
 - Agent skill 注册表 → `lib/skills`
+- 跨路由 zustand → `src/stores/`
 - 某域 Client+Server 共用 → 该 API 域 `_shared/`；仅 Node → `_server/`
-- 勿塞回 `lib/shared/`，除非 truly 全局
+- 勿塞回 `lib/` / `stores/`，除非 truly 全局 / 跨路由
 
 #### 新增 API checklist
 
@@ -361,10 +365,11 @@ Button/
 
 #### 模型选型
 
-- env `IMAGE_MODEL_ID`：**必填**，主对话生图（`mode=generate`）绝对使用
-- env `EDIT_IMAGE_MODEL_ID`：可选改图模型；未设则与 `IMAGE_MODEL_ID` 相同；主对话改图（`mode=edit`）绝对使用
-- Provider：老张 Gemini / GPT Image（`LAOZHANG_*`）/ 方舟 Seedream（`ARK_*`）
+- 对话与工作室的供应商 / 模型 / 凭据一律来自客户端 `ChatSettingsPayload`（localStorage `fanyu-chat-settings` → `src/stores/chat-settings`），经请求体传入后由 `runWithChatSettings` 注入 ALS
+- 生图：`settings.generateImage` / `settings.editImage`；无 ALS settings 时 `resolveImageModelId` 与 provider 客户端直接抛错，**不回退** env
+- Provider：老张 Gemini / GPT Image、方舟 Seedream 等（凭据在 settings 的 `providerConfigs`）
 - 清单与能力：`registry.ts`（`listImageModels` / `describeImageModels`）；尺寸：`IMAGE_SPEC_BY_MODEL_ID`
+- `.env.local` 可作人工备份对照，运行时不读取上述凭据/模型 env
 
 #### 资产与前端展示
 
@@ -439,7 +444,7 @@ Button/
 - 改完对改动文件执行格式化；提交前由 lint-staged 检查
 - 写 Next.js 相关代码前先查 `node_modules/next/dist/docs/`
 - **`types.ts` 与 `constants.ts` 分离**：types 只导出类型；运行时常量放 `constants.ts`
-- **antd 反馈 API**：组件 / Hook 内用 `App.useApp()` 取 `message` / `modal` / `notification`；**禁止** `Modal.confirm`、`message.xxx` 等静态调用（吃不到动态主题，控制台会告警）。非 React 模块仅经 `lib/shared/client/antd-message` 注入的实例。参考 `useChatManageList`
+- **antd 反馈 API**：组件 / Hook 内用 `App.useApp()` 取 `message` / `modal` / `notification`；**禁止** `Modal.confirm`、`message.xxx` 等静态调用（吃不到动态主题，控制台会告警）。非 React 模块仅经 `lib/client/antd-message` 注入的实例。参考 `useChatManageList`
 
 ### AI SDK v7
 
@@ -465,7 +470,7 @@ Button/
 ### 环境变量
 
 - `.env.example` → `.env.local`，所列变量必须填写；业务代码假定已配置且非空
-- 用 [`requireEnv(name)`](src/lib/shared/server/env.ts) 读取；**勿** `?? 默认值` / `|| 'fallback'` / Route 内判空
+- 用 [`requireEnv(name)`](src/lib/server/env.ts) 读取；**勿** `?? 默认值` / `|| 'fallback'` / Route 内判空
 - 缺失或空字符串直接 `throw`；面向用户的 JSON API 不因「未配置 env」单独返回 503
 
 ### JSON API 响应
@@ -477,7 +482,7 @@ Button/
 | 成功 | `0`    | `'ok'`       | 业务载荷 | 200                      |
 | 失败 | ≠ 0    | 中文可读描述 | `null`   | 保留语义（400/404/502…） |
 
-客户端以 `code === 0` 判成功。工具：[`api-response.ts`](src/lib/shared/server/api-response.ts) — `jsonOk` / `jsonFail` / `readApiData`。
+客户端以 `code === 0` 判成功。工具：[`api-response.ts`](src/lib/server/api-response.ts) — `jsonOk` / `jsonFail` / `readApiData`。
 
 **用户端 `message`：**
 
