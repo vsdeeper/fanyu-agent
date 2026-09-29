@@ -27,10 +27,7 @@ import {
   type ProviderKind,
 } from '@/app/api/chat/_shared/chat-settings';
 import { readApiData } from '@/lib/shared/server/api-response';
-import {
-  listCapabilityProviderOptions,
-  listChatProviderOptions,
-} from '@/app/chat/_utils/chat-settings';
+import { listCapabilityProviderOptions, listChatProviderOptions } from '../chat-settings';
 import {
   ADD_PROVIDER,
   API_KEY_FIELD,

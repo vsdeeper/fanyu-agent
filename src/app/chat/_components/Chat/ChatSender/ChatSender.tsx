@@ -11,10 +11,10 @@ import {
   type ChatProviderId,
   type ChatSettingsPayload,
 } from '@/app/api/chat/_shared/chat-settings';
-import { useChatSettings } from '@/app/chat/_hooks/useChatSettings';
-import { listChatProviderOptions } from '@/app/chat/_utils/chat-settings';
 import AttachmentPreviewList from './AttachmentPreviewList';
 import ChatSettingsModal from './ChatSettingsModal';
+import { listChatProviderOptions } from './chat-settings';
+import { useChatSettings } from './hooks/useChatSettings';
 import {
   ATTACHMENT_ACCEPT,
   EMPTY_SLOT_CONFIG,
