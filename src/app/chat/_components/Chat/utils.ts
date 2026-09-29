@@ -98,6 +98,7 @@ export type SubmitChatMessageParams = {
   skillIds?: string[];
   showScrollBottom: boolean;
   listRef: { current: BubbleListRef | null };
+  settings: import('@/app/api/chat/_shared/chat-settings').ChatSettingsPayload;
   sendMessage: (
     message: { text: string; files?: FileList; metadata?: { skillIds: string[] } },
     options?: ChatRequestOptions,
@@ -111,6 +112,7 @@ export type SubmitChatMessageParams = {
  * - 附件经 SDK 转 data URL 写入 UIMessage 落盘；勿像 reasoning 一样 prune 历史 file parts
  * - 激活 skill 集合写入 UIMessage.metadata.skillIds（每次发送都写当前集合，可为 []）；
  *   服务端会与意图匹配结果只增不减地合并后落盘（粘滞记录 ≠ 每轮注入正文）
+ * - settings 随 body 下发，覆盖本轮供应商与模型配置
  */
 export function submitChatMessage({
   text,
@@ -118,6 +120,7 @@ export function submitChatMessage({
   skillIds = [],
   showScrollBottom,
   listRef,
+  settings,
   sendMessage,
 }: SubmitChatMessageParams): void {
   if (showScrollBottom) {
@@ -129,6 +132,7 @@ export function submitChatMessage({
     { ...message, metadata: { skillIds } },
     {
       body: {
+        settings,
         ...(userLocation ? { userLocation } : {}),
       },
     },

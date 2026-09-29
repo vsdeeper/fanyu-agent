@@ -17,57 +17,24 @@ vi.mock('./catalog/web-search', () => ({
 vi.mock('./catalog/save-design-md', () => ({
   saveDesignMd: { id: 'save_design_md', create: () => ({}), getHint: () => '' },
 }));
-vi.mock('./catalog/analyze-image', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./catalog/analyze-image')>();
-  return {
-    ...actual,
-    analyzeImage: {
-      id: 'analyze_image',
-      requiresConfiguredAnalyzeImageModel: true,
-      create: () => ({}),
-      getHint: () => actual.analyzeImage.getHint(),
-    },
-  };
-});
 
 import { getConfiguredAnalyzeImageModelId } from './analyze-image-config';
 import { listVisibleToolIds } from './registry';
 
-const ORIGINAL = process.env.ANALYZE_IMAGE_MODEL_ID;
-
-afterEach(() => {
-  if (ORIGINAL === undefined) {
-    delete process.env.ANALYZE_IMAGE_MODEL_ID;
-  } else {
-    process.env.ANALYZE_IMAGE_MODEL_ID = ORIGINAL;
-  }
-});
-
 describe('getConfiguredAnalyzeImageModelId', () => {
-  it('空或空白返回 null，有值则 trim', () => {
-    delete process.env.ANALYZE_IMAGE_MODEL_ID;
+  it('专用识图已停用，恒返回 null', () => {
     expect(getConfiguredAnalyzeImageModelId()).toBeNull();
-
-    process.env.ANALYZE_IMAGE_MODEL_ID = '   ';
-    expect(getConfiguredAnalyzeImageModelId()).toBeNull();
-
-    process.env.ANALYZE_IMAGE_MODEL_ID = '  doubao-seed-2-0-pro-260215  ';
-    expect(getConfiguredAnalyzeImageModelId()).toBe('doubao-seed-2-0-pro-260215');
   });
 });
 
-describe('listVisibleToolIds / analyze_image 门控', () => {
-  it('未配置时不包含 analyze_image', () => {
-    delete process.env.ANALYZE_IMAGE_MODEL_ID;
+describe('listVisibleToolIds', () => {
+  it('不包含 analyze_image（本轮未注册）', () => {
     expect(listVisibleToolIds({ mainModelAcceptsImage: true })).not.toContain('analyze_image');
+    expect(listVisibleToolIds({ mainModelAcceptsImage: false })).not.toContain('analyze_image');
   });
 
-  it('已配置时任意主模型能力组合都包含 analyze_image', () => {
-    process.env.ANALYZE_IMAGE_MODEL_ID = 'doubao-seed-2-0-pro-260215';
-    expect(listVisibleToolIds({ mainModelAcceptsImage: true })).toContain('analyze_image');
-    expect(listVisibleToolIds({ mainModelAcceptsImage: false })).toContain('analyze_image');
-    expect(
-      listVisibleToolIds({ mainModelAcceptsImage: true, providerHasNativeWebSearch: true }),
-    ).toContain('analyze_image');
+  it('无原生联网时包含本地 web_search', () => {
+    expect(listVisibleToolIds({ providerHasNativeWebSearch: false })).toContain('web_search');
+    expect(listVisibleToolIds({ providerHasNativeWebSearch: true })).not.toContain('web_search');
   });
 });

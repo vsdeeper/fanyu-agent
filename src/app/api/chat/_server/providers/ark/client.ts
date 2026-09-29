@@ -1,21 +1,37 @@
 import { createOpenAI } from '@ai-sdk/openai';
 
 import { requireEnv } from '@/lib/shared/server/env';
+import {
+  getChatSettings,
+  resolveCredentialFromSettings,
+} from '@/app/api/chat/_server/request-settings';
 import { patchArkRequestBody, type ArkRequestBody } from './request-patch';
 import { normalizeArkResponse } from './sse';
 
-let instance: ReturnType<typeof createOpenAI> | undefined;
+const clientCache = new Map<string, ReturnType<typeof createOpenAI>>();
+
+function resolveArkCreds(): { apiKey: string; baseURL: string } {
+  if (getChatSettings()) {
+    const creds = resolveCredentialFromSettings('ark');
+    return { apiKey: creds.apiKey, baseURL: creds.baseUrl };
+  }
+  return {
+    apiKey: requireEnv('ARK_API_KEY'),
+    baseURL: requireEnv('ARK_BASE_URL'),
+  };
+}
 
 /**
- * 惰性构造方舟客户端：主对话 CHAT_PROVIDER=ark、以及方舟 Seedream 生图路径读取 ARK_*。
- * 自定义 fetch 负责出站请求修补（兼容方舟 Responses API）与入站响应归一化
- * （SSE 注入 annotation.added；JSON 补全 annotations=[]）。
+ * 惰性构造方舟客户端；有请求 settings 时用其凭据，否则读 ARK_*。
  */
 export function getArkClient() {
+  const { apiKey, baseURL } = resolveArkCreds();
+  const cacheKey = `${apiKey}\0${baseURL}`;
+  let instance = clientCache.get(cacheKey);
   if (!instance) {
     instance = createOpenAI({
-      apiKey: requireEnv('ARK_API_KEY'),
-      baseURL: requireEnv('ARK_BASE_URL'),
+      apiKey,
+      baseURL,
       fetch: async (url, init) => {
         if (init?.body && typeof init.body === 'string') {
           const body = JSON.parse(init.body) as ArkRequestBody;
@@ -31,6 +47,7 @@ export function getArkClient() {
         return normalizeArkResponse(response);
       },
     });
+    clientCache.set(cacheKey, instance);
   }
   return instance;
 }

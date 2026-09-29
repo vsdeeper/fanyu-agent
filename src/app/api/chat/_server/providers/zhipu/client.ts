@@ -1,21 +1,37 @@
 import { createOpenAI } from '@ai-sdk/openai';
 
 import { requireEnv } from '@/lib/shared/server/env';
+import {
+  getChatSettings,
+  resolveCredentialFromSettings,
+} from '@/app/api/chat/_server/request-settings';
 import { patchZhipuRequestBody, type ZhipuRequestBody } from './request-patch';
 import { normalizeZhipuSse } from './sse';
 
-let instance: ReturnType<typeof createOpenAI> | undefined;
+const clientCache = new Map<string, ReturnType<typeof createOpenAI>>();
+
+function resolveZhipuCreds(): { apiKey: string; baseURL: string } {
+  if (getChatSettings()) {
+    const creds = resolveCredentialFromSettings('zhipu');
+    return { apiKey: creds.apiKey, baseURL: creds.baseUrl };
+  }
+  return {
+    apiKey: requireEnv('ZHIPU_API_KEY'),
+    baseURL: requireEnv('ZHIPU_BASE_URL'),
+  };
+}
 
 /**
- * 惰性构造智谱客户端：主对话 CHAT_PROVIDER=zhipu 时使用。
- * 自定义 fetch 负责出站请求修补（注入原生 web_search、剥离 OpenAI 专有字段）
- * 与入站 SSE 归一化（thinking 重写为 <think> 标签、搜索结果合成 url_citation 注解）。
+ * 惰性构造智谱客户端；有请求 settings 时用其凭据，否则读 ZHIPU_*。
  */
 export function getZhipuClient() {
+  const { apiKey, baseURL } = resolveZhipuCreds();
+  const cacheKey = `${apiKey}\0${baseURL}`;
+  let instance = clientCache.get(cacheKey);
   if (!instance) {
     instance = createOpenAI({
-      apiKey: requireEnv('ZHIPU_API_KEY'),
-      baseURL: requireEnv('ZHIPU_BASE_URL'),
+      apiKey,
+      baseURL,
       fetch: async (url, init) => {
         if (init?.body && typeof init.body === 'string') {
           const body = JSON.parse(init.body) as ZhipuRequestBody;
@@ -30,6 +46,7 @@ export function getZhipuClient() {
         return normalizeZhipuSse(response);
       },
     });
+    clientCache.set(cacheKey, instance);
   }
   return instance;
 }

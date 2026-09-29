@@ -1,5 +1,9 @@
 import { requireEnv } from '@/lib/shared/server/env';
 import {
+  getChatSettings,
+  resolveCredentialFromSettings,
+} from '@/app/api/chat/_server/request-settings';
+import {
   buildImagePrompt,
   createRequestAbortSignal,
   decodeBase64Image,
@@ -252,11 +256,21 @@ async function generateOpenAIImage(
   return { images };
 }
 
+function resolveLaozhangCreds(): { apiKey: string; baseURL: string } {
+  if (getChatSettings()) {
+    const creds = resolveCredentialFromSettings('laozhang');
+    return { apiKey: creds.apiKey, baseURL: creds.baseUrl.replace(/\/$/, '') };
+  }
+  return {
+    apiKey: requireEnv('LAOZHANG_API_KEY'),
+    baseURL: requireEnv('LAOZHANG_BASE_URL').replace(/\/$/, ''),
+  };
+}
+
 export const laozhangProvider: ImageProvider = {
   id: 'laozhang',
   async generate(req: ImageGenerateRequest): Promise<ImageGenerateResult> {
-    const apiKey = requireEnv('LAOZHANG_API_KEY');
-    const baseURL = requireEnv('LAOZHANG_BASE_URL').replace(/\/$/, '');
+    const { apiKey, baseURL } = resolveLaozhangCreds();
     const spec = getImageSpec(req.modelId);
 
     // gpt-image 等 OpenAI 通道模型：走 /v1/images/generations 与 /v1/images/edits，

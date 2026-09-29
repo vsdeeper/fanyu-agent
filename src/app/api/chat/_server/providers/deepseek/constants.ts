@@ -7,6 +7,8 @@
  * 4. 识图细节档：出站统一钉 detail=original（SDK 默认可省略 → 官方 auto；analyze_image 可能带 high）
  */
 
+import { getChatSettings } from '@/app/api/chat/_server/request-settings';
+
 /** DeepSeek Responses 不认的 OpenAI include 值（与方舟同款坑） */
 export const DEEPSEEK_UNSUPPORTED_INCLUDES = new Set([
   // 修复：include 参数 DeepSeek 不支持（文档标注），SDK 自动加的 web_search_call.action.sources 须剥离
@@ -31,9 +33,13 @@ const DEEPSEEK_REASONING_EFFORT_VALUES = new Set([
   'max',
 ]);
 
-/** 读取 DEEPSEEK_REASONING_EFFORT（可选，默认 high）；非法值回退默认 */
+/** 读取思考强度：请求 settings 优先，否则 DEEPSEEK_REASONING_EFFORT（默认 high） */
 export function getDeepseekReasoningEffort():
   'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' {
+  const fromSettings = getChatSettings()?.reasoningEffort?.trim();
+  if (fromSettings && DEEPSEEK_REASONING_EFFORT_VALUES.has(fromSettings)) {
+    return fromSettings as ReturnType<typeof getDeepseekReasoningEffort>;
+  }
   const raw = process.env.DEEPSEEK_REASONING_EFFORT?.trim();
   if (!raw) return DEFAULT_DEEPSEEK_REASONING_EFFORT;
   if (DEEPSEEK_REASONING_EFFORT_VALUES.has(raw))

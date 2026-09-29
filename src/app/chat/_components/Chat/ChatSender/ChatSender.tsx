@@ -3,10 +3,18 @@ import { Attachments, Sender } from '@ant-design/x';
 import type { AttachmentsRef } from '@ant-design/x/es/attachments';
 import Suggestion from '@ant-design/x/es/suggestion';
 import type { SenderRef } from '@ant-design/x/es/sender/interface';
-import { LinkOutlined } from '@ant-design/icons';
-import { App, Badge, Button, Flex, Upload } from 'antd';
+import { LinkOutlined, SettingOutlined } from '@ant-design/icons';
+import { App, Badge, Button, Flex, Select, Upload } from 'antd';
 import { listSkillSummaries } from '@/lib/skills/summaries';
+import {
+  PROVIDER_LABELS,
+  type ChatProviderId,
+  type ChatSettingsPayload,
+} from '@/app/api/chat/_shared/chat-settings';
+import { useChatSettings } from '@/app/chat/_hooks/useChatSettings';
+import { listChatProviderOptions } from '@/app/chat/_utils/chat-settings';
 import AttachmentPreviewList from './AttachmentPreviewList';
+import ChatSettingsModal from './ChatSettingsModal';
 import {
   ATTACHMENT_ACCEPT,
   EMPTY_SLOT_CONFIG,
@@ -40,7 +48,7 @@ export type ChatSenderProps = {
   activeSkillIds: string[];
   onSkillChange: (skillIds: string[]) => void;
   onCancel: () => void;
-  onSend: (payload: { text: string; files?: FileList }) => void;
+  onSend: (payload: { text: string; files?: FileList; settings: ChatSettingsPayload }) => void;
 };
 
 export default function ChatSender({
@@ -53,6 +61,8 @@ export default function ChatSender({
   onSend,
 }: ChatSenderProps) {
   const { message } = App.useApp();
+  const { settings, updateSettings, updateChatProvider } = useChatSettings();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [chatId, setChatId] = useState(id);
   // 修复：Sender.Header + forceRender 让 CSSMotion 在 SSR 输出 display:none 的 header，
   // 客户端首帧不输出，草稿 /chat 刷新 Hydration failed（header 对上 textarea）。
@@ -79,6 +89,13 @@ export default function ChatSender({
 
   const skillSummaries = listSkillSummaries();
   const skillSummaryById = new Map(skillSummaries.map((summary) => [summary.id, summary]));
+
+  const chatProviderOptions = listChatProviderOptions(settings?.providerConfigs ?? []).map(
+    (item) => ({
+      value: item.value,
+      label: PROVIDER_LABELS[item.value],
+    }),
+  );
 
   // 切换会话：清空附件，避免跨会话误发
   if (id !== chatId) {
@@ -107,6 +124,28 @@ export default function ChatSender({
     });
     return () => cancelAnimationFrame(frame);
   }, [isDraft, id]);
+
+  // 首次无本地设置时拉取 defaults
+  useEffect(() => {
+    if (settings) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/chat/settings-defaults');
+        const body = (await res.json()) as {
+          code: number;
+          data: ChatSettingsPayload | null;
+        };
+        if (cancelled || body.code !== 0 || !body.data) return;
+        updateSettings(body.data);
+      } catch {
+        /* 发送前再校验 */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [settings, updateSettings]);
 
   // 方向键 / 鼠标点选会移动光标但不触发 onChange，需监听选区变化重算菜单
   useEffect(() => {
@@ -182,108 +221,149 @@ export default function ChatSender({
   );
 
   return (
-    <Suggestion
-      items={(keyword) =>
-        toSkillSuggestionItems(filterSkillSummaries(skillSummaries, keyword ?? ''))
-      }
-      onSelect={(value) => {
-        const summary = skillSummaryById.get(value);
-        if (!summary) return;
+    <>
+      <Suggestion
+        items={(keyword) =>
+          toSkillSuggestionItems(filterSkillSummaries(skillSummaries, keyword ?? ''))
+        }
+        onSelect={(value) => {
+          const summary = skillSummaryById.get(value);
+          if (!summary) return;
 
-        insertSkillTag(senderRef, summary, pendingSkillTokenRef.current);
-        pendingSkillTokenRef.current = null;
+          insertSkillTag(senderRef, summary, pendingSkillTokenRef.current);
+          pendingSkillTokenRef.current = null;
 
-        onSkillChange(activeSkillIds.includes(value) ? activeSkillIds : [...activeSkillIds, value]);
-      }}
-      classNames={{ root: styles.suggestion, content: styles.suggestionContent }}
-    >
-      {({ onTrigger, onKeyDown, open }) => {
-        syncSkillSuggestionRef.current = (inputData?: string | null) => {
-          if (skillSummaries.length === 0) {
-            pendingSkillTokenRef.current = null;
-            onTrigger(false);
-            return;
-          }
+          onSkillChange(
+            activeSkillIds.includes(value) ? activeSkillIds : [...activeSkillIds, value],
+          );
+        }}
+        classNames={{ root: styles.suggestion, content: styles.suggestionContent }}
+      >
+        {({ onTrigger, onKeyDown, open }) => {
+          syncSkillSuggestionRef.current = (inputData?: string | null) => {
+            if (skillSummaries.length === 0) {
+              pendingSkillTokenRef.current = null;
+              onTrigger(false);
+              return;
+            }
 
-          const editable = senderRef.current?.inputElement ?? null;
-          const result = resolveSkillSuggestionTrigger(editable, skillSummaries, inputData);
-          if (result === false) {
-            pendingSkillTokenRef.current = null;
-            onTrigger(false);
-            return;
-          }
+            const editable = senderRef.current?.inputElement ?? null;
+            const result = resolveSkillSuggestionTrigger(editable, skillSummaries, inputData);
+            if (result === false) {
+              pendingSkillTokenRef.current = null;
+              onTrigger(false);
+              return;
+            }
 
-          pendingSkillTokenRef.current = result.token;
-          onTrigger(result.keyword);
-        };
+            pendingSkillTokenRef.current = result.token;
+            onTrigger(result.keyword);
+          };
 
-        return (
-          <Sender
-            ref={senderRef}
-            classNames={{
-              root: styles.root,
-            }}
-            slotConfig={EMPTY_SLOT_CONFIG}
-            onChange={(_value, event) => {
-              const nativeEvent = event?.nativeEvent;
-              const inputData = nativeEvent instanceof InputEvent ? nativeEvent.data : undefined;
-              syncSkillSuggestionRef.current(inputData);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === ' ' && open) {
-                onTrigger(false);
-                pendingSkillTokenRef.current = null;
-              }
-              return stopCascaderSwallowingInputKeys(event, open, onKeyDown);
-            }}
-            loading={loading}
-            onCancel={onCancel}
-            placeholder="给 凡域 发送消息"
-            suffix={false}
-            autoSize={{ minRows: 2, maxRows: 8 }}
-            header={headerReady ? senderHeader : undefined}
-            onPasteFile={(files) => {
-              for (const file of files) {
-                attachmentsRef.current?.upload(file);
-              }
-            }}
-            footer={(_actionNode, { components: { SendButton, LoadingButton } }) => (
-              <Flex justify="space-between" align="center">
-                <Badge dot={hasAttachments && !attachmentsOpen}>
-                  <Button
-                    type="text"
-                    aria-label="上传附件"
-                    shape="circle"
-                    icon={<LinkOutlined />}
-                    disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
-                    onClick={() => selectAttachments(attachmentsRef)}
-                  />
-                </Badge>
-                {loading ? (
-                  <LoadingButton />
-                ) : (
-                  <SendButton disabled={hasAttachments ? false : undefined} />
-                )}
-              </Flex>
-            )}
-            onSubmit={(value) => {
-              // 修复：菜单打开时 Enter 用于选择 skill，勿触发发送（Suggestion 的 onKeyDown 已
-              // preventDefault 并返回 false，此处再拦一道双保险）
-              if (open) return;
-              const text = value.trim();
-              const files = createFileListFromAttachments(attachmentItems);
-              if (!text && !files?.length) return;
+          return (
+            <Sender
+              ref={senderRef}
+              classNames={{
+                root: styles.root,
+              }}
+              slotConfig={EMPTY_SLOT_CONFIG}
+              onChange={(_value, event) => {
+                const nativeEvent = event?.nativeEvent;
+                const inputData = nativeEvent instanceof InputEvent ? nativeEvent.data : undefined;
+                syncSkillSuggestionRef.current(inputData);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === ' ' && open) {
+                  onTrigger(false);
+                  pendingSkillTokenRef.current = null;
+                }
+                return stopCascaderSwallowingInputKeys(event, open, onKeyDown);
+              }}
+              loading={loading}
+              onCancel={onCancel}
+              placeholder="给 凡域 发送消息"
+              suffix={false}
+              autoSize={{ minRows: 2, maxRows: 8 }}
+              header={headerReady ? senderHeader : undefined}
+              onPasteFile={(files) => {
+                for (const file of files) {
+                  attachmentsRef.current?.upload(file);
+                }
+              }}
+              footer={(_actionNode, { components: { SendButton, LoadingButton } }) => (
+                <Flex justify="space-between" align="center" gap={8}>
+                  <Flex align="center" gap={4}>
+                    <Badge dot={hasAttachments && !attachmentsOpen}>
+                      <Button
+                        type="text"
+                        aria-label="上传附件"
+                        shape="circle"
+                        icon={<LinkOutlined />}
+                        disabled={loading || attachmentItems.length >= MAX_ATTACHMENT_COUNT}
+                        onClick={() => selectAttachments(attachmentsRef)}
+                      />
+                    </Badge>
+                    <Select
+                      size="small"
+                      variant="borderless"
+                      aria-label="对话供应商"
+                      placeholder="供应商"
+                      style={{ minWidth: 110 }}
+                      disabled={loading || chatProviderOptions.length === 0}
+                      options={chatProviderOptions}
+                      value={settings?.chatProvider}
+                      onChange={(value: ChatProviderId) => updateChatProvider(value)}
+                    />
+                    <Button
+                      type="text"
+                      aria-label="对话设置"
+                      shape="circle"
+                      icon={<SettingOutlined />}
+                      disabled={loading}
+                      onClick={() => setSettingsOpen(true)}
+                    />
+                  </Flex>
+                  {loading ? (
+                    <LoadingButton />
+                  ) : (
+                    <SendButton disabled={hasAttachments ? false : undefined} />
+                  )}
+                </Flex>
+              )}
+              onSubmit={(value) => {
+                // 修复：菜单打开时 Enter 用于选择 skill，勿触发发送（Suggestion 的 onKeyDown 已
+                // preventDefault 并返回 false，此处再拦一道双保险）
+                if (open) return;
+                if (!settings) {
+                  message.warning('请先完成对话设置');
+                  setSettingsOpen(true);
+                  return;
+                }
+                if (chatProviderOptions.length === 0) {
+                  message.warning('请先在设置中添加支持对话的供应商');
+                  setSettingsOpen(true);
+                  return;
+                }
+                const text = value.trim();
+                const files = createFileListFromAttachments(attachmentItems);
+                if (!text && !files?.length) return;
 
-              onSend({ text, files });
-              // 修复：草稿首条发送后的导航改由 Chat 在流式开始后触发（避免与落库竞态 404），
-              // 此处不再同步 replace
-              revokeBlobUrls(attachmentItems);
-              setAttachmentScope((prev) => ({ ...prev, items: [], open: false }));
-              senderRef.current?.clear();
-            }}
-          />
-        );
-      }}
-    </Suggestion>
+                onSend({ text, files, settings });
+                // 修复：草稿首条发送后的导航改由 Chat 在流式开始后触发（避免与落库竞态 404），
+                // 此处不再同步 replace
+                revokeBlobUrls(attachmentItems);
+                setAttachmentScope({ items: [], open: false });
+                senderRef.current?.clear();
+              }}
+            />
+          );
+        }}
+      </Suggestion>
+      <ChatSettingsModal
+        open={settingsOpen}
+        settings={settings}
+        onOpenChange={setSettingsOpen}
+        onSave={updateSettings}
+      />
+    </>
   );
 }

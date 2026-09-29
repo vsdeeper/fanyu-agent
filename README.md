@@ -33,7 +33,7 @@
 ```bash
 pnpm install
 cp .env.example .env.local
-# 按 .env.example 注释填写密钥（所列变量须非空；`EDIT_IMAGE_MODEL_ID` / `ANALYZE_IMAGE_MODEL_ID` 可留空）
+# 按 .env.example 注释填写密钥（所列变量须非空；`EDIT_IMAGE_MODEL_ID` 可留空）
 pnpm run dev
 ```
 

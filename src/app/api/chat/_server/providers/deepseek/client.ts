@@ -1,20 +1,37 @@
 import { createOpenAI } from '@ai-sdk/openai';
 
 import { requireEnv } from '@/lib/shared/server/env';
+import {
+  getChatSettings,
+  resolveCredentialFromSettings,
+} from '@/app/api/chat/_server/request-settings';
 import { patchDeepSeekRequestBody, type DeepSeekRequestBody } from './request-patch';
 import { normalizeDeepseekSse } from './sse';
 
-let instance: ReturnType<typeof createOpenAI> | undefined;
+const clientCache = new Map<string, ReturnType<typeof createOpenAI>>();
+
+function resolveDeepseekCreds(): { apiKey: string; baseURL: string } {
+  if (getChatSettings()) {
+    const creds = resolveCredentialFromSettings('deepseek');
+    return { apiKey: creds.apiKey, baseURL: creds.baseUrl };
+  }
+  return {
+    apiKey: requireEnv('DEEPSEEK_API_KEY'),
+    baseURL: requireEnv('DEEPSEEK_BASE_URL'),
+  };
+}
 
 /**
- * 惰性构造 DeepSeek 客户端：仅当 CHAT_PROVIDER=deepseek 时才读取 DEEPSEEK_* 环境变量。
- * 自定义 fetch 负责出站剥离 OpenAI 专有 include、回传 reasoning_text，入站 SSE 归一化。
+ * 惰性构造 DeepSeek 客户端；有请求 settings 时用其凭据（按 key+url 缓存），否则读 env。
  */
 export function getDeepseekClient() {
+  const { apiKey, baseURL } = resolveDeepseekCreds();
+  const cacheKey = `${apiKey}\0${baseURL}`;
+  let instance = clientCache.get(cacheKey);
   if (!instance) {
     instance = createOpenAI({
-      apiKey: requireEnv('DEEPSEEK_API_KEY'),
-      baseURL: requireEnv('DEEPSEEK_BASE_URL'),
+      apiKey,
+      baseURL,
       fetch: async (url, init) => {
         if (init?.body && typeof init.body === 'string') {
           const body = JSON.parse(init.body) as DeepSeekRequestBody;
@@ -31,6 +48,7 @@ export function getDeepseekClient() {
         return normalizeDeepseekSse(response);
       },
     });
+    clientCache.set(cacheKey, instance);
   }
   return instance;
 }

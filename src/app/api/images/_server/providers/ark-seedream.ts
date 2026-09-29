@@ -1,5 +1,9 @@
 import { requireEnv } from '@/lib/shared/server/env';
 import {
+  getChatSettings,
+  resolveCredentialFromSettings,
+} from '@/app/api/chat/_server/request-settings';
+import {
   buildImagePrompt,
   createRequestAbortSignal,
   decodeBase64Image,
@@ -14,11 +18,21 @@ type ArkImageResponse = {
   error?: { message?: string };
 };
 
+function resolveArkImageCreds(): { apiKey: string; baseURL: string } {
+  if (getChatSettings()) {
+    const creds = resolveCredentialFromSettings('ark');
+    return { apiKey: creds.apiKey, baseURL: creds.baseUrl.replace(/\/$/, '') };
+  }
+  return {
+    apiKey: requireEnv('ARK_API_KEY'),
+    baseURL: requireEnv('ARK_BASE_URL').replace(/\/$/, ''),
+  };
+}
+
 export const arkSeedreamProvider: ImageProvider = {
   id: 'ark',
   async generate(req) {
-    const apiKey = requireEnv('ARK_API_KEY');
-    const baseURL = requireEnv('ARK_BASE_URL').replace(/\/$/, '');
+    const { apiKey, baseURL } = resolveArkImageCreds();
     const spec = getImageSpec(req.modelId);
 
     // 按模型声明解析：Seedream 上游不支持 *K 档位，须先转基准 WxH，再按比例 reshape。

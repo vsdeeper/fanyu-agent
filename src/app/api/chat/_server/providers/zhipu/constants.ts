@@ -9,3 +9,18 @@
  *    API（web-search.ts），来源在 ai 层经 web-search-source-bridge 合成 source part；
  *    服务端无需解析智谱消息附加的搜索结果字段（sse.ts 不做注解合成）
  */
+
+import { getChatSettings } from '@/app/api/chat/_server/request-settings';
+
+const ZHIPU_REASONING_EFFORT_VALUES = new Set(['low', 'high', 'max']);
+
+export const DEFAULT_ZHIPU_REASONING_EFFORT = 'high' as const;
+
+/** 智谱思考强度：settings 优先，默认 high；仅 low|high|max */
+export function getZhipuReasoningEffort(): 'low' | 'high' | 'max' {
+  const fromSettings = getChatSettings()?.reasoningEffort?.trim();
+  if (fromSettings && ZHIPU_REASONING_EFFORT_VALUES.has(fromSettings)) {
+    return fromSettings as 'low' | 'high' | 'max';
+  }
+  return DEFAULT_ZHIPU_REASONING_EFFORT;
+}

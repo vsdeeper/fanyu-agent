@@ -2,11 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 
 import { buildImageAssetUrl, saveImageAsset } from '@/app/api/images/_server/assets';
-import {
-  getConfiguredEditImageModelId,
-  getConfiguredImageModelId,
-  getImageModelProfile,
-} from '@/app/api/images/_server/registry';
+import { getImageModelProfile } from '@/app/api/images/_server/registry';
 import {
   isImageAbortError,
   isImageSafetyRejectedError,
@@ -25,7 +21,6 @@ import {
 import { IMAGE_TOOL_INTERRUPTED_ERROR } from '@/app/api/chat/_shared/tool-errors';
 import type { ImagePurpose } from '@/app/api/chat/_shared/types';
 import { listImageGroupingSkillIds } from '@/lib/skills/server/registry';
-import { getConfiguredAnalyzeImageModelId } from '../analyze-image-config';
 import { resolveImageRefs, type ResolvedImageRefs } from '../resolve-image-refs';
 import type { AgentToolDefinition } from '../types';
 import { normalizeImageAssets } from './legacy-output';
@@ -109,8 +104,8 @@ function modelDisplayFields(modelId: string): { modelId: string; modelLabel?: st
  * 按当前生图/改图模型的尺寸规格生成工具使用规则。
  */
 function getImageSystemHint(): string {
-  const generateModel = getConfiguredImageModelId();
-  const editModel = getConfiguredEditImageModelId();
+  const generateModel = resolveImageModelId({ mode: 'generate' });
+  const editModel = resolveImageModelId({ mode: 'edit' });
   const modelLine =
     editModel === generateModel
       ? `- 生图/改图模型：全局设置为 ${generateModel}，绝对优先，勿改`
@@ -121,9 +116,8 @@ function getImageSystemHint(): string {
     spec.minPixels != null && spec.maxPixels != null
       ? `- 生图尺寸只传 ${presets}，或总像素 ${spec.minPixels} ~ ${spec.maxPixels} 的 WIDTHxHEIGHT（默认 ${spec.size.default}）`
       : `- 生图尺寸只传 ${presets}（默认 ${spec.size.default}）`;
-  const seeSourceLine = getConfiguredAnalyzeImageModelId()
-    ? `- 有源图且改图/按图生图依赖画面内容（复刻风格、改文字、提取局部、指定元素）时：必须先调用 analyze_image，再按识图结果调用本工具；禁止仅凭主模型目视或猜测编造画面文字`
-    : `- 有源图且改图/按图生图指令依赖画面内容（复刻风格、改文字、提取局部、指定元素）时：先看清源图画面，再按所见调用本工具`;
+  const seeSourceLine =
+    '- 有源图且改图/按图生图指令依赖画面内容（复刻风格、改文字、提取局部、指定元素）时：先看清源图画面，再按所见调用本工具';
   return `生图工具使用规则：
 - 用户明确要求生成/绘制/出图时调用 generate_image，mode=generate
 - 用户要求修改图片时调用 generate_image，mode=edit
@@ -146,13 +140,13 @@ ${sizeLine}`;
 
 /** size 参数描述：按全局生图模型规格说明 */
 function getSizeFieldDescribe(): string {
-  const configured = getConfiguredImageModelId();
+  const configured = resolveImageModelId({ mode: 'generate' });
   return `${describeImageSize(getImageSpec(configured))}；改图不传时沿用源图尺寸，档位以改图模型为准`;
 }
 
 /** quality 参数描述：按全局生图模型质量规格说明；仅支持 quality 的模型生效 */
 function getQualityFieldDescribe(): string {
-  const configured = getConfiguredImageModelId();
+  const configured = resolveImageModelId({ mode: 'generate' });
   return `${describeImageQuality(getImageSpec(configured))}；不支持 quality 的模型请在 prompt 用文字表达画质要求`;
 }
 
@@ -160,9 +154,6 @@ const PASTE_IMAGE_EDIT_HINT =
   '本轮用户消息含图片附件，edit 将使用这些附件作源图（第一张为默认源，可传 pastedImageIndexes 指定某几张，strategy 决定合成一张还是每张各一张）；若改图依赖画面内容，先看清附件画面再调用本工具。';
 
 function getPasteImageEditHint(): string {
-  if (getConfiguredAnalyzeImageModelId()) {
-    return '本轮用户消息含图片附件，edit 将使用这些附件作源图；主模型看不到像素，改图前必须先 analyze_image，再按识图结果调用本工具。';
-  }
   return PASTE_IMAGE_EDIT_HINT;
 }
 

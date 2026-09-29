@@ -26,7 +26,7 @@ export type AgentToolDefinition = {
   requiresBlindMainModel?: boolean;
   /** true = 仅 Provider 无原生联网搜索时注册/注入提示词（本地 web_search 与原生 server tool 重叠） */
   requiresNoNativeWebSearch?: boolean;
-  /** true = 仅已配置 ANALYZE_IMAGE_MODEL_ID 时注册/注入提示词（专用识图模型） */
+  /** @deprecated 专用识图 env 已移除；analyze_image 暂不注册，保留字段以免旧 catalog 类型报错 */
   requiresConfiguredAnalyzeImageModel?: boolean;
   getHint: () => string;
   /** 本轮有粘贴图时额外注入 */

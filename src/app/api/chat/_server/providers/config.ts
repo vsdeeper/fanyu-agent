@@ -1,13 +1,19 @@
 import { requireEnv } from '@/lib/shared/server/env';
 
+import { getChatSettings } from '@/app/api/chat/_server/request-settings';
+
 /** 模型档次：pro（复杂推理/代码/长文）、lite（通用均衡）、mini（简单问候/短查询） */
 export type ModelTier = 'pro' | 'lite' | 'mini';
 
 /** 聊天 Provider：deepseek（DeepSeek 直连，默认）| ark（火山方舟）| zhipu（智谱 BigModel） */
 export type ChatProvider = 'deepseek' | 'ark' | 'zhipu';
 
-/** 读取 CHAT_PROVIDER；缺省或未知值回退 deepseek（默认 Provider） */
+/** 读取对话 Provider：有请求 settings 时用 chatProvider，否则读 CHAT_PROVIDER */
 export function getChatProvider(): ChatProvider {
+  const fromSettings = getChatSettings()?.chatProvider;
+  if (fromSettings === 'deepseek' || fromSettings === 'ark' || fromSettings === 'zhipu') {
+    return fromSettings;
+  }
   const raw = process.env.CHAT_PROVIDER?.trim().toLowerCase();
   if (!raw || raw === 'deepseek') return 'deepseek';
   if (raw === 'ark') return 'ark';
@@ -37,8 +43,14 @@ const ZHIPU_MODEL_TIER_ENV: Record<ModelTier, string> = {
   mini: 'ZHIPU_MODEL_MINI',
 };
 
-/** 按 Provider + 档位获取模型 ID；三档均须配置，缺失直接抛错（requireEnv），无代码内死值回退 */
+/** 按 Provider + 档位获取模型 ID；有 settings 时读 chatModels，否则 requireEnv */
 export function getModelId(provider: ChatProvider, tier: ModelTier): string {
+  const settings = getChatSettings();
+  if (settings) {
+    if (tier === 'pro') return settings.chatModels.modelPro;
+    if (tier === 'lite') return settings.chatModels.modelLite;
+    return settings.chatModels.modelMini;
+  }
   if (provider === 'deepseek') {
     return requireEnv(DEEPSEEK_MODEL_TIER_ENV[tier]);
   }

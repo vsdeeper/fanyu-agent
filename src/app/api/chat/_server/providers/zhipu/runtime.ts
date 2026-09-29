@@ -1,6 +1,7 @@
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai';
 
 import { getZhipuClient } from './client';
+import { getZhipuReasoningEffort } from './constants';
 import { getZhipuInstructions } from './instructions';
 import type { ChatProviderRuntime, ChatProviderCapabilities } from '../types';
 
@@ -40,6 +41,8 @@ export const zhipuRuntime: ChatProviderRuntime = {
   },
 
   getOpenAIOptions() {
-    return {};
+    return {
+      reasoningEffort: getZhipuReasoningEffort(),
+    };
   },
 };

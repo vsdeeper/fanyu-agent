@@ -7,6 +7,7 @@ import { ApiErrorCode, jsonFail } from '@/lib/shared/server/api-response';
 import { resolveTurnSkills } from '@/lib/skills/server/resolve-turn';
 import type { ChatPostBody } from './parse-request';
 import { parseChatPostBody } from './parse-request';
+import { runWithChatSettings } from './request-settings';
 import { streamChatResponse } from './stream-chat';
 
 type HandleChatPostOptions = {
@@ -16,7 +17,7 @@ type HandleChatPostOptions = {
 };
 
 async function handleSubmitMessage({ body, userLocation, abortSignal }: HandleChatPostOptions) {
-  const { id, message } = body;
+  const { id, message, settings } = body;
 
   if (!message) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, '缺少会话或消息内容', 400);
@@ -43,26 +44,32 @@ async function handleSubmitMessage({ body, userLocation, abortSignal }: HandleCh
   // 修复：流式前先落盘用户消息，侧栏 refresh 即可见新会话与标题
   await saveChat({ chatId: id, messages });
 
-  return streamChatResponse({
-    chatId: id,
-    messages,
-    userLocation,
-    abortSignal,
-  });
+  return runWithChatSettings(settings, () =>
+    streamChatResponse({
+      chatId: id,
+      messages,
+      userLocation,
+      abortSignal,
+    }),
+  );
 }
 
 /** POST /api/chat 入口：解析请求体并发起流式对话 */
 export async function handleChatApiPost(req: Request): Promise<Response> {
-  const body = await parseChatPostBody(req);
+  const parsed = await parseChatPostBody(req);
 
-  if (!body.id || typeof body.id !== 'string') {
+  if ('error' in parsed) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, parsed.error, 400);
+  }
+
+  if (!parsed.id) {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, '缺少会话或消息内容', 400);
   }
 
-  const userLocation = parseUserLocation(body.userLocation);
+  const userLocation = parseUserLocation(parsed.userLocation);
 
   return handleSubmitMessage({
-    body,
+    body: parsed,
     userLocation,
     abortSignal: req.signal,
   });

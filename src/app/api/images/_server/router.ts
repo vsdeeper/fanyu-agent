@@ -7,6 +7,7 @@ import {
 import { arkSeedreamProvider } from './providers/ark-seedream';
 import { laozhangProvider } from './providers/laozhang';
 import type { ImageGenerateRequest, ImageGenerateResult, ImageProvider } from './types';
+import { getChatSettings } from '@/app/api/chat/_server/request-settings';
 
 function getProvider(providerId: string): ImageProvider {
   if (providerId === 'ark') return arkSeedreamProvider;
@@ -15,10 +16,13 @@ function getProvider(providerId: string): ImageProvider {
 }
 
 /**
- * 主对话生图/改图模型路由：generate → IMAGE_MODEL_ID；edit → EDIT_IMAGE_MODEL_ID（未设则同 IMAGE）。
- * 全局 env 绝对优先，不再按场景自选或继承父图模型。
+ * 主对话生图/改图模型：有 chat settings 时用 generateImage/editImage；否则 IMAGE_/EDIT_IMAGE_MODEL_ID。
  */
 export function resolveImageModelId({ mode }: { mode: 'generate' | 'edit' }): string {
+  const settings = getChatSettings();
+  if (settings) {
+    return mode === 'edit' ? settings.editImage.modelId : settings.generateImage.modelId;
+  }
   if (mode === 'edit') {
     return getConfiguredEditImageModelId();
   }

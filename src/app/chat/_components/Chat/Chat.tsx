@@ -16,6 +16,7 @@ import UserBubbleContent from './UserBubbleContent';
 import styles from './Chat.module.css';
 import { AWAITING_ASSISTANT_BUBBLE_KEY, bubbleRole } from './constants';
 import { getPartsText, isMessageStopped, isNearBottom, submitChatMessage } from './utils';
+import type { ChatSettingsPayload } from '@/app/api/chat/_shared/chat-settings';
 
 type ChatProps = {
   chat: ChatInstance<UIMessage>;
@@ -149,13 +150,22 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
     return () => observer.disconnect();
   }, [hasMessages]);
 
-  const handleSend = ({ text, files }: { text: string; files?: FileList }) => {
+  const handleSend = ({
+    text,
+    files,
+    settings,
+  }: {
+    text: string;
+    files?: FileList;
+    settings: ChatSettingsPayload;
+  }) => {
     submitChatMessage({
       text,
       files,
       skillIds: activeSkillIds,
       showScrollBottom,
       listRef,
+      settings,
       sendMessage,
     });
   };

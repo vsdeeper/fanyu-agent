@@ -1,7 +1,6 @@
 /**
- * 已配置返回 trim 后的识图模型 id；未设置或空串返回 null → 不启用专用识图 tool。
- * 可空语义（与必填的 IMAGE_MODEL_ID 不同），勿用 requireEnv。
+ * 专用识图模型 id。ANALYZE_IMAGE_MODEL_ID 已移除；恒返回 null（analyze_image tool 源码暂留但不注册）。
  */
 export function getConfiguredAnalyzeImageModelId(): string | null {
-  return process.env.ANALYZE_IMAGE_MODEL_ID?.trim() || null;
+  return null;
 }

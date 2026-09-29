@@ -1,4 +1,8 @@
 import { requireEnv } from '@/lib/shared/server/env';
+import {
+  getChatSettings,
+  resolveCredentialFromSettings,
+} from '@/app/api/chat/_server/request-settings';
 
 /**
  * 智谱独立 Web Search API 出站封装（POST {ZHIPU_BASE_URL}/web_search）。
@@ -33,15 +37,27 @@ const SEARCH_ENGINE = 'search_std';
 /** 返回条数：给主模型留足挑选余地又不撑爆工具结果 */
 const RESULT_COUNT = 5;
 
+function resolveZhipuWebCreds(): { apiKey: string; baseURL: string } {
+  if (getChatSettings()) {
+    const creds = resolveCredentialFromSettings('zhipu');
+    return { apiKey: creds.apiKey, baseURL: creds.baseUrl.replace(/\/$/, '') };
+  }
+  return {
+    apiKey: requireEnv('ZHIPU_API_KEY'),
+    baseURL: requireEnv('ZHIPU_BASE_URL').replace(/\/$/, ''),
+  };
+}
+
 /** 调智谱 Web Search API 检索；失败上抛由工具 execute 层统一兜底文案 */
 export async function searchZhipuWeb(
   query: string,
   abortSignal?: AbortSignal,
 ): Promise<ZhipuWebSearchResult[]> {
-  const response = await fetch(`${requireEnv('ZHIPU_BASE_URL')}/web_search`, {
+  const { apiKey, baseURL } = resolveZhipuWebCreds();
+  const response = await fetch(`${baseURL}/web_search`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${requireEnv('ZHIPU_API_KEY')}`,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
