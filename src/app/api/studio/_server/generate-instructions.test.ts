@@ -1204,7 +1204,7 @@ describe('电商详情图请求契约', () => {
 describe('图文配图指令', () => {
   const body = '# 主题卡片\n\n## 要点一\n简洁说明\n\n## 要点二\n补充细节';
 
-  it('无「我的要求」时正文仅作来源，须取舍精简并留足边距，不含「我的要求」优先语义', () => {
+  it('无「我的要求」时正文仅作来源，须取舍精简，不含「我的要求」优先语义', () => {
     const prompt = buildImageTextPrompt(body, {
       hasStyleReference: true,
     });
@@ -1212,50 +1212,37 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('【本张画面 / 图文内容】');
     expect(prompt).toContain('非必须全文上屏');
     expect(prompt).toContain('取舍精简');
-    expect(prompt).toContain('安全边距');
-    expect(prompt).toContain('禁止贴边排满');
-    expect(prompt).toContain('禁止多栏信息框');
-    expect(prompt).toContain('手部解剖硬约束');
+    expect(prompt).toContain('留足边距');
+    expect(prompt).toContain('优先单手特写');
+    expect(prompt).toContain('避免双手交叠');
+    expect(prompt).toContain('手形硬约束');
     expect(prompt).toContain('恰好 1 拇指 + 4 指共 5 指');
-    expect(prompt).toContain('禁止多指、少指、融指、分叉指、悬浮指段');
-    expect(prompt).toContain('符合常人比例');
-    expect(prompt).toContain('单指异常拉长');
-    expect(prompt).toContain('手指比例失调');
-    expect(prompt).toContain('不得为了标穴位');
+    expect(prompt).toContain('食指略短于中指');
+    expect(prompt).toContain('单指拉长或畸形');
+    expect(prompt).not.toContain('手部解剖');
+    expect(prompt).not.toContain('标穴位');
+    expect(prompt).not.toContain('手形须按上方手形硬约束');
+    expect(prompt).not.toContain('多人肢体须各自独立生成');
+    expect(prompt).not.toContain('反约束');
+    // 手形约束须靠前，高于版式句
+    expect(prompt.indexOf('手形硬约束')).toBeLessThan(prompt.indexOf('留足边距'));
     expect(prompt).toContain(body);
-    expect(prompt).toContain('视觉参考图');
     expect(prompt).toContain('第1个参考图=【视觉参考图】');
-    expect(prompt).toContain('画风硬约束');
     expect(prompt).toContain('画风硬对齐');
-    expect(prompt).toContain('禁止另起炉灶');
-    expect(prompt).toContain('画法媒介');
+    expect(prompt).toContain('禁止另起一套色调或媒介');
     expect(prompt).toContain('主要用于锁定身份、五官、发型、体型、着装气质');
-    expect(prompt).toContain('画风必须锁死在【视觉参考图】');
-    expect(prompt).toContain('多人肢体须各自独立生成');
-    expect(prompt).toContain('性别差异要一眼可辨');
-    expect(prompt).toContain('禁止上下栏同一只手克隆');
-    expect(prompt).toContain('手形须按上方手部解剖硬约束独立画对');
-    expect(prompt).toContain('比例失调的手形');
-    expect(prompt).toContain('禁止把参考图的姿态、手心朝向、标题与原文案原样搬进成品');
+    expect(prompt).toContain('画风锁死在【视觉参考图】');
+    expect(prompt).toContain('禁止照搬参考图姿态、标题与原文案');
     expect(prompt).toContain('文案硬约束');
-    expect(prompt).toContain('主标题须采用正文 `#` 标题原文');
-    expect(prompt).toContain('绝对禁止复刻、改写或拼贴参考图上的标题');
-    expect(prompt).toContain('唯一文案与事实来源');
-    expect(prompt).toContain('主标题必须用正文 `#` 标题原文');
-    expect(prompt).toContain('不得因「勿照搬文案/姿态」而整套换风格');
-    expect(prompt).not.toContain('勿复刻其具体五官身份与相貌');
+    expect(prompt).toContain('主标题用正文 `#` 标题原文');
+    expect(prompt).toContain('禁止复刻参考图文案与标注落点');
     expect(prompt).not.toContain('人物模特');
-    expect(prompt).toContain('高密度信息墙');
-    expect(prompt).toContain('反约束');
-    expect(prompt).toContain('不作定位依据');
-    expect(prompt).toContain('标记点落点');
     expect(prompt).not.toContain('【我的要求】');
     expect(prompt).not.toContain('知识库');
     expect(prompt).not.toContain('优先级最高');
-    expect(prompt).not.toContain('勿被视觉参考姿态锁死');
   });
 
-  it('有「我的要求」时正文仅作知识库，要求优先于默认信息密度并保留明确板块', () => {
+  it('有「我的要求」但无姿态词时不注入手臂/掌心细则', () => {
     const requirement = '必须保留「步骤示意」与「要点摘要」两个板块，其余精简';
     const prompt = buildImageTextPrompt(body, {
       hasStyleReference: true,
@@ -1266,42 +1253,20 @@ describe('图文配图指令', () => {
     expect(prompt).toContain(requirement);
     expect(prompt).toContain('优先级最高');
     expect(prompt).toContain('姿态硬约束');
-    expect(prompt).toContain('手部解剖硬约束');
-    expect(prompt).toContain('恰好 1 拇指 + 4 指共 5 指');
-    expect(prompt).toContain('单指异常拉长');
-    expect(prompt).toContain('不得为了标穴位');
-    expect(prompt).toContain('手心朝向释义');
-    expect(prompt).toContain('仅旋转前臂使手掌平面朝向镜头');
-    expect(prompt).toContain('禁止做成手指朝上、腕折约 90° 的竖掌「停车/制止」手势');
-    expect(prompt).toContain('禁止掌心朝上朝天');
-    expect(prompt).toContain('改手势时仍须满足上方手部解剖硬约束');
-    expect(prompt).toContain('迁就标注落点');
-    expect(prompt).toContain('比例失调');
-    expect(prompt).toContain('手臂方向');
-    expect(prompt).toContain('默认按画面左右');
+    expect(prompt).toContain('手形硬约束');
+    expect(prompt).toContain('优先单手特写');
+    expect(prompt).not.toContain('手部解剖');
+    expect(prompt).not.toContain('手臂方向');
+    expect(prompt).not.toContain('手心朝向');
+    expect(prompt).not.toContain('停车');
     expect(prompt).toContain('知识库');
     expect(prompt).toContain('非必须全文上屏');
-    expect(prompt).toContain('安全边距');
-    expect(prompt).toContain('写明须保留或展示的板块');
-    expect(prompt).toContain('必须按要求落实');
-    expect(prompt).toContain('版式密度以【我的要求】为准');
-    expect(prompt).toContain('主要用于锁定身份、五官、发型、体型、着装气质');
+    expect(prompt).toContain('写明须保留的板块');
     expect(prompt).toContain('第1个参考图=【视觉参考图】');
-    expect(prompt).toContain('画风硬约束');
-    expect(prompt).toContain('禁止把参考图的姿态、手心朝向、标题与原文案原样搬进成品');
-    expect(prompt).toContain('手形须按上方手部解剖硬约束独立画对');
-    expect(prompt).toContain('多人肢体须各自独立生成');
-    expect(prompt).toContain('性别差异要一眼可辨');
-    expect(prompt).toContain('姿态优先级复核：【我的要求】＞【本张画面 / 图文内容】＞视觉参考');
-    expect(prompt).toContain('未写明姿态时，可据此调整出镜与动作');
-    expect(prompt).toContain('画法媒介');
-    expect(prompt).toContain('反约束');
-    expect(prompt).toContain('不作定位依据');
+    expect(prompt).toContain('画风硬对齐');
     expect(prompt).toContain('文案硬约束');
-    expect(prompt).toContain('绝对禁止复刻、改写或拼贴参考图上的标题');
-    expect(prompt).toContain('主标题必须用正文 `#` 标题');
+    expect(prompt).toContain('主标题用正文 `#` 标题');
     expect(prompt).not.toContain('人物模特');
-    expect(prompt).not.toContain('不得据此把正文扩成');
     expect(prompt).toContain(body);
     const requirementIdx = prompt.indexOf('【我的要求】');
     const styleIdx = prompt.indexOf('【视觉参考图】');
@@ -1309,5 +1274,18 @@ describe('图文配图指令', () => {
     expect(requirementIdx).toBeGreaterThan(-1);
     expect(styleIdx).toBeGreaterThan(requirementIdx);
     expect(bodyLabelIdx).toBeGreaterThan(styleIdx);
+  });
+
+  it('「我的要求」含掌心/手臂方向时才注入姿态细则', () => {
+    const requirement = '右臂向左伸，掌心向前';
+    const prompt = buildImageTextPrompt(body, {
+      hasStyleReference: true,
+      characterRequirement: requirement,
+    });
+
+    expect(prompt).toContain('手臂方向');
+    expect(prompt).toContain('默认按画面左右');
+    expect(prompt).toContain('手心朝向');
+    expect(prompt).toContain('禁止竖掌「停车」手势');
   });
 });
