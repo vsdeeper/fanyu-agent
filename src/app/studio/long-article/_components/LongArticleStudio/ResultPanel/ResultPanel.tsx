@@ -18,6 +18,8 @@ import {
   EMPTY_RESEARCH_HINT,
   NEXT_BUTTON,
   PLAN_GENERATING_HINT,
+  POLISH_BUTTON,
+  POLISHING_HINT,
   PREV_BUTTON,
   RESEARCH_ANGLES_TITLE,
   RESEARCH_BRIEF_TITLE,
@@ -83,6 +85,7 @@ type ResultPanelProps = {
   onRemoveHistory: (historyId: string) => void;
   onCopyImage: (url: string) => void;
   navLoading: boolean;
+  onPolish: () => void;
   onPrev: () => void;
   onNext: () => void;
 };
@@ -123,6 +126,7 @@ export default function ResultPanel({
   onRemoveHistory,
   onCopyImage,
   navLoading,
+  onPolish,
   onPrev,
   onNext,
 }: ResultPanelProps) {
@@ -133,17 +137,30 @@ export default function ResultPanel({
     phase === 'researching' ||
     phase === 'planning' ||
     phase === 'drafting' ||
+    phase === 'polishing' ||
     phase === 'illustrating';
   const researchView = phase === 'research' || phase === 'researching' || phase === 'researched';
   const planView = phase === 'plan' || phase === 'planning' || phase === 'planned';
-  const draftView = phase === 'draft' || phase === 'drafting' || phase === 'drafted';
+  const draftView =
+    phase === 'draft' || phase === 'drafting' || phase === 'polishing' || phase === 'drafted';
   const imagesView = phase === 'images' || phase === 'illustrating' || phase === 'illustrated';
 
-  if ((phase === 'drafting' || !draftView) && editing) {
+  if ((phase === 'drafting' || phase === 'polishing' || !draftView) && editing) {
     setEditing(false);
   }
-  const isEditing = editing && draftView && phase !== 'drafting';
-  const canEditDraft = draftView && phase !== 'drafting' && Boolean(markdown.trim()) && !editing;
+  const isEditing = editing && draftView && phase !== 'drafting' && phase !== 'polishing';
+  const canEditDraft =
+    draftView &&
+    phase !== 'drafting' &&
+    phase !== 'polishing' &&
+    Boolean(markdown.trim()) &&
+    !editing;
+  const canPolish =
+    draftView &&
+    phase !== 'drafting' &&
+    phase !== 'polishing' &&
+    Boolean(markdown.trim()) &&
+    !editing;
   const canPrev = !researchView;
   const canNext =
     (phase === 'researched' && Boolean(selectedAngleId)) ||
@@ -168,7 +185,7 @@ export default function ResultPanel({
     angles.length === 0;
   const draftDisplay = isEditing
     ? draft
-    : phase === 'drafting'
+    : phase === 'drafting' || phase === 'polishing'
       ? draftStream || markdown
       : markdown || draftStream;
   const imagesDisplay =
@@ -456,6 +473,9 @@ export default function ResultPanel({
                     {!isEditing && draftReferencesList ? '（不含参考来源）' : ''}
                   </p>
                 ) : null}
+                {phase === 'polishing' ? (
+                  <p className={styles.packingHint}>{POLISHING_HINT}</p>
+                ) : null}
               </>
             )}
           </div>
@@ -463,9 +483,21 @@ export default function ResultPanel({
       )}
 
       <div className={styles.footer}>
-        <Button size="large" disabled={!canPrev || streaming || isEditing} onClick={onPrev}>
-          {PREV_BUTTON}
-        </Button>
+        <div className={styles.footerStart}>
+          {canPolish || phase === 'polishing' ? (
+            <Button
+              size="large"
+              loading={phase === 'polishing'}
+              disabled={!canPolish}
+              onClick={onPolish}
+            >
+              {POLISH_BUTTON}
+            </Button>
+          ) : null}
+          <Button size="large" disabled={!canPrev || streaming || isEditing} onClick={onPrev}>
+            {PREV_BUTTON}
+          </Button>
+        </div>
         <Button
           size="large"
           type="primary"

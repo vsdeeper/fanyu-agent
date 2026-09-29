@@ -107,6 +107,7 @@ export default function LongArticleStudio({ task }: LongArticleStudioProps) {
                 onRemoveHistory={studio.handleRemoveHistory}
                 onCopyImage={studio.handleCopyImage}
                 navLoading={studio.navLoading}
+                onPolish={studio.handlePolish}
                 onPrev={studio.handlePrev}
                 onNext={studio.handleNext}
               />

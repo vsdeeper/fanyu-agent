@@ -17,6 +17,7 @@ export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
   planned: 1,
   draft: 2,
   drafting: 2,
+  polishing: 2,
   drafted: 2,
   images: 3,
   illustrating: 3,
@@ -27,6 +28,7 @@ export const STUDIO_STEP_INDEX: Record<StudioPhase, number> = {
 export const RESEARCH_BUTTON = '开始调研';
 export const PLAN_BUTTON = '生成思路';
 export const DRAFT_BUTTON = '生成正文';
+export const POLISH_BUTTON = '润色通顺';
 export const PLAN_IMAGES_BUTTON = '规划配图';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
@@ -77,6 +79,8 @@ export const PLAN_REGENERATE_CONFIRM_CONTENT = '将覆盖当前写作要点与�
 export const CONFIRM_OK = '继续';
 export const CONFIRM_CANCEL = '取消';
 export const DRAFT_FAILED = '成稿失败，请稍后重试';
+export const POLISH_FAILED = '润色失败，已保留当前正文';
+export const POLISHING_HINT = '正在润色通顺…';
 export const DRAFT_REGENERATE_CONFIRM_TITLE = '重新生成正文？';
 export const DRAFT_REGENERATE_CONFIRM_CONTENT = '将覆盖当前正文';
 export const IMAGES_FAILED = '配图规划失败，请稍后重试';

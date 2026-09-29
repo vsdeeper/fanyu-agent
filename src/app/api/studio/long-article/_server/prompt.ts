@@ -4,6 +4,7 @@ import type {
   LongArticleGenre,
   LongArticleImagesRequest,
   LongArticlePlanRequest,
+  LongArticlePolishRequest,
   LongArticleResearchRequest,
 } from '../_shared/types';
 
@@ -198,6 +199,20 @@ export function buildDraftPrompt(body: LongArticleDraftRequest): string {
     ...(body.plan.audience ? ['【受众】', body.plan.audience] : []),
     '',
     `请写长文正文 Markdown：${titleRule}${draftGenreRule(body.articleGenre)}正文须含若干 \`## \` 段落标题，节内用空行分段；禁止无小标题的通篇白文或整篇连成一大段；不要输出配图槽或配图标注；${referencesRule}`,
+  ].join('\n');
+}
+
+/** 构建成稿通顺润色用户提示。 */
+export function buildPolishPrompt(body: LongArticlePolishRequest): string {
+  const style = body.stylePrompt?.trim();
+  return [
+    '【文体】',
+    LONG_ARTICLE_GENRE_LABEL[body.articleGenre],
+    ...(style ? ['【文风】', style] : []),
+    '【原文 Markdown】',
+    body.markdown.trim(),
+    '',
+    '请输出润色后的完整 Markdown（只改通顺，不改正义；保留标题、小节、参考来源节与配图标注）。',
   ].join('\n');
 }
 

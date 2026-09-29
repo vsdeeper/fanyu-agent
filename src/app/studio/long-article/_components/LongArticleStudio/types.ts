@@ -30,6 +30,7 @@ export type StudioPhase =
   | 'planned'
   | 'draft'
   | 'drafting'
+  | 'polishing'
   | 'drafted'
   | 'images'
   | 'illustrating'
@@ -116,4 +117,6 @@ export type DraftStepSnapshot = {
   imageAspectRatio?: string;
   imageClarity?: string;
   streamText?: string;
+  /** 是否至少成功润色过一次。 */
+  polished?: boolean;
 };

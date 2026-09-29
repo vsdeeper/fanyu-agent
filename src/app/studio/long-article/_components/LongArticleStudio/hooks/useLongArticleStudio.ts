@@ -30,6 +30,7 @@ import {
   PLAN_FAILED,
   PLAN_REGENERATE_CONFIRM_CONTENT,
   PLAN_REGENERATE_CONFIRM_TITLE,
+  POLISH_FAILED,
   CONFIRM_OK,
   CONFIRM_CANCEL,
   RESEARCH_FAILED,
@@ -270,6 +271,7 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
     slots?: ImageSlot[];
     history?: ImageHistoryItem[];
     imageVisualStyle?: string;
+    polished?: boolean;
   }) {
     // 取值全部走 store：panelValues 是渲染闭包里的快照，useWatch 的通知要等下一帧才生效，
     // 同一事件里若有人先写过 store（如粘贴文风、上传回写），从这里读闭包会拿到上一轮的值
@@ -280,6 +282,12 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
     const visualStyle = (overrides?.imageVisualStyle ?? imageVisualStyle).trim();
     const styleRef = await toPersistableImageUrl(values.styleReferenceImages ?? []);
     const watermark = await toPersistableImageUrl(values.watermarkImages ?? []);
+    const polished =
+      overrides?.polished === true
+        ? true
+        : lastDraftRef.current?.polished === true
+          ? true
+          : undefined;
     const next: DraftStepSnapshot = {
       markdown: overrides?.markdown ?? markdown,
       imageSlots: slots,
@@ -294,6 +302,7 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
       imageAspectRatio,
       imageClarity,
       ...(draftStream.trim() ? { streamText: draftStream.trim() } : {}),
+      ...(polished ? { polished: true } : {}),
     };
     if (isSameDraftSnapshot(next, lastDraftRef.current)) return next;
     const seq = (persistSeqRef.current += 1);
@@ -593,6 +602,54 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
       'drafting',
       'draft',
     );
+  }
+
+  async function handlePolish() {
+    if (!markdown.trim()) {
+      message.warning(MISSING_MARKDOWN_WARNING);
+      return;
+    }
+    const previousMarkdown = markdown;
+    const { styleSelections, articleGenre } = panelValues;
+    const stylePrompt = formatStyleSelections(styleSelections);
+    let succeeded = false;
+    await runSse(
+      '/api/studio/long-article/polish',
+      {
+        markdown: previousMarkdown.trim(),
+        articleGenre,
+        ...(stylePrompt.trim() ? { stylePrompt: stylePrompt.trim() } : {}),
+      },
+      draftBuffer,
+      POLISH_FAILED,
+      async (fullText) => {
+        const { prose } = extractTrailingJsonBlock(fullText);
+        const body = ensureDraftReferencesSection(prose || fullText, sources);
+        if (!body.trim()) {
+          message.warning(POLISH_FAILED);
+          setDraftStream(previousMarkdown);
+          setMarkdown(previousMarkdown);
+          setPhase('drafted');
+          return;
+        }
+        succeeded = true;
+        setDraftStream(fullText);
+        setMarkdown(body);
+        setPhase('drafted');
+        try {
+          await persistDraft({ markdown: body, polished: true });
+        } catch (err) {
+          console.error('[long-article-studio] persist polish', err);
+        }
+      },
+      'polishing',
+      'drafted',
+    );
+    // 失败 / 中止时流式缓冲可能已半截覆盖展示，回落到点击前正文
+    if (!succeeded) {
+      setDraftStream(previousMarkdown);
+      setMarkdown(previousMarkdown);
+    }
   }
 
   async function handlePlanImages() {
@@ -1002,6 +1059,7 @@ export function useLongArticleStudio(task: LongArticleTaskDetail) {
     handleResearch,
     handlePlan,
     handleDraft,
+    handlePolish,
     handlePlanImages,
     handleGenerateSlot,
     handleUploadSlot,

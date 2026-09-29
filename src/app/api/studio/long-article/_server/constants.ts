@@ -4,6 +4,8 @@ export const PLAN_FAILED = '内容思路生成失败，请稍后重试';
 export const PLAN_TRUNCATED = '内容思路输出被截断，请重试生成';
 export const DRAFT_FAILED = '成稿失败，请稍后重试';
 export const DRAFT_TRUNCATED = '成稿输出被截断，请重试生成';
+export const POLISH_FAILED = '润色失败，请稍后重试';
+export const POLISH_TRUNCATED = '润色输出被截断，请重试';
 export const IMAGES_FAILED = '配图规划失败，请稍后重试';
 export const IMAGES_TRUNCATED = '配图规划输出被截断，请重试';
 export const MISSING_RESEARCH_INPUT = '请至少填写我的想法、我的观点或我的经历之一';
@@ -42,3 +44,5 @@ export const LONG_ARTICLE_PLAN_MAX_OUTPUT_TOKENS = 8192;
  * 压低上限也省不下成本。
  */
 export const LONG_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS = 32768;
+/** 润色输出与成稿同档：需完整回写长文 Markdown，reasoning 占同一预算。 */
+export const LONG_ARTICLE_POLISH_MAX_OUTPUT_TOKENS = 32768;

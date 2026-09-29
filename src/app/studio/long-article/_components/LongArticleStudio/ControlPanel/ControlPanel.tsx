@@ -74,10 +74,12 @@ export default function ControlPanel({
     phase === 'researching' ||
     phase === 'planning' ||
     phase === 'drafting' ||
+    phase === 'polishing' ||
     phase === 'illustrating';
   const researchStep = phase === 'research' || phase === 'researching' || phase === 'researched';
   const planStep = phase === 'plan' || phase === 'planning' || phase === 'planned';
-  const draftStep = phase === 'draft' || phase === 'drafting' || phase === 'drafted';
+  const draftStep =
+    phase === 'draft' || phase === 'drafting' || phase === 'polishing' || phase === 'drafted';
   const imagesStep = phase === 'images' || phase === 'illustrating' || phase === 'illustrated';
   const draftTitle = plan ? resolvePlanTitle(plan) : undefined;
   // 复制/粘贴按钮要拿到当前选择，故这里单独订一个字段

@@ -509,6 +509,7 @@ export function readDraftStepSnapshot(data: unknown): DraftStepSnapshot | undefi
       : {}),
     ...(asString(data.imageClarity) ? { imageClarity: asString(data.imageClarity) } : {}),
     ...(asString(data.streamText) ? { streamText: asString(data.streamText) } : {}),
+    ...(data.polished === true ? { polished: true } : {}),
   };
 }
 

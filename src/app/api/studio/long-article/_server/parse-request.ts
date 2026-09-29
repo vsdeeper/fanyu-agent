@@ -6,6 +6,7 @@ import type {
   LongArticleDraftRequest,
   LongArticleImagesRequest,
   LongArticlePlanRequest,
+  LongArticlePolishRequest,
   LongArticleResearchRequest,
 } from '../_shared/types';
 
@@ -78,6 +79,12 @@ const imagesSchema = z.object({
   styleReferenceDataUrl: z.string().startsWith('data:image/').optional(),
 });
 
+const polishSchema = z.object({
+  markdown: z.string().trim().min(1),
+  articleGenre: articleGenreSchema,
+  stylePrompt: z.string().trim().min(1).optional(),
+});
+
 /** 解析成稿请求体；失败返回 null。 */
 export function parseDraftBody(json: unknown): LongArticleDraftRequest | null {
   const parsed = draftSchema.safeParse(json);
@@ -87,5 +94,11 @@ export function parseDraftBody(json: unknown): LongArticleDraftRequest | null {
 /** 解析成稿配图规划请求体；失败返回 null。 */
 export function parseImagesBody(json: unknown): LongArticleImagesRequest | null {
   const parsed = imagesSchema.safeParse(json);
+  return parsed.success ? parsed.data : null;
+}
+
+/** 解析成稿通顺润色请求体；失败返回 null。 */
+export function parsePolishBody(json: unknown): LongArticlePolishRequest | null {
+  const parsed = polishSchema.safeParse(json);
   return parsed.success ? parsed.data : null;
 }

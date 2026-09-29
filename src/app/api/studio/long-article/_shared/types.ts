@@ -72,6 +72,14 @@ export type LongArticleImagesRequest = {
   styleReferenceDataUrl?: string;
 };
 
+/** 成稿通顺润色请求。 */
+export type LongArticlePolishRequest = {
+  markdown: string;
+  articleGenre: LongArticleGenre;
+  /** 文风提示；有则润色时尽量保留语气质地。 */
+  stylePrompt?: string;
+};
+
 export type LongArticleSseTextEvent = {
   delta: string;
 };

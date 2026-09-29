@@ -23,6 +23,8 @@ import {
   MISSING_RESEARCH_INPUT,
   PLAN_FAILED,
   PLAN_TRUNCATED,
+  POLISH_FAILED,
+  POLISH_TRUNCATED,
   RESEARCH_FAILED,
   RESEARCH_MAX_PARALLEL_SEARCHES,
   RESEARCH_MAX_SEARCH_CALLS,
@@ -35,19 +37,28 @@ import {
   LONG_ARTICLE_DRAFT_MAX_OUTPUT_TOKENS,
   LONG_ARTICLE_IMAGES_MAX_OUTPUT_TOKENS,
   LONG_ARTICLE_PLAN_MAX_OUTPUT_TOKENS,
+  LONG_ARTICLE_POLISH_MAX_OUTPUT_TOKENS,
   LONG_ARTICLE_RESEARCH_MAX_OUTPUT_TOKENS,
 } from './constants';
 import {
   DRAFT_INSTRUCTIONS,
   IMAGES_INSTRUCTIONS,
   PLAN_INSTRUCTIONS,
+  POLISH_INSTRUCTIONS,
   RESEARCH_INSTRUCTIONS,
 } from './instructions';
-import { parseDraftBody, parseImagesBody, parsePlanBody, parseResearchBody } from './parse-request';
+import {
+  parseDraftBody,
+  parseImagesBody,
+  parsePlanBody,
+  parsePolishBody,
+  parseResearchBody,
+} from './parse-request';
 import {
   buildDraftPrompt,
   buildImagesPrompt,
   buildPlanPrompt,
+  buildPolishPrompt,
   buildResearchPrompt,
 } from './prompt';
 import { withWebSearchCallBudget } from './with-web-search-budget';
@@ -315,6 +326,51 @@ export async function handleLongArticleDraft(req: Request): Promise<Response> {
         console.error('[long-article/draft]', err);
         try {
           await send(LONG_ARTICLE_SSE_EVENT.error, { message: DRAFT_FAILED });
+        } catch {
+          /* 流已关闭 */
+        }
+      }
+    },
+    encodeSsePrelude(),
+  );
+}
+
+/**
+ * POST /api/studio/long-article/polish：对成稿 Markdown 做通顺润色（不改正义）。
+ */
+export async function handleLongArticlePolish(req: Request): Promise<Response> {
+  let json: unknown;
+  try {
+    json = await req.json();
+  } catch {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
+  }
+
+  const body = parsePolishBody(json);
+  if (!body) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
+  }
+
+  return createPushStreamResponse(
+    SSE_STREAM_HEADERS,
+    async (write) => {
+      const send: SseSend = (event, data) => write(encodeSseEvent(event, data));
+      try {
+        const { provider, runtime, openaiOptions } = buildOpenaiOptions();
+        const result = streamText({
+          model: runtime.getMainModel(getModelId(provider, 'pro')),
+          instructions: POLISH_INSTRUCTIONS,
+          prompt: buildPolishPrompt(body),
+          abortSignal: req.signal,
+          maxOutputTokens: LONG_ARTICLE_POLISH_MAX_OUTPUT_TOKENS,
+          providerOptions: { openai: openaiOptions },
+        });
+        await pipeTextStream(result, req.signal, send, POLISH_FAILED, POLISH_TRUNCATED);
+      } catch (err) {
+        if (req.signal.aborted) return;
+        console.error('[long-article/polish]', err);
+        try {
+          await send(LONG_ARTICLE_SSE_EVENT.error, { message: POLISH_FAILED });
         } catch {
           /* 流已关闭 */
         }
