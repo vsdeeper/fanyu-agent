@@ -59,6 +59,7 @@ export const DEFAULT_GENERATE_CARD_TITLE = '图文配图';
 
 export const DEFAULT_IMAGE_MODEL = 'gpt-image-2.5-flare-vip';
 export const DEFAULT_IMAGE_ASPECT = '3:4';
+export const DEFAULT_IMAGE_QUALITY = 'xhigh';
 export const DEFAULT_IMAGE_CLARITY = '2K';
 
 export { IMAGE_ASPECT_RATIO_OPTIONS } from '@/app/studio/_utils/model-options';

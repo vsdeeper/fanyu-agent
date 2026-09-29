@@ -14,6 +14,7 @@ import {
   DEFAULT_IMAGE_ASPECT,
   DEFAULT_IMAGE_CLARITY,
   DEFAULT_IMAGE_MODEL,
+  DEFAULT_IMAGE_QUALITY,
   GENERATE_FAILED,
   MISSING_BODY_WARNING,
   MISSING_PREVIEW_WARNING,
@@ -53,7 +54,7 @@ function defaultSpec(): GenerateSpecFields {
   return {
     model: DEFAULT_IMAGE_MODEL,
     aspectRatio: DEFAULT_IMAGE_ASPECT,
-    quality: capability?.qualityDefault ?? 'high',
+    quality: capability?.qualityDefault ?? DEFAULT_IMAGE_QUALITY,
     clarity: capability?.clarityDefault ?? DEFAULT_IMAGE_CLARITY,
     count: '1',
   };
@@ -307,7 +308,9 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
           model: currentSpec.model,
           aspectRatio: currentSpec.aspectRatio,
           quality:
-            getModelCapability(currentSpec.model)?.qualityDefault ?? currentSpec.quality ?? 'high',
+            getModelCapability(currentSpec.model)?.qualityDefault ??
+            currentSpec.quality ??
+            DEFAULT_IMAGE_QUALITY,
           clarity: resolveClarityForModel(currentSpec.model, currentSpec.clarity),
           prompt,
           ...(styleReferenceDataUrl ? { styleReferenceDataUrl } : {}),
