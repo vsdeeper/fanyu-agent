@@ -1234,7 +1234,9 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('画风锁死在【视觉参考图】');
     expect(prompt).toContain('禁止照搬参考图姿态、标题与原文案');
     expect(prompt).toContain('文案硬约束');
-    expect(prompt).toContain('主标题用正文 `#` 标题原文');
+    expect(prompt).toContain('Markdown 硬约束');
+    expect(prompt).toContain('禁止出现在画面任何可读文字中');
+    expect(prompt).toContain('主标题取正文 `#` 后的文字（不含 `#`）');
     expect(prompt).toContain('禁止复刻参考图文案与标注落点');
     expect(prompt).not.toContain('人物模特');
     expect(prompt).not.toContain('【我的要求】');
@@ -1265,7 +1267,8 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('第1个参考图=【视觉参考图】');
     expect(prompt).toContain('画风硬对齐');
     expect(prompt).toContain('文案硬约束');
-    expect(prompt).toContain('主标题用正文 `#` 标题');
+    expect(prompt).toContain('Markdown 硬约束');
+    expect(prompt).toContain('主标题取正文 `#` 后的文字（不含 `#`）');
     expect(prompt).not.toContain('人物模特');
     expect(prompt).toContain(body);
     const requirementIdx = prompt.indexOf('【我的要求】');
