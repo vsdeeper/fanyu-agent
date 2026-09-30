@@ -9,7 +9,7 @@ vi.mock('@/app/api/chat/_server/request-settings', () => ({
 import { getChatSettings } from '@/app/api/chat/_server/request-settings';
 import { arkSeedreamProvider } from './providers/ark-seedream';
 import { laozhangProvider } from './providers/laozhang';
-import { generateImageViaRouter, resolveImageModelId } from './router';
+import { generateImageViaRouter, resolveImageModelId, resolveImageQualitySetting } from './router';
 import type { ImageGenerateRequest, ImageGenerateResult } from './types';
 
 /** 造一张只含 PNG 签名的 24 字节图：够 readImageDimensions 从 IHDR 读出宽高。 */
@@ -33,8 +33,8 @@ beforeEach(() => {
     providerConfigs: [],
     chatProvider: 'deepseek',
     chatModels: { modelPro: 'x', modelLite: 'x', modelMini: 'x' },
-    generateImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-flare-vip' },
-    editImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-sunburst-vip' },
+    generateImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-flare-vip', quality: 'xhigh' },
+    editImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-sunburst-vip', quality: 'xhigh' },
   });
   generateSpy = vi.spyOn(laozhangProvider, 'generate').mockResolvedValue(generateResult);
   vi.spyOn(arkSeedreamProvider, 'generate').mockResolvedValue(generateResult);
@@ -56,6 +56,45 @@ describe('resolveImageModelId', () => {
   it('无 settings 时抛错', () => {
     vi.mocked(getChatSettings).mockReturnValue(undefined);
     expect(() => resolveImageModelId({ mode: 'generate' })).toThrow(/对话设置/);
+  });
+});
+
+describe('resolveImageQualitySetting', () => {
+  it('generate / edit 分别读取 settings 质量', () => {
+    vi.mocked(getChatSettings).mockReturnValue({
+      providerConfigs: [],
+      chatProvider: 'deepseek',
+      chatModels: { modelPro: 'x', modelLite: 'x', modelMini: 'x' },
+      generateImage: {
+        provider: 'laozhang',
+        modelId: 'gpt-image-2.5-flare-vip',
+        quality: 'max',
+      },
+      editImage: {
+        provider: 'laozhang',
+        modelId: 'gpt-image-2.5-sunburst-vip',
+        quality: 'high',
+      },
+    });
+    expect(resolveImageQualitySetting({ mode: 'generate' })).toBe('max');
+    expect(resolveImageQualitySetting({ mode: 'edit' })).toBe('high');
+  });
+
+  it('不支持 quality 的模型可返回 undefined', () => {
+    vi.mocked(getChatSettings).mockReturnValue({
+      providerConfigs: [],
+      chatProvider: 'deepseek',
+      chatModels: { modelPro: 'x', modelLite: 'x', modelMini: 'x' },
+      generateImage: { provider: 'laozhang', modelId: 'gemini-3.1-flash-image' },
+      editImage: { provider: 'laozhang', modelId: 'gemini-3.1-flash-lite-image' },
+    });
+    expect(resolveImageQualitySetting({ mode: 'generate' })).toBeUndefined();
+    expect(resolveImageQualitySetting({ mode: 'edit' })).toBeUndefined();
+  });
+
+  it('无 settings 时抛错', () => {
+    vi.mocked(getChatSettings).mockReturnValue(undefined);
+    expect(() => resolveImageQualitySetting({ mode: 'generate' })).toThrow(/对话设置/);
   });
 });
 

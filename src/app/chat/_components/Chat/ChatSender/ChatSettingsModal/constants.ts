@@ -17,6 +17,15 @@ export const GENERATE_SECTION = '生图';
 export const EDIT_SECTION = '改图';
 export const IMAGE_PROVIDER_FIELD = '供应商';
 export const IMAGE_MODEL_FIELD = '模型';
+export const IMAGE_QUALITY_FIELD = '质量';
+
+export const IMAGE_QUALITY_LABEL: Record<string, string> = {
+  low: '低质量',
+  medium: '中等质量',
+  high: '高质量',
+  xhigh: '超高质量',
+  max: '最高质量',
+};
 
 export const CAPABILITY_TAG_LABEL: Record<'chat' | 'generate' | 'edit', string> = {
   chat: '对话',

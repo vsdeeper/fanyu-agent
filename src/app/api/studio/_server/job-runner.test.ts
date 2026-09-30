@@ -29,8 +29,8 @@ const SETTINGS: StudioJobData['settings'] = {
   ],
   chatProvider: 'deepseek',
   chatModels: { modelPro: 'm', modelLite: 'm', modelMini: 'm' },
-  generateImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-flare-vip' },
-  editImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-sunburst-vip' },
+  generateImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-flare-vip', quality: 'xhigh' },
+  editImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-sunburst-vip', quality: 'xhigh' },
 };
 
 type Calls = {

@@ -20,8 +20,8 @@ describe('getDeepseekReasoningEffort', () => {
       providerConfigs: [],
       chatProvider: 'deepseek',
       chatModels: { modelPro: 'm', modelLite: 'm', modelMini: 'm' },
-      generateImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-flare-vip' },
-      editImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-sunburst-vip' },
+      generateImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-flare-vip', quality: 'xhigh' },
+      editImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-sunburst-vip', quality: 'xhigh' },
     });
     expect(getDeepseekReasoningEffort()).toBe(DEFAULT_DEEPSEEK_REASONING_EFFORT);
   });
@@ -32,8 +32,8 @@ describe('getDeepseekReasoningEffort', () => {
       chatProvider: 'deepseek',
       chatModels: { modelPro: 'm', modelLite: 'm', modelMini: 'm' },
       reasoningEffort: 'low',
-      generateImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-flare-vip' },
-      editImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-sunburst-vip' },
+      generateImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-flare-vip', quality: 'xhigh' },
+      editImage: { provider: 'laozhang', modelId: 'gpt-image-2.5-sunburst-vip', quality: 'xhigh' },
     });
     expect(getDeepseekReasoningEffort()).toBe('low');
   });

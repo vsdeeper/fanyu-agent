@@ -64,8 +64,16 @@ const SETTINGS = {
   ],
   chatProvider: 'deepseek' as const,
   chatModels: { modelPro: 'm', modelLite: 'm', modelMini: 'm' },
-  generateImage: { provider: 'laozhang' as const, modelId: 'gpt-image-2.5-flare-vip' },
-  editImage: { provider: 'laozhang' as const, modelId: 'gpt-image-2.5-sunburst-vip' },
+  generateImage: {
+    provider: 'laozhang' as const,
+    modelId: 'gpt-image-2.5-flare-vip',
+    quality: 'xhigh',
+  },
+  editImage: {
+    provider: 'laozhang' as const,
+    modelId: 'gpt-image-2.5-sunburst-vip',
+    quality: 'xhigh',
+  },
 };
 
 function createRequest(overrides: Record<string, unknown> = {}): Request {

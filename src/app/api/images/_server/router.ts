@@ -22,6 +22,21 @@ export function resolveImageModelId({ mode }: { mode: 'generate' | 'edit' }): st
   return mode === 'edit' ? settings.editImage.modelId : settings.generateImage.modelId;
 }
 
+/**
+ * 主对话生图/改图默认质量：仅本轮 chat settings；不支持 quality 的模型可能无该字段。
+ */
+export function resolveImageQualitySetting({
+  mode,
+}: {
+  mode: 'generate' | 'edit';
+}): string | undefined {
+  const settings = getChatSettings();
+  if (!settings) {
+    throw new Error('缺少对话设置，无法解析生图质量');
+  }
+  return mode === 'edit' ? settings.editImage.quality : settings.generateImage.quality;
+}
+
 export async function generateImageViaRouter(
   req: ImageGenerateRequest,
 ): Promise<ImageGenerateResult> {

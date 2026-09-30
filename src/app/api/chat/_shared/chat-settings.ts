@@ -38,20 +38,30 @@ export type DeepseekReasoningEffort = (typeof DEEPSEEK_REASONING_EFFORTS)[number
 export const ZHIPU_REASONING_EFFORTS = ['low', 'high', 'max'] as const;
 export type ZhipuReasoningEffort = (typeof ZHIPU_REASONING_EFFORTS)[number];
 
-/** 生图/改图模型按供应商（须与 images registry 同步） */
-export const IMAGE_MODELS_BY_PROVIDER: Record<'ark' | 'laozhang', { id: string; label: string }[]> =
-  {
-    laozhang: [
-      { id: 'gpt-image-2.5-flare-vip', label: 'GPT Image 2.5 Flare VIP' },
-      { id: 'gpt-image-2.5-sunburst-vip', label: 'GPT Image 2.5 Sunburst VIP' },
-      { id: 'gemini-3.1-flash-image', label: 'Gemini Flash Image' },
-      { id: 'gemini-3.1-flash-lite-image', label: 'Gemini Flash Lite Image' },
-    ],
-    ark: [
-      { id: 'doubao-seedream-4-5-251128', label: 'Seedream 4.5' },
-      { id: 'doubao-seedream-5-0-lite-260128', label: 'Seedream 5.0 Lite' },
-    ],
-  };
+/** 生图/改图模型按供应商（须与 images registry / image-spec 同步） */
+export type ImageModelOption = {
+  id: string;
+  label: string;
+  /** 是否支持上游 quality 档位（目前仅 GPT Image 2.5） */
+  supportsQuality?: boolean;
+};
+
+export const IMAGE_MODELS_BY_PROVIDER: Record<'ark' | 'laozhang', ImageModelOption[]> = {
+  laozhang: [
+    { id: 'gpt-image-2.5-flare-vip', label: 'GPT Image 2.5 Flare VIP', supportsQuality: true },
+    {
+      id: 'gpt-image-2.5-sunburst-vip',
+      label: 'GPT Image 2.5 Sunburst VIP',
+      supportsQuality: true,
+    },
+    { id: 'gemini-3.1-flash-image', label: 'Gemini Flash Image' },
+    { id: 'gemini-3.1-flash-lite-image', label: 'Gemini Flash Lite Image' },
+  ],
+  ark: [
+    { id: 'doubao-seedream-4-5-251128', label: 'Seedream 4.5' },
+    { id: 'doubao-seedream-5-0-lite-260128', label: 'Seedream 5.0 Lite' },
+  ],
+};
 
 export type ProviderCredential = {
   provider: ProviderKind;
@@ -65,9 +75,17 @@ export type ChatModelsConfig = {
   modelMini: string;
 };
 
+/** 生图/改图质量档位（与 images IMAGE_QUALITY_VALUES 对齐；仅 supportsQuality 模型使用） */
+export const IMAGE_QUALITY_VALUES = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+export type ImageQualityValue = (typeof IMAGE_QUALITY_VALUES)[number];
+/** 支持 quality 的模型缺省档；旧本地设置无该字段时回填 */
+export const DEFAULT_IMAGE_QUALITY: ImageQualityValue = 'xhigh';
+
 export type ImageCapabilityConfig = {
   provider: 'laozhang' | 'ark';
   modelId: string;
+  /** 仅 supportsQuality 的模型有值；不支持时省略 */
+  quality?: ImageQualityValue;
 };
 
 export type ChatSettingsPayload = {
@@ -78,6 +96,15 @@ export type ChatSettingsPayload = {
   generateImage: ImageCapabilityConfig;
   editImage: ImageCapabilityConfig;
 };
+
+/** 该生图/改图模型是否支持 quality 档位 */
+export function imageModelSupportsQuality(modelId: string): boolean {
+  for (const list of Object.values(IMAGE_MODELS_BY_PROVIDER)) {
+    const hit = list.find((item) => item.id === modelId);
+    if (hit) return Boolean(hit.supportsQuality);
+  }
+  return false;
+}
 
 export function providerHasCapability(kind: ProviderKind, capability: ProviderCapability): boolean {
   return PROVIDER_CAPABILITIES[kind].includes(capability);
@@ -244,5 +271,19 @@ function parseImageCapability(
   if (!allowed) {
     return { ok: false, message: `${label}模型与供应商不匹配` };
   }
-  return { ok: true, value: { provider: record.provider, modelId } };
+  // 不支持 quality 的模型：忽略传入值，不写入 settings
+  if (!imageModelSupportsQuality(modelId)) {
+    return { ok: true, value: { provider: record.provider, modelId } };
+  }
+  let quality: ImageQualityValue = DEFAULT_IMAGE_QUALITY;
+  if (record.quality != null && record.quality !== '') {
+    if (
+      typeof record.quality !== 'string' ||
+      !(IMAGE_QUALITY_VALUES as readonly string[]).includes(record.quality)
+    ) {
+      return { ok: false, message: `${label}质量档位无效` };
+    }
+    quality = record.quality as ImageQualityValue;
+  }
+  return { ok: true, value: { provider: record.provider, modelId, quality } };
 }

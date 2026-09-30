@@ -7,7 +7,11 @@ import {
   isImageAbortError,
   isImageSafetyRejectedError,
 } from '@/app/api/images/_server/image-utils';
-import { generateImageViaRouter, resolveImageModelId } from '@/app/api/images/_server/router';
+import {
+  generateImageViaRouter,
+  resolveImageModelId,
+  resolveImageQualitySetting,
+} from '@/app/api/images/_server/router';
 import {
   describeImageQuality,
   describeImageSize,
@@ -147,7 +151,7 @@ function getSizeFieldDescribe(): string {
 /** quality 参数描述：按全局生图模型质量规格说明；仅支持 quality 的模型生效 */
 function getQualityFieldDescribe(): string {
   const configured = resolveImageModelId({ mode: 'generate' });
-  return `${describeImageQuality(getImageSpec(configured))}；不支持 quality 的模型请在 prompt 用文字表达画质要求`;
+  return `${describeImageQuality(getImageSpec(configured))}；不传时用对话设置中的生图/改图质量；不支持 quality 的模型请在 prompt 用文字表达画质要求`;
 }
 
 const PASTE_IMAGE_EDIT_HINT =
@@ -263,8 +267,11 @@ function createGenerateImageTool(
         if (size && resolvedSize !== size.trim()) {
           console.warn(`[generate_image] size 已按模型规格回退: "${size}" -> "${resolvedSize}"`);
         }
-        // 质量档位：仅支持 quality 的模型（gpt-image）透传；不支持时 resolveImageQuality 返回 undefined，请求不带该字段
-        const resolvedQuality = resolveImageQuality(quality, spec);
+        // 质量档位：工具入参优先，否则用对话设置生图/改图默认；仅支持 quality 的模型透传
+        const resolvedQuality = resolveImageQuality(
+          quality ?? resolveImageQualitySetting({ mode }),
+          spec,
+        );
 
         // 大小写不敏感归一 'auto' -> undefined，避免把 'Auto' 当比例串传上游
         const normalizedAspectRatio =

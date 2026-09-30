@@ -17,11 +17,14 @@ import {
 
 import {
   DEEPSEEK_REASONING_EFFORTS,
+  DEFAULT_IMAGE_QUALITY,
   IMAGE_MODELS_BY_PROVIDER,
+  IMAGE_QUALITY_VALUES,
   PROVIDER_CAPABILITIES,
   PROVIDER_KINDS,
   PROVIDER_LABELS,
   ZHIPU_REASONING_EFFORTS,
+  imageModelSupportsQuality,
   type ChatProviderId,
   type ChatSettingsPayload,
   type ProviderKind,
@@ -41,6 +44,8 @@ import {
   GENERATE_SECTION,
   IMAGE_MODEL_FIELD,
   IMAGE_PROVIDER_FIELD,
+  IMAGE_QUALITY_FIELD,
+  IMAGE_QUALITY_LABEL,
   MODEL_LITE_FIELD,
   MODEL_MINI_FIELD,
   MODEL_PRO_FIELD,
@@ -62,6 +67,11 @@ type ChatSettingsModalProps = {
 
 type FormValues = ChatSettingsPayload;
 
+const IMAGE_QUALITY_OPTIONS = IMAGE_QUALITY_VALUES.map((value) => ({
+  value,
+  label: IMAGE_QUALITY_LABEL[value] ?? value,
+}));
+
 /** 无本地设置时的空表骨架（用户手动配置） */
 const EMPTY_SETTINGS_FORM: FormValues = {
   providerConfigs: [],
@@ -70,10 +80,12 @@ const EMPTY_SETTINGS_FORM: FormValues = {
   generateImage: {
     provider: 'laozhang',
     modelId: IMAGE_MODELS_BY_PROVIDER.laozhang[0].id,
+    quality: DEFAULT_IMAGE_QUALITY,
   },
   editImage: {
     provider: 'laozhang',
     modelId: IMAGE_MODELS_BY_PROVIDER.laozhang[0].id,
+    quality: DEFAULT_IMAGE_QUALITY,
   },
 };
 
@@ -106,12 +118,19 @@ export default function ChatSettingsModal({
   const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
 
-  const providerConfigs = Form.useWatch('providerConfigs', form) ?? [];
+  const providerConfigs =
+    Form.useWatch('providerConfigs', form) ?? EMPTY_SETTINGS_FORM.providerConfigs;
   const chatProvider = Form.useWatch('chatProvider', form) as ChatProviderId | undefined;
   const generateProvider = Form.useWatch(['generateImage', 'provider'], form) as
     'laozhang' | 'ark' | undefined;
   const editProvider = Form.useWatch(['editImage', 'provider'], form) as
     'laozhang' | 'ark' | undefined;
+  const generateModelId = Form.useWatch(['generateImage', 'modelId'], form) as string | undefined;
+  const editModelId = Form.useWatch(['editImage', 'modelId'], form) as string | undefined;
+  const generateSupportsQuality = Boolean(
+    generateModelId && imageModelSupportsQuality(generateModelId),
+  );
+  const editSupportsQuality = Boolean(editModelId && imageModelSupportsQuality(editModelId));
 
   const chatOptions = useMemo(
     () =>
@@ -160,6 +179,29 @@ export default function ChatSettingsModal({
     if (!open) return;
     form.setFieldsValue(settings ?? EMPTY_SETTINGS_FORM);
   }, [open, settings, form]);
+
+  // 模型不支持 quality 时清掉表单字段；支持且为空时回填默认档
+  useEffect(() => {
+    if (!open || !generateModelId) return;
+    if (imageModelSupportsQuality(generateModelId)) {
+      if (!form.getFieldValue(['generateImage', 'quality'])) {
+        form.setFieldValue(['generateImage', 'quality'], DEFAULT_IMAGE_QUALITY);
+      }
+    } else {
+      form.setFieldValue(['generateImage', 'quality'], undefined);
+    }
+  }, [open, generateModelId, form]);
+
+  useEffect(() => {
+    if (!open || !editModelId) return;
+    if (imageModelSupportsQuality(editModelId)) {
+      if (!form.getFieldValue(['editImage', 'quality'])) {
+        form.setFieldValue(['editImage', 'quality'], DEFAULT_IMAGE_QUALITY);
+      }
+    } else {
+      form.setFieldValue(['editImage', 'quality'], undefined);
+    }
+  }, [open, editModelId, form]);
 
   // 上方列表变化时纠正非法的能力选中值
   useEffect(() => {
@@ -388,6 +430,16 @@ export default function ChatSettingsModal({
         >
           <Select options={generateModelOptions} />
         </Form.Item>
+        {generateSupportsQuality ? (
+          <Form.Item
+            name={['generateImage', 'quality']}
+            label={IMAGE_QUALITY_FIELD}
+            rules={[{ required: true, message: '请选择生图质量' }]}
+            preserve={false}
+          >
+            <Select options={IMAGE_QUALITY_OPTIONS} />
+          </Form.Item>
+        ) : null}
 
         <Divider titlePlacement="start">{EDIT_SECTION}</Divider>
         <Form.Item
@@ -409,6 +461,16 @@ export default function ChatSettingsModal({
         >
           <Select options={editModelOptions} />
         </Form.Item>
+        {editSupportsQuality ? (
+          <Form.Item
+            name={['editImage', 'quality']}
+            label={IMAGE_QUALITY_FIELD}
+            rules={[{ required: true, message: '请选择改图质量' }]}
+            preserve={false}
+          >
+            <Select options={IMAGE_QUALITY_OPTIONS} />
+          </Form.Item>
+        ) : null}
       </Form>
     </Modal>
   );
