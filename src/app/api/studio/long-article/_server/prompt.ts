@@ -212,7 +212,7 @@ export function buildPolishPrompt(body: LongArticlePolishRequest): string {
     '【原文 Markdown】',
     body.markdown.trim(),
     '',
-    '请输出润色后的完整 Markdown（只改通顺，不改正义；保留标题、小节、参考来源节与配图标注）。',
+    '请输出润色后的完整 Markdown（改通顺与不当搭配，不改正义；搭配硬凑的伪诗意短句必须改掉；保留标题、小节、参考来源节与配图标注）。',
   ].join('\n');
 }
 
