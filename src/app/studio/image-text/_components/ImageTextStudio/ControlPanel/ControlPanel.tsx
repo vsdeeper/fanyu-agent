@@ -3,9 +3,11 @@ import { Button, Form, Input, Tooltip } from 'antd';
 import type { FormInstance } from 'antd';
 import {
   IMAGE_TEXT_MAX_CONTENT_LENGTH,
+  IMAGE_TEXT_MAX_DOCUMENTS,
   IMAGE_TEXT_MAX_MATERIALS,
 } from '@/app/api/studio/image-text/_shared/constants';
 import GenerateSpecFields from '@/app/studio/_components/GenerateSpecFields';
+import ProductDocsUpload from '@/app/studio/_components/ProductDocsUpload';
 import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import {
   CHARACTER_REQUIREMENT_HINT,
@@ -14,6 +16,11 @@ import {
   CHARACTER_REQUIREMENT_PLACEHOLDER,
   CONTENT_LABEL,
   CONTENT_PLACEHOLDER,
+  DOCUMENTS_HINT,
+  DOCUMENTS_LABEL,
+  DOCUMENTS_SUBTITLE,
+  DOCUMENTS_ACCEPT,
+  DOCUMENTS_TYPE_WARNING,
   GENERATE_BUTTON,
   MATERIALS_HINT,
   MATERIALS_LABEL,
@@ -35,14 +42,25 @@ type ControlPanelProps = {
   onGenerate: () => void;
 };
 
-/** 校验素材与内容至少其一。 */
+/** 校验素材图、素材文件与内容至少其一。 */
 async function requireMaterialsOrContent(
   materials: ImageTextPanelValues['materials'] | undefined,
+  documents: ImageTextPanelValues['documents'] | undefined,
   content: string | undefined,
 ) {
   const hasMaterials = Boolean(materials?.length);
+  const hasDocuments = Boolean(documents?.length);
   const hasContent = Boolean(String(content ?? '').trim());
-  if (!hasMaterials && !hasContent) throw new Error(MISSING_INPUT_WARNING);
+  if (!hasMaterials && !hasDocuments && !hasContent) throw new Error(MISSING_INPUT_WARNING);
+}
+
+/** 图文素材文件允许 TXT / MD / PDF。 */
+function isAllowedImageTextDocFile(file: Pick<File, 'name' | 'type'>): boolean {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.pdf')) return true;
+  return (
+    file.type === 'text/plain' || file.type === 'text/markdown' || file.type === 'application/pdf'
+  );
 }
 
 /** 图文左栏：内容步收集素材与内容；生成步收集参考图与出图规格。 */
@@ -113,11 +131,15 @@ export default function ControlPanel({
               <Form.Item
                 name="materials"
                 preserve
-                dependencies={['content']}
+                dependencies={['content', 'documents']}
                 rules={[
                   {
                     validator: async (_, value: ImageTextPanelValues['materials'] | undefined) => {
-                      await requireMaterialsOrContent(value, form.getFieldValue('content'));
+                      await requireMaterialsOrContent(
+                        value,
+                        form.getFieldValue('documents'),
+                        form.getFieldValue('content'),
+                      );
                     },
                   },
                 ]}
@@ -127,7 +149,35 @@ export default function ControlPanel({
                   label={MATERIALS_LABEL}
                   subtitle=""
                   hint={MATERIALS_HINT}
-                  ariaLabel="上传素材"
+                  ariaLabel="上传素材图"
+                  disabled={planning}
+                />
+              </Form.Item>
+              <Form.Item
+                name="documents"
+                preserve
+                dependencies={['materials', 'content']}
+                rules={[
+                  {
+                    validator: async (_, value: ImageTextPanelValues['documents'] | undefined) => {
+                      await requireMaterialsOrContent(
+                        form.getFieldValue('materials'),
+                        value,
+                        form.getFieldValue('content'),
+                      );
+                    },
+                  },
+                ]}
+              >
+                <ProductDocsUpload
+                  max={IMAGE_TEXT_MAX_DOCUMENTS}
+                  label={DOCUMENTS_LABEL}
+                  subtitle={DOCUMENTS_SUBTITLE}
+                  hint={DOCUMENTS_HINT}
+                  accept={DOCUMENTS_ACCEPT}
+                  typeWarning={DOCUMENTS_TYPE_WARNING}
+                  isAllowedFile={isAllowedImageTextDocFile}
+                  ariaLabel="上传素材文件"
                   disabled={planning}
                 />
               </Form.Item>
@@ -135,11 +185,15 @@ export default function ControlPanel({
                 name="content"
                 label={CONTENT_LABEL}
                 preserve
-                dependencies={['materials']}
+                dependencies={['materials', 'documents']}
                 rules={[
                   {
                     validator: async (_, value: string | undefined) => {
-                      await requireMaterialsOrContent(form.getFieldValue('materials'), value);
+                      await requireMaterialsOrContent(
+                        form.getFieldValue('materials'),
+                        form.getFieldValue('documents'),
+                        value,
+                      );
                     },
                   },
                 ]}

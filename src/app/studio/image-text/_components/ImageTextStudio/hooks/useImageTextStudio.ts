@@ -7,6 +7,7 @@ import { validateForm } from '@/app/studio/_utils/form-validate';
 import { getModelCapability, resolveClarityForModel } from '@/app/studio/_utils/model-options';
 import { readUploadItemAsDataUrl } from '@/app/studio/_utils/upload-items';
 import { revokeReplacedLocalUploadItemUrls } from '@/lib/client/upload-items';
+import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
 import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 import {
   DEFAULT_GENERATE_CARD_ID,
@@ -42,11 +43,13 @@ import {
   readPlanSnapshot,
   resolveInitialPhase,
   saveImageTextStep,
+  serializePlanDocuments,
   stripCaptionFromBody,
   titleFromBody,
   toImageItems,
   toMaterialItems,
   toPersistableImageUrl,
+  toPlanDocuments,
 } from '../utils';
 import { withChatSettingsBody } from '@/app/studio/_utils/chat-settings';
 
@@ -87,6 +90,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
     const model = initialGenerate?.model ?? base.model;
     return {
       materials: toMaterialItems(initialPlan?.materialUrls ?? []),
+      documents: initialPlan?.documents ?? [],
       content: initialPlan?.content ?? '',
       styleReferenceImages: toImageItems(initialGenerate?.styleReferenceUrl),
       characterRequirement: initialGenerate?.characterRequirement ?? '',
@@ -136,10 +140,17 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
     panelForm.setFieldValue('materials', next);
   }
 
+  function applyDocuments(next: ProductDocUploadItem[]) {
+    const previous = (panelForm.getFieldValue('documents') ?? []) as ProductDocUploadItem[];
+    revokeReplacedLocalUploadItemUrls(previous, next);
+    panelForm.setFieldValue('documents', next);
+  }
+
   /** 落盘内容快照，并把素材换成任务资产地址。 */
   async function persistPlan(view: ImageTextView) {
     const values = panelForm.getFieldsValue(true) as ImageTextPanelValues;
     const materials = values.materials ?? [];
+    const documents = values.documents ?? [];
     const materialUrls = await Promise.all(
       materials.map((item) =>
         item.file ? readUploadItemAsDataUrl(item) : Promise.resolve(item.previewUrl),
@@ -148,6 +159,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
     const saved = await saveImageTextStep<ImageTextPlanSnapshot>(task.id, 'plan', {
       content: values.content?.trim() ?? '',
       materialUrls,
+      documents: await serializePlanDocuments(documents),
       body: bodyRef.current,
       caption: captionRef.current,
       cards: [],
@@ -155,6 +167,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
       ...(streamTextRef.current ? { streamText: streamTextRef.current } : {}),
     });
     applyMaterialUrls(saved.materialUrls);
+    applyDocuments(saved.documents);
   }
 
   /** 落盘生成快照：规格、参考图与出图资产 URL。 */
@@ -191,6 +204,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
   async function handlePlan() {
     if (!(await validateForm(panelForm))) return;
     const materials = (panelForm.getFieldValue('materials') ?? []) as StudioImageUploadItem[];
+    const documents = (panelForm.getFieldValue('documents') ?? []) as ProductDocUploadItem[];
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -205,6 +219,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
       const materialDataUrls = await Promise.all(
         materials.map((item) => readUploadItemAsDataUrl(item)),
       );
+      const planDocuments = documents.length > 0 ? await toPlanDocuments(documents) : [];
       const content = String(panelForm.getFieldValue('content') ?? '').trim();
       const res = await fetch('/api/studio/image-text/plan', {
         method: 'POST',
@@ -213,6 +228,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
         body: JSON.stringify(
           withChatSettingsBody({
             materialDataUrls,
+            ...(planDocuments.length > 0 ? { documents: planDocuments } : {}),
             ...(content ? { content } : {}),
           }),
         ),

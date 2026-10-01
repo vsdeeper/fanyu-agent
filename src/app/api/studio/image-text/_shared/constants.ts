@@ -8,6 +8,9 @@ export const IMAGE_TEXT_SSE_EVENT = {
 /** 内容请求最多接收的素材图张数，与上传组件上限一致。 */
 export const IMAGE_TEXT_MAX_MATERIALS = 6;
 
+/** 内容请求最多接收的文本素材份数，与上传组件上限一致。 */
+export const IMAGE_TEXT_MAX_DOCUMENTS = 6;
+
 /** 左侧「内容」字段字数上限。 */
 export const IMAGE_TEXT_MAX_CONTENT_LENGTH = 8000;
 

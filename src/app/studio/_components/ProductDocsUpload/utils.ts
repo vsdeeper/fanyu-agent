@@ -19,12 +19,13 @@ export function isAllowedProductDoc(file: Pick<File, 'name' | 'type'>): boolean 
   return file.type === 'text/plain' || file.type === 'text/markdown';
 }
 
-/** 本地 txt/md 的 MIME；浏览器未给出 type 时按扩展名兜底。 */
+/** 本地 txt/md/pdf 的 MIME；浏览器未给出 type 时按扩展名兜底。 */
 export function toDocMediaType(file: File): string {
   if (file.type) return file.type;
   const name = file.name.toLowerCase();
   if (name.endsWith('.txt')) return 'text/plain';
   if (name.endsWith('.md')) return 'text/markdown';
+  if (name.endsWith('.pdf')) return 'application/pdf';
   return 'application/octet-stream';
 }
 
@@ -45,6 +46,7 @@ export function toDocIcon(fileName: string): ReactNode {
   const ext = toDocExt(fileName);
   if (ext === 'md') return createElement(DOC_ICON_BY_EXT.md);
   if (ext === 'txt') return createElement(DOC_ICON_BY_EXT.txt);
+  if (ext === 'pdf') return createElement(DOC_ICON_BY_EXT.pdf);
   return createElement(DOC_ICON_BY_EXT.default);
 }
 

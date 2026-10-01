@@ -38,6 +38,12 @@ type ProductDocsUploadProps = {
   subtitle?: string;
   hint?: string;
   ariaLabel?: string;
+  /** 覆盖默认 `.txt,.md`；图文等场景可追加 `.pdf` */
+  accept?: string;
+  /** 覆盖默认类型提示；须与 accept / isAllowedFile 对齐 */
+  typeWarning?: string;
+  /** 覆盖默认 txt/md 判定；传入时完全以回调为准 */
+  isAllowedFile?: (file: Pick<File, 'name' | 'type'>) => boolean;
   /** 必填红星；label 在组件内部，Form.Item 的 requiredMark 插不进来，故由调用方传入并与 rules 保持一致 */
   required?: boolean;
   /**
@@ -49,7 +55,7 @@ type ProductDocsUploadProps = {
 };
 
 /**
- * 产品资料 / 商业分析本地上传（TXT / MD）：空态为虚线投放区，有文件后为卡片列表。
+ * 产品资料 / 商业分析本地上传（默认 TXT / MD）：空态为虚线投放区，有文件后为卡片列表。
  */
 export default function ProductDocsUpload({
   value,
@@ -60,6 +66,9 @@ export default function ProductDocsUpload({
   subtitle = PRODUCT_DOC_SUBTITLE,
   hint = PRODUCT_DOC_HINT,
   ariaLabel,
+  accept = PRODUCT_DOC_ACCEPT,
+  typeWarning = DOC_TYPE_WARNING,
+  isAllowedFile = isAllowedProductDoc,
   required = false,
   id,
   'aria-describedby': ariaDescribedBy,
@@ -80,8 +89,8 @@ export default function ProductDocsUpload({
   const handleFiles = (files: File[]) => {
     const accepted: File[] = [];
     for (const file of files) {
-      if (!isAllowedProductDoc(file)) {
-        message.warning(DOC_TYPE_WARNING);
+      if (!isAllowedFile(file)) {
+        message.warning(typeWarning);
         continue;
       }
       if (file.size > MAX_PRODUCT_DOC_BYTES) {
@@ -122,7 +131,7 @@ export default function ProductDocsUpload({
       {empty ? (
         <Upload
           className={styles.emptyUpload}
-          accept={PRODUCT_DOC_ACCEPT}
+          accept={accept}
           multiple={multiple}
           disabled={disabled}
           showUploadList={false}
@@ -173,7 +182,7 @@ export default function ProductDocsUpload({
           })}
           {remaining > 0 ? (
             <Upload
-              accept={PRODUCT_DOC_ACCEPT}
+              accept={accept}
               multiple={multiple}
               disabled={disabled}
               showUploadList={false}

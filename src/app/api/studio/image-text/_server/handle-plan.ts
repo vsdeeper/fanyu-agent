@@ -28,11 +28,12 @@ import {
 import { PLAN_INSTRUCTIONS } from './instructions';
 import { parsePlanBody } from './parse-request';
 import { buildPlanPrompt } from './prompt';
+import { resolveImageTextDocuments } from './resolve-documents';
 
 type SseSend = (event: string, data: unknown) => Promise<void>;
 
 /**
- * POST /api/studio/image-text/plan：根据素材图和/或内容流式整理图文卡片正文。
+ * POST /api/studio/image-text/plan：根据素材图、素材文件和/或内容流式整理图文卡片正文。
  */
 export async function handleImageTextPlan(req: Request): Promise<Response> {
   let json: unknown;
@@ -57,6 +58,21 @@ export async function handleImageTextPlan(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
   }
   const materialParts = fileParts.flatMap((part) => (part ? [part] : []));
+  const { documentsText, pdfParts, invalidPdfs } = await resolveImageTextDocuments(body.documents);
+  if (invalidPdfs) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
+  }
+
+  // 传了素材文件却全部解不出正文/PDF，且又没有图/内容时，不能当成有效输入
+  if (
+    materialParts.length === 0 &&
+    !documentsText &&
+    pdfParts.length === 0 &&
+    !body.content?.trim() &&
+    (body.documents?.length ?? 0) > 0
+  ) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_FORM, 400);
+  }
 
   return createPushStreamResponse(
     SSE_STREAM_HEADERS,
@@ -78,7 +94,13 @@ export async function handleImageTextPlan(req: Request): Promise<Response> {
               {
                 role: 'user',
                 content: [
-                  { type: 'text', text: buildPlanPrompt(body) },
+                  {
+                    type: 'text',
+                    text: buildPlanPrompt(body, {
+                      documentsText,
+                      pdfCount: pdfParts.length,
+                    }),
+                  },
                   ...(materialParts.length
                     ? [
                         {
@@ -86,6 +108,15 @@ export async function handleImageTextPlan(req: Request): Promise<Response> {
                           text: '以下附件是【素材图】，提供主题、主体与画风参考，不要照搬其版面：',
                         },
                         ...materialParts,
+                      ]
+                    : []),
+                  ...(pdfParts.length
+                    ? [
+                        {
+                          type: 'text' as const,
+                          text: '以下附件是【PDF 素材】，请直接阅读文件正文：',
+                        },
+                        ...pdfParts,
                       ]
                     : []),
                 ],

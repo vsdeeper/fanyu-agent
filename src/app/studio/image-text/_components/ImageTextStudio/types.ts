@@ -1,4 +1,5 @@
 import type { GenerateSpecFields } from '@/app/studio/_utils/model-options';
+import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
 import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 
 /** 工作台步骤。生成内容中单独标出，生图进行中仍停在生成步。 */
@@ -32,6 +33,8 @@ export type ImageTextPlanSnapshot = {
   /** 用户填写的输入内容；旧任务可能落在 requirement。 */
   content: string;
   materialUrls: string[];
+  /** TXT / MD / PDF 等素材文件；旧任务可能无此键。 */
+  documents: ProductDocUploadItem[];
   /** 模型整理后的图文卡片正文（Markdown）。 */
   body: string;
   /**
@@ -60,6 +63,7 @@ export type ImageTextGenerateSnapshot = {
 
 export type ImageTextPanelValues = {
   materials: StudioImageUploadItem[];
+  documents: ProductDocUploadItem[];
   content: string;
   styleReferenceImages: StudioImageUploadItem[];
   /** 可选：生成步画面补充要求。 */

@@ -4,9 +4,15 @@ import type {
   ImageTextStepKey,
   ImageTextTaskStepRecord,
 } from '@/app/api/studio/image-text/_shared/task-types';
+import type { BusinessAnalysisDocumentInput } from '@/app/api/studio/business-analysis/_shared/types';
+import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
 import type { StudioImageUploadItem } from '@/app/studio/_components/StudioImageUpload';
 import { apiPut } from '@/lib/client/api-client';
-import { readFileAsDataUrl } from '@/app/studio/_utils/upload-items';
+import {
+  readFileAsDataUrl,
+  readUploadItemAsDataUrl,
+  serializeUploadItem,
+} from '@/app/studio/_utils/upload-items';
 import { DEFAULT_IMAGE_ASPECT, DEFAULT_IMAGE_CLARITY, DEFAULT_IMAGE_MODEL } from './constants';
 import type {
   ImageTextCard,
@@ -184,6 +190,49 @@ function isView(value: unknown): value is ImageTextView {
   return value === 'plan' || value === 'generate' || value === 'preview';
 }
 
+/** 从快照还原文本素材上传项；旧任务无此键时返回空数组。 */
+function readDocumentItems(value: unknown): ProductDocUploadItem[] {
+  if (!Array.isArray(value)) return [];
+  const items: ProductDocUploadItem[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const uid = asString(row.uid);
+    const previewUrl = asString(row.previewUrl);
+    if (!uid || !previewUrl) continue;
+    items.push({
+      uid,
+      previewUrl,
+      ...(asString(row.name) ? { name: asString(row.name) } : {}),
+      ...(asString(row.mimeType) ? { mimeType: asString(row.mimeType) } : {}),
+      ...(typeof row.size === 'number' ? { size: row.size } : {}),
+    });
+  }
+  return items;
+}
+
+/** 本地文本素材转 plan 接口 documents 字段。 */
+export async function toPlanDocuments(
+  documents: ProductDocUploadItem[],
+): Promise<BusinessAnalysisDocumentInput[]> {
+  return Promise.all(
+    documents.map(async (item) => ({
+      filename: item.name ?? 'material-doc',
+      mediaType: item.mimeType || 'text/plain',
+      dataUrl: await readUploadItemAsDataUrl(item),
+    })),
+  );
+}
+
+/** 序列化文本素材供步骤快照落盘。 */
+export async function serializePlanDocuments(
+  documents: ProductDocUploadItem[],
+): Promise<ProductDocUploadItem[]> {
+  return (await Promise.all(
+    documents.map((item) => serializeUploadItem(item)),
+  )) as ProductDocUploadItem[];
+}
+
 /** 读取内容步骤快照；结构不对时返回 undefined。 */
 export function readPlanSnapshot(data: unknown): ImageTextPlanSnapshot | undefined {
   if (!data || typeof data !== 'object') return undefined;
@@ -193,6 +242,7 @@ export function readPlanSnapshot(data: unknown): ImageTextPlanSnapshot | undefin
         (item): item is string => typeof item === 'string' && Boolean(item),
       )
     : [];
+  const documents = readDocumentItems(record.documents);
   const cards = readLegacyCards(record);
   const storedBody = asString(record.body);
   const streamText = asString(record.streamText);
@@ -206,6 +256,7 @@ export function readPlanSnapshot(data: unknown): ImageTextPlanSnapshot | undefin
   return {
     content: asString(record.content) ?? asString(record.requirement) ?? '',
     materialUrls,
+    documents,
     body,
     caption,
     cards,

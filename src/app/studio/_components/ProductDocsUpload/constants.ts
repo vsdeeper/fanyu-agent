@@ -1,4 +1,9 @@
-import { FileMarkdownOutlined, FileOutlined, FileTextOutlined } from '@ant-design/icons';
+import {
+  FileMarkdownOutlined,
+  FileOutlined,
+  FilePdfOutlined,
+  FileTextOutlined,
+} from '@ant-design/icons';
 
 export const MAX_PRODUCT_DOCS = 6;
 export const MAX_PRODUCT_DOC_BYTES = 10 * 1024 * 1024;
@@ -14,5 +19,6 @@ export const PRODUCT_DOC_EXT_SET = new Set(['txt', 'md']);
 export const DOC_ICON_BY_EXT = {
   md: FileMarkdownOutlined,
   txt: FileTextOutlined,
+  pdf: FilePdfOutlined,
   default: FileOutlined,
 } as const;

@@ -19,6 +19,7 @@ describe('toDocMediaType', () => {
   it('浏览器未给出 MIME 时按扩展名兜底', () => {
     expect(toDocMediaType(new File(['a'], 'a.txt'))).toBe('text/plain');
     expect(toDocMediaType(new File(['a'], 'a.md'))).toBe('text/markdown');
+    expect(toDocMediaType(new File(['a'], 'a.pdf'))).toBe('application/pdf');
     expect(toDocMediaType(new File(['a'], 'a.bin'))).toBe('application/octet-stream');
   });
 });

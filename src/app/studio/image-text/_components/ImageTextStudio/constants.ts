@@ -26,8 +26,14 @@ export const CANCEL_GENERATE_CONFIRM_DESCRIPTION = '已生成的图片会保留�
 export const CANCEL_GENERATE_CONFIRM_OK = '取消生成';
 export const CANCEL_GENERATE_CONFIRM_BACK = '继续生成';
 
-export const MATERIALS_LABEL = '素材';
-export const MATERIALS_HINT = '上传参考图以提炼主题与要点；也可只填内容';
+export const MATERIALS_LABEL = '素材图';
+export const MATERIALS_HINT = '上传参考图以提炼主题与要点；也可上传素材文件或只填内容';
+export const DOCUMENTS_LABEL = '素材文件';
+export const DOCUMENTS_SUBTITLE = '支持 TXT / MD / PDF';
+export const DOCUMENTS_HINT =
+  '上传说明、大纲、Markdown 或 PDF；TXT/MD 注入正文，PDF 由模型直接阅读';
+export const DOCUMENTS_ACCEPT = '.txt,.md,.pdf';
+export const DOCUMENTS_TYPE_WARNING = '仅支持 TXT、MD、PDF';
 export const CONTENT_LABEL = '内容';
 export const CONTENT_PLACEHOLDER = '粘贴或填写主题、大纲、要点等，将整理成图文卡片';
 export const VISUAL_REFERENCE_LABEL = '视觉参考';
@@ -43,7 +49,7 @@ export const PREVIEW_MARK = '预览';
 export const RESULT_PLAN_TITLE = '图文内容';
 export const RESULT_GENERATE_TITLE = '图文生成';
 
-export const MISSING_INPUT_WARNING = '请上传素材或填写内容';
+export const MISSING_INPUT_WARNING = '请上传素材图、素材文件或填写内容';
 export const MISSING_BODY_WARNING = '请先生成图文内容';
 export const MISSING_PREVIEW_WARNING = '请先勾选要进入预览的图片';
 export const PLAN_FAILED = '图文内容生成失败，请稍后重试';
@@ -51,7 +57,8 @@ export const PLAN_PARSE_FAILED = '生成结果为空，请重试';
 export const GENERATE_FAILED = '图片生成失败，请稍后重试';
 export const PERSIST_FAILED = '已更新，但保存失败，刷新后可能丢失';
 
-export const EMPTY_PLAN_HINT = '上传素材或填写内容后点击「生成内容」，将整理成图文卡片正文';
+export const EMPTY_PLAN_HINT =
+  '上传素材图、素材文件或填写内容后点击「生成内容」，将整理成图文卡片正文';
 export const EMPTY_GALLERY_HINT = '生成后，图片会按比例出现在这里';
 export const EMPTY_PREVIEW_HINT = '还没有勾选预览图片';
 export const DEFAULT_GENERATE_CARD_ID = 'image-text';
