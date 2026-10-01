@@ -16,6 +16,9 @@ import {
   EMPTY_IMAGES_HINT,
   EMPTY_PLAN_HINT,
   EMPTY_RESEARCH_HINT,
+  EXPORT_BUTTON,
+  EXPORT_FILE_NAME,
+  EXPORT_MEDIA_TYPE,
   NEXT_BUTTON,
   PLAN_GENERATING_HINT,
   POLISH_BUTTON,
@@ -41,6 +44,7 @@ import type {
 import {
   cleanResearchBrief,
   countTextChars,
+  downloadMarkdownFile,
   draftReferencesListMarkdown,
   splitDraftBodyAndReferences,
   stripTrailingJsonFenceForDisplay,
@@ -237,6 +241,11 @@ export default function ResultPanel({
     setEditing(false);
   }
 
+  function handleExport() {
+    if (!markdown.trim()) return;
+    downloadMarkdownFile(markdown, EXPORT_FILE_NAME, EXPORT_MEDIA_TYPE);
+  }
+
   function handleMarkerClick(label: string) {
     const slot = imageSlots.find((item) => item.label === label);
     onOpenSlotDrawer(slot?.id);
@@ -259,9 +268,14 @@ export default function ResultPanel({
                 </Button>
               </>
             ) : canEditDraft ? (
-              <Button size="small" onClick={startEdit}>
-                {EDIT_BUTTON}
-              </Button>
+              <>
+                <Button size="small" onClick={handleExport}>
+                  {EXPORT_BUTTON}
+                </Button>
+                <Button size="small" onClick={startEdit}>
+                  {EDIT_BUTTON}
+                </Button>
+              </>
             ) : null}
           </div>
         ) : null}

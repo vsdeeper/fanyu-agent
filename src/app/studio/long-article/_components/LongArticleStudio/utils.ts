@@ -1009,6 +1009,16 @@ export function buildCopyArticleText(titles: string[] | undefined, markdown: str
   return ensureMarkdownLeadingTitle(titles?.[0], stripImageMarkers(markdown));
 }
 
+/** 在浏览器中下载 Markdown 文件。 */
+export function downloadMarkdownFile(content: string, fileName: string, mediaType: string): void {
+  const url = URL.createObjectURL(new Blob([content], { type: mediaType }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 /** 将 File 读为 data URL。 */
 export function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
