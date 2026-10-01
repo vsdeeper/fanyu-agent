@@ -13,7 +13,6 @@ export type StudioGenerateKind =
   | 'design'
   | 'mainImage'
   | 'detailImage'
-  | 'wechatInline'
   | 'longArticleInline'
   | 'imageText';
 
@@ -153,15 +152,6 @@ export type StudioDetailImageGenerateRequest = StudioGenerateBase & {
   brandLogoDataUrl?: string;
 };
 
-/** 公众号配图：纯文生图，由用户主动点击槽位触发。 */
-export type StudioWechatInlineGenerateRequest = StudioGenerateBase & {
-  kind: 'wechatInline';
-  count: 1;
-  prompt: string;
-  /** 规划配图产出的整套视觉约束；有则生图时强制注入。 */
-  visualStyle?: string;
-};
-
 /** 长文配图：纯文生图，由用户主动点击槽位触发。 */
 export type StudioLongArticleInlineGenerateRequest = StudioGenerateBase & {
   kind: 'longArticleInline';
@@ -191,7 +181,6 @@ export type StudioGenerateRequest =
   | StudioDesignGenerateRequest
   | StudioMainImageGenerateRequest
   | StudioDetailImageGenerateRequest
-  | StudioWechatInlineGenerateRequest
   | StudioLongArticleInlineGenerateRequest
   | StudioImageTextGenerateRequest;
 

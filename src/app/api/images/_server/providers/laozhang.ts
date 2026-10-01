@@ -27,7 +27,7 @@ type GeminiRequestPart = { text?: string; inline_data?: { mime_type?: string; da
 const SUPPORTED_ASPECT_RATIOS = IMAGE_ASPECT_RATIOS as readonly string[];
 
 /**
- * 请求比例 → Gemini 可接受的比例：枚举内直传；枚举外（如公众号头图 2.35:1）吸附到最近的枚举值，
+ * 请求比例 → Gemini 可接受的比例：枚举内直传；枚举外（如 2.35:1）吸附到最近的枚举值，
  * 因为省略 aspectRatio 会让模型自选，出图比例就与用户所选无关了。'auto' / 非法值返回 undefined（交模型自选）。
  */
 function toGeminiAspectRatio(requested: string | undefined): string | undefined {

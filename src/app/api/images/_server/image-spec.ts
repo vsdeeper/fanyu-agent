@@ -80,7 +80,7 @@ export const K_SIZE_BY_TIER: Record<string, string> = {
 
 /**
  * 解析宽高比；auto 或非法值返回 null，由调用方决定是否回退默认比例。
- * 分子分母接受小数：2.35:1（公众号头图）这类比例不是整数比，仍要能换算成像素尺寸。
+ * 分子分母接受小数：2.35:1 这类比例不是整数比，仍要能换算成像素尺寸。
  */
 export function parseAspectRatio(value: string | undefined): { w: number; h: number } | null {
   if (!value || value === IMAGE_ASPECT_RATIO_AUTO) return null;

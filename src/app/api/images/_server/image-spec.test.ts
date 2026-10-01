@@ -45,7 +45,7 @@ describe('resolveImageSize', () => {
     expect(dims!.width / dims!.height).toBeCloseTo(16 / 9, 1);
   });
 
-  it('小数比例（公众号头图 2.35:1）也换算得出像素尺寸', () => {
+  it('小数比例（2.35:1）也换算得出像素尺寸', () => {
     const gptImage = getImageSpec('gpt-image-2.5-flare-vip');
     expect(resolveOutboundImageSize('1K', '2.35:1', gptImage)).toBe('1280x544');
 

@@ -10,7 +10,6 @@ import {
   buildProductRefinePrompt,
   buildProductViewPrompt,
   buildVisualPrompt,
-  buildWechatInlinePrompt,
   buildLongArticleInlinePrompt,
   buildImageTextPrompt,
 } from './generate-instructions';
@@ -115,9 +114,6 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
       ...body.images.map((image) => image.dataUrl),
       ...(body.modelImages?.map((image) => image.dataUrl) ?? []),
     ];
-  } else if (body.kind === 'wechatInline') {
-    prompt = buildWechatInlinePrompt(body.prompt, body.visualStyle);
-    referenceImageDataUrls = [];
   } else if (body.kind === 'longArticleInline') {
     prompt = buildLongArticleInlinePrompt(body.prompt, body.visualStyle);
     referenceImageDataUrls = [];

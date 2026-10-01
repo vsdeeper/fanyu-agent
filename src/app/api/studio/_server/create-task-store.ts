@@ -17,8 +17,6 @@ import {
   longArticleTasks,
   novelTaskSteps,
   novelTasks,
-  wechatArticleTaskSteps,
-  wechatArticleTasks,
 } from '@/lib/db/schema';
 import { getDb } from '@/lib/db/client';
 import { rewriteLegacyStudioAssetUrls } from './rewrite-legacy-asset-urls';
@@ -34,7 +32,6 @@ export type StudioTasksTable =
   | typeof productModelTasks
   | typeof productRetouchTasks
   | typeof businessAnalysisTasks
-  | typeof wechatArticleTasks
   | typeof imageTextTasks
   | typeof novelTasks
   | typeof longArticleTasks;
@@ -44,7 +41,6 @@ export type StudioStepsTable =
   | typeof productModelTaskSteps
   | typeof productRetouchTaskSteps
   | typeof businessAnalysisTaskSteps
-  | typeof wechatArticleTaskSteps
   | typeof imageTextTaskSteps
   | typeof novelTaskSteps
   | typeof longArticleTaskSteps;

@@ -12,7 +12,6 @@ import {
   imageTextTaskAssets,
   longArticleTaskAssets,
   novelTaskAssets,
-  wechatArticleTaskAssets,
 } from '@/lib/db/schema';
 import { getChatDir, getDb } from '@/lib/db/client';
 import { rewriteLegacyStudioAssetUrls } from './rewrite-legacy-asset-urls';
@@ -22,7 +21,6 @@ export type StudioAssetsTable =
   | typeof productModelTaskAssets
   | typeof productRetouchTaskAssets
   | typeof businessAnalysisTaskAssets
-  | typeof wechatArticleTaskAssets
   | typeof imageTextTaskAssets
   | typeof novelTaskAssets
   | typeof longArticleTaskAssets;
