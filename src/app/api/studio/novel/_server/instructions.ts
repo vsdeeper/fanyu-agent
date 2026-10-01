@@ -1,3 +1,6 @@
+import { DE_AI_FLAVOR_INSTRUCTIONS } from '@/app/api/studio/_server/de-ai-flavor';
+import { WRITING_STYLE_AXIS_INSTRUCTIONS } from '@/app/api/studio/_server/writing-style-instructions';
+
 /** 选题调研系统指令：纯模型产出选题卡，不联网。 */
 export const RESEARCH_INSTRUCTIONS = `你是小说选题顾问。根据用户的想法、可选偏好类型与体量倾向，提出 3～5 个可写的选题方向。
 
@@ -55,15 +58,18 @@ export const CHAPTER_BEATS_INSTRUCTIONS = `你是小说节拍编辑。为指定�
 - 若提供了同书其它章纲，注意与前后章衔接，避免重复高潮。
 - 不要输出 JSON 以外的代码块。`;
 
-/** 正文写作系统指令。 */
+/** 正文写作系统指令（含共用文风轴与反模板层）。 */
 export const WRITING_INSTRUCTIONS = `你是小说作者。根据选题与当前节拍，写出该节拍对应的正文段落。
 
 要求：
 - 直接输出中文正文，使用空行分段；不要标题、不要列表、不要 JSON、不要代码块。
-- 紧扣节拍推进情节与人物，语气与选题类型一致；若用户提供了文风要求，须落实到叙事与语言。
+- 紧扣节拍推进情节与人物，语气与选题类型一致。
 - 字数以用户提示为准：
   · 短篇单节拍约 600～1200 字
   · 中篇 / 出版长篇单节拍约 700～2000 字
   · 网文长篇单节拍约 600～1500 字（靠更多章与拍铺开，单拍勿无限拉长）
 - 按选题气质与叙事密度在区间内取合适长度，勿一律写最短档。
-- 不要写「这一拍」「本节拍」等元叙述。`;
+- 不要写「这一拍」「本节拍」等元叙述。
+- ${WRITING_STYLE_AXIS_INSTRUCTIONS}
+
+${DE_AI_FLAVOR_INSTRUCTIONS}`;

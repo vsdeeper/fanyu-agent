@@ -161,7 +161,7 @@ export function buildWritingPrompt(body: NovelWritingRequest): string {
     lines.push(`长篇赛道：${LONG_FORMAT_LABEL[longFormat]}`);
   }
   if (body.stylePrompt?.trim()) {
-    lines.push('文风：', body.stylePrompt.trim());
+    lines.push('【文风】', body.stylePrompt.trim());
   }
   lines.push(
     ...chapterLines,
