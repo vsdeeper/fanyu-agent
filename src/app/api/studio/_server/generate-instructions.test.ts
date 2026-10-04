@@ -1245,6 +1245,8 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('可保留主打、治疗功用、病症名');
     expect(prompt).toContain('不得出现可诊断');
     expect(prompt).toContain('不得出现高血压');
+    expect(prompt).toContain('止咳平喘');
+    expect(prompt).toContain('气喘、哮喘');
     expect(prompt).toContain('有助于缓解/改善/减轻');
     expect(prompt).toContain('疗效承诺');
     expect(prompt).toContain('本条高于用户额外要求与正文');
