@@ -111,7 +111,11 @@ function isSafetyRejection(status: number, code?: string, message?: string): boo
  * 走 OpenAI /v1/images/* 通道的 laozhang 模型（非 Gemini generateContent）。
  * 网关按模型上报的通道格式路由；hit 此集合的模型用 OpenAI 载荷/响应，其余仍走 Gemini。
  */
-const OPENAI_IMAGE_MODELS = new Set(['gpt-image-2.5-flare-vip', 'gpt-image-2.5-sunburst-vip']);
+const OPENAI_IMAGE_MODELS = new Set([
+  'gpt-image-2.5-flare-vip',
+  'gpt-image-2.5-sunburst-vip',
+  'gpt-image-2-vip',
+]);
 
 /** 参考图源 → { bytes, mimeType }：data URL 主路径解码，兜底下载外链。 */
 async function toSourceBytes(source: string): Promise<{ bytes: Uint8Array; mimeType: string }> {

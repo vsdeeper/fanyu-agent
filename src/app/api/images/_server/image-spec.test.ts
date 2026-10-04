@@ -4,6 +4,7 @@ import {
   nearestSupportedAspectRatio,
   parseAspectRatio,
   parsePixelSize,
+  resolveImageQuality,
   resolveImageSize,
   resolveOutboundImageSize,
 } from './image-spec';
@@ -71,6 +72,14 @@ describe('resolveImageSize', () => {
     expect(parseAspectRatio('auto')).toBeNull();
     expect(parseAspectRatio('16/9')).toBeNull();
     expect(parseAspectRatio('0:1')).toBeNull();
+  });
+
+  it('GPT Image 2 quality 仅三档，非法回落 high', () => {
+    const spec = getImageSpec('gpt-image-2-vip');
+    expect(spec.quality?.presets).toEqual(['low', 'medium', 'high']);
+    expect(resolveImageQuality('medium', spec)).toBe('medium');
+    expect(resolveImageQuality('xhigh', spec)).toBe('high');
+    expect(resolveImageQuality(undefined, spec)).toBe('high');
   });
 
   it('枚举外的比例吸附到最近的枚举值', () => {

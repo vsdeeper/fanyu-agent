@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { patchModel, resolveQualityForModel } from './model-options';
+import { MODEL_CAPABILITIES, patchModel, resolveQualityForModel } from './model-options';
 
 describe('patchModel', () => {
   it('新模型仍支持当前清晰度时保留', () => {
@@ -34,10 +34,35 @@ describe('patchModel', () => {
     );
     expect(next.quality).toBe('xhigh');
   });
+
+  it('从 max/xhigh 切到 GPT Image 2 质量回落 high', () => {
+    expect(
+      patchModel(
+        { model: 'gpt-image-2.5-flare-vip', clarity: '2K', quality: 'max' },
+        'gpt-image-2-vip',
+      ).quality,
+    ).toBe('high');
+    expect(
+      patchModel(
+        { model: 'gpt-image-2.5-flare-vip', clarity: '2K', quality: 'xhigh' },
+        'gpt-image-2-vip',
+      ).quality,
+    ).toBe('high');
+  });
 });
 
 describe('resolveQualityForModel', () => {
   it('默认回落 xhigh', () => {
     expect(resolveQualityForModel('gpt-image-2.5-flare-vip', '')).toBe('xhigh');
+  });
+
+  it('GPT Image 2 默认回落 high', () => {
+    expect(resolveQualityForModel('gpt-image-2-vip', '')).toBe('high');
+  });
+});
+
+describe('MODEL_CAPABILITIES', () => {
+  it('包含 GPT Image 2 VIP', () => {
+    expect(MODEL_CAPABILITIES.some((item) => item.id === 'gpt-image-2-vip')).toBe(true);
   });
 });

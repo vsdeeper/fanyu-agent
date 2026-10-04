@@ -50,6 +50,14 @@ export function listImageModels(): ImageModelProfile[] {
       description:
         'OpenAI 出品，改图主力；在保留源图主体与构图的前提下做局部修改、风格微调与文字替换，指令遵从与材质一致性出色；同样原生支持透明背景（PNG alpha，transparent=true），适合多轮改图、精修补丁、去底抠图与按参考编辑。',
     },
+    {
+      id: 'gpt-image-2-vip',
+      provider: 'laozhang',
+      capabilities: ['t2i', 'i2i'],
+      label: 'GPT Image 2 VIP',
+      description:
+        'OpenAI GPT Image 2 按次线路，较 2.5 更稳、质量档位仅 low/medium/high；写实与指令遵从仍强，适合对稳定性优先、可接受三档质量的出图与改图。',
+    },
   ];
 }
 

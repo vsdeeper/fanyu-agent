@@ -23,6 +23,7 @@ vi.stubGlobal('window', {
 });
 
 import {
+  defaultImageQualityForModel,
   parseChatSettingsPayload,
   type ChatSettingsPayload,
 } from '@/app/api/chat/_shared/chat-settings';
@@ -105,5 +106,28 @@ describe('useChatSettingsStore', () => {
     if (!parsed.ok) return;
     expect(parsed.settings.generateImage.quality).toBeUndefined();
     expect(parsed.settings.editImage.quality).toBeUndefined();
+  });
+
+  it('GPT Image 2 默认 quality 为 high，xhigh 归一为 high', () => {
+    expect(defaultImageQualityForModel('gpt-image-2-vip')).toBe('high');
+    expect(defaultImageQualityForModel('gpt-image-2.5-flare-vip')).toBe('xhigh');
+
+    const raw = {
+      ...VALID,
+      generateImage: {
+        provider: 'laozhang',
+        modelId: 'gpt-image-2-vip',
+        quality: 'xhigh',
+      },
+      editImage: {
+        provider: 'laozhang',
+        modelId: 'gpt-image-2-vip',
+      },
+    };
+    const parsed = parseChatSettingsPayload(raw);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.settings.generateImage.quality).toBe('high');
+    expect(parsed.settings.editImage.quality).toBe('high');
   });
 });

@@ -38,12 +38,20 @@ export type DeepseekReasoningEffort = (typeof DEEPSEEK_REASONING_EFFORTS)[number
 export const ZHIPU_REASONING_EFFORTS = ['low', 'high', 'max'] as const;
 export type ZhipuReasoningEffort = (typeof ZHIPU_REASONING_EFFORTS)[number];
 
+/** 生图/改图质量档位（与 images IMAGE_QUALITY_VALUES 对齐；仅 supportsQuality 模型使用） */
+export const IMAGE_QUALITY_VALUES = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+export type ImageQualityValue = (typeof IMAGE_QUALITY_VALUES)[number];
+/** 支持 quality 的模型缺省档；旧本地设置无该字段时回填 */
+export const DEFAULT_IMAGE_QUALITY: ImageQualityValue = 'xhigh';
+
 /** 生图/改图模型按供应商（须与 images registry / image-spec 同步） */
 export type ImageModelOption = {
   id: string;
   label: string;
-  /** 是否支持上游 quality 档位（目前仅 GPT Image 2.5） */
+  /** 是否支持上游 quality 档位（目前仅 GPT Image 系列） */
   supportsQuality?: boolean;
+  /** 该模型可用 quality 子集；缺省=全量 IMAGE_QUALITY_VALUES */
+  qualityPresets?: readonly ImageQualityValue[];
 };
 
 export const IMAGE_MODELS_BY_PROVIDER: Record<'ark' | 'laozhang', ImageModelOption[]> = {
@@ -53,6 +61,12 @@ export const IMAGE_MODELS_BY_PROVIDER: Record<'ark' | 'laozhang', ImageModelOpti
       id: 'gpt-image-2.5-sunburst-vip',
       label: 'GPT Image 2.5 Sunburst VIP',
       supportsQuality: true,
+    },
+    {
+      id: 'gpt-image-2-vip',
+      label: 'GPT Image 2 VIP',
+      supportsQuality: true,
+      qualityPresets: ['low', 'medium', 'high'],
     },
     { id: 'gemini-3.1-flash-image', label: 'Gemini Flash Image' },
     { id: 'gemini-3.1-flash-lite-image', label: 'Gemini Flash Lite Image' },
@@ -75,12 +89,6 @@ export type ChatModelsConfig = {
   modelMini: string;
 };
 
-/** 生图/改图质量档位（与 images IMAGE_QUALITY_VALUES 对齐；仅 supportsQuality 模型使用） */
-export const IMAGE_QUALITY_VALUES = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
-export type ImageQualityValue = (typeof IMAGE_QUALITY_VALUES)[number];
-/** 支持 quality 的模型缺省档；旧本地设置无该字段时回填 */
-export const DEFAULT_IMAGE_QUALITY: ImageQualityValue = 'xhigh';
-
 export type ImageCapabilityConfig = {
   provider: 'laozhang' | 'ark';
   modelId: string;
@@ -97,13 +105,36 @@ export type ChatSettingsPayload = {
   editImage: ImageCapabilityConfig;
 };
 
-/** 该生图/改图模型是否支持 quality 档位 */
-export function imageModelSupportsQuality(modelId: string): boolean {
+/** 按模型 id 查找生图选项 */
+export function findImageModelOption(modelId: string): ImageModelOption | undefined {
   for (const list of Object.values(IMAGE_MODELS_BY_PROVIDER)) {
     const hit = list.find((item) => item.id === modelId);
-    if (hit) return Boolean(hit.supportsQuality);
+    if (hit) return hit;
   }
-  return false;
+  return undefined;
+}
+
+/** 该生图/改图模型是否支持 quality 档位 */
+export function imageModelSupportsQuality(modelId: string): boolean {
+  return Boolean(findImageModelOption(modelId)?.supportsQuality);
+}
+
+/** 模型可用 quality 档位；不支持时返回空数组 */
+export function imageModelQualityPresets(modelId: string): readonly ImageQualityValue[] {
+  const option = findImageModelOption(modelId);
+  if (!option?.supportsQuality) return [];
+  return option.qualityPresets ?? IMAGE_QUALITY_VALUES;
+}
+
+/**
+ * 模型缺省 quality：统一以 DEFAULT_IMAGE_QUALITY 为基准；
+ * 若该值不在模型 presets 内（如 Image 2）则回落 high。
+ */
+export function defaultImageQualityForModel(modelId: string): ImageQualityValue {
+  const presets = imageModelQualityPresets(modelId);
+  if (presets.includes(DEFAULT_IMAGE_QUALITY)) return DEFAULT_IMAGE_QUALITY;
+  if (presets.includes('high')) return 'high';
+  return presets[0] ?? DEFAULT_IMAGE_QUALITY;
 }
 
 export function providerHasCapability(kind: ProviderKind, capability: ProviderCapability): boolean {
@@ -275,15 +306,19 @@ function parseImageCapability(
   if (!imageModelSupportsQuality(modelId)) {
     return { ok: true, value: { provider: record.provider, modelId } };
   }
-  let quality: ImageQualityValue = DEFAULT_IMAGE_QUALITY;
+  const presets = imageModelQualityPresets(modelId);
+  let quality = defaultImageQualityForModel(modelId);
   if (record.quality != null && record.quality !== '') {
-    if (
-      typeof record.quality !== 'string' ||
-      !(IMAGE_QUALITY_VALUES as readonly string[]).includes(record.quality)
-    ) {
+    if (typeof record.quality !== 'string') {
       return { ok: false, message: `${label}质量档位无效` };
     }
-    quality = record.quality as ImageQualityValue;
+    // 全局未知档位拒绝；已知但不在该模型子集内则回落模型默认（如 Image 2 + xhigh → high）
+    if (!(IMAGE_QUALITY_VALUES as readonly string[]).includes(record.quality)) {
+      return { ok: false, message: `${label}质量档位无效` };
+    }
+    if (presets.includes(record.quality as ImageQualityValue)) {
+      quality = record.quality as ImageQualityValue;
+    }
   }
   return { ok: true, value: { provider: record.provider, modelId, quality } };
 }

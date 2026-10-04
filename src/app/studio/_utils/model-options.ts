@@ -53,6 +53,14 @@ export const MODEL_CAPABILITIES: StudioModelCapability[] = [
     qualityDefault: 'xhigh',
   },
   {
+    id: 'gpt-image-2-vip',
+    label: 'GPT Image 2 VIP',
+    clarityOptions: ['1K', '2K', '4K'],
+    clarityDefault: '2K',
+    qualityOptions: ['low', 'medium', 'high'],
+    qualityDefault: 'high',
+  },
+  {
     id: 'gemini-3.1-flash-image',
     label: 'Gemini Flash Image',
     clarityOptions: ['1K', '2K', '4K'],

@@ -3,24 +3,34 @@ import type { ImageSpec } from './types';
 /** 生图质量档位（对齐 OpenAI gpt-image 上游）；仅支持 quality 的模型（如 gpt-image-2.5-*）登记到 spec.quality */
 export const IMAGE_QUALITY_VALUES = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 
-/** GPT Image 2.5 系列共用规格：像素入参、16 倍数对齐、quality 档位。 */
-const GPT_IMAGE_2_5_SPEC: ImageSpec = {
-  // 按像素入参：K 档位只是 UI 语义，出站须换成符合官方约束的 WIDTHxHEIGHT。
+/** GPT Image 像素几何共用：K 档位只是 UI 语义，出站须换成符合官方约束的 WIDTHxHEIGHT。 */
+const GPT_IMAGE_PIXEL_GEOMETRY = {
   size: { presets: ['1K', '2K', '4K'], default: '2K' },
-  sizeInput: 'pixel',
+  sizeInput: 'pixel' as const,
   tierLongEdges: { '1K': 1280, '2K': 2048, '4K': 3840 },
   dimensionMultiple: 16,
   maxAspectRatio: 3,
   minPixels: 655_360,
   maxPixels: 3840 * 2160,
-  // OpenAI gpt-image 2.5 支持 quality（low/medium/high/xhigh/max），默认 xhigh；其余模型上游无该参数故不登记。
+};
+
+/** GPT Image 2.5 系列：全量 quality 档位，默认 xhigh。 */
+const GPT_IMAGE_2_5_SPEC: ImageSpec = {
+  ...GPT_IMAGE_PIXEL_GEOMETRY,
   quality: { presets: [...IMAGE_QUALITY_VALUES], default: 'xhigh' },
+};
+
+/** GPT Image 2：仅 low/medium/high，默认 high。 */
+const GPT_IMAGE_2_SPEC: ImageSpec = {
+  ...GPT_IMAGE_PIXEL_GEOMETRY,
+  quality: { presets: ['low', 'medium', 'high'], default: 'high' },
 };
 
 /** 模型 ID → 生图输出规格。新增模型须同时改 registry 与本表，勿只改一处。 */
 export const IMAGE_SPEC_BY_MODEL_ID: Record<string, ImageSpec> = {
   'gpt-image-2.5-flare-vip': GPT_IMAGE_2_5_SPEC,
   'gpt-image-2.5-sunburst-vip': GPT_IMAGE_2_5_SPEC,
+  'gpt-image-2-vip': GPT_IMAGE_2_SPEC,
   'gemini-3.1-flash-lite-image': {
     // 恒定 1K（实测 2K/4K 档位仍返回 1024×1024）。不配 minPixels/maxPixels：
     // Gemini native 只认 imageSize 档位串，配像素上下限会误宣传「支持自定义 WIDTHxHEIGHT」。
@@ -313,7 +323,7 @@ export function isValidImageQuality(value: string, spec: ImageSpec): boolean {
 
 /**
  * 解析出站质量档位：不支持 quality 的模型返回 undefined（不漏传上游）；
- * 非法或未指定回退到 spec 默认档（gpt-image 2.5 默认 max）。
+ * 非法或未指定回退到 spec 默认档。
  */
 export function resolveImageQuality(
   quality: string | undefined,
