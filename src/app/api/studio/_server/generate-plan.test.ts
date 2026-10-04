@@ -466,7 +466,9 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).toContain('我的要求');
     expect(plan[0]?.prompt).toContain('半身侧影，看向窗外');
     expect(plan[0]?.prompt).toContain('知识库');
-    expect(plan[0]?.prompt).toContain('优先级最高');
+    expect(plan[0]?.prompt).toContain('优先于正文与视觉参考');
+    expect(plan[0]?.prompt).toContain('仍低于上方广告口径硬约束');
+    expect(plan[0]?.prompt).toContain('广告口径硬约束');
     expect(plan[0]?.prompt).toContain('姿态硬约束');
     expect(plan[0]?.prompt).not.toContain('整套视觉约束');
   });
@@ -485,6 +487,7 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).toContain('非必须全文上屏');
     expect(plan[0]?.prompt).toContain('取舍精简');
     expect(plan[0]?.prompt).toContain('留足边距');
+    expect(plan[0]?.prompt).toContain('广告口径硬约束');
     expect(plan[0]?.prompt).not.toContain('我的要求');
     expect(plan[0]?.prompt).not.toContain('知识库');
   });

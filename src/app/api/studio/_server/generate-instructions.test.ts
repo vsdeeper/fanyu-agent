@@ -1238,10 +1238,14 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('禁止出现在画面任何可读文字中');
     expect(prompt).toContain('主标题取正文 `#` 后的文字（不含 `#`）');
     expect(prompt).toContain('禁止复刻参考图文案与标注落点');
+    expect(prompt).toContain('广告口径硬约束');
+    expect(prompt).toContain('可保留主打、治疗功用、病症名');
+    expect(prompt).toContain('不得出现可诊断');
+    expect(prompt).toContain('本条高于用户额外要求与正文');
     expect(prompt).not.toContain('人物模特');
     expect(prompt).not.toContain('【我的要求】');
     expect(prompt).not.toContain('知识库');
-    expect(prompt).not.toContain('优先级最高');
+    expect(prompt).not.toContain('优先于正文与视觉参考');
   });
 
   it('有「我的要求」但无姿态词时不注入手臂/掌心细则', () => {
@@ -1253,7 +1257,9 @@ describe('图文配图指令', () => {
 
     expect(prompt).toContain('【我的要求】');
     expect(prompt).toContain(requirement);
-    expect(prompt).toContain('优先级最高');
+    expect(prompt).toContain('优先于正文与视觉参考');
+    expect(prompt).toContain('仍低于上方广告口径硬约束');
+    expect(prompt).toContain('广告口径硬约束');
     expect(prompt).toContain('姿态硬约束');
     expect(prompt).toContain('手形硬约束');
     expect(prompt).toContain('优先单手特写');
@@ -1271,10 +1277,12 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('主标题取正文 `#` 后的文字（不含 `#`）');
     expect(prompt).not.toContain('人物模特');
     expect(prompt).toContain(body);
+    const adPolicyIdx = prompt.indexOf('广告口径硬约束');
     const requirementIdx = prompt.indexOf('【我的要求】');
     const styleIdx = prompt.indexOf('【视觉参考图】');
     const bodyLabelIdx = prompt.indexOf('【本张画面 / 图文内容】');
-    expect(requirementIdx).toBeGreaterThan(-1);
+    expect(adPolicyIdx).toBeGreaterThan(-1);
+    expect(requirementIdx).toBeGreaterThan(adPolicyIdx);
     expect(styleIdx).toBeGreaterThan(requirementIdx);
     expect(bodyLabelIdx).toBeGreaterThan(styleIdx);
   });
