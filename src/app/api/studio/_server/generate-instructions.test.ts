@@ -1214,8 +1214,11 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('取舍精简');
     expect(prompt).toContain('留足边距');
     expect(prompt).toContain('优先单手特写');
+    expect(prompt).toContain('穴位标记只标标题本穴');
     expect(prompt).toContain('避免双手交叠');
     expect(prompt).toContain('手形硬约束');
+    expect(prompt).toContain('穴位标记硬约束');
+    expect(prompt).toContain('配穴、配伍、其他病症配穴只写文字名单');
     expect(prompt).toContain('恰好 1 拇指 + 4 指共 5 指');
     expect(prompt).toContain('食指略短于中指');
     expect(prompt).toContain('单指拉长或畸形');
