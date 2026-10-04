@@ -13,7 +13,12 @@ import {
   readUploadItemAsDataUrl,
   serializeUploadItem,
 } from '@/app/studio/_utils/upload-items';
-import { DEFAULT_IMAGE_ASPECT, DEFAULT_IMAGE_CLARITY, DEFAULT_IMAGE_MODEL } from './constants';
+import {
+  DEFAULT_IMAGE_ASPECT,
+  DEFAULT_IMAGE_CLARITY,
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_IMAGE_QUALITY,
+} from './constants';
 import type {
   ImageTextCard,
   ImageTextGenerateSnapshot,
@@ -297,6 +302,7 @@ export function readGenerateSnapshot(data: unknown): ImageTextGenerateSnapshot |
     model: asString(record.model) ?? DEFAULT_IMAGE_MODEL,
     aspectRatio: asString(record.aspectRatio) ?? DEFAULT_IMAGE_ASPECT,
     clarity: asString(record.clarity) ?? DEFAULT_IMAGE_CLARITY,
+    quality: asString(record.quality) ?? DEFAULT_IMAGE_QUALITY,
     images,
     ...(asString(record.styleReferenceUrl)
       ? { styleReferenceUrl: asString(record.styleReferenceUrl) }

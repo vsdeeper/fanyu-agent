@@ -54,6 +54,8 @@ export type ImageTextGenerateSnapshot = {
   model: string;
   aspectRatio: string;
   clarity: string;
+  /** 生图质量档位；旧任务可能无此键。 */
+  quality?: string;
   images: ImageTextGeneratedImage[];
   /** 可选视觉参考图。 */
   styleReferenceUrl?: string;

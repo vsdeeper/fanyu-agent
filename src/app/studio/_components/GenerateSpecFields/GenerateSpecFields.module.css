@@ -1,9 +1,4 @@
-.pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
 .item {
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  min-width: 0;
 }

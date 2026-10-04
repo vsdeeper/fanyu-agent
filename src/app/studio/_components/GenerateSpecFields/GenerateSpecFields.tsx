@@ -1,10 +1,12 @@
-import { Form, Select } from 'antd';
+import { Col, Form, Row, Select } from 'antd';
 import {
   IMAGE_ASPECT_RATIO_OPTIONS,
+  isQualitySupported,
   patchModel,
   toClarityOptions,
   toCountOptions,
   toModelOptions,
+  toQualityOptions,
 } from '@/app/studio/_utils/model-options';
 import styles from './GenerateSpecFields.module.css';
 
@@ -16,7 +18,7 @@ type GenerateSpecFieldsProps = {
 };
 
 /**
- * 出图规格：模型、比例、清晰度、数量各自独立 Form.Item。
+ * 出图规格：模型、比例、清晰度、质量、数量各自独立 Form.Item。
  * 切换模型时用 `patchModel` 回写同前缀对象，保证清晰度 / 质量仍合法。
  */
 export default function GenerateSpecFields({
@@ -26,6 +28,7 @@ export default function GenerateSpecFields({
 }: GenerateSpecFieldsProps) {
   const form = Form.useFormInstance();
   const model = Form.useWatch([...namePrefix, 'model'], form) as string | undefined;
+  const showQuality = isQualitySupported(model ?? '');
 
   function onModelChange(nextModel: string) {
     const current = (form.getFieldValue(namePrefix) ?? {}) as Record<string, unknown>;
@@ -42,11 +45,13 @@ export default function GenerateSpecFields({
   }
 
   return (
-    <>
-      <div className={styles.pair}>
+    <Row gutter={[12, 12]} wrap>
+      <Col xs={24} sm={12}>
         <Form.Item name={[...namePrefix, 'model']} label="模型" className={styles.item}>
           <Select options={toModelOptions()} onChange={onModelChange} />
         </Form.Item>
+      </Col>
+      <Col xs={24} sm={12}>
         <Form.Item
           name={[...namePrefix, 'aspectRatio']}
           label={aspectRatioLabel}
@@ -54,15 +59,26 @@ export default function GenerateSpecFields({
         >
           <Select options={IMAGE_ASPECT_RATIO_OPTIONS} />
         </Form.Item>
-      </div>
-      <Form.Item name={[...namePrefix, 'clarity']} label="清晰度" className={styles.item}>
-        <Select options={toClarityOptions(model ?? '')} />
-      </Form.Item>
-      {showCount ? (
-        <Form.Item name={[...namePrefix, 'count']} label="生成数量" className={styles.item}>
-          <Select options={toCountOptions()} />
+      </Col>
+      <Col xs={24} sm={12}>
+        <Form.Item name={[...namePrefix, 'clarity']} label="清晰度" className={styles.item}>
+          <Select options={toClarityOptions(model ?? '')} />
         </Form.Item>
+      </Col>
+      {showQuality ? (
+        <Col xs={24} sm={12}>
+          <Form.Item name={[...namePrefix, 'quality']} label="质量" className={styles.item}>
+            <Select options={toQualityOptions(model ?? '')} />
+          </Form.Item>
+        </Col>
       ) : null}
-    </>
+      {showCount ? (
+        <Col xs={24} sm={12}>
+          <Form.Item name={[...namePrefix, 'count']} label="生成数量" className={styles.item}>
+            <Select options={toCountOptions()} />
+          </Form.Item>
+        </Col>
+      ) : null}
+    </Row>
   );
 }

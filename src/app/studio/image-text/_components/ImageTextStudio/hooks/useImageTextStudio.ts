@@ -4,7 +4,11 @@ import type { FormInstance } from 'antd';
 import type { ImageTextTaskDetail } from '@/app/api/studio/image-text/_shared/task-types';
 import type { GenerateSpecFields } from '@/app/studio/_utils/model-options';
 import { validateForm } from '@/app/studio/_utils/form-validate';
-import { getModelCapability, resolveClarityForModel } from '@/app/studio/_utils/model-options';
+import {
+  getModelCapability,
+  resolveClarityForModel,
+  resolveQualityForModel,
+} from '@/app/studio/_utils/model-options';
 import { readUploadItemAsDataUrl } from '@/app/studio/_utils/upload-items';
 import { revokeReplacedLocalUploadItemUrls } from '@/lib/client/upload-items';
 import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
@@ -99,7 +103,10 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
         model,
         aspectRatio: initialGenerate?.aspectRatio ?? base.aspectRatio,
         clarity: resolveClarityForModel(model, initialGenerate?.clarity ?? base.clarity),
-        quality: getModelCapability(model)?.qualityDefault ?? base.quality,
+        quality: resolveQualityForModel(
+          model,
+          initialGenerate?.quality ?? base.quality ?? DEFAULT_IMAGE_QUALITY,
+        ),
       },
     };
   });
@@ -181,6 +188,10 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
       model: currentSpec.model,
       aspectRatio: currentSpec.aspectRatio,
       clarity: currentSpec.clarity,
+      quality: resolveQualityForModel(
+        currentSpec.model,
+        currentSpec.quality || DEFAULT_IMAGE_QUALITY,
+      ),
       images: imagesRef.current,
       ...(styleReferenceUrl ? { styleReferenceUrl } : {}),
       ...(characterRequirement ? { characterRequirement } : {}),
@@ -327,10 +338,10 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
             count: 1,
             model: currentSpec.model,
             aspectRatio: currentSpec.aspectRatio,
-            quality:
-              getModelCapability(currentSpec.model)?.qualityDefault ??
-              currentSpec.quality ??
-              DEFAULT_IMAGE_QUALITY,
+            quality: resolveQualityForModel(
+              currentSpec.model,
+              currentSpec.quality || DEFAULT_IMAGE_QUALITY,
+            ),
             clarity: resolveClarityForModel(currentSpec.model, currentSpec.clarity),
             prompt,
             ...(styleReferenceDataUrl ? { styleReferenceDataUrl } : {}),

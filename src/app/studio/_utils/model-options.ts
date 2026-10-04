@@ -157,7 +157,15 @@ export function resolveClarityForModel(model: string, clarity: string): string {
   return capability.clarityDefault;
 }
 
-/** 切换模型：当前清晰度仍在新模型选项内则保留，否则回该模型默认档。 */
+/** 切换模型时优先保留当前质量；模型不支持 quality 时原样带回；不可用则回模型默认档。 */
+export function resolveQualityForModel(model: string, quality: string): string {
+  const capability = getModelCapability(model);
+  if (!capability?.qualityOptions?.length) return quality;
+  if (capability.qualityOptions.includes(quality)) return quality;
+  return capability.qualityDefault ?? quality;
+}
+
+/** 切换模型：当前清晰度 / 质量仍在新模型选项内则保留，否则回该模型默认档。 */
 export function patchModel<T extends Pick<GenerateSpecFields, 'model' | 'clarity' | 'quality'>>(
   form: T,
   model: string,
@@ -168,6 +176,6 @@ export function patchModel<T extends Pick<GenerateSpecFields, 'model' | 'clarity
     ...form,
     model,
     clarity: resolveClarityForModel(model, form.clarity),
-    quality: capability.qualityDefault ?? form.quality,
+    quality: resolveQualityForModel(model, form.quality),
   };
 }
