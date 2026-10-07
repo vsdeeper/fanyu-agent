@@ -8,6 +8,9 @@ import StyleDimensionPicker, {
   hasStyleSelection,
   type StyleDimensionSelections,
 } from '@/app/studio/_components/StyleDimensionPicker';
+import StudioControlPanel, {
+  studioControlFormClassName,
+} from '@/app/studio/_components/StudioControlPanel';
 import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import AngleCardView from '../AngleCardView';
 import {
@@ -111,204 +114,198 @@ export default function ControlPanel({
   };
 
   return (
-    <aside className={styles.panel}>
-      <div className={styles.scroll}>
-        {/*
-          四个步骤共用一个 Form：切步骤只换注册的 Form.Item 集合（preserve 默认 true，值仍留在 store），
-          不重挂 Form。左栏值的唯一真相是这份 store，读值一律用 getFieldsValue(true)；
-          不要加 clearOnDestroy，也不要改成 component={false}。
-        */}
-        <Form
-          form={form}
-          initialValues={initialValues}
-          layout="vertical"
-          disabled={busy}
-          className={styles.form}
-          onValuesChange={onFieldChange}
-        >
+    <StudioControlPanel
+      footer={
+        <>
           {researchStep ? (
-            <>
-              <Form.Item
-                name="idea"
-                label="我的想法"
-                dependencies={['viewpoint', 'experience']}
-                rules={[atLeastOneResearchInput]}
-              >
-                <Input.TextArea rows={4} placeholder="例如：AI agent 开始替人逛电商" />
-              </Form.Item>
-              <Form.Item name="viewpoint" label="我的观点">
-                <Input.TextArea rows={4} placeholder="例如：国外已经在落地，国内还在聊概念" />
-              </Form.Item>
-              <Form.Item name="experience" label="我的经历">
-                <Input.TextArea
-                  rows={4}
-                  placeholder="例如：有个朋友失业了，月供六千，账上只剩三万"
-                />
-              </Form.Item>
-              <Form.Item
-                name="articleGenre"
-                label={ARTICLE_GENRE_LABEL}
-                rules={[{ required: true, message: MISSING_ARTICLE_GENRE_WARNING }]}
-              >
-                <Select
-                  options={LONG_ARTICLE_GENRES.map((genre) => ({
-                    value: genre,
-                    label: LONG_ARTICLE_GENRE_LABEL[genre],
-                  }))}
-                />
-              </Form.Item>
-            </>
+            <Button
+              type="primary"
+              block
+              size="large"
+              loading={phase === 'researching'}
+              onClick={onResearch}
+            >
+              {RESEARCH_BUTTON}
+            </Button>
           ) : null}
-
           {planStep ? (
-            <>
-              <div className={styles.angleBlock}>
-                <div className={styles.angleLabel}>{SELECTED_ANGLE_LABEL}</div>
-                {selectedAngle ? (
-                  <AngleCardView angle={selectedAngle} articleGenre={articleGenre} />
-                ) : (
-                  <p className={styles.angleEmpty}>{SELECTED_ANGLE_EMPTY}</p>
-                )}
-              </div>
-              {/* 修复：name 必须挂在 InputNumber 上。Form.Item 只把 value/onChange 注入**直接子元素**，
-                  隔一层 Space.Compact 时它们被透传到外层 div，字段收不到用户输入——
-                  getFieldsValue 里 lengthLimit 恒为 undefined，成稿请求与快照都丢这个键 */}
-              <Form.Item label={LENGTH_LIMIT_LABEL}>
-                <Space.Compact className={styles.lengthLimit} block>
-                  <Form.Item
-                    name="lengthLimit"
-                    noStyle
-                    // InputNumber 清空时给的是 null，落盘要的是「不写这个键」，故在这里归一成 undefined
-                    normalize={(value: number | null) =>
-                      typeof value === 'number' ? value : undefined
-                    }
-                  >
-                    <InputNumber
-                      min={LENGTH_LIMIT_MIN}
-                      max={LENGTH_LIMIT_MAX}
-                      step={100}
-                      placeholder={LENGTH_LIMIT_PLACEHOLDER}
-                    />
-                  </Form.Item>
-                  <Space.Addon>{LENGTH_LIMIT_SUFFIX}</Space.Addon>
-                </Space.Compact>
-              </Form.Item>
-            </>
+            <Button
+              type="primary"
+              block
+              size="large"
+              loading={phase === 'planning'}
+              disabled={!selectedAngle}
+              onClick={onPlan}
+            >
+              {PLAN_BUTTON}
+            </Button>
           ) : null}
-
           {draftStep ? (
-            <>
-              {/* 标题在右栏点选标题方向时确定，这里只读回显；成稿前必须有，故标为必填 */}
-              <Form.Item label={DRAFT_TITLE_LABEL} required>
-                <Input value={draftTitle ?? ''} placeholder={DRAFT_TITLE_EMPTY} readOnly />
-              </Form.Item>
-              {/* 复制/粘贴浮在「文风」标签行右侧（见 module.css 的 styleActions）：
-                  不进 Form.Item 的 label，否则 `<button>` 会被 label 隐式关联。 */}
-              <div className={styles.styleRow}>
-                <Form.Item
-                  name="styleSelections"
-                  label={STYLE_LABEL}
-                  rules={[
-                    {
-                      // 「一张卡片都没选」不能写成 { required: true }：值是对象，空对象会被判成非空
-                      validator: (_rule, value: StyleDimensionSelections | undefined) =>
-                        hasStyleSelection(value ?? {})
-                          ? Promise.resolve()
-                          : Promise.reject(new Error(MISSING_STYLE_WARNING)),
-                    },
-                  ]}
-                >
-                  <StyleDimensionPicker disabled={busy} />
-                </Form.Item>
-                <StyleClipboardActions
-                  className={styles.styleActions}
-                  selections={styleSelections}
-                  disabled={busy}
-                  onPaste={applyStyleSelections}
-                />
-              </div>
-            </>
+            <Button
+              type="primary"
+              block
+              size="large"
+              loading={phase === 'drafting'}
+              disabled={!plan}
+              onClick={onDraft}
+            >
+              {DRAFT_BUTTON}
+            </Button>
           ) : null}
-
           {imagesStep ? (
-            <>
-              <Form.Item name="watermarkImages">
-                <StudioImageUpload
-                  max={1}
-                  label={WATERMARK_LABEL}
-                  subtitle={WATERMARK_SUBTITLE}
-                  hint={WATERMARK_HINT}
-                  ariaLabel={WATERMARK_ARIA_LABEL}
-                  disabled={busy}
-                />
-              </Form.Item>
-              <Form.Item name="styleReferenceImages">
-                <StudioImageUpload
-                  max={1}
-                  label={STYLE_REFERENCE_LABEL}
-                  subtitle={STYLE_REFERENCE_SUBTITLE}
-                  hint={STYLE_REFERENCE_HINT}
-                  ariaLabel={STYLE_REFERENCE_LABEL}
-                  disabled={busy}
-                />
-              </Form.Item>
-            </>
+            <Button
+              type="primary"
+              block
+              size="large"
+              loading={phase === 'illustrating'}
+              disabled={!hasMarkdown}
+              onClick={onPlanImages}
+            >
+              {PLAN_IMAGES_BUTTON}
+            </Button>
           ) : null}
-        </Form>
-      </div>
-      <div className={styles.footer}>
+        </>
+      }
+    >
+      {/*
+        四个步骤共用一个 Form：切步骤只换注册的 Form.Item 集合（preserve 默认 true，值仍留在 store），
+        不重挂 Form。左栏值的唯一真相是这份 store，读值一律用 getFieldsValue(true)；
+        不要加 clearOnDestroy，也不要改成 component={false}。
+      */}
+      <Form
+        form={form}
+        initialValues={initialValues}
+        layout="vertical"
+        disabled={busy}
+        className={studioControlFormClassName}
+        onValuesChange={onFieldChange}
+      >
         {researchStep ? (
-          <Button
-            className={styles.actionBtn}
-            type="primary"
-            block
-            size="large"
-            loading={phase === 'researching'}
-            onClick={onResearch}
-          >
-            {RESEARCH_BUTTON}
-          </Button>
+          <>
+            <Form.Item
+              name="idea"
+              label="我的想法"
+              dependencies={['viewpoint', 'experience']}
+              rules={[atLeastOneResearchInput]}
+            >
+              <Input.TextArea rows={4} placeholder="例如：AI agent 开始替人逛电商" />
+            </Form.Item>
+            <Form.Item name="viewpoint" label="我的观点">
+              <Input.TextArea rows={4} placeholder="例如：国外已经在落地，国内还在聊概念" />
+            </Form.Item>
+            <Form.Item name="experience" label="我的经历">
+              <Input.TextArea rows={4} placeholder="例如：有个朋友失业了，月供六千，账上只剩三万" />
+            </Form.Item>
+            <Form.Item
+              name="articleGenre"
+              label={ARTICLE_GENRE_LABEL}
+              rules={[{ required: true, message: MISSING_ARTICLE_GENRE_WARNING }]}
+            >
+              <Select
+                options={LONG_ARTICLE_GENRES.map((genre) => ({
+                  value: genre,
+                  label: LONG_ARTICLE_GENRE_LABEL[genre],
+                }))}
+              />
+            </Form.Item>
+          </>
         ) : null}
+
         {planStep ? (
-          <Button
-            className={styles.actionBtn}
-            type="primary"
-            block
-            size="large"
-            loading={phase === 'planning'}
-            disabled={!selectedAngle}
-            onClick={onPlan}
-          >
-            {PLAN_BUTTON}
-          </Button>
+          <>
+            <div className={styles.angleBlock}>
+              <div className={styles.angleLabel}>{SELECTED_ANGLE_LABEL}</div>
+              {selectedAngle ? (
+                <AngleCardView angle={selectedAngle} articleGenre={articleGenre} />
+              ) : (
+                <p className={styles.angleEmpty}>{SELECTED_ANGLE_EMPTY}</p>
+              )}
+            </div>
+            {/* 修复：name 必须挂在 InputNumber 上。Form.Item 只把 value/onChange 注入**直接子元素**，
+                隔一层 Space.Compact 时它们被透传到外层 div，字段收不到用户输入——
+                getFieldsValue 里 lengthLimit 恒为 undefined，成稿请求与快照都丢这个键 */}
+            <Form.Item label={LENGTH_LIMIT_LABEL}>
+              <Space.Compact className={styles.lengthLimit} block>
+                <Form.Item
+                  name="lengthLimit"
+                  noStyle
+                  // InputNumber 清空时给的是 null，落盘要的是「不写这个键」，故在这里归一成 undefined
+                  normalize={(value: number | null) =>
+                    typeof value === 'number' ? value : undefined
+                  }
+                >
+                  <InputNumber
+                    min={LENGTH_LIMIT_MIN}
+                    max={LENGTH_LIMIT_MAX}
+                    step={100}
+                    placeholder={LENGTH_LIMIT_PLACEHOLDER}
+                  />
+                </Form.Item>
+                <Space.Addon>{LENGTH_LIMIT_SUFFIX}</Space.Addon>
+              </Space.Compact>
+            </Form.Item>
+          </>
         ) : null}
+
         {draftStep ? (
-          <Button
-            className={styles.actionBtn}
-            type="primary"
-            block
-            size="large"
-            loading={phase === 'drafting'}
-            disabled={!plan}
-            onClick={onDraft}
-          >
-            {DRAFT_BUTTON}
-          </Button>
+          <>
+            {/* 标题在右栏点选标题方向时确定，这里只读回显；成稿前必须有，故标为必填 */}
+            <Form.Item label={DRAFT_TITLE_LABEL} required>
+              <Input value={draftTitle ?? ''} placeholder={DRAFT_TITLE_EMPTY} readOnly />
+            </Form.Item>
+            {/* 复制/粘贴浮在「文风」标签行右侧（见 module.css 的 styleActions）：
+                不进 Form.Item 的 label，否则 `<button>` 会被 label 隐式关联。 */}
+            <div className={styles.styleRow}>
+              <Form.Item
+                name="styleSelections"
+                label={STYLE_LABEL}
+                rules={[
+                  {
+                    // 「一张卡片都没选」不能写成 { required: true }：值是对象，空对象会被判成非空
+                    validator: (_rule, value: StyleDimensionSelections | undefined) =>
+                      hasStyleSelection(value ?? {})
+                        ? Promise.resolve()
+                        : Promise.reject(new Error(MISSING_STYLE_WARNING)),
+                  },
+                ]}
+              >
+                <StyleDimensionPicker disabled={busy} />
+              </Form.Item>
+              <StyleClipboardActions
+                className={styles.styleActions}
+                selections={styleSelections}
+                disabled={busy}
+                onPaste={applyStyleSelections}
+              />
+            </div>
+          </>
         ) : null}
+
         {imagesStep ? (
-          <Button
-            className={styles.actionBtn}
-            type="primary"
-            block
-            size="large"
-            loading={phase === 'illustrating'}
-            disabled={!hasMarkdown}
-            onClick={onPlanImages}
-          >
-            {PLAN_IMAGES_BUTTON}
-          </Button>
+          <>
+            <Form.Item name="watermarkImages">
+              <StudioImageUpload
+                max={1}
+                label={WATERMARK_LABEL}
+                subtitle={WATERMARK_SUBTITLE}
+                hint={WATERMARK_HINT}
+                ariaLabel={WATERMARK_ARIA_LABEL}
+                disabled={busy}
+              />
+            </Form.Item>
+            <Form.Item name="styleReferenceImages">
+              <StudioImageUpload
+                max={1}
+                label={STYLE_REFERENCE_LABEL}
+                subtitle={STYLE_REFERENCE_SUBTITLE}
+                hint={STYLE_REFERENCE_HINT}
+                ariaLabel={STYLE_REFERENCE_LABEL}
+                disabled={busy}
+              />
+            </Form.Item>
+          </>
         ) : null}
-      </div>
-    </aside>
+      </Form>
+    </StudioControlPanel>
   );
 }

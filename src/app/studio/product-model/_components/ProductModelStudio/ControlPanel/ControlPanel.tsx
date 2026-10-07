@@ -1,5 +1,8 @@
 import { Button, Form, Input, type FormInstance } from 'antd';
 import GenerateSpecFields from '@/app/studio/_components/GenerateSpecFields';
+import StudioControlPanel, {
+  studioControlFormClassName,
+} from '@/app/studio/_components/StudioControlPanel';
 import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import {
   GENERATE_BUTTON,
@@ -10,7 +13,6 @@ import {
   REQUIREMENT_MISSING,
 } from '../constants';
 import type { ProductModelPanelValues } from '../types';
-import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
   form: FormInstance<ProductModelPanelValues>;
@@ -27,60 +29,52 @@ export default function ControlPanel({
   onGenerate,
 }: ControlPanelProps) {
   return (
-    <aside className={styles.panel}>
-      <div className={styles.scroll}>
-        {/*
-          左栏值的唯一真相是这份 Form store。面板卸载后 store 仍在，故 hook 里读值必须用
-          getFieldsValue(true)；因此不要给这个 Form 加 clearOnDestroy，否则完成步返回时表单会空。
-          component={false} 同样不可用：本项目 cssVar.prefix='fanyu'，antd 组件必须渲染真实节点。
-        */}
-        <Form
-          form={form}
-          initialValues={initialValues}
-          layout="vertical"
-          disabled={generating}
-          className={styles.form}
-        >
-          <Form.Item name="productImages" rules={[{ required: true, message: NO_IMAGE_WARNING }]}>
-            <StudioImageUpload
-              label="产品精修图"
-              subtitle={PRODUCT_IMAGE_SUBTITLE}
-              disabled={generating}
-              required
-            />
-          </Form.Item>
-          <Form.Item name="modelImages">
-            <StudioImageUpload
-              max={MAX_MODEL_IMAGES}
-              label="模特形象"
-              subtitle={MODEL_IMAGE_SUBTITLE}
-              hint="上传模特身份参考图（可选）"
-              ariaLabel="上传模特形象"
-              disabled={generating}
-            />
-          </Form.Item>
-          <Form.Item
-            name="viewRequirement"
-            label="生成要求"
-            rules={[{ required: true, whitespace: true, message: REQUIREMENT_MISSING }]}
-          >
-            <Input.TextArea autoSize={{ minRows: 5, maxRows: 10 }} />
-          </Form.Item>
-          <GenerateSpecFields namePrefix={['spec']} />
-        </Form>
-      </div>
-      <div className={styles.footer}>
-        <Button
-          className={styles.primary}
-          type="primary"
-          block
-          size="large"
-          loading={generating}
-          onClick={onGenerate}
-        >
+    <StudioControlPanel
+      footer={
+        <Button type="primary" block size="large" loading={generating} onClick={onGenerate}>
           {GENERATE_BUTTON}
         </Button>
-      </div>
-    </aside>
+      }
+    >
+      {/*
+        左栏值的唯一真相是这份 Form store。面板卸载后 store 仍在，故 hook 里读值必须用
+        getFieldsValue(true)；因此不要给这个 Form 加 clearOnDestroy，否则完成步返回时表单会空。
+        component={false} 同样不可用：本项目 cssVar.prefix='fanyu'，antd 组件必须渲染真实节点。
+      */}
+      <Form
+        form={form}
+        initialValues={initialValues}
+        layout="vertical"
+        disabled={generating}
+        className={studioControlFormClassName}
+      >
+        <Form.Item name="productImages" rules={[{ required: true, message: NO_IMAGE_WARNING }]}>
+          <StudioImageUpload
+            label="产品精修图"
+            subtitle={PRODUCT_IMAGE_SUBTITLE}
+            disabled={generating}
+            required
+          />
+        </Form.Item>
+        <Form.Item name="modelImages">
+          <StudioImageUpload
+            max={MAX_MODEL_IMAGES}
+            label="模特形象"
+            subtitle={MODEL_IMAGE_SUBTITLE}
+            hint="上传模特身份参考图（可选）"
+            ariaLabel="上传模特形象"
+            disabled={generating}
+          />
+        </Form.Item>
+        <Form.Item
+          name="viewRequirement"
+          label="生成要求"
+          rules={[{ required: true, whitespace: true, message: REQUIREMENT_MISSING }]}
+        >
+          <Input.TextArea autoSize={{ minRows: 5, maxRows: 10 }} />
+        </Form.Item>
+        <GenerateSpecFields namePrefix={['spec']} />
+      </Form>
+    </StudioControlPanel>
   );
 }

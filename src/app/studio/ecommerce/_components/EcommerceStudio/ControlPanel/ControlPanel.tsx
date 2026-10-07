@@ -1,7 +1,11 @@
 import { Button, Form, type FormInstance } from 'antd';
 import type { ThemePlanCard } from '@/app/api/studio/ecommerce/_shared/theme-plan';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
+import GenerateSpecFields from '@/app/studio/_components/GenerateSpecFields';
 import ProductDocsUpload from '@/app/studio/_components/ProductDocsUpload';
+import StudioControlPanel, {
+  studioControlFormClassName,
+} from '@/app/studio/_components/StudioControlPanel';
 import StudioImageUpload from '@/app/studio/_components/StudioImageUpload';
 import {
   ANALYSIS_UPLOAD_MISSING,
@@ -22,9 +26,7 @@ import type { EcommercePanelValues, StudioPhase } from '../types';
 import { isDetailImageTask, isMainImageTask, isPosterTask, isThemePlanTask } from '../workflow';
 import DesignForm from './DesignForm';
 import ThemeDesignForm from './ThemeDesignForm';
-import GenerateSpecFields from '@/app/studio/_components/GenerateSpecFields';
 import { isAnalyzePhase, isDesignPhase, isVisualPhase } from './utils';
-import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
   taskType: EcommerceTaskType;
@@ -86,25 +88,91 @@ export default function ControlPanel({
         ? POSTER_BUTTON
         : DESIGN_BUTTON;
 
+  const footer = showAnalyzeForm ? (
+    <Button
+      type="primary"
+      block
+      size="large"
+      loading={analyzing}
+      disabled={jobRunning}
+      onClick={onAnalyze}
+    >
+      {ANALYZE_BUTTON}
+    </Button>
+  ) : showVisualForm ? (
+    <Button
+      type="primary"
+      block
+      size="large"
+      loading={visualGenerating}
+      disabled={visualBlocked}
+      onClick={onGenerateVisual}
+    >
+      {VISUAL_BUTTON}
+    </Button>
+  ) : showDesignForm ? (
+    <Button
+      type="primary"
+      block
+      size="large"
+      loading={designGenerating}
+      disabled={!canGenerateDesign || designBlocked}
+      onClick={onGenerateDesign}
+    >
+      {designButton}
+    </Button>
+  ) : null;
+
   return (
-    <aside className={styles.panel}>
-      <div className={styles.scroll}>
-        {/*
-          三步共用一个 Form：切步骤只换注册的 Form.Item 集合（preserve 默认 true，值仍留在 store），
-          几个上传项因此能在互斥分支里复用同一个 name。左栏值的唯一真相是这份 store，
-          读值一律用 getFieldsValue(true)；不要加 clearOnDestroy，也不要改成 component={false}。
-        */}
-        <Form
-          form={form}
-          initialValues={initialValues}
-          layout="vertical"
-          disabled={formLocked}
-          className={styles.form}
-          onValuesChange={onFieldChange}
-        >
-          {showAnalyzeForm ? (
-            <>
-              {themePlan ? (
+    <StudioControlPanel footer={footer}>
+      {/*
+        三步共用一个 Form：切步骤只换注册的 Form.Item 集合（preserve 默认 true，值仍留在 store），
+        几个上传项因此能在互斥分支里复用同一个 name。左栏值的唯一真相是这份 store，
+        读值一律用 getFieldsValue(true)；不要加 clearOnDestroy，也不要改成 component={false}。
+      */}
+      <Form
+        form={form}
+        initialValues={initialValues}
+        layout="vertical"
+        disabled={formLocked}
+        className={studioControlFormClassName}
+        onValuesChange={onFieldChange}
+      >
+        {showAnalyzeForm ? (
+          <>
+            {themePlan ? (
+              <Form.Item name="brandLogo">
+                <StudioImageUpload
+                  label={BRAND_LOGO_LABEL}
+                  subtitle={BRAND_LOGO_SUBTITLE}
+                  hint={BRAND_LOGO_HINT}
+                  ariaLabel={BRAND_LOGO_ARIA_LABEL}
+                  max={MAX_BRAND_LOGOS}
+                  disabled={formLocked}
+                />
+              </Form.Item>
+            ) : null}
+            <Form.Item name="productDocs">
+              <ProductDocsUpload disabled={formLocked} />
+            </Form.Item>
+            <Form.Item
+              name="documents"
+              rules={[{ required: true, message: ANALYSIS_UPLOAD_MISSING }]}
+            >
+              <ProductDocsUpload
+                max={1}
+                label="商业分析"
+                hint="上传商业分析 TXT / MD"
+                ariaLabel="上传商业分析"
+                disabled={formLocked}
+                required
+              />
+            </Form.Item>
+          </>
+        ) : showVisualForm ? (
+          <>
+            {poster ? (
+              <>
                 <Form.Item name="brandLogo">
                   <StudioImageUpload
                     label={BRAND_LOGO_LABEL}
@@ -115,114 +183,36 @@ export default function ControlPanel({
                     disabled={formLocked}
                   />
                 </Form.Item>
-              ) : null}
-              <Form.Item name="productDocs">
-                <ProductDocsUpload disabled={formLocked} />
-              </Form.Item>
-              <Form.Item
-                name="documents"
-                rules={[{ required: true, message: ANALYSIS_UPLOAD_MISSING }]}
-              >
-                <ProductDocsUpload
-                  max={1}
-                  label="商业分析"
-                  hint="上传商业分析 TXT / MD"
-                  ariaLabel="上传商业分析"
-                  disabled={formLocked}
-                  required
-                />
-              </Form.Item>
-            </>
-          ) : showVisualForm ? (
-            <>
-              {poster ? (
-                <>
-                  <Form.Item name="brandLogo">
-                    <StudioImageUpload
-                      label={BRAND_LOGO_LABEL}
-                      subtitle={BRAND_LOGO_SUBTITLE}
-                      hint={BRAND_LOGO_HINT}
-                      ariaLabel={BRAND_LOGO_ARIA_LABEL}
-                      max={MAX_BRAND_LOGOS}
-                      disabled={formLocked}
-                    />
-                  </Form.Item>
-                  <Form.Item name="images">
-                    <StudioImageUpload
-                      label="产品精修图"
-                      subtitle={VISUAL_PRODUCT_IMAGE_SUBTITLE}
-                      disabled={formLocked}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    name="documents"
-                    rules={[{ required: true, message: ANALYSIS_UPLOAD_MISSING }]}
-                  >
-                    <ProductDocsUpload
-                      max={1}
-                      label="商业分析"
-                      hint="上传商业分析 TXT / MD"
-                      ariaLabel="上传商业分析"
-                      disabled={formLocked}
-                      required
-                    />
-                  </Form.Item>
-                </>
-              ) : null}
-              <GenerateSpecFields namePrefix={['visualSpec']} />
-            </>
-          ) : showDesignForm && themePlan ? (
-            <ThemeDesignForm selectedCards={selectedCards} disabled={formLocked} />
-          ) : showDesignForm ? (
-            <DesignForm taskType={taskType} disabled={formLocked} />
-          ) : null}
-        </Form>
-      </div>
-      {showAnalyzeForm ? (
-        <div className={styles.footer}>
-          <Button
-            className={styles.analyzeBtn}
-            type="primary"
-            block
-            size="large"
-            loading={analyzing}
-            disabled={jobRunning}
-            onClick={onAnalyze}
-          >
-            {ANALYZE_BUTTON}
-          </Button>
-        </div>
-      ) : null}
-      {showVisualForm ? (
-        <div className={styles.footer}>
-          <Button
-            className={styles.analyzeBtn}
-            type="primary"
-            block
-            size="large"
-            loading={visualGenerating}
-            disabled={visualBlocked}
-            onClick={onGenerateVisual}
-          >
-            {VISUAL_BUTTON}
-          </Button>
-        </div>
-      ) : null}
-      {showDesignForm ? (
-        <div className={styles.footer}>
-          <Button
-            className={styles.analyzeBtn}
-            type="primary"
-            block
-            size="large"
-            loading={designGenerating}
-            disabled={!canGenerateDesign || designBlocked}
-            onClick={onGenerateDesign}
-          >
-            {designButton}
-          </Button>
-        </div>
-      ) : null}
-    </aside>
+                <Form.Item name="images">
+                  <StudioImageUpload
+                    label="产品精修图"
+                    subtitle={VISUAL_PRODUCT_IMAGE_SUBTITLE}
+                    disabled={formLocked}
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="documents"
+                  rules={[{ required: true, message: ANALYSIS_UPLOAD_MISSING }]}
+                >
+                  <ProductDocsUpload
+                    max={1}
+                    label="商业分析"
+                    hint="上传商业分析 TXT / MD"
+                    ariaLabel="上传商业分析"
+                    disabled={formLocked}
+                    required
+                  />
+                </Form.Item>
+              </>
+            ) : null}
+            <GenerateSpecFields namePrefix={['visualSpec']} />
+          </>
+        ) : showDesignForm && themePlan ? (
+          <ThemeDesignForm selectedCards={selectedCards} disabled={formLocked} />
+        ) : showDesignForm ? (
+          <DesignForm taskType={taskType} disabled={formLocked} />
+        ) : null}
+      </Form>
+    </StudioControlPanel>
   );
 }
