@@ -120,6 +120,7 @@ export function buildGeneratePlan(body: StudioGenerateRequest): StudioGeneratePl
   } else if (body.kind === 'imageText') {
     prompt = buildImageTextPrompt(body.prompt, {
       hasStyleReference: Boolean(body.styleReferenceDataUrl),
+      includeDisclaimer: body.includeDisclaimer !== false,
       ...(body.characterRequirement?.trim()
         ? { characterRequirement: body.characterRequirement.trim() }
         : {}),

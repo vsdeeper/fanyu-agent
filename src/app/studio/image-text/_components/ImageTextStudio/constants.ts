@@ -1,3 +1,4 @@
+import { IMAGE_TEXT_DISCLAIMER } from '@/app/api/studio/image-text/_shared/constants';
 import type { ImageTextPhase } from './types';
 
 export const STUDIO_STEPS = [{ title: '图文内容' }, { title: '图文生成' }, { title: '预览' }];
@@ -45,6 +46,8 @@ export const CHARACTER_REQUIREMENT_HINT =
 export const CHARACTER_REQUIREMENT_PLACEHOLDER =
   '可选：人物姿态/着装；或如「保留步骤示意与要点摘要两个板块，其余精简」';
 export const CHARACTER_REQUIREMENT_MAX_LENGTH = 1000;
+export const DISCLAIMER_LABEL = '免责声明';
+export const DISCLAIMER_HINT = `开启后，画面角落或文末加上小字「${IMAGE_TEXT_DISCLAIMER}」，不抢主标题`;
 export const PREVIEW_MARK = '预览';
 export const RESULT_PLAN_TITLE = '图文内容';
 export const RESULT_GENERATE_TITLE = '图文生成';

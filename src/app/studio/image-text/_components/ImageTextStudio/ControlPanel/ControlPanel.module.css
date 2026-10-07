@@ -61,6 +61,26 @@
   gap: 4px;
 }
 
+.switchBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.switchHint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fanyu-color-text-tertiary);
+}
+
 .labelTipIcon {
   display: inline-flex;
   align-items: center;

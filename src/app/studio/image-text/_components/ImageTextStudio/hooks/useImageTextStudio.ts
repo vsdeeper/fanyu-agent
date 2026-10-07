@@ -98,6 +98,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
       content: initialPlan?.content ?? '',
       styleReferenceImages: toImageItems(initialGenerate?.styleReferenceUrl),
       characterRequirement: initialGenerate?.characterRequirement ?? '',
+      includeDisclaimer: initialGenerate?.includeDisclaimer !== false,
       spec: {
         ...base,
         model,
@@ -195,6 +196,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
       images: imagesRef.current,
       ...(styleReferenceUrl ? { styleReferenceUrl } : {}),
       ...(characterRequirement ? { characterRequirement } : {}),
+      includeDisclaimer: values.includeDisclaimer !== false,
     });
     const urls = new Map(saved.images.map((item) => [item.id, item.url]));
     setImages((current) =>
@@ -346,6 +348,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
             prompt,
             ...(styleReferenceDataUrl ? { styleReferenceDataUrl } : {}),
             ...(characterRequirement ? { characterRequirement } : {}),
+            includeDisclaimer: values.includeDisclaimer !== false,
             slotIds: [imageId],
           }),
         ),

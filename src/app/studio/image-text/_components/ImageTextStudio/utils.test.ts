@@ -5,6 +5,7 @@ import {
   groupImagesByAspectRatio,
   normalizeCardBody,
   parseCaptionFromBody,
+  readGenerateSnapshot,
   stripCaptionFromBody,
   stripMarkdownFence,
   titleFromBody,
@@ -119,5 +120,24 @@ describe('图文出图分组与预览顺序', () => {
     ]);
     expect(slides.map((slide) => slide.id)).toEqual(['early', 'late']);
     expect(slides[0]).toEqual({ id: 'early', url: '/early', title: '封面' });
+  });
+});
+
+describe('readGenerateSnapshot', () => {
+  it('旧快照没有免责声明字段时默认开启', () => {
+    expect(
+      readGenerateSnapshot({ model: 'm', aspectRatio: '3:4', clarity: '2K' })?.includeDisclaimer,
+    ).toBe(true);
+  });
+
+  it('显式关闭免责声明时保留关闭', () => {
+    expect(
+      readGenerateSnapshot({
+        model: 'm',
+        aspectRatio: '3:4',
+        clarity: '2K',
+        includeDisclaimer: false,
+      })?.includeDisclaimer,
+    ).toBe(false);
   });
 });

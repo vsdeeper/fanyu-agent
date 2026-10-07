@@ -1,5 +1,5 @@
 import { QuestionCircleOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Tooltip } from 'antd';
+import { Button, Form, Input, Switch, Tooltip } from 'antd';
 import type { FormInstance } from 'antd';
 import {
   IMAGE_TEXT_MAX_CONTENT_LENGTH,
@@ -14,6 +14,8 @@ import {
   CHARACTER_REQUIREMENT_LABEL,
   CHARACTER_REQUIREMENT_MAX_LENGTH,
   CHARACTER_REQUIREMENT_PLACEHOLDER,
+  DISCLAIMER_HINT,
+  DISCLAIMER_LABEL,
   CONTENT_LABEL,
   CONTENT_PLACEHOLDER,
   DOCUMENTS_HINT,
@@ -124,6 +126,15 @@ export default function ControlPanel({
                   disabled={generating}
                 />
               </Form.Item>
+              <div className={styles.switchBlock}>
+                <div className={styles.switchRow}>
+                  <span className={styles.blockLabel}>{DISCLAIMER_LABEL}</span>
+                  <Form.Item name="includeDisclaimer" valuePropName="checked" preserve noStyle>
+                    <Switch disabled={generating} aria-label={DISCLAIMER_LABEL} />
+                  </Form.Item>
+                </div>
+                <p className={styles.switchHint}>{DISCLAIMER_HINT}</p>
+              </div>
               <GenerateSpecFields namePrefix={['spec']} showCount={false} />
             </>
           ) : (

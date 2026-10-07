@@ -61,6 +61,10 @@ export type ImageTextGenerateSnapshot = {
   styleReferenceUrl?: string;
   /** 可选画面补充要求。 */
   characterRequirement?: string;
+  /**
+   * 是否在成图上加固定免责句。旧快照无此键时视为开启。
+   */
+  includeDisclaimer?: boolean;
 };
 
 export type ImageTextPanelValues = {
@@ -70,6 +74,8 @@ export type ImageTextPanelValues = {
   styleReferenceImages: StudioImageUploadItem[];
   /** 可选：生成步画面补充要求。 */
   characterRequirement: string;
+  /** 生成步是否在画面上加免责声明。默认开启。 */
+  includeDisclaimer: boolean;
   /** 生成步出图规格。 */
   spec: GenerateSpecFields;
 };

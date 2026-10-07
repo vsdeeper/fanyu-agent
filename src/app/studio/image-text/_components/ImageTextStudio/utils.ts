@@ -310,6 +310,7 @@ export function readGenerateSnapshot(data: unknown): ImageTextGenerateSnapshot |
     ...(asString(record.characterRequirement)
       ? { characterRequirement: asString(record.characterRequirement) }
       : {}),
+    includeDisclaimer: record.includeDisclaimer !== false,
   };
 }
 

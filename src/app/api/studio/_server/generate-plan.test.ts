@@ -467,8 +467,9 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).toContain('半身侧影，看向窗外');
     expect(plan[0]?.prompt).toContain('知识库');
     expect(plan[0]?.prompt).toContain('优先于正文与视觉参考');
-    expect(plan[0]?.prompt).toContain('仍低于上方科普口径硬约束');
-    expect(plan[0]?.prompt).toContain('科普口径硬约束');
+    expect(plan[0]?.prompt).not.toContain('仍低于上方科普口径硬约束');
+    expect(plan[0]?.prompt).not.toContain('科普口径硬约束');
+    expect(plan[0]?.prompt).toContain('画面须含小字「仅供了解，非诊疗建议」');
     expect(plan[0]?.prompt).toContain('姿态硬约束');
     expect(plan[0]?.prompt).not.toContain('整套视觉约束');
   });
@@ -487,8 +488,39 @@ describe('buildGeneratePlan 批次展开', () => {
     expect(plan[0]?.prompt).toContain('非必须全文上屏');
     expect(plan[0]?.prompt).toContain('取舍精简');
     expect(plan[0]?.prompt).toContain('留足边距');
-    expect(plan[0]?.prompt).toContain('科普口径硬约束');
+    expect(plan[0]?.prompt).not.toContain('科普口径硬约束');
+    expect(plan[0]?.prompt).toContain('画面须含小字「仅供了解，非诊疗建议」');
     expect(plan[0]?.prompt).not.toContain('我的要求');
     expect(plan[0]?.prompt).not.toContain('知识库');
+  });
+
+  it('图文正文含取穴时才注入科普口径', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'imageText',
+      count: 1,
+      prompt: '# 认识本穴\n\n## 取穴\n沿经找到本穴',
+    });
+
+    expect(plan[0]?.prompt).toContain('科普口径硬约束');
+    expect(plan[0]?.prompt).toContain('仅供了解，非诊疗建议');
+    expect(plan[0]?.prompt).toContain('穴位标记硬约束');
+    expect(plan[0]?.prompt).toContain('画面须含小字「仅供了解，非诊疗建议」');
+    expect(plan[0]?.prompt).not.toContain('三间穴');
+  });
+
+  it('图文关闭免责声明时出图提示不加载该句', () => {
+    const plan = buildGeneratePlan({
+      ...base,
+      kind: 'imageText',
+      count: 1,
+      prompt: '# 每日食谱\n\n## 用料\n一碗汤',
+      includeDisclaimer: false,
+    });
+
+    expect(plan[0]?.prompt).not.toContain('仅供了解，非诊疗建议');
+    expect(plan[0]?.prompt).not.toContain('免责声明硬约束');
+    expect(plan[0]?.prompt).not.toContain('画面须含小字');
+    expect(plan[0]?.prompt).not.toContain('穴位标记');
   });
 });

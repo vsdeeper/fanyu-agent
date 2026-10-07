@@ -170,6 +170,11 @@ export type StudioImageTextGenerateRequest = StudioGenerateBase & {
   styleReferenceDataUrl?: string;
   /** 可选画面补充要求。 */
   characterRequirement?: string;
+  /**
+   * 是否在画面角落或文末加上固定免责句。
+   * 缺省视为开启，与生成步开关默认值一致。
+   */
+  includeDisclaimer?: boolean;
 };
 
 export type StudioGenerateRequest =

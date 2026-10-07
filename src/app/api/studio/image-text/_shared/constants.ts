@@ -19,3 +19,6 @@ export const IMAGE_TEXT_MAX_CONTENT_LENGTH = 8000;
  * 解析时两者都认。
  */
 export const IMAGE_TEXT_CAPTION_SECTION_TITLE = '配文';
+
+/** 图文成图角落或文末的固定免责句。开关默认开启。 */
+export const IMAGE_TEXT_DISCLAIMER = '仅供了解，非诊疗建议';
