@@ -17,5 +17,5 @@ export default function StudioControlPanel({ children, footer }: StudioControlPa
   );
 }
 
-/** 左栏 Form 布局 class：纵向 gap 与清掉 Form.Item 下外边距。 */
+/** 左栏 Form 的配套 class：只清掉 Form.Item 下边距。字段间距由滚动区的 gap 负责。 */
 export const studioControlFormClassName = styles.form;

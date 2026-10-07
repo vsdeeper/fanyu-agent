@@ -19,18 +19,26 @@ import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 import { NOVEL_SSE_EVENT } from '../_shared/constants';
 import type { NovelSseTextEvent } from '../_shared/types';
 import {
+  BIBLE_FAILED,
+  BIBLE_TRUNCATED,
   CHAPTER_BEATS_FAILED,
   CHAPTER_BEATS_TRUNCATED,
+  MISSING_BIBLE_INPUT,
   MISSING_CHAPTER_BEATS_INPUT,
   MISSING_RESEARCH_INPUT,
   MISSING_STRUCTURE_INPUT,
   MISSING_VOLUME_CHAPTERS_INPUT,
+  MISSING_POLISH_INPUT,
   MISSING_WRITING_INPUT,
+  NOVEL_BIBLE_MAX_OUTPUT_TOKENS,
+  NOVEL_POLISH_MAX_OUTPUT_TOKENS,
   NOVEL_CHAPTER_BEATS_MAX_OUTPUT_TOKENS,
   NOVEL_RESEARCH_MAX_OUTPUT_TOKENS,
   NOVEL_STRUCTURE_MAX_OUTPUT_TOKENS,
   NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS,
   NOVEL_WRITING_MAX_OUTPUT_TOKENS,
+  POLISH_FAILED,
+  POLISH_TRUNCATED,
   RESEARCH_FAILED,
   RESEARCH_TRUNCATED,
   STRUCTURE_FAILED,
@@ -41,21 +49,27 @@ import {
   WRITING_TRUNCATED,
 } from './constants';
 import {
+  BIBLE_INSTRUCTIONS,
   CHAPTER_BEATS_INSTRUCTIONS,
+  POLISH_INSTRUCTIONS,
   RESEARCH_INSTRUCTIONS,
   STRUCTURE_INSTRUCTIONS,
   VOLUME_CHAPTERS_INSTRUCTIONS,
   WRITING_INSTRUCTIONS,
 } from './instructions';
 import {
+  parseBibleBody,
   parseChapterBeatsBody,
+  parsePolishBody,
   parseResearchBody,
   parseStructureBody,
   parseVolumeChaptersBody,
   parseWritingBody,
 } from './parse-request';
 import {
+  buildBiblePrompt,
   buildChapterBeatsPrompt,
+  buildPolishPrompt,
   buildResearchPrompt,
   buildStructurePrompt,
   buildVolumeChaptersPrompt,
@@ -148,6 +162,38 @@ function createNovelSse(
     },
     encodeSsePrelude(),
   );
+}
+
+/** POST /api/studio/novel/bible：流式产出人物、世界与禁忌。 */
+export async function handleNovelBible(req: Request): Promise<Response> {
+  let json: unknown;
+  try {
+    json = await req.json();
+  } catch {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
+  }
+
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseBibleBody(split.rest);
+  if (!body) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_BIBLE_INPUT, 400);
+  }
+
+  return createNovelSse('novel/bible', BIBLE_FAILED, async (send) => {
+    await withStudioChatSettings(split.settings, async () => {
+      const result = createProStream({
+        instructions: BIBLE_INSTRUCTIONS,
+        prompt: buildBiblePrompt(body),
+        maxOutputTokens: NOVEL_BIBLE_MAX_OUTPUT_TOKENS,
+        abortSignal: req.signal,
+      });
+      await pipeTextStream(result, req.signal, send, BIBLE_FAILED, BIBLE_TRUNCATED, 'novel/bible');
+    });
+  });
 }
 
 /** POST /api/studio/novel/research：流式产出选题卡。 */
@@ -337,6 +383,46 @@ export async function handleNovelWriting(req: Request): Promise<Response> {
         WRITING_FAILED,
         WRITING_TRUNCATED,
         'novel/writing',
+      );
+    });
+  });
+}
+
+/** POST /api/studio/novel/polish：对单节拍正文做通顺润色（不改情节）。 */
+export async function handleNovelPolish(req: Request): Promise<Response> {
+  let json: unknown;
+  try {
+    json = await req.json();
+  } catch {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
+  }
+
+  const split = splitChatSettings(json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parsePolishBody(split.rest);
+  if (!body) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_POLISH_INPUT, 400);
+  }
+
+  return createNovelSse('novel/polish', POLISH_FAILED, async (send) => {
+    await withStudioChatSettings(split.settings, async () => {
+      if (req.signal.aborted) return;
+      const result = createProStream({
+        instructions: POLISH_INSTRUCTIONS,
+        prompt: buildPolishPrompt(body),
+        maxOutputTokens: NOVEL_POLISH_MAX_OUTPUT_TOKENS,
+        abortSignal: req.signal,
+      });
+      await pipeTextStream(
+        result,
+        req.signal,
+        send,
+        POLISH_FAILED,
+        POLISH_TRUNCATED,
+        'novel/polish',
       );
     });
   });

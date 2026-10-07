@@ -1,9 +1,22 @@
+import type { NovelBible } from '@/app/api/studio/novel/_shared/types';
 import { NOVEL_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/novel/_shared/task-constants';
 import type { NovelStepKey, NovelTaskStepRecord } from '@/app/api/studio/novel/_shared/task-types';
-import { parseStyleSelections } from '@/app/studio/_components/StyleDimensionPicker';
+import {
+  formatStyleSelections,
+  hasStyleAxis,
+  parseStyleSelections,
+} from '@/app/studio/_components/StyleDimensionPicker';
 import { apiDelete, apiPut } from '@/lib/client/api-client';
+import { BIBLE_HIDDEN_AXIS_LABELS, NARRATOR_AXIS_LABELS } from './constants';
 import type {
+  BibleGenerated,
+  BibleStepSnapshot,
+  NovelCharacter,
+  NovelCharacterGender,
+  NovelCharacterRole,
   NovelLongFormat,
+  NovelRelation,
+  NovelTense,
   NovelVolume,
   ResearchStepSnapshot,
   StructureBeat,
@@ -455,7 +468,14 @@ export function extractTrailingJsonBlock(text: string): {
       }
     }
   }
-  for (const key of ['"topics"', '"beats"', '"kind"', '"chapters"', '"volumes"'] as const) {
+  for (const key of [
+    '"topics"',
+    '"characters"',
+    '"beats"',
+    '"kind"',
+    '"chapters"',
+    '"volumes"',
+  ] as const) {
     const at = text.lastIndexOf(key);
     if (at < 0) continue;
     const brace = text.lastIndexOf('{', at);
@@ -538,6 +558,170 @@ function parseVolume(value: unknown): StructureVolume | null {
     }
   }
   return { id, title, purpose, chapters };
+}
+
+const CHARACTER_ROLES: Record<string, NovelCharacterRole> = {
+  protagonist: 'protagonist',
+  antagonist: 'antagonist',
+  supporting: 'supporting',
+  主角: 'protagonist',
+  对手: 'antagonist',
+  配角: 'supporting',
+};
+
+function parseCharacterRole(value: unknown): NovelCharacterRole | undefined {
+  return typeof value === 'string' ? CHARACTER_ROLES[value.trim()] : undefined;
+}
+
+const CHARACTER_GENDERS: Record<string, NovelCharacterGender> = {
+  female: 'female',
+  male: 'male',
+  unspecified: 'unspecified',
+  女: 'female',
+  男: 'male',
+  不标明: 'unspecified',
+};
+
+function parseCharacterGender(value: unknown): NovelCharacterGender | undefined {
+  return typeof value === 'string' ? CHARACTER_GENDERS[value.trim()] : undefined;
+}
+
+function parseCharacter(value: unknown): NovelCharacter | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const id = asString(record.id);
+  const name = asString(record.name);
+  const role = parseCharacterRole(record.role);
+  const gender = parseCharacterGender(record.gender);
+  const identity = asString(record.identity);
+  const desire = asString(record.desire);
+  const flaw = asString(record.flaw);
+  if (!id || !name || !role || !gender || !identity || !desire || !flaw) return null;
+  return { id, name, role, gender, identity, desire, flaw };
+}
+
+function parseRelation(value: unknown, characterIds: Set<string>): NovelRelation | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const fromId = asString(record.fromId);
+  const toId = asString(record.toId);
+  const label = asString(record.label);
+  if (!fromId || !toId || !label) return null;
+  if (!characterIds.has(fromId) || !characterIds.has(toId) || fromId === toId) return null;
+  return { fromId, toId, label };
+}
+
+function parseStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const items: string[] = [];
+  for (const item of value) {
+    const text = asString(item);
+    if (text) items.push(text);
+  }
+  return items;
+}
+
+function parseTense(value: unknown): NovelTense | undefined {
+  return value === 'past' || value === 'present' ? value : undefined;
+}
+
+/** 解析设定 JSON；至少要有一名人物和非空时空。 */
+export function parseBiblePayload(json: unknown): BibleGenerated | null {
+  if (!json || typeof json !== 'object') return null;
+  const record = json as Record<string, unknown>;
+  const timePlace = asString(record.timePlace);
+  if (!timePlace || !Array.isArray(record.characters)) return null;
+  const characters: NovelCharacter[] = [];
+  const seen = new Set<string>();
+  for (const item of record.characters) {
+    const character = parseCharacter(item);
+    if (!character || seen.has(character.id)) continue;
+    seen.add(character.id);
+    characters.push(character);
+  }
+  if (characters.length === 0) return null;
+  const characterIds = new Set(characters.map((character) => character.id));
+  const relations: NovelRelation[] = [];
+  if (Array.isArray(record.relations)) {
+    for (const item of record.relations) {
+      const relation = parseRelation(item, characterIds);
+      if (relation) relations.push(relation);
+    }
+  }
+  return {
+    characters,
+    relations,
+    timePlace,
+    rules: parseStringList(record.rules),
+    taboos: parseStringList(record.taboos),
+  };
+}
+
+function isCompleteCharacter(
+  character: NovelCharacter,
+): character is NovelCharacter & { gender: NovelCharacterGender } {
+  return Boolean(
+    character.id.trim() &&
+    character.name.trim() &&
+    character.gender &&
+    character.identity.trim() &&
+    character.desire.trim() &&
+    character.flaw.trim(),
+  );
+}
+
+/** 右栏是否已有可编辑的设定正文；仅有人称、聚焦、时态时仍算空。 */
+export function hasBibleDraft(bible: BibleStepSnapshot | undefined): boolean {
+  if (!bible) return false;
+  return (
+    bible.characters.length > 0 ||
+    Boolean(bible.timePlace.trim()) ||
+    bible.rules.some((rule) => rule.trim()) ||
+    bible.taboos.some((taboo) => taboo.trim())
+  );
+}
+
+/** 设定是否足以进入故事结构：一名写全的人物（含性别）、时空、人称、聚焦、时态。 */
+export function isBibleReadyForStructure(bible: BibleStepSnapshot | undefined): boolean {
+  if (!bible) return false;
+  if (!bible.characters.some(isCompleteCharacter)) return false;
+  if (!bible.timePlace.trim() || !bible.tense) return false;
+  return NARRATOR_AXIS_LABELS.every((label) => hasStyleAxis(bible.voiceFocus, label));
+}
+
+/** 把设定快照压成下游请求体；未完成时返回 undefined。 */
+export function toBibleRequest(bible: BibleStepSnapshot | undefined): NovelBible | undefined {
+  if (!bible || !isBibleReadyForStructure(bible) || !bible.tense) return undefined;
+  const voicePrompt = formatStyleSelections(bible.voiceFocus, {
+    hiddenAxisLabels: BIBLE_HIDDEN_AXIS_LABELS,
+  }).trim();
+  if (!voicePrompt) return undefined;
+  const characters = bible.characters.filter(isCompleteCharacter).map((character) => ({
+    id: character.id.trim(),
+    name: character.name.trim(),
+    role: character.role,
+    gender: character.gender,
+    identity: character.identity.trim(),
+    desire: character.desire.trim(),
+    flaw: character.flaw.trim(),
+  }));
+  if (characters.length === 0) return undefined;
+  const characterIds = new Set(characters.map((character) => character.id));
+  return {
+    characters,
+    relations: bible.relations.filter(
+      (relation) =>
+        relation.label.trim() &&
+        characterIds.has(relation.fromId) &&
+        characterIds.has(relation.toId) &&
+        relation.fromId !== relation.toId,
+    ),
+    timePlace: bible.timePlace.trim(),
+    rules: bible.rules.map((rule) => rule.trim()).filter(Boolean),
+    taboos: bible.taboos.map((taboo) => taboo.trim()).filter(Boolean),
+    tense: bible.tense,
+    voicePrompt,
+  };
 }
 
 /** 解析调研 JSON 为选题卡列表。 */
@@ -647,6 +831,61 @@ export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | 
     longFormat,
     topics,
     ...(selectedTopicId ? { selectedTopicId } : {}),
+    ...(streamText ? { streamText } : {}),
+  };
+}
+
+function parseStoredCharacter(value: unknown): NovelCharacter | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const id = asString(record.id);
+  if (!id) return null;
+  const gender = parseCharacterGender(record.gender);
+  return {
+    id,
+    name: typeof record.name === 'string' ? record.name.trim() : '',
+    role: parseCharacterRole(record.role) ?? 'supporting',
+    ...(gender ? { gender } : {}),
+    identity: typeof record.identity === 'string' ? record.identity.trim() : '',
+    desire: typeof record.desire === 'string' ? record.desire.trim() : '',
+    flaw: typeof record.flaw === 'string' ? record.flaw.trim() : '',
+  };
+}
+
+/** 从落盘 data 读取设定快照；保留尚未填完的手改人物。 */
+export function readBibleStepSnapshot(data: unknown): BibleStepSnapshot | undefined {
+  if (!data || typeof data !== 'object') return undefined;
+  const record = data as Record<string, unknown>;
+  if (!Array.isArray(record.characters) && typeof record.timePlace !== 'string') return undefined;
+  const characters: NovelCharacter[] = [];
+  const seen = new Set<string>();
+  if (Array.isArray(record.characters)) {
+    for (const item of record.characters) {
+      const character = parseStoredCharacter(item);
+      if (!character || seen.has(character.id)) continue;
+      seen.add(character.id);
+      characters.push(character);
+    }
+  }
+  const characterIds = new Set(characters.map((character) => character.id));
+  const relations: NovelRelation[] = [];
+  if (Array.isArray(record.relations)) {
+    for (const item of record.relations) {
+      const relation = parseRelation(item, characterIds);
+      if (relation) relations.push(relation);
+    }
+  }
+  const voiceFocus = parseStyleSelections(record.voiceFocus);
+  const tense = parseTense(record.tense);
+  const streamText = asString(record.streamText);
+  return {
+    characters,
+    relations,
+    timePlace: typeof record.timePlace === 'string' ? record.timePlace.trim() : '',
+    rules: parseStringList(record.rules),
+    taboos: parseStringList(record.taboos),
+    voiceFocus,
+    ...(tense ? { tense } : {}),
     ...(streamText ? { streamText } : {}),
   };
 }

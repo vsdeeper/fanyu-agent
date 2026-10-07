@@ -1,6 +1,11 @@
 import StudioCard from '@/app/studio/_components/StudioCard';
 import { Button } from 'antd';
-import { WRITE_BUTTON, WRITE_CHAR_COUNT, WRITE_UNIT_EMPTY_HINT } from '../../../constants';
+import {
+  POLISH_BUTTON,
+  WRITE_BUTTON,
+  WRITE_CHAR_COUNT,
+  WRITE_UNIT_EMPTY_HINT,
+} from '../../../constants';
 import { countTextChars } from '../../../utils';
 import styles from '../WritingEditor.module.css';
 
@@ -10,10 +15,13 @@ type BeatWritingCardProps = {
   body: string;
   /** 本节拍正在生成（显示 loading）。 */
   generating: boolean;
-  /** 任意写作生成进行中（禁用其它生成入口，避免打断）。 */
+  /** 本节拍正在润色。 */
+  polishing: boolean;
+  /** 任意写作生成或润色进行中（禁用其它入口，避免打断）。 */
   writeBusy: boolean;
   onSave: (value: string) => void;
   onGenerate: () => void;
+  onPolish: () => void;
 };
 
 const BEAT_CARD_STYLES = {
@@ -21,15 +29,17 @@ const BEAT_CARD_STYLES = {
   body: { padding: '14px 16px' },
 } as const;
 
-/** 单节拍正文卡：标题区为摘要，正文区为生成内容；extra 生成。 */
+/** 单节拍正文卡：标题区为摘要，正文区为生成内容；可生成，有正文时可润色。 */
 export default function BeatWritingCard({
   index,
   summary,
   body,
   generating,
+  polishing,
   writeBusy,
   onSave,
   onGenerate,
+  onPolish,
 }: BeatWritingCardProps) {
   const hasBody = Boolean(body.trim());
   const charCount = countTextChars(body);
@@ -65,6 +75,20 @@ export default function BeatWritingCard({
         </span>
       }
       editable={!generating}
+      editDisabled={polishing}
+      bodyActions={
+        hasBody || polishing ? (
+          <Button
+            type="link"
+            size="small"
+            loading={polishing}
+            disabled={writeBusy && !polishing}
+            onClick={onPolish}
+          >
+            {POLISH_BUTTON}
+          </Button>
+        ) : null
+      }
       value={body}
       onSave={onSave}
       textareaRows={6}

@@ -109,6 +109,14 @@ describe('formatStyleSelections', () => {
   it('无选择时返回空串', () => {
     expect(formatStyleSelections({})).toBe('');
   });
+
+  it('隐藏轴后不再输出该轴', () => {
+    const text = formatStyleSelections(
+      { [EXCLUSIVE_DIMENSION]: [EXCLUSIVE_C, OTHER_CARD] },
+      { hiddenAxisLabels: ['人称'] },
+    );
+    expect(text).toBe('叙事姿态：态度=低调陈述');
+  });
 });
 
 describe('hasStyleSelection', () => {

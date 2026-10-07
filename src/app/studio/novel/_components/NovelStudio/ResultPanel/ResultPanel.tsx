@@ -1,9 +1,13 @@
 import StudioStagePanel from '@/app/studio/_components/StudioStagePanel';
 import { StarOutlined } from '@ant-design/icons';
 import { Button, Input, Spin } from 'antd';
+import { useEffect, useRef } from 'react';
 import {
   BEATS_TITLE,
+  BIBLE_GENERATING_HINT,
+  BIBLE_PANEL_TITLE,
   CHAPTERS_TITLE,
+  EMPTY_BIBLE_HINT,
   EMPTY_RESEARCH_HINT,
   EMPTY_STRUCTURE_HINT,
   NEXT_BUTTON,
@@ -17,9 +21,17 @@ import {
   VOLUMES_TITLE,
   WRITE_PANEL_TITLE,
 } from '../constants';
+import { hasBibleDraft, isBibleReadyForStructure } from '../utils';
 import TopicCardView from '../TopicCardView';
-import type { StructureSnapshot, StudioPhase, TopicCard, WritingSnapshot } from '../types';
+import type {
+  BibleStepSnapshot,
+  StructureSnapshot,
+  StudioPhase,
+  TopicCard,
+  WritingSnapshot,
+} from '../types';
 import BeatList from './BeatList';
+import BibleEditor from './BibleEditor';
 import ChapterList from './ChapterList';
 import VolumeList from './VolumeList';
 import WritingEditor from './WritingEditor';
@@ -29,13 +41,18 @@ type ResultPanelProps = {
   phase: StudioPhase;
   topics: TopicCard[];
   selectedTopicId?: string;
+  bible?: BibleStepSnapshot;
+  /** 生成设定时已到达的说明；末尾 JSON 未闭合前会被去掉。 */
+  bibleStream?: string;
   structure?: StructureSnapshot;
   writing?: WritingSnapshot;
   selectedUnitIds: string[];
   generatingChapterId?: string;
   generatingVolumeId?: string;
   generatingUnitIds?: string[];
+  polishingUnitId?: string;
   onSelectTopic: (id: string) => void;
+  onChangeBible: (next: BibleStepSnapshot) => void;
   onPrev: () => void;
   onNext: () => void;
   onUpdateSynopsis: (synopsis: string) => void;
@@ -51,20 +68,25 @@ type ResultPanelProps = {
   onRemoveChapterBeat: (chapterId: string, beatId: string) => void;
   onUpdateWritingBody: (unitId: string, body: string) => void;
   onGenerateWriting: (unitIds: string[]) => void;
+  onPolishWriting: (unitId: string) => void;
 };
 
-/** 右侧结果区：选题卡 / 故事结构 / 正文写作。 */
+/** 右侧结果区：选题卡 / 设定 / 故事结构 / 正文写作。 */
 export default function ResultPanel({
   phase,
   topics,
   selectedTopicId,
+  bible,
+  bibleStream = '',
   structure,
   writing,
   selectedUnitIds,
   generatingChapterId,
   generatingVolumeId,
   generatingUnitIds = [],
+  polishingUnitId,
   onSelectTopic,
+  onChangeBible,
   onPrev,
   onNext,
   onUpdateSynopsis,
@@ -80,25 +102,45 @@ export default function ResultPanel({
   onRemoveChapterBeat,
   onUpdateWritingBody,
   onGenerateWriting,
+  onPolishWriting,
 }: ResultPanelProps) {
   const researchView = phase === 'research' || phase === 'researching' || phase === 'researched';
+  const bibleView = phase === 'bible' || phase === 'bibling' || phase === 'bibled';
   const structureView = phase === 'structure' || phase === 'structuring' || phase === 'structured';
   const writeView = phase === 'write' || phase === 'writing' || phase === 'written';
   const researching = phase === 'researching';
   const researched = phase === 'researched';
+  const bibling = phase === 'bibling';
+  const bibleStreamText = bibleStream.trim();
+  const streamRef = useRef<HTMLDivElement>(null);
   const structuring = phase === 'structuring';
   const researchEmpty = researchView && !researching && topics.length === 0;
+  const bibleEmpty = bibleView && !bibling && !hasBibleDraft(bible);
   const structureEmpty = structureView && !structuring && !structure;
+
+  useEffect(() => {
+    if (!bibling || !bibleStreamText) return;
+    const scroller = streamRef.current?.parentElement;
+    if (!scroller) return;
+    scroller.scrollTop = scroller.scrollHeight;
+  }, [bibleStreamText, bibling]);
 
   const panelTitle = writeView
     ? WRITE_PANEL_TITLE
     : structureView
       ? STRUCTURE_PANEL_TITLE
-      : RESEARCH_PANEL_TITLE;
-  const canPrev = structureView || writeView;
-  const canNext = (researched && Boolean(selectedTopicId)) || structureView || writeView;
+      : bibleView
+        ? BIBLE_PANEL_TITLE
+        : RESEARCH_PANEL_TITLE;
+  const canPrev = bibleView || structureView || writeView;
+  const canNext =
+    (researched && Boolean(selectedTopicId)) ||
+    (bibleView && !bibling && isBibleReadyForStructure(bible)) ||
+    structureView ||
+    writeView;
   const stageFill =
     (researchView && (researchEmpty || (researching && topics.length === 0))) ||
+    (bibleView && (bibleEmpty || (bibling && !bibleStreamText))) ||
     (structureView && !structure) ||
     (writeView && !(structure && writing));
 
@@ -145,6 +187,33 @@ export default function ResultPanel({
             </div>
           </div>
         )
+      ) : null}
+
+      {bibleView ? (
+        bibling ? (
+          bibleStreamText ? (
+            <div ref={streamRef}>
+              <p className={styles.streamText}>{bibleStreamText}</p>
+              <div className={styles.streamStatus}>
+                <Spin size="small" />
+                <span>{BIBLE_GENERATING_HINT}</span>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.body}>
+              <Spin />
+              <p className={styles.hint}>{BIBLE_GENERATING_HINT}</p>
+            </div>
+          )
+        ) : bibleEmpty ? (
+          <div className={styles.body}>
+            <p className={styles.hint}>{EMPTY_BIBLE_HINT}</p>
+          </div>
+        ) : bible ? (
+          <div className={styles.scrollContent}>
+            <BibleEditor bible={bible} onChange={onChangeBible} />
+          </div>
+        ) : null
       ) : null}
 
       {structureView ? (
@@ -215,8 +284,10 @@ export default function ResultPanel({
               writing={writing}
               selectedUnitIds={selectedUnitIds}
               generatingUnitIds={generatingUnitIds}
+              polishingUnitId={polishingUnitId}
               onSaveBody={onUpdateWritingBody}
               onGenerateWriting={onGenerateWriting}
+              onPolishWriting={onPolishWriting}
             />
           </div>
         ) : (

@@ -1,10 +1,19 @@
+import type {
+  NovelCharacter,
+  NovelCharacterRole,
+  NovelRelation,
+  NovelTense,
+} from '@/app/api/studio/novel/_shared/types';
 import type { StyleDimensionSelections } from '@/app/studio/_components/StyleDimensionPicker';
 
-/** 小说工作室 UI 阶段：选题调研 → 故事结构 → 写作 → 预览。 */
+/** 小说工作室 UI 阶段：选题调研 → 设定 → 故事结构 → 写作 → 预览。 */
 export type StudioPhase =
   | 'research'
   | 'researching'
   | 'researched'
+  | 'bible'
+  | 'bibling'
+  | 'bibled'
   | 'structure'
   | 'structuring'
   | 'structured'
@@ -12,6 +21,8 @@ export type StudioPhase =
   | 'writing'
   | 'written'
   | 'preview';
+
+export type { NovelCharacter, NovelCharacterGender, NovelCharacterRole, NovelRelation, NovelTense };
 
 export type NovelVolume = 'short' | 'medium' | 'long';
 
@@ -81,6 +92,27 @@ export type WritingSnapshot = {
   units: WritingUnit[];
   /** 正文文风维度选择；可选，仅影响后续生成。 */
   styleSelections?: StyleDimensionSelections;
+};
+
+/** 设定步骤落盘快照。人称与聚焦用文风卡片 id；时态由用户选定。 */
+export type BibleStepSnapshot = {
+  characters: NovelCharacter[];
+  relations: NovelRelation[];
+  timePlace: string;
+  rules: string[];
+  taboos: string[];
+  voiceFocus: StyleDimensionSelections;
+  tense?: NovelTense;
+  streamText?: string;
+};
+
+/** 模型产出的设定正文，不含人称、聚焦、时态。 */
+export type BibleGenerated = {
+  characters: NovelCharacter[];
+  relations: NovelRelation[];
+  timePlace: string;
+  rules: string[];
+  taboos: string[];
 };
 
 /** 选题调研步骤落盘快照。 */

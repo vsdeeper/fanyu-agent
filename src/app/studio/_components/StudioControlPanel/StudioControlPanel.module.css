@@ -20,12 +20,10 @@
   gap: 32px;
 }
 
-/* 字段间距统一由 gap 给，抵消 antd Form.Item 自带的下外边距 */
-.form {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
+/* Form 不生成盒子，字段直接成为滚动区的排版子项，间距只用上面的 gap。
+   清掉 Form.Item 默认下边距，避免和 gap 叠两层。 */
+.scroll > :global(form.ant-form) {
+  display: contents;
 }
 
 .form :global(.ant-form-item) {

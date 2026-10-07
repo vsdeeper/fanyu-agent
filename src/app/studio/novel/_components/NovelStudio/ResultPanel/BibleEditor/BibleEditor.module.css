@@ -1,0 +1,26 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fieldLabel {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.empty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fanyu-color-text-tertiary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

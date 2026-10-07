@@ -1,0 +1,75 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--fanyu-color-border-secondary);
+  border-radius: 8px;
+}
+
+.head,
+.editHead,
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editHead {
+  flex-wrap: wrap;
+}
+
+.head {
+  justify-content: space-between;
+}
+
+.editActions {
+  justify-content: flex-end;
+}
+
+.name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--fanyu-color-text);
+  word-break: break-word;
+}
+
+.line {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fanyu-color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.label {
+  margin-right: 8px;
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.empty {
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.editButton {
+  padding-inline: 0;
+  height: auto;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.roleSelect {
+  width: 96px;
+  flex-shrink: 0;
+}
+
+.genderSelect {
+  width: 112px;
+  flex-shrink: 0;
+}

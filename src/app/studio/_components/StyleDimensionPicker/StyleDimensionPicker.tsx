@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { Button, Flex, Tag } from 'antd';
-import { STYLE_DIMENSIONS } from './style-dimensions';
 import type { StyleDimension, StyleDimensionKey, StyleDimensionSelections } from './types';
-import { applyDimensionSelection, selectCardsByIds, toggleStyleCardId } from './utils';
+import {
+  applyDimensionSelection,
+  filterStyleDimensions,
+  selectCardsByIds,
+  toggleStyleCardId,
+} from './utils';
 import { LIBRARY_EMPTY_HINT, PICK_BUTTON, UNSELECTED_HINT } from './constants';
 import StyleDimensionModal from './StyleDimensionModal';
 import styles from './StyleDimensionPicker.module.css';
@@ -13,6 +17,8 @@ export type StyleDimensionPickerProps = {
   disabled?: boolean;
   /** 与 value 一样由 Form.Item 注入，故可选；独立使用时必须传 */
   onChange?: (next: StyleDimensionSelections) => void;
+  /** 轴短名。隐藏后不展示、不进入弹框；不传则展示全部轴。 */
+  hiddenAxisLabels?: readonly string[];
   id?: string;
   'aria-describedby'?: string;
   'aria-invalid'?: boolean;
@@ -26,6 +32,7 @@ export default function StyleDimensionPicker({
   value,
   disabled,
   onChange,
+  hiddenAxisLabels,
   id,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
@@ -34,8 +41,9 @@ export default function StyleDimensionPicker({
   const [openKey, setOpenKey] = useState<StyleDimensionKey | null>(null);
   const [draftIds, setDraftIds] = useState<readonly string[]>([]);
 
-  const activeDimension = STYLE_DIMENSIONS.find((dimension) => dimension.key === openKey);
-  const libraryEmpty = STYLE_DIMENSIONS.every((dimension) =>
+  const dimensions = filterStyleDimensions(hiddenAxisLabels);
+  const activeDimension = dimensions.find((dimension) => dimension.key === openKey);
+  const libraryEmpty = dimensions.every((dimension) =>
     dimension.groups.every((group) => group.cards.length === 0),
   );
 
@@ -66,7 +74,7 @@ export default function StyleDimensionPicker({
       aria-describedby={ariaDescribedBy}
       aria-invalid={ariaInvalid}
     >
-      {STYLE_DIMENSIONS.map((dimension) => {
+      {dimensions.map((dimension) => {
         const cards = selectCardsByIds(dimension, selections[dimension.key] ?? []);
         return (
           <div key={dimension.key} className={styles.dimension}>

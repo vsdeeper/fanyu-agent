@@ -15,6 +15,24 @@
   text-align: center;
 }
 
+.streamText {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--fanyu-color-text);
+}
+
+.streamStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--fanyu-color-text-tertiary);
+  font-size: 13px;
+}
+
 .scrollContent {
   display: flex;
   flex-direction: column;

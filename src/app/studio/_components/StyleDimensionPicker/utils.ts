@@ -43,6 +43,37 @@ function sanitizeDimensionIds(dimension: StyleDimension, raw: unknown): string[]
   return kept;
 }
 
+/** 全部轴的短名，供调用方计算要隐藏的轴。 */
+export function listStyleAxisLabels(): string[] {
+  return STYLE_DIMENSIONS.flatMap((dimension) => dimension.groups.map((group) => group.label));
+}
+
+/** 按隐藏轴过滤维度；未传或为空时返回原库。空组的维度不返回。 */
+export function filterStyleDimensions(
+  hiddenAxisLabels?: readonly string[],
+): readonly StyleDimension[] {
+  if (!hiddenAxisLabels?.length) return STYLE_DIMENSIONS;
+  const hidden = new Set(hiddenAxisLabels);
+  return STYLE_DIMENSIONS.flatMap((dimension) => {
+    const groups = dimension.groups.filter((group) => !hidden.has(group.label));
+    if (groups.length === 0) return [];
+    if (groups.length === dimension.groups.length) return [dimension];
+    return [{ ...dimension, groups }];
+  });
+}
+
+/** 该轴是否已有一张有效卡片。 */
+export function hasStyleAxis(selections: StyleDimensionSelections, axisLabel: string): boolean {
+  for (const dimension of STYLE_DIMENSIONS) {
+    const ids = new Set(selections[dimension.key] ?? []);
+    for (const group of dimension.groups) {
+      if (group.label !== axisLabel) continue;
+      if (group.cards.some((card) => ids.has(card.id))) return true;
+    }
+  }
+  return false;
+}
+
 /** 清洗选中态：只保留卡片库中真实存在的 id，并把键序规范成库顺序。 */
 export function parseStyleSelections(value: unknown): StyleDimensionSelections {
   if (!isRecord(value)) return {};
@@ -113,15 +144,20 @@ export function hasStyleSelection(selections: StyleDimensionSelections): boolean
  * 「轴=」前缀不可省：同一维度的各轴是并列约束（须同时满足），
  * 而一个轴内用「、」连接的多张才是可叠加的一类要求，没有轴名模型分不出这两者。
  */
-export function formatStyleSelections(selections: StyleDimensionSelections): string {
-  return STYLE_DIMENSIONS.flatMap((dimension) => {
-    const selected = new Set(selections[dimension.key] ?? []);
-    const axes = dimension.groups.flatMap((group) => {
-      const tags = group.cards.filter((card) => selected.has(card.id)).map((card) => card.tag);
-      return tags.length ? [`${group.label}=${tags.join('、')}`] : [];
-    });
-    return axes.length ? [`${dimension.label}：${axes.join('；')}`] : [];
-  }).join('\n');
+export function formatStyleSelections(
+  selections: StyleDimensionSelections,
+  options?: { hiddenAxisLabels?: readonly string[] },
+): string {
+  return filterStyleDimensions(options?.hiddenAxisLabels)
+    .flatMap((dimension) => {
+      const selected = new Set(selections[dimension.key] ?? []);
+      const axes = dimension.groups.flatMap((group) => {
+        const tags = group.cards.filter((card) => selected.has(card.id)).map((card) => card.tag);
+        return tags.length ? [`${group.label}=${tags.join('、')}`] : [];
+      });
+      return axes.length ? [`${dimension.label}：${axes.join('；')}`] : [];
+    })
+    .join('\n');
 }
 
 /**

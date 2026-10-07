@@ -1,3 +1,45 @@
+/** 人物在故事中的位置。 */
+export type NovelCharacterRole = 'protagonist' | 'antagonist' | 'supporting';
+
+/** 人物性别。不标明表示这个故事不锁定该人的他/她。 */
+export type NovelCharacterGender = 'female' | 'male' | 'unspecified';
+
+/** 语法时态：全书锁定，与文风「时间位置」不是同一根轴。 */
+export type NovelTense = 'past' | 'present';
+
+/** 核心人物。 */
+export type NovelCharacter = {
+  id: string;
+  name: string;
+  role: NovelCharacterRole;
+  /** 旧快照可能还没有；写全并进入下一步前必须选定。 */
+  gender?: NovelCharacterGender;
+  identity: string;
+  desire: string;
+  flaw: string;
+};
+
+/** 两人之间的一条关系。 */
+export type NovelRelation = {
+  fromId: string;
+  toId: string;
+  label: string;
+};
+
+/** 传给后续步骤的设定：人称、聚焦已压成 voicePrompt。 */
+export type NovelBible = {
+  characters: NovelCharacter[];
+  relations: NovelRelation[];
+  /** 故事发生的时间与地点，一句即可。 */
+  timePlace: string;
+  /** 全书已经成立、不能改口的事实；不限于奇幻或科幻法则。 */
+  rules: string[];
+  /** 这个故事里不要发生的事。 */
+  taboos?: string[];
+  tense: NovelTense;
+  voicePrompt: string;
+};
+
 /** 体量倾向。 */
 export type NovelVolume = 'short' | 'medium' | 'long';
 
@@ -52,8 +94,8 @@ export type NovelResearchRequest = {
   longFormat?: NovelLongFormat;
 };
 
-/** 故事结构请求。 */
-export type NovelStructureRequest = {
+/** 设定生成请求：只产出人物、世界与禁忌。 */
+export type NovelBibleRequest = {
   idea: string;
   genres?: string[];
   volume: NovelVolume;
@@ -61,9 +103,20 @@ export type NovelStructureRequest = {
   topic: NovelTopicCard;
 };
 
+/** 故事结构请求。 */
+export type NovelStructureRequest = {
+  idea: string;
+  genres?: string[];
+  volume: NovelVolume;
+  longFormat?: NovelLongFormat;
+  topic: NovelTopicCard;
+  bible: NovelBible;
+};
+
 /** 按卷生成章纲请求。 */
 export type NovelVolumeChaptersRequest = {
   topic: NovelTopicCard;
+  bible: NovelBible;
   longFormat?: NovelLongFormat;
   volume: {
     id: string;
@@ -83,6 +136,7 @@ export type NovelVolumeChaptersRequest = {
 /** 章内节拍请求。 */
 export type NovelChapterBeatsRequest = {
   topic: NovelTopicCard;
+  bible: NovelBible;
   longFormat?: NovelLongFormat;
   chapter: {
     id: string;
@@ -104,9 +158,20 @@ export type NovelWritingRequest = {
   chapterTitle?: string;
   chapterPurpose?: string;
   topic: NovelTopicCard;
+  bible: NovelBible;
   volume: NovelVolume;
   longFormat?: NovelLongFormat;
   /** 文风提示词；可选。 */
+  stylePrompt?: string;
+};
+
+/** 单节拍正文通顺润色：改句读与用词，不改情节。 */
+export type NovelPolishRequest = {
+  /** 当前节拍正文。 */
+  body: string;
+  /** 节拍摘要；有则用来守住这一拍要完成的事。 */
+  beatText?: string;
+  /** 文风提示；有则润色时保留语气质地。 */
   stylePrompt?: string;
 };
 

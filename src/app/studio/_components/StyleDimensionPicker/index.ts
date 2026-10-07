@@ -14,8 +14,11 @@ export type {
 } from './types';
 export {
   applyDimensionSelection,
+  filterStyleDimensions,
   formatStyleSelections,
+  hasStyleAxis,
   hasStyleSelection,
+  listStyleAxisLabels,
   parseStylePayload,
   parseStyleSelections,
   selectCardsByIds,

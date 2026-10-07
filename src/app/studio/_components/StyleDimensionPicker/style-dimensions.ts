@@ -30,7 +30,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
     label: '叙事姿态',
     groups: [
       {
-        title: '一、按「人称」分',
+        title: '按「人称」分',
         label: '人称',
         exclusive: true,
         cards: [
@@ -63,7 +63,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '二、按「聚焦」分',
+        title: '按「聚焦」分',
         label: '聚焦',
         exclusive: true,
         cards: [
@@ -91,7 +91,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '三、按叙述者的「站位」分',
+        title: '按叙述者的「站位」分',
         label: '站位',
         exclusive: true,
         cards: [
@@ -121,7 +121,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '四、按「视角距离」分',
+        title: '按「视角距离」分',
         label: '距离',
         exclusive: true,
         cards: [
@@ -148,7 +148,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '五、按「叙述可靠度」分',
+        title: '按「叙述可靠度」分',
         label: '可靠度',
         exclusive: true,
         cards: [
@@ -166,7 +166,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '六、按叙述者的「态度」分',
+        title: '按叙述者的「态度」分',
         label: '态度',
         exclusive: true,
         cards: [
@@ -199,7 +199,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
     label: '时空编排',
     groups: [
       {
-        title: '一、按「叙述的时间位置」分',
+        title: '按「叙述的时间位置」分',
         label: '时间位置',
         exclusive: true,
         cards: [
@@ -231,7 +231,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '二、按空间的「功能」分',
+        title: '按空间的「功能」分',
         label: '空间功能',
         exclusive: false,
         cards: [
@@ -261,7 +261,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '三、按空间的「尺度」分',
+        title: '按空间的「尺度」分',
         label: '空间尺度',
         exclusive: false,
         cards: [
@@ -288,7 +288,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '四、按空间的「移动方式」分',
+        title: '按空间的「移动方式」分',
         label: '空间移动',
         exclusive: true,
         cards: [
@@ -328,7 +328,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
     label: '情感质地',
     groups: [
       {
-        title: '一、按情感的「温度」分',
+        title: '按情感的「温度」分',
         label: '温度',
         exclusive: true,
         cards: [
@@ -360,7 +360,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '二、按情感的「密度」分',
+        title: '按情感的「密度」分',
         label: '密度',
         exclusive: true,
         cards: [
@@ -387,7 +387,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '三、按情感的「身体性」分',
+        title: '按情感的「身体性」分',
         label: '身体性',
         exclusive: true,
         cards: [
@@ -414,7 +414,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '四、按情感的「表达方式」分',
+        title: '按情感的「表达方式」分',
         label: '表达方式',
         exclusive: true,
         cards: [
@@ -448,7 +448,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '五、按情感的「道德姿态」分',
+        title: '按情感的「道德姿态」分',
         label: '社会姿态',
         exclusive: true,
         cards: [
@@ -481,7 +481,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '六、按情感的「关系性」分',
+        title: '按情感的「关系性」分',
         label: '关系性',
         exclusive: true,
         cards: [
@@ -508,7 +508,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '七、按情感的「时间性」分',
+        title: '按情感的「时间性」分',
         label: '情感时间结构',
         exclusive: true,
         cards: [
@@ -541,7 +541,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
     label: '语言质地',
     groups: [
       {
-        title: '一、按句子的「长度与节奏」分',
+        title: '按句子的「长度与节奏」分',
         label: '节奏',
         exclusive: true,
         cards: [
@@ -573,7 +573,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '二、按词汇的「质感」分',
+        title: '按词汇的「质感」分',
         label: '词汇',
         exclusive: false,
         cards: [
@@ -615,7 +615,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '三、按修辞的「密度」分',
+        title: '按修辞的「密度」分',
         label: '修辞密度',
         exclusive: true,
         cards: [
@@ -647,7 +647,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '四、按「意象」的使用分',
+        title: '按「意象」的使用分',
         label: '意象',
         exclusive: false,
         cards: [
@@ -679,7 +679,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '五、按对话的「功能」分',
+        title: '按对话的「功能」分',
         label: '对话',
         exclusive: true,
         cards: [
@@ -717,7 +717,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
     label: '主题风格',
     groups: [
       {
-        title: '一、按「主题的收束方式」分',
+        title: '按「主题的收束方式」分',
         label: '收束方式',
         exclusive: true,
         cards: [
@@ -771,7 +771,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '二、按「主题的落点」分',
+        title: '按「主题的落点」分',
         label: '落点',
         exclusive: true,
         cards: [
@@ -803,7 +803,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '三、按「过程怎么走」分',
+        title: '按「过程怎么走」分',
         label: '过程质感',
         exclusive: false,
         cards: [
@@ -825,7 +825,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '四、按「主题的自我认知」分',
+        title: '按「主题的自我认知」分',
         label: '自我认知',
         exclusive: true,
         cards: [
@@ -858,7 +858,7 @@ export const STYLE_DIMENSIONS: readonly StyleDimension[] = [
         ],
       },
       {
-        title: '五、按「主题的关涉对象」分',
+        title: '按「主题的关涉对象」分',
         label: '关涉对象',
         exclusive: true,
         cards: [

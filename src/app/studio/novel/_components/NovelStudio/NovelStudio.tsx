@@ -18,7 +18,7 @@ type NovelStudioProps = {
   task: NovelTaskDetail;
 };
 
-/** 小说写作工作台：选题调研 → 故事结构 → 写作 → 预览。 */
+/** 小说写作工作台：选题调研 → 设定 → 故事结构 → 写作 → 预览。 */
 export default function NovelStudio({ task }: NovelStudioProps) {
   const router = useRouter();
   const studio = useNovelStudio(task);
@@ -69,11 +69,18 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 phase={studio.phase}
                 selectedTopic={studio.selectedTopic}
                 structure={studio.structure}
+                onGenerateBible={studio.handleGenerateBible}
                 selectedUnitIds={studio.selectedUnitIds}
                 focusUnitId={studio.focusUnitId}
                 styleSelections={studio.writing?.styleSelections ?? {}}
-                writeBusy={studio.generatingUnitIds.length > 0}
+                bibleVoiceFocus={studio.bible?.voiceFocus ?? {}}
+                bibleTense={studio.bible?.tense}
+                writeBusy={studio.generatingUnitIds.length > 0 || Boolean(studio.polishingUnitId)}
                 onResearch={studio.handleResearch}
+                onBibleVoiceFocusChange={(voiceFocus) =>
+                  studio.updateBibleNarration({ voiceFocus })
+                }
+                onBibleTenseChange={(tense) => studio.updateBibleNarration({ tense })}
                 onGenerateStructure={studio.handleGenerateStructure}
                 onToggleWritingUnit={studio.toggleWritingUnit}
                 onStyleSelectionsChange={studio.updateStyleSelections}
@@ -82,13 +89,17 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 phase={studio.phase}
                 topics={studio.topics}
                 selectedTopicId={studio.selectedTopicId}
+                bible={studio.bible}
+                bibleStream={studio.bibleStream}
                 structure={studio.structure}
                 writing={studio.writing}
                 selectedUnitIds={studio.selectedUnitIds}
                 generatingChapterId={studio.generatingChapterId}
                 generatingVolumeId={studio.generatingVolumeId}
                 generatingUnitIds={studio.generatingUnitIds}
+                polishingUnitId={studio.polishingUnitId}
                 onSelectTopic={studio.handleSelectTopic}
+                onChangeBible={studio.updateBible}
                 onPrev={studio.handlePrev}
                 onNext={studio.handleNext}
                 onUpdateSynopsis={studio.updateSynopsis}
@@ -104,6 +115,7 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 onRemoveChapterBeat={studio.removeChapterBeat}
                 onUpdateWritingBody={studio.updateWritingBody}
                 onGenerateWriting={studio.handleGenerateWriting}
+                onPolishWriting={studio.handlePolishWriting}
               />
             </>
           )}

@@ -10,8 +10,10 @@ type WritingEditorProps = {
   writing: WritingSnapshot;
   selectedUnitIds: string[];
   generatingUnitIds: string[];
+  polishingUnitId?: string;
   onSaveBody: (unitId: string, body: string) => void;
   onGenerateWriting: (unitIds: string[]) => void;
+  onPolishWriting: (unitId: string) => void;
 };
 
 /** 写作右栏：章 / 节拍嵌套；摘要与正文区分；卡片内生成正文。 */
@@ -20,12 +22,14 @@ export default function WritingEditor({
   writing,
   selectedUnitIds,
   generatingUnitIds,
+  polishingUnitId,
   onSaveBody,
   onGenerateWriting,
+  onPolishWriting,
 }: WritingEditorProps) {
   const blocks = buildWritingEditorBlocks(structure, writing, selectedUnitIds);
   const generatingSet = new Set(generatingUnitIds);
-  const writingBusy = generatingUnitIds.length > 0;
+  const writingBusy = generatingUnitIds.length > 0 || Boolean(polishingUnitId);
 
   if (blocks.length === 0) {
     return (
@@ -48,9 +52,11 @@ export default function WritingEditor({
                   summary={beat.summary}
                   body={beat.body}
                   generating={generatingSet.has(beat.unitId)}
+                  polishing={polishingUnitId === beat.unitId}
                   writeBusy={writingBusy}
                   onSave={(value) => onSaveBody(beat.unitId, value)}
                   onGenerate={() => onGenerateWriting([beat.unitId])}
+                  onPolish={() => onPolishWriting(beat.unitId)}
                 />
               ))}
             </div>
@@ -85,9 +91,11 @@ export default function WritingEditor({
                   summary={beat.summary}
                   body={beat.body}
                   generating={generatingSet.has(beat.unitId)}
+                  polishing={polishingUnitId === beat.unitId}
                   writeBusy={writingBusy}
                   onSave={(value) => onSaveBody(beat.unitId, value)}
                   onGenerate={() => onGenerateWriting([beat.unitId])}
+                  onPolish={() => onPolishWriting(beat.unitId)}
                 />
               ))}
             </div>

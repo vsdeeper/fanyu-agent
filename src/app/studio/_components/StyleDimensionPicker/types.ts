@@ -12,9 +12,9 @@ export type StyleDimensionCard = {
   description: string;
 };
 
-/** 弹框内的「一、二、三」大分类，也就是一根独立的轴。 */
+/** 弹框内的大分类，也就是一根独立的轴。 */
 export type StyleDimensionGroup = {
-  /** 分类标题，如「一、按「人称」分」，只做弹框分组标题 */
+  /** 分类标题，如「按「人称」分」，只做弹框分组标题 */
   title: string;
   /** 轴的短名，拼进提示词作前缀，如「人称」→「人称=第三人称」 */
   label: string;

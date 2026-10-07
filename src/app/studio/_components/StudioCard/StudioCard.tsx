@@ -42,6 +42,8 @@ export type StudioCardProps = {
   onEditingChange?: (editing: boolean) => void;
   /** 编辑入口与取消/保存位置；默认 body。 */
   editPlacement?: StudioCardEditPlacement;
+  /** 编辑入口仍显示，但暂不可点（如正文正在被润色替换）。 */
+  editDisabled?: boolean;
   /** 传则开启删除（二次确认）；与 removable 配合可临时隐藏。 */
   onRemove?: () => void;
   /** 有 onRemove 时默认 true；置 false 可隐藏删除（如仅剩一条）。 */
@@ -51,6 +53,8 @@ export type StudioCardProps = {
   textareaRows?: number;
   textareaAutoSize?: boolean | { minRows?: number; maxRows?: number };
   onAiAssist?: (draft: string) => Promise<string>;
+  /** 非编辑态、编辑按钮左侧的额外操作（如润色）。 */
+  bodyActions?: ReactNode;
   /** 编辑区额外 class（如与自定义标题缩进对齐）。 */
   editorClassName?: string;
   /** 透传至 antd Card root className。 */
@@ -79,11 +83,13 @@ export default function StudioCard({
   onSave,
   onEditingChange,
   editPlacement = 'body',
+  editDisabled = false,
   onRemove,
   removable = true,
   deleteConfirmTitle = DELETE_CONFIRM_TITLE,
   textareaRows = 2,
   textareaAutoSize,
+  bodyActions,
   onAiAssist,
   editorClassName,
   className,
@@ -253,7 +259,8 @@ export default function StudioCard({
         </span>
       ) : null;
     const body = renderBodyContent();
-    const showBodyActions = editable && editPlacement === 'body';
+    const showEditButton = editable && editPlacement === 'body';
+    const showBodyActions = showEditButton || Boolean(bodyActions);
 
     if (!showBodyActions) {
       if (!indexBadge) return body;
@@ -272,9 +279,22 @@ export default function StudioCard({
           {body}
         </div>
         {renderRemoveAction()}
-        <Button type="link" size="small" className={styles.actionBtn} onClick={startEdit}>
-          {EDIT_BUTTON}
-        </Button>
+        {bodyActions ? (
+          <span className={styles.displayActions} onClick={(event) => event.stopPropagation()}>
+            {bodyActions}
+          </span>
+        ) : null}
+        {showEditButton ? (
+          <Button
+            type="link"
+            size="small"
+            className={styles.actionBtn}
+            disabled={editDisabled}
+            onClick={startEdit}
+          >
+            {EDIT_BUTTON}
+          </Button>
+        ) : null}
       </div>
     );
   };

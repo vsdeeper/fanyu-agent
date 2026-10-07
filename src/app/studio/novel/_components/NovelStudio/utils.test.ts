@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import type { StructureSnapshot } from './types';
+import type { BibleStepSnapshot, StructureSnapshot } from './types';
 import {
   buildPreviewDocument,
   buildWritingEditorBlocks,
   canGenerateWriting,
+  hasBibleDraft,
+  isBibleReadyForStructure,
   isChapterRowSelected,
   areVolumesReadyForWrite,
   listStructureChapters,
+  parseBiblePayload,
   resolveGenerateUnitIds,
   syncWritingUnits,
+  toBibleRequest,
   toggleWritingSelection,
 } from './utils';
 
@@ -235,5 +239,115 @@ describe('volumes helpers', () => {
         volumes: volumesStructure.volumes.map((vol) => ({ ...vol, chapters: [] })),
       }),
     ).toBe(false);
+  });
+});
+
+const readyBible: BibleStepSnapshot = {
+  characters: [
+    {
+      id: 'c1',
+      name: '李夏',
+      role: 'protagonist',
+      gender: 'female',
+      identity: '供电所临时工',
+      desire: '保住这个夏天',
+      flaw: '不肯把话说完',
+    },
+  ],
+  relations: [{ fromId: 'c1', toId: 'missing', label: '瞒着' }],
+  timePlace: '九十年代的县城',
+  rules: ['夜里常常停电'],
+  taboos: [],
+  voiceFocus: { narrativeStance: ['voice-first', 'internal-focus'] },
+  tense: 'past',
+};
+
+describe('parseBiblePayload', () => {
+  it('收下核心人物并丢掉指向不存在人物的关系', () => {
+    const parsed = parseBiblePayload({
+      characters: [
+        {
+          id: 'c1',
+          name: '李夏',
+          role: '主角',
+          gender: '女',
+          identity: '临时工',
+          desire: '留下',
+          flaw: '嘴硬',
+        },
+      ],
+      relations: [
+        { fromId: 'c1', toId: 'c1', label: '自责' },
+        { fromId: 'c1', toId: 'nope', label: '瞒着' },
+      ],
+      timePlace: '县城的夏天',
+      rules: ['停电'],
+      taboos: [],
+    });
+    expect(parsed?.characters[0]?.role).toBe('protagonist');
+    expect(parsed?.characters[0]?.gender).toBe('female');
+    expect(parsed?.relations).toEqual([]);
+    expect(parsed?.timePlace).toBe('县城的夏天');
+  });
+
+  it('没有人物或时空时返回空', () => {
+    expect(parseBiblePayload({ characters: [], timePlace: '某地' })).toBeNull();
+    expect(
+      parseBiblePayload({
+        characters: [
+          {
+            id: 'c1',
+            name: '李夏',
+            role: 'protagonist',
+            gender: '不标明',
+            identity: '工',
+            desire: '留',
+            flaw: '硬',
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+});
+
+describe('hasBibleDraft', () => {
+  it('只有人称和时态时仍视为未生成设定', () => {
+    expect(
+      hasBibleDraft({
+        characters: [],
+        relations: [],
+        timePlace: '',
+        rules: [],
+        taboos: [],
+        voiceFocus: { narrativeStance: ['voice-first'] },
+        tense: 'past',
+      }),
+    ).toBe(false);
+    expect(hasBibleDraft(readyBible)).toBe(true);
+  });
+});
+
+describe('isBibleReadyForStructure', () => {
+  it('人称、聚焦、时态和写全的人物都在时才放行', () => {
+    expect(isBibleReadyForStructure(readyBible)).toBe(true);
+    expect(isBibleReadyForStructure({ ...readyBible, tense: undefined })).toBe(false);
+    expect(isBibleReadyForStructure({ ...readyBible, voiceFocus: {} })).toBe(false);
+    expect(
+      isBibleReadyForStructure({
+        ...readyBible,
+        characters: [{ ...readyBible.characters[0]!, gender: undefined }],
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('toBibleRequest', () => {
+  it('人称聚焦压进 voicePrompt，并丢掉悬空关系', () => {
+    const request = toBibleRequest(readyBible);
+    expect(request?.voicePrompt).toContain('人称=第一人称');
+    expect(request?.voicePrompt).toContain('聚焦=内聚焦');
+    expect(request?.relations).toEqual([]);
+    expect(request?.tense).toBe('past');
+    expect(request?.characters[0]?.gender).toBe('female');
   });
 });
