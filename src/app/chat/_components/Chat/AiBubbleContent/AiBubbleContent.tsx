@@ -17,17 +17,22 @@ import {
   getContentBlocks,
   getDesignMdParts,
   getGenerateImageParts,
+  settleStoppedToolParts,
   stripReferenceSection,
 } from './utils';
 
 export type { AiBubbleContentProps };
 
-function AiBubbleContent({ streaming, messageParts }: AiBubbleContentProps) {
+function AiBubbleContent({ streaming, stopped = false, messageParts }: AiBubbleContentProps) {
   const { mode } = useThemeMode();
-  const imageParts = useMemo(() => getGenerateImageParts(messageParts), [messageParts]);
-  const designMdParts = useMemo(() => getDesignMdParts(messageParts), [messageParts]);
+  const parts = useMemo(
+    () => (stopped ? settleStoppedToolParts(messageParts) : messageParts),
+    [stopped, messageParts],
+  );
+  const imageParts = useMemo(() => getGenerateImageParts(parts), [parts]);
+  const designMdParts = useMemo(() => getDesignMdParts(parts), [parts]);
   // 按 parts 顺序逐块渲染「思考-正文-思考-正文」；出图 / DESIGN.md 卡片仍在气泡末尾汇总
-  const blocks = useMemo(() => getContentBlocks(messageParts), [messageParts]);
+  const blocks = useMemo(() => getContentBlocks(parts), [parts]);
   // 「参考来源」只裁最后一个正文块：模型可能在前面的块里提到该词，逐块裁会误删那句正文
   const lastTextKey = useMemo(
     () => blocks.findLast((block) => block.kind === 'text')?.key,

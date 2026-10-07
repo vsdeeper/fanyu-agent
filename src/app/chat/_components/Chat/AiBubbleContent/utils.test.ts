@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  GENERIC_TOOL_INTERRUPTED_ERROR,
+  IMAGE_TOOL_INTERRUPTED_ERROR,
+} from '@/app/api/chat/_shared/tool-errors';
+import {
   contentPartsKey,
   getContentBlocks,
   getSourceItems,
+  settleStoppedToolParts,
   stripReferenceSection,
   toolPartsKey,
 } from './utils';
@@ -194,6 +199,39 @@ describe('getContentBlocks', () => {
     expect(getContentBlocks(undefined)).toEqual([]);
     expect(getContentBlocks([stepStart(), { type: 'file', mediaType: 'image/png' }])).toEqual([]);
     expect(getContentBlocks([{ type: 'source-url', url: 'https://example.com/' }])).toEqual([]);
+  });
+});
+
+describe('settleStoppedToolParts', () => {
+  it('把未完成的生图和其他工具收成中断失败，已完成的不动', () => {
+    const done = {
+      type: 'tool-web_search',
+      state: 'output-available',
+      output: { ok: true },
+    };
+    const parts = settleStoppedToolParts([
+      text('正文'),
+      { type: 'tool-generate_image', state: 'input-available', input: { prompt: '猫' } },
+      { type: 'tool-analyze_image', state: 'input-streaming' },
+      done,
+    ]);
+
+    expect(parts?.[1]).toMatchObject({
+      state: 'output-available',
+      input: { prompt: '猫' },
+      output: { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR },
+    });
+    expect(parts?.[2]).toMatchObject({
+      state: 'output-available',
+      output: { ok: false, error: GENERIC_TOOL_INTERRUPTED_ERROR },
+    });
+    expect(parts?.[3]).toBe(done);
+  });
+
+  it('没有未完成工具时返回原数组', () => {
+    const parts = [text('完成')];
+    expect(settleStoppedToolParts(parts)).toBe(parts);
+    expect(settleStoppedToolParts(undefined)).toBeUndefined();
   });
 });
 

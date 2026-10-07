@@ -86,7 +86,7 @@ export default function Chat({ chat, isDraft = false, onFirstMessageSent }: Chat
         key: message.id,
         role: isAi ? ('ai' as const) : ('user' as const),
         content: isAi ? (
-          <AiBubbleContent streaming={streaming} messageParts={message.parts} />
+          <AiBubbleContent streaming={streaming} stopped={stopped} messageParts={message.parts} />
         ) : (
           <UserBubbleContent text={text} parts={message.parts} />
         ),

@@ -1,10 +1,16 @@
 import type { SourceListItem } from '@/app/chat/_components/AuxiliaryPanel/types';
+import {
+  GENERIC_TOOL_INTERRUPTED_ERROR,
+  IMAGE_TOOL_INTERRUPTED_ERROR,
+} from '@/app/api/chat/_shared/tool-errors';
 import { isHttpUrl } from '@/app/chat/_components/SourceFavicon/utils';
 
 export type MessagePart = { type: string; [key: string]: unknown };
 
 export type AiBubbleContentProps = {
   streaming: boolean;
+  /** 用户已停止且回复未完成；未收尾的工具调用按中断展示，避免标题和占位图继续转 */
+  stopped?: boolean;
   messageParts: ReadonlyArray<MessagePart> | undefined;
 };
 
@@ -323,6 +329,34 @@ export function toolPartsKey(messageParts: ReadonlyArray<MessagePart> | undefine
   return keys.join('|');
 }
 
+/**
+ * 停止后把仍停在传参/执行中的工具调用收成失败结果。
+ * 服务端落盘会做同样的收尾，但 abort 不会把结果推回当前流，客户端 part 会一直 pending。
+ */
+export function settleStoppedToolParts(
+  messageParts: ReadonlyArray<MessagePart> | undefined,
+): ReadonlyArray<MessagePart> | undefined {
+  if (!messageParts?.length) return messageParts;
+
+  let changed = false;
+  const next = messageParts.map((part) => {
+    if (!part.type.startsWith('tool-')) return part;
+    if (part.state !== 'input-streaming' && part.state !== 'input-available') return part;
+
+    changed = true;
+    return {
+      ...part,
+      state: 'output-available',
+      output:
+        part.type === 'tool-generate_image'
+          ? { ok: false, error: IMAGE_TOOL_INTERRUPTED_ERROR }
+          : { ok: false, error: GENERIC_TOOL_INTERRUPTED_ERROR },
+    };
+  });
+
+  return changed ? next : messageParts;
+}
+
 export function getGenerateImageParts(
   messageParts: ReadonlyArray<MessagePart> | undefined,
 ): MessagePart[] {
@@ -364,6 +398,7 @@ export function aiBubbleContentPropsAreEqual(
 ): boolean {
   return (
     prev.streaming === next.streaming &&
+    prev.stopped === next.stopped &&
     contentPartsKey(prev.messageParts) === contentPartsKey(next.messageParts) &&
     toolPartsKey(prev.messageParts) === toolPartsKey(next.messageParts) &&
     imagePartsKey(prev.messageParts) === imagePartsKey(next.messageParts) &&
