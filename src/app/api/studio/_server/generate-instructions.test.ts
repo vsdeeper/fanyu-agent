@@ -1254,7 +1254,9 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('有助于缓解/改善/减轻');
     expect(prompt).toContain('疗效承诺');
     expect(prompt).toContain('本条高于用户额外要求与正文');
-    expect(prompt).toContain('正文若仍含病名，上屏时必须删改');
+    expect(prompt).toContain('正文若仍含病名或上述禁词，上屏时必须删改');
+    expect(prompt).toContain('身体信号');
+    expect(prompt).toContain('利于排便');
     expect(prompt).not.toContain('人物模特');
     expect(prompt).not.toContain('【我的要求】');
     expect(prompt).not.toContain('知识库');
