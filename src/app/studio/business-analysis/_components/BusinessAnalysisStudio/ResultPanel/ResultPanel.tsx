@@ -5,6 +5,9 @@ import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
 import { useState } from 'react';
+import StudioStagePanel, {
+  studioStageHeadActionsClassName,
+} from '@/app/studio/_components/StudioStagePanel';
 import { useThemeMode } from '@/components/theme';
 import { COMPLETE_BUTTON, EMPTY_RESULT_HINT, RESULT_TITLE_ANALYSIS } from '../constants';
 import type { StudioPhase } from '../types';
@@ -59,55 +62,70 @@ export default function ResultPanel({
     setEditing(false);
   };
 
+  const showStream = isEditing || showPlan;
+
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <StarOutlined className={styles.star} />
-        {RESULT_TITLE_ANALYSIS}
-        <div className={styles.headActions}>
-          {isEditing ? (
-            <>
-              <Button size="small" onClick={cancelEdit}>
-                取消
-              </Button>
-              <Button size="small" type="primary" onClick={saveEdit}>
-                保存
-              </Button>
-            </>
-          ) : (
-            canEdit && (
-              <Button size="small" onClick={startEdit}>
-                编辑
-              </Button>
-            )
-          )}
-        </div>
-      </div>
-      {isEditing ? (
-        <div className={styles.scroll}>
-          <Input.TextArea
-            className={styles.editor}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            style={{ height: '100%' }}
-          />
-        </div>
-      ) : showPlan ? (
-        <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
-          <div ref={contentRef}>
-            {hydrated ? (
-              <XMarkdown
-                className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
-                content={analysisText}
-                components={MARKDOWN_COMPONENTS}
-                paragraphTag="div"
-                openLinksInNewTab
-                escapeRawHtml
-                streaming={analysisStreaming ? MARKDOWN_STREAMING_ON : MARKDOWN_STREAMING_OFF}
-                disableDefaultStyles={MARKDOWN_DISABLE_STYLES}
-              />
-            ) : null}
+    <StudioStagePanel
+      variant={showStream ? 'stream' : 'fill'}
+      scrollRef={!isEditing && showPlan ? scrollRef : undefined}
+      onScroll={!isEditing && showPlan ? onScroll : undefined}
+      head={
+        <>
+          <StarOutlined />
+          {RESULT_TITLE_ANALYSIS}
+          <div className={studioStageHeadActionsClassName}>
+            {isEditing ? (
+              <>
+                <Button size="small" onClick={cancelEdit}>
+                  取消
+                </Button>
+                <Button size="small" type="primary" onClick={saveEdit}>
+                  保存
+                </Button>
+              </>
+            ) : (
+              canEdit && (
+                <Button size="small" onClick={startEdit}>
+                  编辑
+                </Button>
+              )
+            )}
           </div>
+        </>
+      }
+      footer={
+        <Button
+          size="large"
+          type="primary"
+          loading={nextLoading}
+          disabled={nextDisabled}
+          onClick={onNext}
+        >
+          {COMPLETE_BUTTON}
+        </Button>
+      }
+    >
+      {isEditing ? (
+        <Input.TextArea
+          className={styles.editor}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          style={{ height: '100%' }}
+        />
+      ) : showPlan ? (
+        <div ref={contentRef}>
+          {hydrated ? (
+            <XMarkdown
+              className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
+              content={analysisText}
+              components={MARKDOWN_COMPONENTS}
+              paragraphTag="div"
+              openLinksInNewTab
+              escapeRawHtml
+              streaming={analysisStreaming ? MARKDOWN_STREAMING_ON : MARKDOWN_STREAMING_OFF}
+              disableDefaultStyles={MARKDOWN_DISABLE_STYLES}
+            />
+          ) : null}
         </div>
       ) : phase === 'analyzing' ? (
         <div className={styles.body}>
@@ -119,17 +137,6 @@ export default function ResultPanel({
           <p className={styles.hint}>{EMPTY_RESULT_HINT}</p>
         </div>
       )}
-      <div className={styles.footer}>
-        <Button
-          size="large"
-          type="primary"
-          loading={nextLoading}
-          disabled={nextDisabled}
-          onClick={onNext}
-        >
-          {COMPLETE_BUTTON}
-        </Button>
-      </div>
-    </section>
+    </StudioStagePanel>
   );
 }

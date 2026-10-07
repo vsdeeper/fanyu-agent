@@ -1,3 +1,4 @@
+import StudioStagePanel from '@/app/studio/_components/StudioStagePanel';
 import { StarOutlined } from '@ant-design/icons';
 import { Button, Input, Spin } from 'antd';
 import {
@@ -96,14 +97,29 @@ export default function ResultPanel({
       : RESEARCH_PANEL_TITLE;
   const canPrev = structureView || writeView;
   const canNext = (researched && Boolean(selectedTopicId)) || structureView || writeView;
+  const stageFill =
+    (researchView && (researchEmpty || (researching && topics.length === 0))) ||
+    (structureView && !structure) ||
+    (writeView && !(structure && writing));
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <StarOutlined />
-        {panelTitle}
-      </div>
-
+    <StudioStagePanel
+      variant={stageFill ? 'fill' : 'stream'}
+      head={
+        <>
+          <StarOutlined />
+          {panelTitle}
+        </>
+      }
+      footer={
+        <>
+          {canPrev ? <Button onClick={onPrev}>{PREV_BUTTON}</Button> : null}
+          <Button type="primary" disabled={!canNext} onClick={onNext}>
+            {NEXT_BUTTON}
+          </Button>
+        </>
+      }
+    >
       {researchView ? (
         researchEmpty ? (
           <div className={styles.body}>
@@ -115,19 +131,17 @@ export default function ResultPanel({
             <p className={styles.hint}>{RESEARCH_GENERATING_HINT}</p>
           </div>
         ) : (
-          <div className={styles.scroll}>
-            <div className={styles.scrollContent}>
-              <p className={styles.sectionTitle}>{RESEARCH_TOPICS_TITLE}</p>
-              <div className={styles.topicList}>
-                {topics.map((topic) => (
-                  <TopicCardView
-                    key={topic.id}
-                    topic={topic}
-                    selected={topic.id === selectedTopicId}
-                    onSelect={() => onSelectTopic(topic.id)}
-                  />
-                ))}
-              </div>
+          <div className={styles.scrollContent}>
+            <p className={styles.sectionTitle}>{RESEARCH_TOPICS_TITLE}</p>
+            <div className={styles.topicList}>
+              {topics.map((topic) => (
+                <TopicCardView
+                  key={topic.id}
+                  topic={topic}
+                  selected={topic.id === selectedTopicId}
+                  onSelect={() => onSelectTopic(topic.id)}
+                />
+              ))}
             </div>
           </div>
         )
@@ -144,70 +158,66 @@ export default function ResultPanel({
             <p className={styles.hint}>{STRUCTURE_GENERATING_HINT}</p>
           </div>
         ) : structure ? (
-          <div className={styles.scroll}>
-            <div className={styles.scrollContent}>
-              {structure.kind === 'short' ? (
-                <>
-                  <div className={styles.synopsisBlock}>
-                    <p className={styles.sectionTitle}>{SYNOPSIS_TITLE}</p>
-                    <Input.TextArea
-                      value={structure.synopsis}
-                      autoSize={{ minRows: 2, maxRows: 6 }}
-                      onChange={(event) => onUpdateSynopsis(event.target.value)}
-                    />
-                  </div>
-                  <BeatList
-                    beats={structure.beats}
-                    title={BEATS_TITLE}
-                    onChangeBeat={onUpdateBeat}
-                    onRemoveBeat={onRemoveBeat}
+          <div className={styles.scrollContent}>
+            {structure.kind === 'short' ? (
+              <>
+                <div className={styles.synopsisBlock}>
+                  <p className={styles.sectionTitle}>{SYNOPSIS_TITLE}</p>
+                  <Input.TextArea
+                    value={structure.synopsis}
+                    autoSize={{ minRows: 2, maxRows: 6 }}
+                    onChange={(event) => onUpdateSynopsis(event.target.value)}
                   />
-                </>
-              ) : structure.kind === 'volumes' ? (
-                <VolumeList
-                  volumes={structure.volumes}
-                  title={VOLUMES_TITLE}
-                  generatingVolumeId={generatingVolumeId}
-                  generatingChapterId={generatingChapterId}
-                  onChangeVolume={onUpdateVolume}
-                  onRemoveVolume={onRemoveVolume}
-                  onGenerateVolumeChapters={onGenerateVolumeChapters}
-                  onChangeChapter={onUpdateChapter}
-                  onRemoveChapter={onRemoveChapter}
-                  onGenerateChapterBeats={onGenerateChapterBeats}
-                  onChangeChapterBeat={onUpdateChapterBeat}
-                  onRemoveChapterBeat={onRemoveChapterBeat}
+                </div>
+                <BeatList
+                  beats={structure.beats}
+                  title={BEATS_TITLE}
+                  onChangeBeat={onUpdateBeat}
+                  onRemoveBeat={onRemoveBeat}
                 />
-              ) : (
-                <ChapterList
-                  chapters={structure.chapters}
-                  title={CHAPTERS_TITLE}
-                  generatingChapterId={generatingChapterId}
-                  onChangeChapter={onUpdateChapter}
-                  onRemoveChapter={onRemoveChapter}
-                  onGenerateChapterBeats={onGenerateChapterBeats}
-                  onChangeChapterBeat={onUpdateChapterBeat}
-                  onRemoveChapterBeat={onRemoveChapterBeat}
-                />
-              )}
-            </div>
+              </>
+            ) : structure.kind === 'volumes' ? (
+              <VolumeList
+                volumes={structure.volumes}
+                title={VOLUMES_TITLE}
+                generatingVolumeId={generatingVolumeId}
+                generatingChapterId={generatingChapterId}
+                onChangeVolume={onUpdateVolume}
+                onRemoveVolume={onRemoveVolume}
+                onGenerateVolumeChapters={onGenerateVolumeChapters}
+                onChangeChapter={onUpdateChapter}
+                onRemoveChapter={onRemoveChapter}
+                onGenerateChapterBeats={onGenerateChapterBeats}
+                onChangeChapterBeat={onUpdateChapterBeat}
+                onRemoveChapterBeat={onRemoveChapterBeat}
+              />
+            ) : (
+              <ChapterList
+                chapters={structure.chapters}
+                title={CHAPTERS_TITLE}
+                generatingChapterId={generatingChapterId}
+                onChangeChapter={onUpdateChapter}
+                onRemoveChapter={onRemoveChapter}
+                onGenerateChapterBeats={onGenerateChapterBeats}
+                onChangeChapterBeat={onUpdateChapterBeat}
+                onRemoveChapterBeat={onRemoveChapterBeat}
+              />
+            )}
           </div>
         ) : null
       ) : null}
 
       {writeView ? (
         structure && writing ? (
-          <div className={styles.scroll}>
-            <div className={styles.scrollContent}>
-              <WritingEditor
-                structure={structure}
-                writing={writing}
-                selectedUnitIds={selectedUnitIds}
-                generatingUnitIds={generatingUnitIds}
-                onSaveBody={onUpdateWritingBody}
-                onGenerateWriting={onGenerateWriting}
-              />
-            </div>
+          <div className={styles.scrollContent}>
+            <WritingEditor
+              structure={structure}
+              writing={writing}
+              selectedUnitIds={selectedUnitIds}
+              generatingUnitIds={generatingUnitIds}
+              onSaveBody={onUpdateWritingBody}
+              onGenerateWriting={onGenerateWriting}
+            />
           </div>
         ) : (
           <div className={styles.body}>
@@ -215,13 +225,6 @@ export default function ResultPanel({
           </div>
         )
       ) : null}
-
-      <div className={styles.footer}>
-        {canPrev ? <Button onClick={onPrev}>{PREV_BUTTON}</Button> : null}
-        <Button type="primary" disabled={!canNext} onClick={onNext}>
-          {NEXT_BUTTON}
-        </Button>
-      </div>
-    </section>
+    </StudioStagePanel>
   );
 }

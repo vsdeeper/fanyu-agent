@@ -4,6 +4,7 @@ import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
+import StudioStagePanel from '@/app/studio/_components/StudioStagePanel';
 import { useThemeMode } from '@/components/theme';
 import AnnotatedMarkdown from '../AnnotatedMarkdown';
 import { COPY_ARTICLE_BUTTON, PREV_BUTTON, RESEARCH_SOURCES_TITLE } from '../constants';
@@ -31,55 +32,60 @@ export default function CompletionPanel({
   const referencesList = draftReferencesListMarkdown(referencesSection);
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <StarOutlined className={styles.star} />
-        预览
-      </div>
-      <div className={styles.scroll}>
-        {!markdown.trim() ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无正文" />
-        ) : (
-          <div className={styles.phone} aria-label="长文手机预览">
-            {hydrated ? (
-              <>
-                <AnnotatedMarkdown
-                  markdown={body}
-                  markdownClassName={markdownClass}
-                  imageSlots={imageSlots}
-                  hideMarkerLabels
-                />
-                {referencesList ? (
-                  <div className={styles.references}>
-                    <p className={styles.referencesTitle}>{RESEARCH_SOURCES_TITLE}</p>
-                    <XMarkdown
-                      className={`${markdownClass} ${styles.referencesMarkdown}`}
-                      content={referencesList}
-                      paragraphTag="div"
-                      openLinksInNewTab
-                      escapeRawHtml
-                    />
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-          </div>
-        )}
-      </div>
-      <div className={styles.footer}>
-        <Button size="large" onClick={onPrev}>
-          {PREV_BUTTON}
-        </Button>
-        <Button
-          size="large"
-          type="primary"
-          icon={<CopyOutlined />}
-          disabled={!markdown.trim()}
-          onClick={onCopyArticle}
-        >
-          {COPY_ARTICLE_BUTTON}
-        </Button>
-      </div>
-    </section>
+    <StudioStagePanel
+      variant="preview"
+      previewPadding="article"
+      head={
+        <>
+          <StarOutlined />
+          预览
+        </>
+      }
+      footer={
+        <>
+          <Button size="large" onClick={onPrev}>
+            {PREV_BUTTON}
+          </Button>
+          <Button
+            size="large"
+            type="primary"
+            icon={<CopyOutlined />}
+            disabled={!markdown.trim()}
+            onClick={onCopyArticle}
+          >
+            {COPY_ARTICLE_BUTTON}
+          </Button>
+        </>
+      }
+    >
+      {!markdown.trim() ? (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无正文" />
+      ) : (
+        <div className={styles.phone} aria-label="长文手机预览">
+          {hydrated ? (
+            <>
+              <AnnotatedMarkdown
+                markdown={body}
+                markdownClassName={markdownClass}
+                imageSlots={imageSlots}
+                hideMarkerLabels
+              />
+              {referencesList ? (
+                <div className={styles.references}>
+                  <p className={styles.referencesTitle}>{RESEARCH_SOURCES_TITLE}</p>
+                  <XMarkdown
+                    className={`${markdownClass} ${styles.referencesMarkdown}`}
+                    content={referencesList}
+                    paragraphTag="div"
+                    openLinksInNewTab
+                    escapeRawHtml
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      )}
+    </StudioStagePanel>
   );
 }

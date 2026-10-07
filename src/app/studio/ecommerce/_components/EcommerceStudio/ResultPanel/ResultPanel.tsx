@@ -5,6 +5,9 @@ import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
 import { useState } from 'react';
+import StudioStagePanel, {
+  studioStageHeadActionsClassName,
+} from '@/app/studio/_components/StudioStagePanel';
 import { useThemeMode } from '@/components/theme';
 import { DETAIL_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/detail-image-plan';
 import { MAIN_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
@@ -154,149 +157,154 @@ export default function ResultPanel({
     setEditing(false);
   };
 
+  const showStream =
+    isEditing ||
+    showThemePlan ||
+    showPlan ||
+    (phase !== 'analyzing' && (showVisualGrid || showDesignGroups));
+  const followStream = !isEditing && (showThemePlan || showPlan);
+
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <StarOutlined className={styles.star} />
-        {toResultHeadTitle(phase, taskType)}
-        <div className={styles.headActions}>
-          {isEditing ? (
-            <>
-              <Button size="small" onClick={cancelEdit}>
-                取消
-              </Button>
-              <Button size="small" type="primary" onClick={saveEdit}>
-                保存
-              </Button>
-            </>
-          ) : (
-            canEdit && (
-              <Button size="small" onClick={startEdit}>
-                编辑
-              </Button>
-            )
-          )}
-        </div>
-      </div>
-      {isEditing ? (
-        <div className={styles.scroll}>
-          <Input.TextArea
-            className={styles.editor}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            style={{ height: '100%' }}
-          />
-        </div>
-      ) : showThemePlan ? (
-        <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
-          <div ref={contentRef} className={styles.planStack}>
-            {visualMoodSummary ? <VisualMoodSummary summary={visualMoodSummary} /> : null}
-            {planCards.length > 0 ? (
-              <ThemePlanCards
-                cards={planCards}
-                selectedThemeIds={selectedThemeIds}
-                selectionMode={detailImage ? 'single' : 'multiple'}
-                streaming={analysisStreaming}
-                onToggleTheme={onToggleTheme ?? (() => undefined)}
-                onCardSave={onPlanCardSave ?? (() => undefined)}
-                onEditingChange={setPlanEditing}
-                onAiAssist={themePlan ? onPlanCardAiAssist : undefined}
-              />
-            ) : null}
+    <StudioStagePanel
+      variant={showStream ? 'stream' : 'fill'}
+      scrollRef={followStream ? scrollRef : undefined}
+      onScroll={followStream ? onScroll : undefined}
+      head={
+        <>
+          <StarOutlined />
+          {toResultHeadTitle(phase, taskType)}
+          <div className={studioStageHeadActionsClassName}>
+            {isEditing ? (
+              <>
+                <Button size="small" onClick={cancelEdit}>
+                  取消
+                </Button>
+                <Button size="small" type="primary" onClick={saveEdit}>
+                  保存
+                </Button>
+              </>
+            ) : (
+              canEdit && (
+                <Button size="small" onClick={startEdit}>
+                  编辑
+                </Button>
+              )
+            )}
           </div>
+        </>
+      }
+      footer={
+        <>
+          {/* 放在按钮组最左：整组仍靠右排列，footer 布局不变 */}
+          {running ? (
+            <Popconfirm
+              title={CANCEL_GENERATE_CONFIRM_TITLE}
+              description={CANCEL_GENERATE_CONFIRM_DESCRIPTION}
+              okText={CANCEL_GENERATE_CONFIRM_OK}
+              cancelText={CANCEL_GENERATE_CONFIRM_BACK}
+              okButtonProps={{ danger: true }}
+              onConfirm={onCancel}
+            >
+              <Button size="large" danger loading={cancelling}>
+                {CANCEL_GENERATE_BUTTON}
+              </Button>
+            </Popconfirm>
+          ) : null}
+          {isPrevVisible(phase, isPoster) ? (
+            // 生成中**不**禁用：出图已是后台作业，退回上一步不会中断它；
+            // 作业完成时若用户已退回，只落库、不把相位推回来
+            <Button size="large" disabled={isEditing || planEditing} onClick={onPrev}>
+              {PREV_BUTTON}
+            </Button>
+          ) : null}
+          <Button
+            size="large"
+            type="primary"
+            loading={nextLoading}
+            disabled={nextDisabled}
+            onClick={onNext}
+          >
+            {isDesignResultPhase(phase) ? COMPLETE_BUTTON : NEXT_BUTTON}
+          </Button>
+        </>
+      }
+    >
+      {isEditing ? (
+        <Input.TextArea
+          className={styles.editor}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          style={{ height: '100%' }}
+        />
+      ) : showThemePlan ? (
+        <div ref={contentRef} className={styles.planStack}>
+          {visualMoodSummary ? <VisualMoodSummary summary={visualMoodSummary} /> : null}
+          {planCards.length > 0 ? (
+            <ThemePlanCards
+              cards={planCards}
+              selectedThemeIds={selectedThemeIds}
+              selectionMode={detailImage ? 'single' : 'multiple'}
+              streaming={analysisStreaming}
+              onToggleTheme={onToggleTheme ?? (() => undefined)}
+              onCardSave={onPlanCardSave ?? (() => undefined)}
+              onEditingChange={setPlanEditing}
+              onAiAssist={themePlan ? onPlanCardAiAssist : undefined}
+            />
+          ) : null}
         </div>
       ) : showPlan ? (
-        <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
-          <div ref={contentRef}>
-            {hydrated ? (
-              <XMarkdown
-                className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
-                content={analysisText}
-                components={MARKDOWN_COMPONENTS}
-                paragraphTag="div"
-                openLinksInNewTab
-                escapeRawHtml
-                streaming={analysisStreaming ? MARKDOWN_STREAMING_ON : MARKDOWN_STREAMING_OFF}
-                disableDefaultStyles={MARKDOWN_DISABLE_STYLES}
-              />
-            ) : null}
-          </div>
+        <div ref={contentRef}>
+          {hydrated ? (
+            <XMarkdown
+              className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
+              content={analysisText}
+              components={MARKDOWN_COMPONENTS}
+              paragraphTag="div"
+              openLinksInNewTab
+              escapeRawHtml
+              streaming={analysisStreaming ? MARKDOWN_STREAMING_ON : MARKDOWN_STREAMING_OFF}
+              disableDefaultStyles={MARKDOWN_DISABLE_STYLES}
+            />
+          ) : null}
         </div>
       ) : phase === 'analyzing' ? (
         <div className={styles.body}>
           <Spin />
         </div>
       ) : showVisualGrid ? (
-        <div className={styles.scroll}>
-          <div className={styles.resultGroups}>
-            {visualRatioGroups.map(({ aspectRatio, images }) => (
-              <section key={aspectRatio} className={styles.resultGroup}>
-                <Typography.Text className={styles.ratioTitle}>{aspectRatio}</Typography.Text>
-                <ResultImageGrid
-                  images={images}
-                  expectedCount={expectedVisualCount}
-                  aspectRatio={aspectRatio}
-                  selectable={phase === 'visual'}
-                  selectedId={selectedVisualId}
-                  selectedBadge={VISUAL_STANDARD_BADGE}
-                  onSelect={onSelectVisual}
-                />
-              </section>
-            ))}
-          </div>
+        <div className={styles.resultGroups}>
+          {visualRatioGroups.map(({ aspectRatio, images }) => (
+            <section key={aspectRatio} className={styles.resultGroup}>
+              <Typography.Text className={styles.ratioTitle}>{aspectRatio}</Typography.Text>
+              <ResultImageGrid
+                images={images}
+                expectedCount={expectedVisualCount}
+                aspectRatio={aspectRatio}
+                selectable={phase === 'visual'}
+                selectedId={selectedVisualId}
+                selectedBadge={VISUAL_STANDARD_BADGE}
+                onSelect={onSelectVisual}
+              />
+            </section>
+          ))}
         </div>
       ) : showDesignGroups ? (
-        <div className={styles.scroll}>
-          <DesignResultGroupsView
-            groups={designResultGroups}
-            showTitles={!isPosterTask(taskType) && !themePlan}
-            groupByTheme={themePlan}
-            themes={detailImage ? DETAIL_IMAGE_THEMES : MAIN_IMAGE_THEMES}
-            selectable={themePlan && phase === 'design'}
-            selectedId={themePlan ? referenceImageId : null}
-            selectedBadge={detailImage ? PREVIOUS_SCREEN_BADGE : COPY_STANDARD_BADGE}
-            onSelect={themePlan ? onSelectReference : undefined}
-          />
-        </div>
+        <DesignResultGroupsView
+          groups={designResultGroups}
+          showTitles={!isPosterTask(taskType) && !themePlan}
+          groupByTheme={themePlan}
+          themes={detailImage ? DETAIL_IMAGE_THEMES : MAIN_IMAGE_THEMES}
+          selectable={themePlan && phase === 'design'}
+          selectedId={themePlan ? referenceImageId : null}
+          selectedBadge={detailImage ? PREVIOUS_SCREEN_BADGE : COPY_STANDARD_BADGE}
+          onSelect={themePlan ? onSelectReference : undefined}
+        />
       ) : (
         <div className={styles.body}>
           <StarOutlined className={styles.icon} />
           <p className={styles.hint}>{toEmptyHint(phase, taskType)}</p>
         </div>
       )}
-      <div className={styles.footer}>
-        {/* 放在按钮组最左：整组仍靠右排列，footer 布局不变 */}
-        {running ? (
-          <Popconfirm
-            title={CANCEL_GENERATE_CONFIRM_TITLE}
-            description={CANCEL_GENERATE_CONFIRM_DESCRIPTION}
-            okText={CANCEL_GENERATE_CONFIRM_OK}
-            cancelText={CANCEL_GENERATE_CONFIRM_BACK}
-            okButtonProps={{ danger: true }}
-            onConfirm={onCancel}
-          >
-            <Button size="large" danger loading={cancelling}>
-              {CANCEL_GENERATE_BUTTON}
-            </Button>
-          </Popconfirm>
-        ) : null}
-        {isPrevVisible(phase, isPoster) ? (
-          // 生成中**不**禁用：出图已是后台作业，退回上一步不会中断它；
-          // 作业完成时若用户已退回，只落库、不把相位推回来
-          <Button size="large" disabled={isEditing || planEditing} onClick={onPrev}>
-            {PREV_BUTTON}
-          </Button>
-        ) : null}
-        <Button
-          size="large"
-          type="primary"
-          loading={nextLoading}
-          disabled={nextDisabled}
-          onClick={onNext}
-        >
-          {isDesignResultPhase(phase) ? COMPLETE_BUTTON : NEXT_BUTTON}
-        </Button>
-      </div>
-    </section>
+    </StudioStagePanel>
   );
 }

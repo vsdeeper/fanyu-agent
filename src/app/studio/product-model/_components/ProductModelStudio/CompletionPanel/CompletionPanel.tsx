@@ -5,9 +5,9 @@ import { PREV_BUTTON, EXPORT_FAILED } from '../constants';
 import type { ResultImage } from '../types';
 import { exportResultImages, getGeneratedImages } from '../utils';
 import CompletionResultGroup from '@/app/studio/_components/CompletionResultGroup';
+import StudioStagePanel from '@/app/studio/_components/StudioStagePanel';
 import { useExportResultImages } from '@/app/studio/_hooks/useExportResultImages';
 import { COMPLETION_TITLE, EXPORT_MATERIALS_BUTTON, RESULT_GROUP_TITLE } from './constants';
-import styles from './CompletionPanel.module.css';
 
 type CompletionPanelProps = {
   results: readonly ResultImage[];
@@ -24,38 +24,41 @@ export default function CompletionPanel({ results, onPrev }: CompletionPanelProp
     logTag: 'product-model',
   });
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <StarOutlined className={styles.star} />
-        {COMPLETION_TITLE}
-      </div>
-      <div className={styles.scroll}>
-        {hasResults ? (
-          <CompletionResultGroup
-            title={RESULT_GROUP_TITLE}
-            keyPrefix="model"
-            images={generated}
-            imageAlt="生成的产品模特图"
-          />
-        ) : (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生成图片" />
-        )}
-      </div>
-      <div className={styles.footer}>
-        <Button size="large" disabled={exporting} onClick={onPrev}>
-          {PREV_BUTTON}
-        </Button>
-        <Button
-          size="large"
-          type="primary"
-          icon={<DownloadOutlined />}
-          loading={exporting}
-          disabled={!hasResults}
-          onClick={handleExport}
-        >
-          {EXPORT_MATERIALS_BUTTON}
-        </Button>
-      </div>
-    </section>
+    <StudioStagePanel
+      head={
+        <>
+          <StarOutlined />
+          {COMPLETION_TITLE}
+        </>
+      }
+      footer={
+        <>
+          <Button size="large" disabled={exporting} onClick={onPrev}>
+            {PREV_BUTTON}
+          </Button>
+          <Button
+            size="large"
+            type="primary"
+            icon={<DownloadOutlined />}
+            loading={exporting}
+            disabled={!hasResults}
+            onClick={handleExport}
+          >
+            {EXPORT_MATERIALS_BUTTON}
+          </Button>
+        </>
+      }
+    >
+      {hasResults ? (
+        <CompletionResultGroup
+          title={RESULT_GROUP_TITLE}
+          keyPrefix="model"
+          images={generated}
+          imageAlt="生成的产品模特图"
+        />
+      ) : (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生成图片" />
+      )}
+    </StudioStagePanel>
   );
 }

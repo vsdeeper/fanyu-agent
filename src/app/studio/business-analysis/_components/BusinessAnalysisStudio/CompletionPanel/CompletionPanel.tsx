@@ -3,6 +3,7 @@ import { Button, Empty, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import FileCard from '@/components/FileCard';
 import AnalysisPreview from '@/app/studio/_components/AnalysisPreview';
+import StudioStagePanel from '@/app/studio/_components/StudioStagePanel';
 import { useExportResultImages } from '@/app/studio/_hooks/useExportResultImages';
 import {
   ANALYSIS_FILE_NAME,
@@ -43,52 +44,55 @@ export default function CompletionPanel({ analysisText, onPrev }: CompletionPane
   }, [analysisFile]);
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <StarOutlined className={styles.star} />
-        {COMPLETION_TITLE}
-      </div>
-      <div className={styles.scroll}>
-        {analysisFile ? (
-          <div className={styles.groups}>
-            <section className={styles.group}>
-              <Typography.Title level={5} className={styles.title}>
-                {ANALYSIS_GROUP_TITLE}
-              </Typography.Title>
-              <FileCard
-                fileName={ANALYSIS_FILE_NAME}
-                byteSize={analysisFile.byteSize}
-                href={analysisFile.href}
-                icon={<FileTextOutlined />}
-                onPreview={() => setOpen(true)}
-              />
-            </section>
-            <AnalysisPreview
-              open={open}
-              onClose={() => setOpen(false)}
+    <StudioStagePanel
+      head={
+        <>
+          <StarOutlined />
+          {COMPLETION_TITLE}
+        </>
+      }
+      footer={
+        <>
+          <Button size="large" disabled={exporting} onClick={onPrev}>
+            {PREV_BUTTON}
+          </Button>
+          <Button
+            size="large"
+            type="primary"
+            icon={<DownloadOutlined />}
+            loading={exporting}
+            disabled={!analysisFile}
+            onClick={handleExport}
+          >
+            {EXPORT_MATERIALS_BUTTON}
+          </Button>
+        </>
+      }
+    >
+      {analysisFile ? (
+        <div className={styles.groups}>
+          <section className={styles.group}>
+            <Typography.Title level={5} className={styles.title}>
+              {ANALYSIS_GROUP_TITLE}
+            </Typography.Title>
+            <FileCard
               fileName={ANALYSIS_FILE_NAME}
-              analysisText={analysisText}
+              byteSize={analysisFile.byteSize}
+              href={analysisFile.href}
+              icon={<FileTextOutlined />}
+              onPreview={() => setOpen(true)}
             />
-          </div>
-        ) : (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无分析结果" />
-        )}
-      </div>
-      <div className={styles.footer}>
-        <Button size="large" disabled={exporting} onClick={onPrev}>
-          {PREV_BUTTON}
-        </Button>
-        <Button
-          size="large"
-          type="primary"
-          icon={<DownloadOutlined />}
-          loading={exporting}
-          disabled={!analysisFile}
-          onClick={handleExport}
-        >
-          {EXPORT_MATERIALS_BUTTON}
-        </Button>
-      </div>
-    </section>
+          </section>
+          <AnalysisPreview
+            open={open}
+            onClose={() => setOpen(false)}
+            fileName={ANALYSIS_FILE_NAME}
+            analysisText={analysisText}
+          />
+        </div>
+      ) : (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无分析结果" />
+      )}
+    </StudioStagePanel>
   );
 }

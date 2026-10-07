@@ -5,6 +5,9 @@ import FileCard from '@/components/FileCard';
 import { DETAIL_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/detail-image-plan';
 import { MAIN_IMAGE_THEMES } from '@/app/api/studio/ecommerce/_shared/main-image-plan';
 import type { EcommerceTaskType } from '@/app/api/studio/ecommerce/_shared/task-types';
+import StudioStagePanel, {
+  studioStageHeadActionsClassName,
+} from '@/app/studio/_components/StudioStagePanel';
 import AnalysisPreview from './AnalysisPreview';
 import PhoneConcatPreview from './PhoneConcatPreview';
 import { PREV_BUTTON } from '../constants';
@@ -121,24 +124,45 @@ export default function CompletionPanel({
   };
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <StarOutlined className={styles.star} />
-        {COMPLETION_TITLE}
-        {selectExport ? (
-          <div className={styles.headActions}>
-            <Button
-              size="small"
-              disabled={selectableExportIds.length === 0}
-              onClick={onSelectAllExport}
-            >
-              {allExportSelected ? EXPORT_DESELECT_ALL_BUTTON : EXPORT_SELECT_ALL_BUTTON}
-            </Button>
-          </div>
-        ) : null}
-      </div>
-      <div className={detailPreview ? styles.splitScroll : styles.scroll}>
-        {detailPreview ? (
+    <StudioStagePanel
+      variant={detailPreview ? 'fill' : 'scroll'}
+      head={
+        <>
+          <StarOutlined />
+          {COMPLETION_TITLE}
+          {selectExport ? (
+            <div className={studioStageHeadActionsClassName}>
+              <Button
+                size="small"
+                disabled={selectableExportIds.length === 0}
+                onClick={onSelectAllExport}
+              >
+                {allExportSelected ? EXPORT_DESELECT_ALL_BUTTON : EXPORT_SELECT_ALL_BUTTON}
+              </Button>
+            </div>
+          ) : null}
+        </>
+      }
+      footer={
+        <>
+          <Button size="large" disabled={exporting} onClick={onPrev}>
+            {PREV_BUTTON}
+          </Button>
+          <Button
+            size="large"
+            type="primary"
+            icon={<DownloadOutlined />}
+            loading={exporting}
+            disabled={exportDisabled}
+            onClick={() => void runExport()}
+          >
+            {EXPORT_BUTTON}
+          </Button>
+        </>
+      }
+    >
+      {detailPreview ? (
+        <div className={styles.splitScroll}>
           <>
             <div className={styles.splitMain}>
               {hasDesignResults ? (
@@ -159,79 +183,64 @@ export default function CompletionPanel({
               <PhoneConcatPreview images={selectedDetailImages} />
             </aside>
           </>
-        ) : hasResults || analysisFile ? (
-          <div className={styles.groups}>
-            {analysisFile ? (
-              <>
-                <section className={styles.group}>
-                  <Typography.Title level={5} className={styles.title}>
-                    {ANALYSIS_GROUP_TITLE}
-                  </Typography.Title>
-                  <FileCard
-                    fileName={ANALYSIS_FILE_NAME}
-                    byteSize={analysisFile.byteSize}
-                    href={analysisFile.href}
-                    icon={<FileTextOutlined />}
-                    onPreview={() => setOpen(true)}
-                  />
-                </section>
-                <AnalysisPreview
-                  open={open}
-                  onClose={() => setOpen(false)}
-                  fileName={ANALYSIS_FILE_NAME}
-                  analysisText={analysisText}
-                />
-              </>
-            ) : null}
-            {visualResults.length > 0 ? (
+        </div>
+      ) : hasResults || analysisFile ? (
+        <div className={styles.groups}>
+          {analysisFile ? (
+            <>
               <section className={styles.group}>
                 <Typography.Title level={5} className={styles.title}>
-                  {VISUAL_GROUP_TITLE}
+                  {ANALYSIS_GROUP_TITLE}
                 </Typography.Title>
-                {visualGroups.map(({ aspectRatio, images }) => (
-                  <section key={aspectRatio} className={styles.ratioGroup}>
-                    <Typography.Text className={styles.ratioTitle}>{aspectRatio}</Typography.Text>
-                    <ResultImageGrid
-                      images={images}
-                      expectedCount={images.length}
-                      aspectRatio={aspectRatio}
-                    />
-                  </section>
-                ))}
+                <FileCard
+                  fileName={ANALYSIS_FILE_NAME}
+                  byteSize={analysisFile.byteSize}
+                  href={analysisFile.href}
+                  icon={<FileTextOutlined />}
+                  onPreview={() => setOpen(true)}
+                />
               </section>
-            ) : null}
-            {hasDesignResults ? (
-              <DesignResultGroupsView
-                groups={designResults}
-                showTitles={showDesignTitles}
-                groupByTheme={groupByTheme}
-                selectable={selectExport}
-                selectedIds={selectExport ? selectedExportIds : undefined}
-                selectedBadge={selectExport ? EXPORT_SELECTED_BADGE : undefined}
-                pickLabel={selectExport ? EXPORT_PICK_LABEL : undefined}
-                onSelect={selectExport ? onSelectExport : undefined}
+              <AnalysisPreview
+                open={open}
+                onClose={() => setOpen(false)}
+                fileName={ANALYSIS_FILE_NAME}
+                analysisText={analysisText}
               />
-            ) : null}
-          </div>
-        ) : (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生成图片" />
-        )}
-      </div>
-      <div className={styles.footer}>
-        <Button size="large" disabled={exporting} onClick={onPrev}>
-          {PREV_BUTTON}
-        </Button>
-        <Button
-          size="large"
-          type="primary"
-          icon={<DownloadOutlined />}
-          loading={exporting}
-          disabled={exportDisabled}
-          onClick={() => void runExport()}
-        >
-          {EXPORT_BUTTON}
-        </Button>
-      </div>
-    </section>
+            </>
+          ) : null}
+          {visualResults.length > 0 ? (
+            <section className={styles.group}>
+              <Typography.Title level={5} className={styles.title}>
+                {VISUAL_GROUP_TITLE}
+              </Typography.Title>
+              {visualGroups.map(({ aspectRatio, images }) => (
+                <section key={aspectRatio} className={styles.ratioGroup}>
+                  <Typography.Text className={styles.ratioTitle}>{aspectRatio}</Typography.Text>
+                  <ResultImageGrid
+                    images={images}
+                    expectedCount={images.length}
+                    aspectRatio={aspectRatio}
+                  />
+                </section>
+              ))}
+            </section>
+          ) : null}
+          {hasDesignResults ? (
+            <DesignResultGroupsView
+              groups={designResults}
+              showTitles={showDesignTitles}
+              groupByTheme={groupByTheme}
+              selectable={selectExport}
+              selectedIds={selectExport ? selectedExportIds : undefined}
+              selectedBadge={selectExport ? EXPORT_SELECTED_BADGE : undefined}
+              pickLabel={selectExport ? EXPORT_PICK_LABEL : undefined}
+              onSelect={selectExport ? onSelectExport : undefined}
+            />
+          ) : null}
+        </div>
+      ) : (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生成图片" />
+      )}
+    </StudioStagePanel>
   );
 }

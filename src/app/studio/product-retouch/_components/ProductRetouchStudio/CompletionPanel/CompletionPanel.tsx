@@ -3,6 +3,7 @@ import { Button, Empty } from 'antd';
 import { PREV_BUTTON } from '../constants';
 import type { ResultImage } from '../types';
 import CompletionResultGroup from '@/app/studio/_components/CompletionResultGroup';
+import StudioStagePanel from '@/app/studio/_components/StudioStagePanel';
 import {
   COMPLETION_TITLE,
   EXPORT_BUTTON,
@@ -31,48 +32,51 @@ export default function CompletionPanel({
   const { exporting, handleExport } = useExportResultImages(refineResults, multiviewResults);
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <StarOutlined className={styles.star} />
-        {COMPLETION_TITLE}
-      </div>
-      <div className={styles.scroll}>
-        {hasResults ? (
-          <div className={styles.groups}>
-            {refineResults.length > 0 ? (
-              <CompletionResultGroup
-                title={REFINE_GROUP_TITLE}
-                keyPrefix="refine"
-                images={refineResults}
-              />
-            ) : null}
-            {multiviewResults.length > 0 ? (
-              <CompletionResultGroup
-                title={MULTIVIEW_GROUP_TITLE}
-                keyPrefix="multiview"
-                images={multiviewResults}
-              />
-            ) : null}
-          </div>
-        ) : (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生成图片" />
-        )}
-      </div>
-      <div className={styles.footer}>
-        <Button size="large" disabled={exporting} onClick={onPrev}>
-          {PREV_BUTTON}
-        </Button>
-        <Button
-          size="large"
-          type="primary"
-          icon={<DownloadOutlined />}
-          loading={exporting}
-          disabled={!hasResults}
-          onClick={handleExport}
-        >
-          {EXPORT_BUTTON}
-        </Button>
-      </div>
-    </section>
+    <StudioStagePanel
+      head={
+        <>
+          <StarOutlined />
+          {COMPLETION_TITLE}
+        </>
+      }
+      footer={
+        <>
+          <Button size="large" disabled={exporting} onClick={onPrev}>
+            {PREV_BUTTON}
+          </Button>
+          <Button
+            size="large"
+            type="primary"
+            icon={<DownloadOutlined />}
+            loading={exporting}
+            disabled={!hasResults}
+            onClick={handleExport}
+          >
+            {EXPORT_BUTTON}
+          </Button>
+        </>
+      }
+    >
+      {hasResults ? (
+        <div className={styles.groups}>
+          {refineResults.length > 0 ? (
+            <CompletionResultGroup
+              title={REFINE_GROUP_TITLE}
+              keyPrefix="refine"
+              images={refineResults}
+            />
+          ) : null}
+          {multiviewResults.length > 0 ? (
+            <CompletionResultGroup
+              title={MULTIVIEW_GROUP_TITLE}
+              keyPrefix="multiview"
+              images={multiviewResults}
+            />
+          ) : null}
+        </div>
+      ) : (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生成图片" />
+      )}
+    </StudioStagePanel>
   );
 }

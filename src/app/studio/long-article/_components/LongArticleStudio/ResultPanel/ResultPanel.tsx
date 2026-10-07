@@ -5,6 +5,9 @@ import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
 import { useState } from 'react';
+import StudioStagePanel, {
+  studioStageHeadActionsClassName,
+} from '@/app/studio/_components/StudioStagePanel';
 import { useThemeMode } from '@/components/theme';
 import AnnotatedMarkdown from '../AnnotatedMarkdown';
 import AngleCardView from '../AngleCardView';
@@ -251,278 +254,291 @@ export default function ResultPanel({
     onOpenSlotDrawer(slot?.id);
   }
 
-  return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <StarOutlined className={styles.star} />
-        {title}
-        {draftView ? (
-          <div className={styles.headActions}>
-            {isEditing ? (
-              <>
-                <Button size="small" onClick={cancelEdit}>
-                  {CANCEL_BUTTON}
-                </Button>
-                <Button size="small" type="primary" onClick={saveEdit}>
-                  {SAVE_BUTTON}
-                </Button>
-              </>
-            ) : canEditDraft ? (
-              <>
-                <Button size="small" onClick={handleExport}>
-                  {EXPORT_BUTTON}
-                </Button>
-                <Button size="small" onClick={startEdit}>
-                  {EDIT_BUTTON}
-                </Button>
-              </>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+  const stageFill =
+    (streaming && !planView && !researchBrief && !draftStream && !imagesStream && !markdown) ||
+    (planView && (phase === 'planning' || !plan));
 
-      {streaming && !planView && !researchBrief && !draftStream && !imagesStream && !markdown ? (
-        <div className={styles.body}>
-          <Spin />
-        </div>
-      ) : researchView ? (
-        <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
-          <div ref={contentRef} className={styles.scrollContent}>
-            {!researchDone && !researchBrief && sources.length === 0 && angles.length === 0 ? (
-              <div className={styles.body}>
-                {phase === 'researching' ? (
-                  <Spin />
-                ) : (
-                  <p className={styles.hint}>{EMPTY_RESEARCH_HINT}</p>
-                )}
-              </div>
-            ) : (
-              <>
-                {researchBrief ? (
+  return (
+    <>
+      <StudioStagePanel
+        variant={stageFill ? 'fill' : 'stream'}
+        scrollRef={stageFill ? undefined : scrollRef}
+        onScroll={stageFill ? undefined : onScroll}
+        head={
+          <>
+            <StarOutlined />
+            {title}
+            {draftView ? (
+              <div className={studioStageHeadActionsClassName}>
+                {isEditing ? (
                   <>
-                    <p className={styles.sectionTitle}>{RESEARCH_BRIEF_TITLE}</p>
-                    {hydrated ? (
+                    <Button size="small" onClick={cancelEdit}>
+                      {CANCEL_BUTTON}
+                    </Button>
+                    <Button size="small" type="primary" onClick={saveEdit}>
+                      {SAVE_BUTTON}
+                    </Button>
+                  </>
+                ) : canEditDraft ? (
+                  <>
+                    <Button size="small" onClick={handleExport}>
+                      {EXPORT_BUTTON}
+                    </Button>
+                    <Button size="small" onClick={startEdit}>
+                      {EDIT_BUTTON}
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        }
+        footer={
+          <>
+            <div className={styles.footerStart}>
+              {canPolish || phase === 'polishing' ? (
+                <Button
+                  size="large"
+                  loading={phase === 'polishing'}
+                  disabled={!canPolish}
+                  onClick={onPolish}
+                >
+                  {POLISH_BUTTON}
+                </Button>
+              ) : null}
+              <Button size="large" disabled={!canPrev || streaming || isEditing} onClick={onPrev}>
+                {PREV_BUTTON}
+              </Button>
+            </div>
+            <Button
+              size="large"
+              type="primary"
+              loading={navLoading}
+              disabled={!canNext || streaming || isEditing}
+              onClick={onNext}
+            >
+              {NEXT_BUTTON}
+            </Button>
+          </>
+        }
+      >
+        {streaming && !planView && !researchBrief && !draftStream && !imagesStream && !markdown ? (
+          <div className={styles.body}>
+            <Spin />
+          </div>
+        ) : researchView ? (
+          <div>
+            <div ref={contentRef} className={styles.scrollContent}>
+              {!researchDone && !researchBrief && sources.length === 0 && angles.length === 0 ? (
+                <div className={styles.body}>
+                  {phase === 'researching' ? (
+                    <Spin />
+                  ) : (
+                    <p className={styles.hint}>{EMPTY_RESEARCH_HINT}</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {researchBrief ? (
+                    <>
+                      <p className={styles.sectionTitle}>{RESEARCH_BRIEF_TITLE}</p>
+                      {hydrated ? (
+                        <XMarkdown
+                          className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
+                          content={researchBrief}
+                          paragraphTag="div"
+                          openLinksInNewTab
+                          escapeRawHtml
+                        />
+                      ) : null}
+                    </>
+                  ) : null}
+                  {researchPacking ? (
+                    <div className={styles.packingHint}>
+                      <Spin size="small" />
+                      <span>{RESEARCH_PACKING_HINT}</span>
+                    </div>
+                  ) : null}
+                  {!researchPacking &&
+                  researchBrief &&
+                  angles.length === 0 &&
+                  phase !== 'researching' ? (
+                    <p className={styles.hint}>{RESEARCH_NO_ANGLES_HINT}</p>
+                  ) : null}
+                  {sources.length > 0 ? (
+                    <>
+                      <p className={styles.sectionTitle}>{RESEARCH_SOURCES_TITLE}</p>
+                      <ul className={styles.sourceList}>
+                        {sources.map((item, index) => (
+                          <li key={`${item.url}-${item.title}`} className={styles.sourceItem}>
+                            <div className={styles.sourceBody}>
+                              <Tag className={styles.sourceKind}>
+                                {SOURCE_KIND_LABEL[item.kind]}
+                              </Tag>
+                              <Typography.Link href={item.url} target="_blank" rel="noreferrer">
+                                {item.title}
+                              </Typography.Link>
+                              {item.publishedAt ? (
+                                <span className={styles.sourceDate}>{item.publishedAt}</span>
+                              ) : null}
+                              <span className={styles.sourceBlurb}> — {item.blurb}</span>
+                            </div>
+                            <span className={styles.sourceIndex} aria-hidden>
+                              {index + 1}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : null}
+                  {angles.length > 0 ? (
+                    <div className={styles.angleSection}>
+                      <p className={styles.sectionTitle}>{RESEARCH_ANGLES_TITLE}</p>
+                      <div className={styles.angleList}>
+                        {angles.map((angle) => (
+                          <AngleCardView
+                            key={angle.id}
+                            angle={angle}
+                            articleGenre={articleGenre}
+                            selected={selectedAngleId === angle.id}
+                            onSelect={() => onSelectAngle(angle.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </div>
+        ) : planView ? (
+          phase === 'planning' || !plan ? (
+            <div className={styles.body}>
+              {phase === 'planning' ? (
+                <>
+                  <Spin />
+                  <p className={styles.hint}>{PLAN_GENERATING_HINT}</p>
+                </>
+              ) : (
+                <p className={styles.hint}>{EMPTY_PLAN_HINT}</p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <div ref={contentRef} className={styles.scrollContent}>
+                {plan.titleDirections?.length ? (
+                  <TitleDirectionList
+                    titles={plan.titleDirections}
+                    selectedIndex={plan.selectedTitleIndex}
+                    onSelect={onSelectTitleDirection}
+                    onChangeTitle={onChangeTitleDirection}
+                  />
+                ) : null}
+                <BeatList
+                  beats={plan.beats}
+                  onChangeBeat={(index, value) => {
+                    const next = [...plan.beats];
+                    next[index] = value;
+                    onPlanBeatsChange(next);
+                  }}
+                  onRemoveBeat={(index) => {
+                    onPlanBeatsChange(plan.beats.filter((_, i) => i !== index));
+                  }}
+                />
+              </div>
+            </div>
+          )
+        ) : imagesView ? (
+          <div>
+            <div ref={contentRef} className={styles.scrollContent}>
+              {!imagesDisplay.trim() ? (
+                <div className={styles.body}>
+                  {phase === 'illustrating' ? (
+                    <Spin />
+                  ) : (
+                    <p className={styles.hint}>{EMPTY_IMAGES_HINT}</p>
+                  )}
+                </div>
+              ) : hydrated ? (
+                <>
+                  <AnnotatedMarkdown
+                    markdown={imagesBodyMarkdown}
+                    markdownClassName={markdownClass}
+                    imageSlots={imageSlots}
+                    activeLabel={activeLabel}
+                    onMarkerClick={handleMarkerClick}
+                  />
+                  {imagesReferencesList ? (
+                    <div className={styles.draftReferences}>
+                      <p className={styles.sectionTitle}>{RESEARCH_SOURCES_TITLE}</p>
                       <XMarkdown
-                        className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
-                        content={researchBrief}
+                        className={`${markdownClass} ${styles.draftReferencesMarkdown}`}
+                        content={imagesReferencesList}
                         paragraphTag="div"
                         openLinksInNewTab
                         escapeRawHtml
                       />
-                    ) : null}
-                  </>
-                ) : null}
-                {researchPacking ? (
-                  <div className={styles.packingHint}>
-                    <Spin size="small" />
-                    <span>{RESEARCH_PACKING_HINT}</span>
-                  </div>
-                ) : null}
-                {!researchPacking &&
-                researchBrief &&
-                angles.length === 0 &&
-                phase !== 'researching' ? (
-                  <p className={styles.hint}>{RESEARCH_NO_ANGLES_HINT}</p>
-                ) : null}
-                {sources.length > 0 ? (
-                  <>
-                    <p className={styles.sectionTitle}>{RESEARCH_SOURCES_TITLE}</p>
-                    <ul className={styles.sourceList}>
-                      {sources.map((item, index) => (
-                        <li key={`${item.url}-${item.title}`} className={styles.sourceItem}>
-                          <div className={styles.sourceBody}>
-                            <Tag className={styles.sourceKind}>{SOURCE_KIND_LABEL[item.kind]}</Tag>
-                            <Typography.Link href={item.url} target="_blank" rel="noreferrer">
-                              {item.title}
-                            </Typography.Link>
-                            {item.publishedAt ? (
-                              <span className={styles.sourceDate}>{item.publishedAt}</span>
-                            ) : null}
-                            <span className={styles.sourceBlurb}> — {item.blurb}</span>
-                          </div>
-                          <span className={styles.sourceIndex} aria-hidden>
-                            {index + 1}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-                {angles.length > 0 ? (
-                  <div className={styles.angleSection}>
-                    <p className={styles.sectionTitle}>{RESEARCH_ANGLES_TITLE}</p>
-                    <div className={styles.angleList}>
-                      {angles.map((angle) => (
-                        <AngleCardView
-                          key={angle.id}
-                          angle={angle}
-                          articleGenre={articleGenre}
-                          selected={selectedAngleId === angle.id}
-                          onSelect={() => onSelectAngle(angle.id)}
-                        />
-                      ))}
                     </div>
-                  </div>
-                ) : null}
-              </>
-            )}
-          </div>
-        </div>
-      ) : planView ? (
-        phase === 'planning' || !plan ? (
-          <div className={styles.body}>
-            {phase === 'planning' ? (
-              <>
-                <Spin />
-                <p className={styles.hint}>{PLAN_GENERATING_HINT}</p>
-              </>
-            ) : (
-              <p className={styles.hint}>{EMPTY_PLAN_HINT}</p>
-            )}
-          </div>
-        ) : (
-          <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
-            <div ref={contentRef} className={styles.scrollContent}>
-              {plan.titleDirections?.length ? (
-                <TitleDirectionList
-                  titles={plan.titleDirections}
-                  selectedIndex={plan.selectedTitleIndex}
-                  onSelect={onSelectTitleDirection}
-                  onChangeTitle={onChangeTitleDirection}
-                />
+                  ) : null}
+                  <p className={styles.charCount}>
+                    共 {imagesCharCount} 字{imagesReferencesList ? '（不含参考来源）' : ''}
+                  </p>
+                </>
               ) : null}
-              <BeatList
-                beats={plan.beats}
-                onChangeBeat={(index, value) => {
-                  const next = [...plan.beats];
-                  next[index] = value;
-                  onPlanBeatsChange(next);
-                }}
-                onRemoveBeat={(index) => {
-                  onPlanBeatsChange(plan.beats.filter((_, i) => i !== index));
-                }}
-              />
             </div>
           </div>
-        )
-      ) : imagesView ? (
-        <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
-          <div ref={contentRef} className={styles.scrollContent}>
-            {!imagesDisplay.trim() ? (
-              <div className={styles.body}>
-                {phase === 'illustrating' ? (
-                  <Spin />
-                ) : (
-                  <p className={styles.hint}>{EMPTY_IMAGES_HINT}</p>
-                )}
-              </div>
-            ) : hydrated ? (
-              <>
-                <AnnotatedMarkdown
-                  markdown={imagesBodyMarkdown}
-                  markdownClassName={markdownClass}
-                  imageSlots={imageSlots}
-                  activeLabel={activeLabel}
-                  onMarkerClick={handleMarkerClick}
-                />
-                {imagesReferencesList ? (
-                  <div className={styles.draftReferences}>
-                    <p className={styles.sectionTitle}>{RESEARCH_SOURCES_TITLE}</p>
+        ) : (
+          <div>
+            <div ref={contentRef} className={styles.scrollContent}>
+              {!markdown && !draftStream ? (
+                <div className={styles.body}>
+                  <p className={styles.hint}>{EMPTY_DRAFT_HINT}</p>
+                </div>
+              ) : (
+                <>
+                  {isEditing ? (
+                    <Input.TextArea
+                      className={styles.editor}
+                      autoSize={{ minRows: 6 }}
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                    />
+                  ) : draftBodyMarkdown.trim() && hydrated ? (
                     <XMarkdown
-                      className={`${markdownClass} ${styles.draftReferencesMarkdown}`}
-                      content={imagesReferencesList}
+                      className={markdownClass}
+                      content={draftBodyMarkdown}
                       paragraphTag="div"
                       openLinksInNewTab
                       escapeRawHtml
                     />
-                  </div>
-                ) : null}
-                <p className={styles.charCount}>
-                  共 {imagesCharCount} 字{imagesReferencesList ? '（不含参考来源）' : ''}
-                </p>
-              </>
-            ) : null}
+                  ) : null}
+                  {!isEditing && draftReferencesList && hydrated ? (
+                    <div className={styles.draftReferences}>
+                      <p className={styles.sectionTitle}>{RESEARCH_SOURCES_TITLE}</p>
+                      <XMarkdown
+                        className={`${markdownClass} ${styles.draftReferencesMarkdown}`}
+                        content={draftReferencesList}
+                        paragraphTag="div"
+                        openLinksInNewTab
+                        escapeRawHtml
+                      />
+                    </div>
+                  ) : null}
+                  {draftDisplay.trim() ? (
+                    <p className={styles.charCount}>
+                      共 {draftCharCount} 字
+                      {!isEditing && draftReferencesList ? '（不含参考来源）' : ''}
+                    </p>
+                  ) : null}
+                  {phase === 'polishing' ? (
+                    <p className={styles.packingHint}>{POLISHING_HINT}</p>
+                  ) : null}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
-          <div ref={contentRef} className={styles.scrollContent}>
-            {!markdown && !draftStream ? (
-              <div className={styles.body}>
-                <p className={styles.hint}>{EMPTY_DRAFT_HINT}</p>
-              </div>
-            ) : (
-              <>
-                {isEditing ? (
-                  <Input.TextArea
-                    className={styles.editor}
-                    autoSize={{ minRows: 6 }}
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                  />
-                ) : draftBodyMarkdown.trim() && hydrated ? (
-                  <XMarkdown
-                    className={markdownClass}
-                    content={draftBodyMarkdown}
-                    paragraphTag="div"
-                    openLinksInNewTab
-                    escapeRawHtml
-                  />
-                ) : null}
-                {!isEditing && draftReferencesList && hydrated ? (
-                  <div className={styles.draftReferences}>
-                    <p className={styles.sectionTitle}>{RESEARCH_SOURCES_TITLE}</p>
-                    <XMarkdown
-                      className={`${markdownClass} ${styles.draftReferencesMarkdown}`}
-                      content={draftReferencesList}
-                      paragraphTag="div"
-                      openLinksInNewTab
-                      escapeRawHtml
-                    />
-                  </div>
-                ) : null}
-                {draftDisplay.trim() ? (
-                  <p className={styles.charCount}>
-                    共 {draftCharCount} 字
-                    {!isEditing && draftReferencesList ? '（不含参考来源）' : ''}
-                  </p>
-                ) : null}
-                {phase === 'polishing' ? (
-                  <p className={styles.packingHint}>{POLISHING_HINT}</p>
-                ) : null}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className={styles.footer}>
-        <div className={styles.footerStart}>
-          {canPolish || phase === 'polishing' ? (
-            <Button
-              size="large"
-              loading={phase === 'polishing'}
-              disabled={!canPolish}
-              onClick={onPolish}
-            >
-              {POLISH_BUTTON}
-            </Button>
-          ) : null}
-          <Button size="large" disabled={!canPrev || streaming || isEditing} onClick={onPrev}>
-            {PREV_BUTTON}
-          </Button>
-        </div>
-        <Button
-          size="large"
-          type="primary"
-          loading={navLoading}
-          disabled={!canNext || streaming || isEditing}
-          onClick={onNext}
-        >
-          {NEXT_BUTTON}
-        </Button>
-      </div>
-
+        )}
+      </StudioStagePanel>
       {imagesView ? (
         <ImageSlotDrawer
           open={slotDrawerOpen}
@@ -544,6 +560,6 @@ export default function ResultPanel({
           onCopyImage={onCopyImage}
         />
       ) : null}
-    </section>
+    </>
   );
 }

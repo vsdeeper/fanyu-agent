@@ -5,6 +5,9 @@ import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import '@/lib/theme/XMarkdownTheme.css';
+import StudioStagePanel, {
+  studioStageHeadActionsClassName,
+} from '@/app/studio/_components/StudioStagePanel';
 import type { GenerateSpecFields } from '@/app/studio/_utils/model-options';
 import { useThemeMode } from '@/components/theme';
 import {
@@ -106,108 +109,113 @@ export default function ResultPanel({
     downloadMarkdownFile(body, EXPORT_FILE_NAME, EXPORT_MEDIA_TYPE);
   }
 
+  const showSpinner = planning && !showLiveBody;
+  const showPlanScroll = Boolean(showPlan && (showLiveBody || editing));
+
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <StarOutlined />
-        <span className={styles.headTitle}>
-          {showPlan ? RESULT_PLAN_TITLE : RESULT_GENERATE_TITLE}
-        </span>
-        {showPlan && phase === 'planned' && !planning && displayBody && !editing ? (
-          <div className={styles.headActions}>
-            <Button size="small" type="link" className={styles.headAction} onClick={handleExport}>
-              {EXPORT_BUTTON}
+    <StudioStagePanel
+      variant={showSpinner ? 'fill' : 'scroll'}
+      scrollRef={showPlanScroll ? scrollRef : undefined}
+      onScroll={showPlanScroll ? onScroll : undefined}
+      head={
+        <>
+          <StarOutlined />
+          <span className={styles.headTitle}>
+            {showPlan ? RESULT_PLAN_TITLE : RESULT_GENERATE_TITLE}
+          </span>
+          {showPlan && phase === 'planned' && !planning && displayBody && !editing ? (
+            <div className={studioStageHeadActionsClassName}>
+              <Button size="small" type="link" className={styles.headAction} onClick={handleExport}>
+                {EXPORT_BUTTON}
+              </Button>
+              <Button size="small" type="link" className={styles.headAction} onClick={startEdit}>
+                {EDIT_BUTTON}
+              </Button>
+            </div>
+          ) : null}
+          {editing ? (
+            <div className={studioStageHeadActionsClassName}>
+              <Button size="small" onClick={cancelEdit}>
+                {CANCEL_BUTTON}
+              </Button>
+              <Button size="small" type="primary" disabled={!draft.trim()} onClick={saveEdit}>
+                {SAVE_BUTTON}
+              </Button>
+            </div>
+          ) : null}
+        </>
+      }
+      footer={
+        <>
+          {phase === 'generate' && generating ? (
+            <Popconfirm
+              title={CANCEL_GENERATE_CONFIRM_TITLE}
+              description={CANCEL_GENERATE_CONFIRM_DESCRIPTION}
+              okText={CANCEL_GENERATE_CONFIRM_OK}
+              cancelText={CANCEL_GENERATE_CONFIRM_BACK}
+              okButtonProps={{ danger: true }}
+              onConfirm={onCancelGenerate}
+            >
+              <Button size="large" danger>
+                {CANCEL_GENERATE_BUTTON}
+              </Button>
+            </Popconfirm>
+          ) : null}
+          {phase === 'generate' ? (
+            <Button size="large" loading={navLoading} disabled={generating} onClick={onPrev}>
+              {PREV_BUTTON}
             </Button>
-            <Button size="small" type="link" className={styles.headAction} onClick={startEdit}>
-              {EDIT_BUTTON}
-            </Button>
-          </div>
-        ) : null}
-        {editing ? (
-          <div className={styles.headActions}>
-            <Button size="small" onClick={cancelEdit}>
-              {CANCEL_BUTTON}
-            </Button>
-            <Button size="small" type="primary" disabled={!draft.trim()} onClick={saveEdit}>
-              {SAVE_BUTTON}
-            </Button>
-          </div>
-        ) : null}
-      </div>
-      {planning && !showLiveBody ? (
+          ) : null}
+          <Button
+            size="large"
+            type="primary"
+            loading={navLoading}
+            disabled={showPlan ? !canNext || editing : !canPreview || generating}
+            onClick={onNext}
+          >
+            {NEXT_BUTTON}
+          </Button>
+        </>
+      }
+    >
+      {showSpinner ? (
         <div className={styles.body}>
           <Spin />
         </div>
-      ) : showPlan && (showLiveBody || editing) ? (
-        <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
-          <div ref={contentRef} className={styles.planStack}>
-            {editing ? (
-              <Input.TextArea
-                className={styles.editor}
-                value={draft}
-                autoSize={{ minRows: 16 }}
-                onChange={(event) => setDraft(event.target.value)}
-              />
-            ) : hydrated ? (
-              <XMarkdown
-                className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
-                content={displayBody}
-                components={MARKDOWN_COMPONENTS}
-                paragraphTag="div"
-                openLinksInNewTab
-                escapeRawHtml
-                streaming={planning ? MARKDOWN_STREAMING_ON : MARKDOWN_STREAMING_OFF}
-                disableDefaultStyles={MARKDOWN_DISABLE_STYLES}
-              />
-            ) : null}
-          </div>
-        </div>
-      ) : (
-        <div className={styles.scroll}>
-          {showPlan ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={EMPTY_PLAN_HINT} />
-          ) : groups.length > 0 || generating ? (
-            <GeneratedGallery
-              groups={groups}
-              aspectRatio={spec.aspectRatio}
-              generating={generating}
-              onToggle={onToggleImage}
+      ) : showPlanScroll ? (
+        <div ref={contentRef} className={styles.planStack}>
+          {editing ? (
+            <Input.TextArea
+              className={styles.editor}
+              value={draft}
+              autoSize={{ minRows: 16 }}
+              onChange={(event) => setDraft(event.target.value)}
             />
-          ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={EMPTY_GALLERY_HINT} />
-          )}
+          ) : hydrated ? (
+            <XMarkdown
+              className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
+              content={displayBody}
+              components={MARKDOWN_COMPONENTS}
+              paragraphTag="div"
+              openLinksInNewTab
+              escapeRawHtml
+              streaming={planning ? MARKDOWN_STREAMING_ON : MARKDOWN_STREAMING_OFF}
+              disableDefaultStyles={MARKDOWN_DISABLE_STYLES}
+            />
+          ) : null}
         </div>
+      ) : showPlan ? (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={EMPTY_PLAN_HINT} />
+      ) : groups.length > 0 || generating ? (
+        <GeneratedGallery
+          groups={groups}
+          aspectRatio={spec.aspectRatio}
+          generating={generating}
+          onToggle={onToggleImage}
+        />
+      ) : (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={EMPTY_GALLERY_HINT} />
       )}
-      <div className={styles.footer}>
-        {phase === 'generate' && generating ? (
-          <Popconfirm
-            title={CANCEL_GENERATE_CONFIRM_TITLE}
-            description={CANCEL_GENERATE_CONFIRM_DESCRIPTION}
-            okText={CANCEL_GENERATE_CONFIRM_OK}
-            cancelText={CANCEL_GENERATE_CONFIRM_BACK}
-            okButtonProps={{ danger: true }}
-            onConfirm={onCancelGenerate}
-          >
-            <Button size="large" danger>
-              {CANCEL_GENERATE_BUTTON}
-            </Button>
-          </Popconfirm>
-        ) : null}
-        {phase === 'generate' ? (
-          <Button size="large" loading={navLoading} disabled={generating} onClick={onPrev}>
-            {PREV_BUTTON}
-          </Button>
-        ) : null}
-        <Button
-          size="large"
-          type="primary"
-          loading={navLoading}
-          disabled={showPlan ? !canNext || editing : !canPreview || generating}
-          onClick={onNext}
-        >
-          {NEXT_BUTTON}
-        </Button>
-      </div>
-    </section>
+    </StudioStagePanel>
   );
 }

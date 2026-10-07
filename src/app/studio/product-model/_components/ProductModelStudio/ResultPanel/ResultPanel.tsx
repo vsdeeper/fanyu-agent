@@ -2,6 +2,7 @@ import { StarOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import GeneratingSkeleton from '@/app/studio/_components/GeneratingSkeleton';
 import ResultImageItem from '@/app/studio/_components/ResultImageItem';
+import StudioStagePanel from '@/app/studio/_components/StudioStagePanel';
 import { COMPLETE_BUTTON, EMPTY_RESULT_HINT } from '../constants';
 import type { ResultImage } from '../types';
 import { aspectRatioToSize, groupResultImagesByRatio, hasReadyImage } from '../utils';
@@ -26,14 +27,30 @@ export default function ResultPanel({
   onComplete,
 }: ResultPanelProps) {
   const ratioGroups = groupResultImagesByRatio(images);
+  const hasImages = images.length > 0;
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <StarOutlined className={styles.star} />
-        产品模特
-      </div>
-      {images.length > 0 ? (
-        <div className={styles.scroll}>
+    <StudioStagePanel
+      variant={hasImages || generating ? 'scroll' : 'fill'}
+      head={
+        <>
+          <StarOutlined />
+          产品模特
+        </>
+      }
+      footer={
+        <Button
+          size="large"
+          type="primary"
+          loading={persisting}
+          disabled={generating || persisting || !hasReadyImage(images)}
+          onClick={onComplete}
+        >
+          {COMPLETE_BUTTON}
+        </Button>
+      }
+    >
+      {hasImages ? (
+        <>
           {ratioGroups.map(({ aspectRatio: ratio, images: ratioImages }) => (
             <section key={ratio} className={styles.ratioGroup}>
               <Typography.Text className={styles.ratioTitle}>{ratio}</Typography.Text>
@@ -52,14 +69,12 @@ export default function ResultPanel({
               </div>
             </section>
           ))}
-        </div>
+        </>
       ) : generating ? (
-        <div className={styles.scroll}>
-          <div className={styles.grid}>
-            {Array.from({ length: Math.max(1, expectedCount) }, (_, index) => (
-              <GeneratingSkeleton key={index} aspectRatio={aspectRatio} baseWidth={280} />
-            ))}
-          </div>
+        <div className={styles.grid}>
+          {Array.from({ length: Math.max(1, expectedCount) }, (_, index) => (
+            <GeneratingSkeleton key={index} aspectRatio={aspectRatio} baseWidth={280} />
+          ))}
         </div>
       ) : (
         <div className={styles.empty}>
@@ -67,17 +82,6 @@ export default function ResultPanel({
           <p>{EMPTY_RESULT_HINT}</p>
         </div>
       )}
-      <div className={styles.footer}>
-        <Button
-          size="large"
-          type="primary"
-          loading={persisting}
-          disabled={generating || persisting || !hasReadyImage(images)}
-          onClick={onComplete}
-        >
-          {COMPLETE_BUTTON}
-        </Button>
-      </div>
-    </section>
+    </StudioStagePanel>
   );
 }
