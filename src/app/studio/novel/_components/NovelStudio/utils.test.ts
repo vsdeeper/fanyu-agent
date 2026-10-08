@@ -11,6 +11,9 @@ import {
   listStructureChapters,
   parseBiblePayload,
   resolveGenerateUnitIds,
+  expandedChapterIds,
+  isSameWriteSnapshot,
+  retainWritingSelection,
   syncWritingUnits,
   toBibleRequest,
   toggleWritingSelection,
@@ -61,6 +64,50 @@ describe('syncWritingUnits', () => {
     ]);
     expect(synced.units.find((unit) => unit.unitId === 'ch-1')?.body).toBe('旧章文');
     expect(synced.units.find((unit) => unit.unitId === 'ch-2')?.body).toBe('');
+  });
+
+  it('保留仍存在的选中，并丢掉已删除的 id', () => {
+    const synced = syncWritingUnits(chaptersStructure, {
+      kind: 'chapters',
+      units: [],
+      selectedUnitIds: ['ch-1-beat-1', 'gone'],
+      focusUnitId: 'ch-1-beat-1',
+    });
+    expect(synced.selectedUnitIds).toEqual(['ch-1-beat-1']);
+    expect(synced.focusUnitId).toBe('ch-1-beat-1');
+    expect(retainWritingSelection(chaptersStructure, ['gone'], 'gone')).toEqual({});
+  });
+});
+
+describe('isSameWriteSnapshot', () => {
+  const base = {
+    kind: 'chapters' as const,
+    units: [{ unitId: 'ch-1-beat-1', body: '正文' }],
+    selectedUnitIds: ['ch-1-beat-1'],
+    focusUnitId: 'ch-1-beat-1',
+  };
+
+  it('选中或正文变化才算变更；空选中与缺省相同', () => {
+    expect(isSameWriteSnapshot(base, { ...base })).toBe(true);
+    expect(isSameWriteSnapshot(base, { ...base, selectedUnitIds: undefined })).toBe(false);
+    expect(
+      isSameWriteSnapshot(
+        { kind: 'chapters', units: [] },
+        { kind: 'chapters', units: [], selectedUnitIds: [] },
+      ),
+    ).toBe(true);
+    expect(
+      isSameWriteSnapshot(base, { ...base, units: [{ unitId: 'ch-1-beat-1', body: '改' }] }),
+    ).toBe(false);
+    expect(isSameWriteSnapshot(undefined, undefined)).toBe(true);
+  });
+});
+
+describe('expandedChapterIds', () => {
+  it('展开选中章，以及含选中节拍的章', () => {
+    expect(expandedChapterIds(chaptersStructure, ['ch-1-beat-2'])).toEqual(['ch-1']);
+    expect(expandedChapterIds(chaptersStructure, ['ch-2'])).toEqual(['ch-2']);
+    expect(expandedChapterIds(shortStructure, ['beat-1'])).toEqual([]);
   });
 });
 

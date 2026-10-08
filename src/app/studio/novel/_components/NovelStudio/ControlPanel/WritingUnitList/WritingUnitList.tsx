@@ -3,6 +3,7 @@ import { useState, type MouseEvent } from 'react';
 import { WRITE_CHAPTER_NO_BEATS_HINT, WRITE_UNITS_LABEL } from '../../constants';
 import type { StructureSnapshot } from '../../types';
 import {
+  expandedChapterIds,
   formatChapterPrefix,
   isChapterRowSelected,
   listStructureChapters,
@@ -26,7 +27,9 @@ export default function WritingUnitList({
 }: WritingUnitListProps) {
   const selected = new Set(selectedUnitIds);
   const chapters = structure.kind === 'short' ? [] : listStructureChapters(structure);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () => new Set(expandedChapterIds(structure, selectedUnitIds)),
+  );
 
   const toggleExpanded = (chapterId: string, event: MouseEvent) => {
     event.stopPropagation();

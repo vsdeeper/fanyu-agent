@@ -79,7 +79,7 @@ export function listWritableUnitIds(structure: StructureSnapshot): string[] {
   ]);
 }
 
-/** 按当前结构对齐写作 units：保留仍存在的 body 与文风，新 id 补空串。 */
+/** 按当前结构对齐写作 units：保留仍存在的 body、文风与选中，新 id 补空串。 */
 export function syncWritingUnits(
   structure: StructureSnapshot,
   prev?: WritingSnapshot,
@@ -89,13 +89,67 @@ export function syncWritingUnits(
     unitId,
     body: prevMap.get(unitId) ?? '',
   }));
+  const selection = retainWritingSelection(structure, prev?.selectedUnitIds, prev?.focusUnitId);
   return {
     kind: writingKindFromStructure(structure),
     units,
     ...(prev?.styleSelections && Object.keys(prev.styleSelections).length
       ? { styleSelections: prev.styleSelections }
       : {}),
+    ...selection,
   };
+}
+
+/** 丢掉结构里已经不存在的选中与焦点。 */
+export function retainWritingSelection(
+  structure: StructureSnapshot,
+  selectedUnitIds: readonly string[] | undefined,
+  focusUnitId: string | undefined,
+): Pick<WritingSnapshot, 'selectedUnitIds' | 'focusUnitId'> {
+  const valid = new Set(listWritableUnitIds(structure));
+  const nextIds = (selectedUnitIds ?? []).filter((id) => valid.has(id));
+  const nextFocus = focusUnitId && nextIds.includes(focusUnitId) ? focusUnitId : nextIds.at(-1);
+  return {
+    ...(nextIds.length ? { selectedUnitIds: nextIds } : {}),
+    ...(nextFocus ? { focusUnitId: nextFocus } : {}),
+  };
+}
+
+/** 进入写作步时默认展开的章：章本身或其任一节拍已选中。 */
+export function expandedChapterIds(
+  structure: StructureSnapshot,
+  selectedUnitIds: readonly string[],
+): string[] {
+  if (structure.kind === 'short' || selectedUnitIds.length === 0) return [];
+  const selected = new Set(selectedUnitIds);
+  return listStructureChapters(structure)
+    .filter(
+      (chapter) => selected.has(chapter.id) || chapter.beats.some((beat) => selected.has(beat.id)),
+    )
+    .map((chapter) => chapter.id);
+}
+
+/**
+ * 写作快照是否与上次落盘一致。
+ * 选中顺序、焦点、正文和文风都算变更；缺省选中与空数组视为相同。
+ */
+export function isSameWriteSnapshot(
+  prev: WritingSnapshot | undefined,
+  next: WritingSnapshot | undefined,
+): boolean {
+  if (prev === next) return true;
+  if (!prev || !next) return false;
+  return writeSnapshotKey(prev) === writeSnapshotKey(next);
+}
+
+function writeSnapshotKey(snapshot: WritingSnapshot): string {
+  return JSON.stringify({
+    kind: snapshot.kind,
+    units: snapshot.units.map((unit) => [unit.unitId, unit.body]),
+    styleSelections: snapshot.styleSelections ?? null,
+    selectedUnitIds: snapshot.selectedUnitIds ?? [],
+    focusUnitId: snapshot.focusUnitId ?? null,
+  });
 }
 
 /** 判断写作快照是否已有任一非空正文。 */
@@ -918,10 +972,14 @@ export function readWriteStepSnapshot(data: unknown): WriteStepSnapshot | undefi
     }
   }
   const styleSelections = parseStyleSelections(record.styleSelections);
+  const selectedUnitIds = parseStringList(record.selectedUnitIds);
+  const focusUnitId = asString(record.focusUnitId);
   return {
     kind: record.kind,
     units,
     ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
+    ...(selectedUnitIds.length ? { selectedUnitIds } : {}),
+    ...(focusUnitId && selectedUnitIds.includes(focusUnitId) ? { focusUnitId } : {}),
   };
 }
 

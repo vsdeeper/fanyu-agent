@@ -67,6 +67,7 @@ import {
   createRafTextBuffer,
   extractTrailingJsonBlock,
   hasWritingBody,
+  isSameWriteSnapshot,
   isAbortError,
   hasBibleDraft,
   isBibleReadyForStructure,
@@ -141,8 +142,12 @@ export function useNovelStudio(task: NovelTaskDetail) {
     initialStructure ? toStructureSnapshot(initialStructure) : undefined,
   );
   const [writing, setWriting] = useState<WritingSnapshot | undefined>(initialWrite);
-  const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([]);
-  const [focusUnitId, setFocusUnitId] = useState<string | undefined>();
+  const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>(
+    () => initialWrite?.selectedUnitIds ?? [],
+  );
+  const [focusUnitId, setFocusUnitId] = useState<string | undefined>(
+    () => initialWrite?.focusUnitId,
+  );
   const [generatingChapterId, setGeneratingChapterId] = useState<string | undefined>();
   const [generatingVolumeId, setGeneratingVolumeId] = useState<string | undefined>();
   const [generatingUnitIds, setGeneratingUnitIds] = useState<string[]>([]);
@@ -151,9 +156,13 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const abortRef = useRef<AbortController | null>(null);
   /** 与 polishingUnitId 同步，但在 setState 之前写入，切步处理能立刻看见润色已开始。 */
   const polishingUnitIdRef = useRef<string | undefined>(undefined);
+  /** 与 generatingUnitIds 同步，切步处理在按钮变灰前也能拦住生成中的请求。 */
+  const generatingRef = useRef(false);
   const bibleRef = useRef(bible);
   const structureRef = useRef(structure);
   const writingRef = useRef(writing);
+  /** 上次成功落盘的写作快照，用于跳过无变更的写入。 */
+  const persistedWriteRef = useRef<WritingSnapshot | undefined>(initialWrite);
   const topicsRef = useRef(topics);
   const selectedTopicIdRef = useRef(selectedTopicId);
 
@@ -241,9 +250,13 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
+  /** 落盘写作快照；与上次成功写入相比无变化时直接跳过。 */
   async function persistWrite(next: WriteStepSnapshot): Promise<WriteStepSnapshot | undefined> {
+    if (isSameWriteSnapshot(persistedWriteRef.current, next)) return persistedWriteRef.current;
     try {
-      return await saveNovelStep(task.id, 'write', next);
+      const saved = await saveNovelStep(task.id, 'write', next);
+      persistedWriteRef.current = saved;
+      return saved;
     } catch (err) {
       console.error('[novel-studio] persist write', err);
       return undefined;
@@ -264,21 +277,31 @@ export function useNovelStudio(task: NovelTaskDetail) {
     setWriting(next);
   }
 
+  /** 把选中与焦点写进写作快照；清空时去掉字段，避免旧选中被展开保留。 */
+  function withSelection(
+    base: WritingSnapshot,
+    nextIds: string[],
+    nextFocus: string | undefined,
+  ): WritingSnapshot {
+    const nextWriting: WritingSnapshot = { ...base };
+    if (nextIds.length) nextWriting.selectedUnitIds = nextIds;
+    else delete nextWriting.selectedUnitIds;
+    if (nextFocus) nextWriting.focusUnitId = nextFocus;
+    else delete nextWriting.focusUnitId;
+    return nextWriting;
+  }
+
   /** 重新生成上游步骤时清掉下游落盘，避免刷新后错误 hydrate。 */
   async function clearDownstreamSteps(from: 'research' | 'bible' | 'structure') {
     try {
       if (from === 'research') {
         await deleteNovelStep(task.id, 'bible');
         await deleteNovelStep(task.id, 'structure');
-        await deleteNovelStep(task.id, 'write');
-        return;
-      }
-      if (from === 'bible') {
+      } else if (from === 'bible') {
         await deleteNovelStep(task.id, 'structure');
-        await deleteNovelStep(task.id, 'write');
-        return;
       }
       await deleteNovelStep(task.id, 'write');
+      persistedWriteRef.current = undefined;
     } catch (err) {
       console.error('[novel-studio] clear downstream steps', err);
     }
@@ -788,9 +811,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  /** 上一步：预览→写作；写作→结构；结构→设定；设定→调研。润色中不切步，避免中止请求留下半截正文。 */
+  /** 上一步：预览→写作；写作→结构；结构→设定；设定→调研。润色或生成正文时不切步，避免中止请求留下半截正文。 */
   function handlePrev() {
-    if (polishingUnitIdRef.current) return;
+    if (polishingUnitIdRef.current || generatingRef.current) return;
     if (phase === 'preview') {
       setPhase(hasWritingBody(writing) ? 'written' : 'write');
       return;
@@ -814,9 +837,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  /** 下一步：调研→设定；设定→结构；结构→写作；写作→预览。润色中不切步，避免把未完成的润色落盘。 */
+  /** 下一步：调研→设定；设定→结构；结构→写作；写作→预览。润色或生成正文时不切步，避免把未完成的正文落盘。 */
   async function handleNext() {
-    if (polishingUnitIdRef.current) return;
+    if (polishingUnitIdRef.current || generatingRef.current) return;
     if (phase === 'researched') {
       if (!selectedTopicId) return;
       setPhase(hasBibleDraft(bible) ? 'bibled' : 'bible');
@@ -848,22 +871,23 @@ export function useNovelStudio(task: NovelTaskDetail) {
         return;
       }
       await persistStructure(structure);
-      const nextWriting = syncWritingUnits(structure, writing);
-      setWriting(nextWriting);
-      setSelectedUnitIds([]);
-      setFocusUnitId(undefined);
+      const nextWriting = syncWritingUnits(structure, writingRef.current ?? writing);
+      commitWriting(nextWriting);
+      setSelectedUnitIds(nextWriting.selectedUnitIds ?? []);
+      setFocusUnitId(nextWriting.focusUnitId);
       setPhase(hasWritingBody(nextWriting) ? 'written' : 'write');
       await persistWrite(nextWriting);
       return;
     }
 
     if (phase === 'write' || phase === 'writing' || phase === 'written') {
-      if (!hasWritingBody(writing)) {
+      const currentWriting = writingRef.current ?? writing;
+      if (!hasWritingBody(currentWriting)) {
         message.warning(MISSING_PREVIEW_BODY_WARNING);
         return;
       }
       abortRef.current?.abort();
-      if (writing) await persistWrite(writing);
+      if (currentWriting) await persistWrite(currentWriting);
       setPhase('preview');
     }
   }
@@ -884,14 +908,16 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  /** 切换写作单元选中（章单选 / 同章节拍多选）。 */
+  /** 切换写作单元选中（章单选 / 同章节拍多选）。只改内存，等生成、编辑保存或下一步再落盘。 */
   function toggleWritingUnit(unitId: string) {
     if (!structure) return;
-    setSelectedUnitIds((prev) => {
-      const next = toggleWritingSelection(structure, prev, unitId);
-      setFocusUnitId(next.includes(unitId) ? unitId : next.at(-1));
-      return next;
-    });
+    const next = toggleWritingSelection(structure, selectedUnitIds, unitId);
+    const nextFocus = next.includes(unitId) ? unitId : next.at(-1);
+    setSelectedUnitIds(next);
+    setFocusUnitId(nextFocus);
+    const base = writingRef.current;
+    if (!base) return;
+    commitWriting(withSelection(base, next, nextFocus));
   }
 
   /** 对指定单元串行 SSE 生成正文（仅节拍）；已有正文时先确认。 */
@@ -927,7 +953,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-
+    generatingRef.current = true;
     const cleared = writingRef.current ?? writing;
     commitWriting({
       ...cleared,
@@ -1022,6 +1048,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     } finally {
       if (abortRef.current === controller) {
         abortRef.current = null;
+        generatingRef.current = false;
         setGeneratingUnitIds([]);
       }
     }
@@ -1124,6 +1151,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     const prev = writingRef.current;
     if (!prev) return;
     const nextWriting = withUnitBody(prev, unitId, body);
+    if ((prev.selectedUnitIds ?? []).includes(unitId)) nextWriting.focusUnitId = unitId;
     commitWriting(nextWriting);
     void persistWrite(nextWriting);
   }
@@ -1132,11 +1160,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
   function updateStyleSelections(next: StyleDimensionSelections) {
     const prev = writingRef.current;
     if (!prev) return;
-    const nextWriting: WritingSnapshot = {
-      kind: prev.kind,
-      units: prev.units,
-      ...(Object.keys(next).length ? { styleSelections: next } : {}),
-    };
+    const nextWriting: WritingSnapshot = { ...prev };
+    if (Object.keys(next).length) nextWriting.styleSelections = next;
+    else delete nextWriting.styleSelections;
     commitWriting(nextWriting);
     void persistWrite(nextWriting);
   }

@@ -92,6 +92,10 @@ export type WritingSnapshot = {
   units: WritingUnit[];
   /** 正文文风维度选择；可选，仅影响后续生成。 */
   styleSelections?: StyleDimensionSelections;
+  /** 当前选中的章或节拍 id。 */
+  selectedUnitIds?: string[];
+  /** 选中集合里的焦点单元，用于高亮。 */
+  focusUnitId?: string;
 };
 
 /** 设定步骤落盘快照。人称与聚焦用文风卡片 id；时态由用户选定。 */
