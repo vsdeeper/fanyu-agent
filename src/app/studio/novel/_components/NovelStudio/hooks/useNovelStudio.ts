@@ -291,13 +291,10 @@ export function useNovelStudio(task: NovelTaskDetail) {
     return nextWriting;
   }
 
-  /** 重新生成上游步骤时清掉下游落盘，避免刷新后错误 hydrate。 */
-  async function clearDownstreamSteps(from: 'research' | 'bible' | 'structure') {
+  /** 重新生成设定或结构时清掉更后面的落盘，避免刷新后错误 hydrate。 */
+  async function clearDownstreamSteps(from: 'bible' | 'structure') {
     try {
-      if (from === 'research') {
-        await deleteNovelStep(task.id, 'bible');
-        await deleteNovelStep(task.id, 'structure');
-      } else if (from === 'bible') {
+      if (from === 'bible') {
         await deleteNovelStep(task.id, 'structure');
       }
       await deleteNovelStep(task.id, 'write');
@@ -354,7 +351,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  /** 开始调研：已有选题时先确认，再 SSE 产出选题卡并落盘。 */
+  /** 开始调研：已有选题时先确认。只换选题卡，设定、结构与正文留在内存和落盘里。 */
   async function handleResearch() {
     if (!(await validateForm(panelForm))) return;
     const panel = readPanelValues();
@@ -374,14 +371,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
     abortRef.current?.abort();
     setSelectedTopicId(undefined);
     setTopics([]);
-    setBible(undefined);
-    setStructure(undefined);
-    setWriting(undefined);
-    setSelectedUnitIds([]);
-    setFocusUnitId(undefined);
-    setGeneratingChapterId(undefined);
-    setGeneratingVolumeId(undefined);
-    await clearDownstreamSteps('research');
 
     const researchBuffer = createRafTextBuffer(() => {
       /* 选题调研过程文案不单独展示，仅用于解析 */
