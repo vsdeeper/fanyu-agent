@@ -250,6 +250,20 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
+  /** 替换一个写作单元的正文。 */
+  function withUnitBody(base: WritingSnapshot, unitId: string, body: string): WritingSnapshot {
+    return {
+      ...base,
+      units: base.units.map((unit) => (unit.unitId === unitId ? { ...unit, body } : unit)),
+    };
+  }
+
+  /** 写入内存并同步 ref，避免紧接着的落盘读到上一轮快照。 */
+  function commitWriting(next: WritingSnapshot) {
+    writingRef.current = next;
+    setWriting(next);
+  }
+
   /** 重新生成上游步骤时清掉下游落盘，避免刷新后错误 hydrate。 */
   async function clearDownstreamSteps(from: 'research' | 'bible' | 'structure') {
     try {
@@ -914,14 +928,12 @@ export function useNovelStudio(task: NovelTaskDetail) {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    setWriting((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        units: prev.units.map((unit) =>
-          generateIds.includes(unit.unitId) ? { ...unit, body: '' } : unit,
-        ),
-      };
+    const cleared = writingRef.current ?? writing;
+    commitWriting({
+      ...cleared,
+      units: cleared.units.map((unit) =>
+        generateIds.includes(unit.unitId) ? { ...unit, body: '' } : unit,
+      ),
     });
     setGeneratingUnitIds(generateIds);
     setPhase('writing');
@@ -978,8 +990,15 @@ export function useNovelStudio(task: NovelTaskDetail) {
         });
         buffer.flushNow();
         if (controller.signal.aborted) return;
+        const generated = buffer.getText();
+        if (generated.trim()) {
+          const nextWriting = withUnitBody(writingRef.current ?? writing, unitId, generated);
+          commitWriting(nextWriting);
+          bodies.set(unitId, generated);
+          await persistWrite(nextWriting);
+        }
         if (!receivedDone) {
-          setPhase('write');
+          setPhase(hasWritingBody(writingRef.current) ? 'written' : 'write');
           return;
         }
       }
@@ -993,7 +1012,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
           bodies.has(unit.unitId) ? { ...unit, body: bodies.get(unit.unitId) ?? '' } : unit,
         ),
       };
-      setWriting(nextWriting);
+      commitWriting(nextWriting);
       await persistWrite(nextWriting);
     } catch (err) {
       if (isAbortError(err) || controller.signal.aborted) return;
@@ -1099,30 +1118,27 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  /** 更新指定单元正文（本地编辑；进入预览或重新生成时再落盘）。 */
+  /** 保存指定单元正文并落盘，刷新后仍在。 */
   function updateWritingBody(unitId: string, body: string) {
     setFocusUnitId(unitId);
-    setWriting((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        units: prev.units.map((unit) => (unit.unitId === unitId ? { ...unit, body } : unit)),
-      };
-    });
+    const prev = writingRef.current;
+    if (!prev) return;
+    const nextWriting = withUnitBody(prev, unitId, body);
+    commitWriting(nextWriting);
+    void persistWrite(nextWriting);
   }
 
   /** 更新正文文风并落盘；仅影响后续生成。 */
   function updateStyleSelections(next: StyleDimensionSelections) {
-    setWriting((prev) => {
-      if (!prev) return prev;
-      const nextWriting: WritingSnapshot = {
-        kind: prev.kind,
-        units: prev.units,
-        ...(Object.keys(next).length ? { styleSelections: next } : {}),
-      };
-      void persistWrite(nextWriting);
-      return nextWriting;
-    });
+    const prev = writingRef.current;
+    if (!prev) return;
+    const nextWriting: WritingSnapshot = {
+      kind: prev.kind,
+      units: prev.units,
+      ...(Object.keys(next).length ? { styleSelections: next } : {}),
+    };
+    commitWriting(nextWriting);
+    void persistWrite(nextWriting);
   }
 
   /** 更新短篇梗概（本地编辑；删除或下一步时再落盘）。 */
