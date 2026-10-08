@@ -1320,11 +1320,14 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('避免双手交叠');
     expect(prompt).toContain('手形硬约束');
     expect(prompt).toContain('穴位标记硬约束');
+    expect(prompt).toContain('局部特写仅在版面剩余空间充裕时可选');
+    expect(prompt).toContain('空间不足或主图已够清晰则不要加');
     expect(prompt).toContain('配穴、配伍、其他相关穴位只写穴名文字名单');
     expect(prompt).toContain('禁止旁注病名');
     expect(prompt).toContain('只用一个小而干净的圆点加穴名');
     expect(prompt).toContain('装饰线上的光点只留在那条线上，不要画到人体的穴位标记上');
     expect(prompt).toContain('参考图里的经络装饰线（曲线、光点连线）属于装饰，必须按参考保留');
+    expect(prompt).toContain('参考图里的局部特写框不是必仿元素');
     expect(prompt).toContain('恰好 1 拇指 + 4 指共 5 指');
     expect(prompt).toContain('食指略短于中指');
     expect(prompt).toContain('单指拉长或畸形');
