@@ -1333,6 +1333,9 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('认识本穴、古籍记载可保留正文里已有的病名和症状');
     expect(prompt).toContain('症状可以上屏，也可以按古籍记载来写');
     expect(prompt).toContain('不写成「某病怎么按」或「某症：配某穴」');
+    expect(prompt).toContain('古籍引文和画面文字去掉「治」「主治」「医治」「诊疗」「诊治」');
+    expect(prompt).not.toContain('消肿止痛');
+    expect(prompt).not.toContain('某痛时这样按');
     expect(prompt).toContain('仅供了解，非诊疗建议');
     expect(prompt).toContain('画面须含小字「仅供了解，非诊疗建议」');
     expect(prompt).toContain('不得出现可诊断');
