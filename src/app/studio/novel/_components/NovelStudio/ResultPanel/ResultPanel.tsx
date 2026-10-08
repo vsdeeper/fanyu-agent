@@ -132,6 +132,7 @@ export default function ResultPanel({
       : bibleView
         ? BIBLE_PANEL_TITLE
         : RESEARCH_PANEL_TITLE;
+  const polishing = Boolean(polishingUnitId);
   const canPrev = bibleView || structureView || writeView;
   const canNext =
     (researched && Boolean(selectedTopicId)) ||
@@ -155,8 +156,12 @@ export default function ResultPanel({
       }
       footer={
         <>
-          {canPrev ? <Button onClick={onPrev}>{PREV_BUTTON}</Button> : null}
-          <Button type="primary" disabled={!canNext} onClick={onNext}>
+          {canPrev ? (
+            <Button disabled={polishing} onClick={onPrev}>
+              {PREV_BUTTON}
+            </Button>
+          ) : null}
+          <Button type="primary" disabled={!canNext || polishing} onClick={onNext}>
             {NEXT_BUTTON}
           </Button>
         </>

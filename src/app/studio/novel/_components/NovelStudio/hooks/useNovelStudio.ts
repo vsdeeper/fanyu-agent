@@ -149,6 +149,8 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const [polishingUnitId, setPolishingUnitId] = useState<string | undefined>();
 
   const abortRef = useRef<AbortController | null>(null);
+  /** 与 polishingUnitId 同步，但在 setState 之前写入，切步处理能立刻看见润色已开始。 */
+  const polishingUnitIdRef = useRef<string | undefined>(undefined);
   const bibleRef = useRef(bible);
   const structureRef = useRef(structure);
   const writingRef = useRef(writing);
@@ -772,8 +774,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  /** 上一步：预览→写作；写作→结构；结构→设定；设定→调研。 */
+  /** 上一步：预览→写作；写作→结构；结构→设定；设定→调研。润色中不切步，避免中止请求留下半截正文。 */
   function handlePrev() {
+    if (polishingUnitIdRef.current) return;
     if (phase === 'preview') {
       setPhase(hasWritingBody(writing) ? 'written' : 'write');
       return;
@@ -797,8 +800,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  /** 下一步：调研→设定；设定→结构；结构→写作；写作→预览。 */
+  /** 下一步：调研→设定；设定→结构；结构→写作；写作→预览。润色中不切步，避免把未完成的润色落盘。 */
   async function handleNext() {
+    if (polishingUnitIdRef.current) return;
     if (phase === 'researched') {
       if (!selectedTopicId) return;
       setPhase(hasBibleDraft(bible) ? 'bibled' : 'bible');
@@ -1022,6 +1026,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    polishingUnitIdRef.current = unitId;
     setPolishingUnitId(unitId);
     setPhase('writing');
     setFocusUnitId(unitId);
@@ -1088,6 +1093,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
       buffer.dispose();
       if (abortRef.current === controller) {
         abortRef.current = null;
+        polishingUnitIdRef.current = undefined;
         setPolishingUnitId(undefined);
       }
     }
