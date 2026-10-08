@@ -1327,19 +1327,27 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('单指拉长或畸形');
     expect(prompt.indexOf('手形硬约束')).toBeLessThan(prompt.indexOf('留足边距'));
     expect(prompt).toContain('科普口径硬约束');
-    expect(prompt).toContain('发文助手');
-    expect(prompt).toContain('不得出现任何病名或诊断名');
+    expect(prompt).toContain('认识本穴、古籍记载可保留正文里已有的病名和症状');
+    expect(prompt).toContain('症状可以上屏，也可以按古籍记载来写');
+    expect(prompt).toContain('不写成「某病怎么按」或「某症：配某穴」');
     expect(prompt).toContain('仅供了解，非诊疗建议');
     expect(prompt).toContain('画面须含小字「仅供了解，非诊疗建议」');
     expect(prompt).toContain('不得出现可诊断');
-    expect(prompt).toContain('高血压、高血糖');
-    expect(prompt).toContain('止咳平喘');
-    expect(prompt).toContain('气喘、哮喘');
-    expect(prompt).toContain('有助于缓解/改善/减轻');
+    expect(prompt).not.toContain('高血压、高血糖、高血脂、糖尿病');
+    expect(prompt).not.toContain('气喘、哮喘不要上屏');
+    expect(prompt).toContain('止咳平喘、利咽消肿可出现在正文，不要做标题');
+    expect(prompt).toContain('症状和感受');
+    expect(prompt).not.toContain('中性感受');
+    expect(prompt).not.toContain('面部放松、日常保健');
     expect(prompt).toContain('疗效承诺');
     expect(prompt).toContain('本条高于用户额外要求与正文');
-    expect(prompt).toContain('正文若仍含病名或上述禁词，上屏时必须删改');
+    expect(prompt).toContain('冲突时只删这些违规字');
+    expect(prompt).not.toContain('不得出现任何病名或诊断名');
+    expect(prompt).not.toContain('正文若仍含病名');
     expect(prompt).toContain('身体信号');
+    expect(prompt).toContain(
+      '禁止把「只列穴名」「不绑定具体症状」「中医功用术语」「传统记载的范畴」「认识本穴的背景」「只作记载」「一起被提到」「本穴多与这些情况相关」「病名」「记载中出现的病名」「常归为」「这类手法常归为」「功用表述」「供认识」「供参考」「相关记述里出现的情形」「配伍取」「给出的顺序是」等编辑说明画进画面',
+    );
     expect(prompt).toContain('利于排便');
     expect(prompt).toContain('仍低于上方科普口径硬约束');
     expect(prompt).not.toContain('三间穴');
