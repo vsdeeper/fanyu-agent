@@ -51,7 +51,7 @@ export function buildPlanPrompt(
   }
 
   lines.push(
-    '请直接输出 Markdown 图文卡片正文（含 # 标题、紧随其后固定格式的 `> 配文摘要`、以及 ## 小节），不要 JSON，不要视觉风格，不要生图提示词。',
+    '请直接输出 Markdown 图文卡片正文（含精简的 # 主标题、紧随其后一行精炼词句形式的 `> 副标题`、以及 ## 小节），不要 JSON，不要视觉风格，不要生图提示词。',
   );
   return lines.join('\n');
 }
