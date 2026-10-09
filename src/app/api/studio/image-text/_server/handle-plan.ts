@@ -105,7 +105,7 @@ export async function handleImageTextPlan(req: Request): Promise<Response> {
                     ? [
                         {
                           type: 'text' as const,
-                          text: '以下附件是【素材图】，提供主题、主体与画风参考，不要照搬其版面：',
+                          text: '以下附件是【素材图】，提供主题与事实，不要照搬其版面。图中文字（含穴名注音、症状、外貌与美容相关叙述）仍须读入，并按编辑要求写入正文：',
                         },
                         ...materialParts,
                       ]
