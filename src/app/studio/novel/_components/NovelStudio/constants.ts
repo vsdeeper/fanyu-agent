@@ -88,6 +88,7 @@ export const POLISH_BUTTON = '润色';
 export const POLISH_FAILED = '润色失败，已保留当前正文';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
+export const PREVIEW_RELATION_GRAPH_BUTTON = '预览人物关系图谱';
 export const IDEA_LABEL = '我的想法';
 export const IDEA_PLACEHOLDER = '例如：小时候夏天停电，全家在院子里乘凉聊天';
 export const GENRE_LABEL = '偏好类型';

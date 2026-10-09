@@ -1,7 +1,7 @@
 import StudioStagePanel from '@/app/studio/_components/StudioStagePanel';
 import { StarOutlined } from '@ant-design/icons';
-import { Button, Input, Spin } from 'antd';
-import { useEffect, useRef } from 'react';
+import { Button, Input, Modal, Spin } from 'antd';
+import { useEffect, useRef, useState } from 'react';
 import {
   BEATS_TITLE,
   BIBLE_GENERATING_HINT,
@@ -12,6 +12,7 @@ import {
   EMPTY_STRUCTURE_HINT,
   NEXT_BUTTON,
   PREV_BUTTON,
+  PREVIEW_RELATION_GRAPH_BUTTON,
   RESEARCH_GENERATING_HINT,
   RESEARCH_PANEL_TITLE,
   RESEARCH_TOPICS_TITLE,
@@ -32,6 +33,9 @@ import type {
 } from '../types';
 import BeatList from './BeatList';
 import BibleEditor from './BibleEditor';
+import RelationGraph from './BibleEditor/RelationGraph';
+import { RELATION_GRAPH_MODAL_WIDTH } from './BibleEditor/RelationGraph/constants';
+import { hasNamedCharacter } from './BibleEditor/RelationGraph/utils';
 import ChapterList from './ChapterList';
 import VolumeList from './VolumeList';
 import WritingEditor from './WritingEditor';
@@ -133,6 +137,13 @@ export default function ResultPanel({
         ? BIBLE_PANEL_TITLE
         : RESEARCH_PANEL_TITLE;
   const writingLocked = Boolean(polishingUnitId) || generatingUnitIds.length > 0;
+  const [relationGraphOpen, setRelationGraphOpen] = useState(false);
+  const [relationGraphPhase, setRelationGraphPhase] = useState(bibleView);
+  if (relationGraphPhase !== bibleView) {
+    setRelationGraphPhase(bibleView);
+    if (!bibleView) setRelationGraphOpen(false);
+  }
+  const canPreviewRelations = Boolean(bible && hasNamedCharacter(bible.characters));
   const canPrev = bibleView || structureView || writeView;
   const canNext =
     (researched && Boolean(selectedTopicId)) ||
@@ -146,161 +157,183 @@ export default function ResultPanel({
     (writeView && !(structure && writing));
 
   return (
-    <StudioStagePanel
-      variant={stageFill ? 'fill' : 'stream'}
-      head={
-        <>
-          <StarOutlined />
-          {panelTitle}
-        </>
-      }
-      footer={
-        <>
-          {canPrev ? (
-            <Button disabled={writingLocked} onClick={onPrev}>
-              {PREV_BUTTON}
+    <div className={styles.frame}>
+      <StudioStagePanel
+        variant={stageFill ? 'fill' : 'stream'}
+        head={
+          <>
+            <StarOutlined />
+            {panelTitle}
+          </>
+        }
+        footer={
+          <>
+            {bibleView ? (
+              <Button
+                disabled={bibling || !canPreviewRelations}
+                onClick={() => setRelationGraphOpen(true)}
+              >
+                {PREVIEW_RELATION_GRAPH_BUTTON}
+              </Button>
+            ) : null}
+            {canPrev ? (
+              <Button disabled={writingLocked} onClick={onPrev}>
+                {PREV_BUTTON}
+              </Button>
+            ) : null}
+            <Button type="primary" disabled={!canNext || writingLocked} onClick={onNext}>
+              {NEXT_BUTTON}
             </Button>
-          ) : null}
-          <Button type="primary" disabled={!canNext || writingLocked} onClick={onNext}>
-            {NEXT_BUTTON}
-          </Button>
-        </>
-      }
-    >
-      {researchView ? (
-        researchEmpty ? (
-          <div className={styles.body}>
-            <p className={styles.hint}>{EMPTY_RESEARCH_HINT}</p>
-          </div>
-        ) : researching && topics.length === 0 ? (
-          <div className={styles.body}>
-            <Spin />
-            <p className={styles.hint}>{RESEARCH_GENERATING_HINT}</p>
-          </div>
-        ) : (
-          <div className={styles.scrollContent}>
-            <p className={styles.sectionTitle}>{RESEARCH_TOPICS_TITLE}</p>
-            <div className={styles.topicList}>
-              {topics.map((topic) => (
-                <TopicCardView
-                  key={topic.id}
-                  topic={topic}
-                  selected={topic.id === selectedTopicId}
-                  onSelect={() => onSelectTopic(topic.id)}
-                />
-              ))}
+          </>
+        }
+      >
+        {researchView ? (
+          researchEmpty ? (
+            <div className={styles.body}>
+              <p className={styles.hint}>{EMPTY_RESEARCH_HINT}</p>
             </div>
-          </div>
-        )
-      ) : null}
-
-      {bibleView ? (
-        bibling ? (
-          bibleStreamText ? (
-            <div ref={streamRef}>
-              <p className={styles.streamText}>{bibleStreamText}</p>
-              <div className={styles.streamStatus}>
-                <Spin size="small" />
-                <span>{BIBLE_GENERATING_HINT}</span>
+          ) : researching && topics.length === 0 ? (
+            <div className={styles.body}>
+              <Spin />
+              <p className={styles.hint}>{RESEARCH_GENERATING_HINT}</p>
+            </div>
+          ) : (
+            <div className={styles.scrollContent}>
+              <p className={styles.sectionTitle}>{RESEARCH_TOPICS_TITLE}</p>
+              <div className={styles.topicList}>
+                {topics.map((topic) => (
+                  <TopicCardView
+                    key={topic.id}
+                    topic={topic}
+                    selected={topic.id === selectedTopicId}
+                    onSelect={() => onSelectTopic(topic.id)}
+                  />
+                ))}
               </div>
+            </div>
+          )
+        ) : null}
+
+        {bibleView ? (
+          bibling ? (
+            bibleStreamText ? (
+              <div ref={streamRef}>
+                <p className={styles.streamText}>{bibleStreamText}</p>
+                <div className={styles.streamStatus}>
+                  <Spin size="small" />
+                  <span>{BIBLE_GENERATING_HINT}</span>
+                </div>
+              </div>
+            ) : (
+              <div className={styles.body}>
+                <Spin />
+                <p className={styles.hint}>{BIBLE_GENERATING_HINT}</p>
+              </div>
+            )
+          ) : bibleEmpty ? (
+            <div className={styles.body}>
+              <p className={styles.hint}>{EMPTY_BIBLE_HINT}</p>
+            </div>
+          ) : bible ? (
+            <div className={styles.scrollContent}>
+              <BibleEditor bible={bible} onChange={onChangeBible} />
+            </div>
+          ) : null
+        ) : null}
+
+        {structureView ? (
+          structureEmpty ? (
+            <div className={styles.body}>
+              <p className={styles.hint}>{EMPTY_STRUCTURE_HINT}</p>
+            </div>
+          ) : structuring && !structure ? (
+            <div className={styles.body}>
+              <Spin />
+              <p className={styles.hint}>{STRUCTURE_GENERATING_HINT}</p>
+            </div>
+          ) : structure ? (
+            <div className={styles.scrollContent}>
+              {structure.kind === 'short' ? (
+                <>
+                  <div className={styles.synopsisBlock}>
+                    <p className={styles.sectionTitle}>{SYNOPSIS_TITLE}</p>
+                    <Input.TextArea
+                      value={structure.synopsis}
+                      autoSize={{ minRows: 2, maxRows: 6 }}
+                      onChange={(event) => onUpdateSynopsis(event.target.value)}
+                    />
+                  </div>
+                  <BeatList
+                    beats={structure.beats}
+                    title={BEATS_TITLE}
+                    onChangeBeat={onUpdateBeat}
+                    onRemoveBeat={onRemoveBeat}
+                  />
+                </>
+              ) : structure.kind === 'volumes' ? (
+                <VolumeList
+                  volumes={structure.volumes}
+                  title={VOLUMES_TITLE}
+                  generatingVolumeId={generatingVolumeId}
+                  generatingChapterId={generatingChapterId}
+                  onChangeVolume={onUpdateVolume}
+                  onRemoveVolume={onRemoveVolume}
+                  onGenerateVolumeChapters={onGenerateVolumeChapters}
+                  onChangeChapter={onUpdateChapter}
+                  onRemoveChapter={onRemoveChapter}
+                  onGenerateChapterBeats={onGenerateChapterBeats}
+                  onChangeChapterBeat={onUpdateChapterBeat}
+                  onRemoveChapterBeat={onRemoveChapterBeat}
+                />
+              ) : (
+                <ChapterList
+                  chapters={structure.chapters}
+                  title={CHAPTERS_TITLE}
+                  generatingChapterId={generatingChapterId}
+                  onChangeChapter={onUpdateChapter}
+                  onRemoveChapter={onRemoveChapter}
+                  onGenerateChapterBeats={onGenerateChapterBeats}
+                  onChangeChapterBeat={onUpdateChapterBeat}
+                  onRemoveChapterBeat={onRemoveChapterBeat}
+                />
+              )}
+            </div>
+          ) : null
+        ) : null}
+
+        {writeView ? (
+          structure && writing ? (
+            <div className={styles.scrollContent}>
+              <WritingEditor
+                structure={structure}
+                writing={writing}
+                selectedUnitIds={selectedUnitIds}
+                generatingUnitIds={generatingUnitIds}
+                polishingUnitId={polishingUnitId}
+                onSaveBody={onUpdateWritingBody}
+                onGenerateWriting={onGenerateWriting}
+                onPolishWriting={onPolishWriting}
+              />
             </div>
           ) : (
             <div className={styles.body}>
-              <Spin />
-              <p className={styles.hint}>{BIBLE_GENERATING_HINT}</p>
+              <p className={styles.hint}>{EMPTY_STRUCTURE_HINT}</p>
             </div>
           )
-        ) : bibleEmpty ? (
-          <div className={styles.body}>
-            <p className={styles.hint}>{EMPTY_BIBLE_HINT}</p>
-          </div>
-        ) : bible ? (
-          <div className={styles.scrollContent}>
-            <BibleEditor bible={bible} onChange={onChangeBible} />
-          </div>
-        ) : null
+        ) : null}
+      </StudioStagePanel>
+      {bible && bibleView ? (
+        <Modal
+          title={PREVIEW_RELATION_GRAPH_BUTTON}
+          open={relationGraphOpen}
+          width={RELATION_GRAPH_MODAL_WIDTH}
+          footer={null}
+          destroyOnHidden
+          onCancel={() => setRelationGraphOpen(false)}
+        >
+          <RelationGraph bible={bible} />
+        </Modal>
       ) : null}
-
-      {structureView ? (
-        structureEmpty ? (
-          <div className={styles.body}>
-            <p className={styles.hint}>{EMPTY_STRUCTURE_HINT}</p>
-          </div>
-        ) : structuring && !structure ? (
-          <div className={styles.body}>
-            <Spin />
-            <p className={styles.hint}>{STRUCTURE_GENERATING_HINT}</p>
-          </div>
-        ) : structure ? (
-          <div className={styles.scrollContent}>
-            {structure.kind === 'short' ? (
-              <>
-                <div className={styles.synopsisBlock}>
-                  <p className={styles.sectionTitle}>{SYNOPSIS_TITLE}</p>
-                  <Input.TextArea
-                    value={structure.synopsis}
-                    autoSize={{ minRows: 2, maxRows: 6 }}
-                    onChange={(event) => onUpdateSynopsis(event.target.value)}
-                  />
-                </div>
-                <BeatList
-                  beats={structure.beats}
-                  title={BEATS_TITLE}
-                  onChangeBeat={onUpdateBeat}
-                  onRemoveBeat={onRemoveBeat}
-                />
-              </>
-            ) : structure.kind === 'volumes' ? (
-              <VolumeList
-                volumes={structure.volumes}
-                title={VOLUMES_TITLE}
-                generatingVolumeId={generatingVolumeId}
-                generatingChapterId={generatingChapterId}
-                onChangeVolume={onUpdateVolume}
-                onRemoveVolume={onRemoveVolume}
-                onGenerateVolumeChapters={onGenerateVolumeChapters}
-                onChangeChapter={onUpdateChapter}
-                onRemoveChapter={onRemoveChapter}
-                onGenerateChapterBeats={onGenerateChapterBeats}
-                onChangeChapterBeat={onUpdateChapterBeat}
-                onRemoveChapterBeat={onRemoveChapterBeat}
-              />
-            ) : (
-              <ChapterList
-                chapters={structure.chapters}
-                title={CHAPTERS_TITLE}
-                generatingChapterId={generatingChapterId}
-                onChangeChapter={onUpdateChapter}
-                onRemoveChapter={onRemoveChapter}
-                onGenerateChapterBeats={onGenerateChapterBeats}
-                onChangeChapterBeat={onUpdateChapterBeat}
-                onRemoveChapterBeat={onRemoveChapterBeat}
-              />
-            )}
-          </div>
-        ) : null
-      ) : null}
-
-      {writeView ? (
-        structure && writing ? (
-          <div className={styles.scrollContent}>
-            <WritingEditor
-              structure={structure}
-              writing={writing}
-              selectedUnitIds={selectedUnitIds}
-              generatingUnitIds={generatingUnitIds}
-              polishingUnitId={polishingUnitId}
-              onSaveBody={onUpdateWritingBody}
-              onGenerateWriting={onGenerateWriting}
-              onPolishWriting={onPolishWriting}
-            />
-          </div>
-        ) : (
-          <div className={styles.body}>
-            <p className={styles.hint}>{EMPTY_STRUCTURE_HINT}</p>
-          </div>
-        )
-      ) : null}
-    </StudioStagePanel>
+    </div>
   );
 }
