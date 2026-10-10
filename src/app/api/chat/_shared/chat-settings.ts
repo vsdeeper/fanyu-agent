@@ -23,17 +23,20 @@ export const PROVIDER_CAPABILITIES: Record<ProviderKind, readonly ProviderCapabi
 
 export const CHAT_PROVIDER_IDS: ChatProviderId[] = ['deepseek', 'ark', 'zhipu'];
 
-export const DEEPSEEK_REASONING_EFFORTS = [
-  'none',
-  'minimal',
-  'low',
-  'medium',
-  'high',
-  'xhigh',
-  'max',
-] as const;
+/**
+ * DeepSeek Responses API 的 reasoning.effort。
+ * none 关闭思考；强度只有 low / high / max。
+ * 勿改回 OpenAI SDK 的 minimal / medium / xhigh。
+ */
+export const DEEPSEEK_REASONING_EFFORTS = ['none', 'low', 'high', 'max'] as const;
 
 export type DeepseekReasoningEffort = (typeof DEEPSEEK_REASONING_EFFORTS)[number];
+
+/** 未填写，或本地仍存着 OpenAI 旧档位时的出站档。 */
+export const DEFAULT_DEEPSEEK_REASONING_EFFORT: DeepseekReasoningEffort = 'high';
+
+/** 曾按 OpenAI SDK 枚举写入本地设置、Responses API 不收的档位。 */
+const LEGACY_DEEPSEEK_REASONING_EFFORTS = new Set(['minimal', 'medium', 'xhigh']);
 
 export const ZHIPU_REASONING_EFFORTS = ['low', 'high', 'max'] as const;
 export type ZhipuReasoningEffort = (typeof ZHIPU_REASONING_EFFORTS)[number];
@@ -246,15 +249,22 @@ export function parseChatSettingsPayload(raw: unknown): ParseChatSettingsResult 
     }
     const effort = body.reasoningEffort.trim();
     if (body.chatProvider === 'deepseek') {
-      if (!(DEEPSEEK_REASONING_EFFORTS as readonly string[]).includes(effort)) {
+      if ((DEEPSEEK_REASONING_EFFORTS as readonly string[]).includes(effort)) {
+        reasoningEffort = effort;
+      } else if (LEGACY_DEEPSEEK_REASONING_EFFORTS.has(effort)) {
+        // 旧设置按 OpenAI 枚举存过 minimal/medium/xhigh；整份拒绝会让 hydrate 丢掉全部对话设置
+        reasoningEffort = DEFAULT_DEEPSEEK_REASONING_EFFORT;
+      } else {
         return { ok: false, message: 'DeepSeek 思考强度无效' };
       }
     } else if (body.chatProvider === 'zhipu') {
       if (!(ZHIPU_REASONING_EFFORTS as readonly string[]).includes(effort)) {
         return { ok: false, message: '智谱思考强度无效' };
       }
+      reasoningEffort = effort;
+    } else {
+      reasoningEffort = effort;
     }
-    reasoningEffort = effort;
   }
 
   const generateImage = parseImageCapability(body.generateImage, 'generate', providerConfigs);

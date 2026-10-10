@@ -23,6 +23,7 @@ vi.stubGlobal('window', {
 });
 
 import {
+  DEFAULT_DEEPSEEK_REASONING_EFFORT,
   defaultImageQualityForModel,
   parseChatSettingsPayload,
   type ChatSettingsPayload,
@@ -106,6 +107,23 @@ describe('useChatSettingsStore', () => {
     if (!parsed.ok) return;
     expect(parsed.settings.generateImage.quality).toBeUndefined();
     expect(parsed.settings.editImage.quality).toBeUndefined();
+  });
+
+  it('DeepSeek 旧思考档位 minimal/medium/xhigh 回落 high，其余非法值拒绝', () => {
+    for (const reasoningEffort of ['minimal', 'medium', 'xhigh']) {
+      const parsed = parseChatSettingsPayload({ ...VALID, reasoningEffort });
+      expect(parsed.ok).toBe(true);
+      if (!parsed.ok) return;
+      expect(parsed.settings.reasoningEffort).toBe(DEFAULT_DEEPSEEK_REASONING_EFFORT);
+    }
+
+    const kept = parseChatSettingsPayload({ ...VALID, reasoningEffort: 'none' });
+    expect(kept.ok).toBe(true);
+    if (!kept.ok) return;
+    expect(kept.settings.reasoningEffort).toBe('none');
+
+    const rejected = parseChatSettingsPayload({ ...VALID, reasoningEffort: 'ultra' });
+    expect(rejected.ok).toBe(false);
   });
 
   it('GPT Image 2 默认 quality 为 high，xhigh 归一为 high', () => {

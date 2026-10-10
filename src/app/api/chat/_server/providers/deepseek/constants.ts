@@ -5,8 +5,15 @@
  * 3. deepseek-v4-flash 不在 SDK 能力清单内，须 forceReasoning 才会下发 reasoning 块；同时把
  *    systemMessageMode 钉死为 system，避免推理模型默认改用 developer role 不被 DeepSeek 接受
  * 4. 识图细节档：出站统一钉 detail=original（SDK 默认可省略 → 官方 auto；analyze_image 可能带 high）
+ * 5. Responses API 思考参数是 reasoning.effort = none|low|high|max（none 关思考）。
+ *    SDK 把 reasoningEffort 原样写入 effort，设置侧不能放 minimal / medium / xhigh
  */
 
+import {
+  DEEPSEEK_REASONING_EFFORTS,
+  DEFAULT_DEEPSEEK_REASONING_EFFORT,
+  type DeepseekReasoningEffort,
+} from '@/app/api/chat/_shared/chat-settings';
 import { getChatSettings } from '@/app/api/chat/_server/request-settings';
 
 /** DeepSeek Responses 不认的 OpenAI include 值（与方舟同款坑） */
@@ -19,30 +26,15 @@ export const DEEPSEEK_UNSUPPORTED_INCLUDES = new Set([
 /** DeepSeek 识图 detail：保留原图档（官方 low/high/original/auto；auto 当前等价 original） */
 export const DEEPSEEK_IMAGE_DETAIL = 'original';
 
-/** deepseek-v4-flash 实际 effort 映射：low→low, high→high, xhigh→high, max→max */
-export const DEFAULT_DEEPSEEK_REASONING_EFFORT = 'high' as const;
-
-/** 与 @ai-sdk/openai reasoningEffort 枚举保持一致，防手滑传非法值 */
-const DEEPSEEK_REASONING_EFFORT_VALUES = new Set([
-  'none',
-  'minimal',
-  'low',
-  'medium',
-  'high',
-  'xhigh',
-  'max',
-]);
-
-/** 读取思考强度：须有 ALS settings；缺省或非法时用 DEFAULT */
-export function getDeepseekReasoningEffort():
-  'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' {
+/** 读取思考强度：须有 ALS settings；缺省或非 none/low/high/max 时用 high */
+export function getDeepseekReasoningEffort(): DeepseekReasoningEffort {
   const settings = getChatSettings();
   if (!settings) {
     throw new Error('缺少对话设置，无法解析思考强度');
   }
   const fromSettings = settings.reasoningEffort?.trim();
-  if (fromSettings && DEEPSEEK_REASONING_EFFORT_VALUES.has(fromSettings)) {
-    return fromSettings as ReturnType<typeof getDeepseekReasoningEffort>;
+  if (fromSettings && (DEEPSEEK_REASONING_EFFORTS as readonly string[]).includes(fromSettings)) {
+    return fromSettings as DeepseekReasoningEffort;
   }
   return DEFAULT_DEEPSEEK_REASONING_EFFORT;
 }
