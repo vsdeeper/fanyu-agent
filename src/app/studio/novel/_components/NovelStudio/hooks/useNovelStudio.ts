@@ -173,6 +173,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const polishingUnitIdRef = useRef<string | undefined>(undefined);
   /** 与 generatingUnitIds 同步，切步处理在按钮变灰前也能拦住生成中的请求。 */
   const generatingRef = useRef(false);
+  /** 调研 / 设定 / 结构 SSE 世代：上一步或新开一轮时递增，作废尚未进入 runSse 的前置 await。 */
+  const streamRunIdRef = useRef(0);
+  const phaseRef = useRef(phase);
   const bibleRef = useRef(bible);
   const structureRef = useRef(structure);
   const writingRef = useRef(writing);
@@ -181,6 +184,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const topicsRef = useRef(topics);
   const selectedTopicIdRef = useRef(selectedTopicId);
 
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
   useEffect(() => {
     bibleRef.current = bible;
   }, [bible]);
@@ -385,6 +391,10 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
+  /**
+   * 跑一轮 SSE。runId 与 streamRunIdRef 不一致时直接跳过（上一步或重复点击已作废）。
+   * onDone 之后若已 abort / 世代失效，不再信任其内部的 setPhase。
+   */
   async function runSse(
     url: string,
     body: unknown,
@@ -393,7 +403,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
     onDone: (fullText: string) => Promise<void> | void,
     busyPhase: StudioPhase,
     idlePhase: StudioPhase,
+    runId: number,
   ) {
+    if (runId !== streamRunIdRef.current) return;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -418,14 +430,17 @@ export function useNovelStudio(task: NovelTaskDetail) {
         onError: (text) => message.error(text),
       });
       buffer.flushNow();
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || runId !== streamRunIdRef.current) return;
       if (receivedDone) {
         await onDone(buffer.getText());
         return;
       }
+      if (runId !== streamRunIdRef.current) return;
       setPhase(idlePhase);
     } catch (err) {
-      if (isAbortError(err) || controller.signal.aborted) return;
+      if (isAbortError(err) || controller.signal.aborted || runId !== streamRunIdRef.current) {
+        return;
+      }
       console.error('[novel-studio]', url, err);
       message.error(err instanceof Error && err.message ? err.message : failedMessage);
       setPhase(idlePhase);
@@ -456,9 +471,11 @@ export function useNovelStudio(task: NovelTaskDetail) {
       if (!confirmed) return;
     }
 
+    const runId = ++streamRunIdRef.current;
     abortRef.current?.abort();
     setSelectedTopicId(undefined);
     setTopics([]);
+    setPhase('researching');
 
     const researchBuffer = createRafTextBuffer(() => {
       /* 选题调研过程文案不单独展示，仅用于解析 */
@@ -475,15 +492,18 @@ export function useNovelStudio(task: NovelTaskDetail) {
       researchBuffer,
       RESEARCH_FAILED,
       async (fullText) => {
+        if (runId !== streamRunIdRef.current) return;
         const { prose, json } = extractTrailingJsonBlock(fullText);
         const nextTopics = parseResearchTopics(json);
         if (nextTopics.length === 0) {
+          if (runId !== streamRunIdRef.current) return;
           setTopics([]);
           setSelectedTopicId(undefined);
           setPhase('research');
           message.error(RESEARCH_NO_TOPICS);
           return;
         }
+        if (runId !== streamRunIdRef.current) return;
         setTopics(nextTopics);
         setSelectedTopicId(undefined);
         selectedTopicIdRef.current = undefined;
@@ -496,6 +516,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
       },
       'researching',
       'research',
+      runId,
     );
   }
 
@@ -537,13 +558,19 @@ export function useNovelStudio(task: NovelTaskDetail) {
     const keptVoice = bibleRef.current?.voiceFocus ?? {};
     const keptTense = bibleRef.current?.tense;
     const hadDraft = hasBibleDraft(bibleRef.current);
+    const runId = ++streamRunIdRef.current;
     setStructure(undefined);
     setWriting(undefined);
     setSelectedUnitIds([]);
     setFocusUnitId(undefined);
     setGeneratingChapterId(undefined);
     setGeneratingVolumeId(undefined);
+    generatingRef.current = false;
+    setGeneratingUnitIds([]);
+    // 先进入 busy，避免 clearDownstream / 读文件期间重复点击叠出第二轮 SSE。
+    setPhase('bibling');
     await clearDownstreamSteps('bible');
+    if (runId !== streamRunIdRef.current) return;
 
     const bibleBuffer = createRafTextBuffer(() => {
       /* 设定过程文案不单独展示 */
@@ -561,13 +588,16 @@ export function useNovelStudio(task: NovelTaskDetail) {
       bibleBuffer,
       BIBLE_FAILED,
       async (fullText) => {
+        if (runId !== streamRunIdRef.current) return;
         const { json } = extractTrailingJsonBlock(fullText);
         const parsed = parseBiblePayload(json);
         if (!parsed) {
+          if (runId !== streamRunIdRef.current) return;
           setPhase(hadDraft ? 'bibled' : 'bible');
           message.error(BIBLE_NO_CAST);
           return;
         }
+        if (runId !== streamRunIdRef.current) return;
         const next: BibleStepSnapshot = {
           ...parsed,
           voiceFocus: keptVoice,
@@ -579,6 +609,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
       },
       'bibling',
       hadDraft ? 'bibled' : 'bible',
+      runId,
     );
   }
 
@@ -643,13 +674,16 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
 
     const hadStructure = Boolean(structure);
+    const runId = ++streamRunIdRef.current;
     setWriting(undefined);
     setSelectedUnitIds([]);
     setFocusUnitId(undefined);
     setGeneratingChapterId(undefined);
     setGeneratingVolumeId(undefined);
     setStructure(undefined);
+    setPhase('structuring');
     await clearDownstreamSteps('structure');
+    if (runId !== streamRunIdRef.current) return;
 
     const structureBuffer = createRafTextBuffer(() => {
       /* 结构过程文案不单独展示 */
@@ -668,14 +702,17 @@ export function useNovelStudio(task: NovelTaskDetail) {
       structureBuffer,
       STRUCTURE_FAILED,
       async (fullText) => {
+        if (runId !== streamRunIdRef.current) return;
         const { prose, json } = extractTrailingJsonBlock(fullText);
         const parsed = parseStructurePayload(json);
         if (!parsed) {
+          if (runId !== streamRunIdRef.current) return;
           setStructure(undefined);
           setPhase('structure');
           message.error(STRUCTURE_FAILED);
           return;
         }
+        if (runId !== streamRunIdRef.current) return;
         setStructure(parsed);
         setPhase('structured');
         await persistStructure({
@@ -685,6 +722,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
       },
       'structuring',
       hadStructure ? 'structured' : 'structure',
+      runId,
     );
   }
 
@@ -899,28 +937,42 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  /** 上一步：预览→写作；写作→结构；结构→设定；设定→调研。润色或生成正文时不切步，避免中止请求留下半截正文。 */
+  /**
+   * 上一步：预览→写作；写作→结构；结构→设定；设定→调研。
+   * 设定/结构生成中、写作润色或生成正文时不切步。
+   */
   function handlePrev() {
-    if (polishingUnitIdRef.current || generatingRef.current) return;
-    if (phase === 'preview') {
-      setPhase(hasWritingBody(writing) ? 'written' : 'write');
+    const current = phaseRef.current;
+    if (
+      current === 'bibling' ||
+      current === 'structuring' ||
+      current === 'researching' ||
+      polishingUnitIdRef.current ||
+      generatingRef.current
+    ) {
       return;
     }
-    if (phase === 'write' || phase === 'writing' || phase === 'written') {
+
+    if (current === 'preview') {
+      setPhase(hasWritingBody(writingRef.current) ? 'written' : 'write');
+      return;
+    }
+    if (current === 'write' || current === 'writing' || current === 'written') {
       abortRef.current?.abort();
       setPhase('structured');
       return;
     }
-    if (phase === 'structure' || phase === 'structuring' || phase === 'structured') {
+    if (current === 'structure' || current === 'structured') {
       abortRef.current?.abort();
       setGeneratingChapterId(undefined);
       setGeneratingVolumeId(undefined);
-      setPhase(hasBibleDraft(bible) ? 'bibled' : 'bible');
+      setPhase(hasBibleDraft(bibleRef.current) ? 'bibled' : 'bible');
       return;
     }
-    if (phase === 'bible' || phase === 'bibling' || phase === 'bibled') {
+    if (current === 'bible' || current === 'bibled') {
       abortRef.current?.abort();
-      if (bible) void persistBible(bible);
+      const currentBible = bibleRef.current;
+      if (currentBible) void persistBible(currentBible);
       setPhase('researched');
     }
   }

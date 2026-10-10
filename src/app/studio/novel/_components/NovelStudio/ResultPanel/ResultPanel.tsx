@@ -125,6 +125,8 @@ export default function ResultPanel({
         ? BIBLE_PANEL_TITLE
         : RESEARCH_PANEL_TITLE;
   const writingLocked = Boolean(polishingUnitId) || generatingUnitIds.length > 0;
+  /** 设定/结构生成中，以及写作步生成/润色时，禁用上一步。 */
+  const prevLocked = bibling || structuring || (writeView && writingLocked);
   const [relationGraphOpen, setRelationGraphOpen] = useState(false);
   const [relationGraphPhase, setRelationGraphPhase] = useState(bibleView);
   if (relationGraphPhase !== bibleView) {
@@ -165,7 +167,7 @@ export default function ResultPanel({
               </Button>
             ) : null}
             {canPrev ? (
-              <Button disabled={writingLocked} onClick={onPrev}>
+              <Button disabled={prevLocked} onClick={onPrev}>
                 {PREV_BUTTON}
               </Button>
             ) : null}
