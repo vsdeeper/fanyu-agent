@@ -155,7 +155,7 @@ export function buildBiblePrompt(body: NovelBibleRequest, file?: IdeaFilePrompt)
     `为什么值得写：${body.topic.why}`,
     `故事核：${body.topic.core}${risk}`,
     `规模：${bibleScaleHint(body.volume, body.longFormat)}`,
-    '请产出核心班底、关系、时空、规矩与禁忌，末尾附 JSON。不要写人称、聚焦或时态。',
+    '请直接输出核心班底、关系、时空、规矩与禁忌的 JSON，不要前言或取舍说明。不要写人称、聚焦或时态。',
   );
   return lines.join('\n');
 }

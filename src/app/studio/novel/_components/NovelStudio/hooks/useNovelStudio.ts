@@ -153,7 +153,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
     initialResearch?.selectedTopicId,
   );
   const [bible, setBible] = useState<BibleStepSnapshot | undefined>(initialBible);
-  const [bibleStream, setBibleStream] = useState('');
   const [structure, setStructure] = useState<StructureSnapshot | undefined>(() =>
     initialStructure ? toStructureSnapshot(initialStructure) : undefined,
   );
@@ -545,10 +544,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
     setGeneratingChapterId(undefined);
     setGeneratingVolumeId(undefined);
     await clearDownstreamSteps('bible');
-    setBibleStream('');
 
-    const bibleBuffer = createRafTextBuffer((text) => {
-      setBibleStream(stripTrailingJsonFenceForDisplay(text));
+    const bibleBuffer = createRafTextBuffer(() => {
+      /* 设定过程文案不单独展示 */
     });
 
     await runSse(
@@ -563,7 +561,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
       bibleBuffer,
       BIBLE_FAILED,
       async (fullText) => {
-        const { prose, json } = extractTrailingJsonBlock(fullText);
+        const { json } = extractTrailingJsonBlock(fullText);
         const parsed = parseBiblePayload(json);
         if (!parsed) {
           setPhase(hadDraft ? 'bibled' : 'bible');
@@ -574,7 +572,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
           ...parsed,
           voiceFocus: keptVoice,
           ...(keptTense ? { tense: keptTense } : {}),
-          streamText: stripTrailingJsonFenceForDisplay(prose || fullText),
         };
         setBible(next);
         setPhase('bibled');
@@ -1504,7 +1501,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
     selectedTopicId,
     selectedTopic,
     bible,
-    bibleStream,
     structure,
     writing,
     selectedUnitIds,

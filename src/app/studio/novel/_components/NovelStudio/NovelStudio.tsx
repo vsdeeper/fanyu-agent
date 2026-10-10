@@ -92,7 +92,6 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 topics={studio.topics}
                 selectedTopicId={studio.selectedTopicId}
                 bible={studio.bible}
-                bibleStream={studio.bibleStream}
                 structure={studio.structure}
                 writing={studio.writing}
                 selectedUnitIds={studio.selectedUnitIds}

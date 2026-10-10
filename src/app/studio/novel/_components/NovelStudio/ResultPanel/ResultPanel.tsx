@@ -1,7 +1,7 @@
 import StudioStagePanel from '@/app/studio/_components/StudioStagePanel';
 import { StarOutlined } from '@ant-design/icons';
 import { Button, Input, Modal, Spin } from 'antd';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   BEATS_TITLE,
   BIBLE_GENERATING_HINT,
@@ -46,8 +46,6 @@ type ResultPanelProps = {
   topics: TopicCard[];
   selectedTopicId?: string;
   bible?: BibleStepSnapshot;
-  /** 生成设定时已到达的说明；末尾 JSON 未闭合前会被去掉。 */
-  bibleStream?: string;
   structure?: StructureSnapshot;
   writing?: WritingSnapshot;
   selectedUnitIds: string[];
@@ -81,7 +79,6 @@ export default function ResultPanel({
   topics,
   selectedTopicId,
   bible,
-  bibleStream = '',
   structure,
   writing,
   selectedUnitIds,
@@ -115,19 +112,10 @@ export default function ResultPanel({
   const researching = phase === 'researching';
   const researched = phase === 'researched';
   const bibling = phase === 'bibling';
-  const bibleStreamText = bibleStream.trim();
-  const streamRef = useRef<HTMLDivElement>(null);
   const structuring = phase === 'structuring';
   const researchEmpty = researchView && !researching && topics.length === 0;
   const bibleEmpty = bibleView && !bibling && !hasBibleDraft(bible);
   const structureEmpty = structureView && !structuring && !structure;
-
-  useEffect(() => {
-    if (!bibling || !bibleStreamText) return;
-    const scroller = streamRef.current?.parentElement;
-    if (!scroller) return;
-    scroller.scrollTop = scroller.scrollHeight;
-  }, [bibleStreamText, bibling]);
 
   const panelTitle = writeView
     ? WRITE_PANEL_TITLE
@@ -152,7 +140,7 @@ export default function ResultPanel({
     writeView;
   const stageFill =
     (researchView && (researchEmpty || (researching && topics.length === 0))) ||
-    (bibleView && (bibleEmpty || (bibling && !bibleStreamText))) ||
+    (bibleView && (bibleEmpty || bibling)) ||
     (structureView && !structure) ||
     (writeView && !(structure && writing));
 
@@ -216,20 +204,10 @@ export default function ResultPanel({
 
         {bibleView ? (
           bibling ? (
-            bibleStreamText ? (
-              <div ref={streamRef}>
-                <p className={styles.streamText}>{bibleStreamText}</p>
-                <div className={styles.streamStatus}>
-                  <Spin size="small" />
-                  <span>{BIBLE_GENERATING_HINT}</span>
-                </div>
-              </div>
-            ) : (
-              <div className={styles.body}>
-                <Spin />
-                <p className={styles.hint}>{BIBLE_GENERATING_HINT}</p>
-              </div>
-            )
+            <div className={styles.body}>
+              <Spin />
+              <p className={styles.hint}>{BIBLE_GENERATING_HINT}</p>
+            </div>
           ) : bibleEmpty ? (
             <div className={styles.body}>
               <p className={styles.hint}>{EMPTY_BIBLE_HINT}</p>

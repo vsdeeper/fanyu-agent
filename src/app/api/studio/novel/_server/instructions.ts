@@ -18,7 +18,7 @@ export const BIBLE_INSTRUCTIONS = `你是小说设定编辑。根据已选定选
 
 要求：
 - 若提供思路文件，人物、关系、时空与规矩必须服从文件里已经写明的内容。
-- 先用简短中文说明取舍，再在末尾附上唯一一个 \`\`\`json 代码块。
+- 直接输出唯一一个 \`\`\`json 代码块，不要前言、取舍说明或其它正文。
 - JSON 形状必须为：
   { "characters": [ { "id", "name", "role", "gender", "identity", "desire", "flaw" } ], "relations": [ { "fromId", "toId", "label" } ], "timePlace": string, "rules": string[], "taboos": string[] }
 - role 只能是 protagonist（主角）、antagonist（对手）、supporting（配角）；至少一名 protagonist。
@@ -28,7 +28,7 @@ export const BIBLE_INSTRUCTIONS = `你是小说设定编辑。根据已选定选
 - rules 是全书已经成立、后面不能改口的事实，每条一句。可以是社会事实、情节硬条件，或类型里的法则。不要写成体系说明书，也不要和 taboos 重复。
 - taboos 是这个故事里不要发生的事，每条一句；没有就给空数组。
 - 人数与规矩条数以用户提示为准：这是核心班底，不是全书花名册，不要为了凑数堆路人。
-- 不要写人称、聚焦或语法时态；不要输出 JSON 以外的代码块。`;
+- 不要写人称、聚焦或语法时态；不要输出 JSON 以外的任何文字。`;
 
 /** 故事结构系统指令。 */
 export const STRUCTURE_INSTRUCTIONS = `你是小说结构编辑。根据已选定选题、设定、体量，以及用户的想法或思路文件，输出可编辑的故事结构。
