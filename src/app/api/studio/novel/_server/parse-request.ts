@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { z } from 'zod';
-import { isNovelIdeaFile } from '../_shared/idea-file';
+import { isNovelIdeaFile, NOVEL_MAX_IDEA_FILES } from '../_shared/idea-file';
 import type {
   NovelBibleRequest,
   NovelChapterBeatsRequest,
@@ -26,11 +26,11 @@ const ideaFileSchema = z
 /** 想法正文与思路文件至少有一项。空字符串过不了 min(1)，调用方应省略该字段。 */
 const ideaSourceSchema = {
   idea: z.string().trim().min(1).optional(),
-  ideaFile: ideaFileSchema.optional(),
+  ideaFiles: z.array(ideaFileSchema).max(NOVEL_MAX_IDEA_FILES).optional(),
 };
 
-function hasIdeaSource(data: { idea?: string; ideaFile?: unknown }): boolean {
-  return Boolean(data.idea) || Boolean(data.ideaFile);
+function hasIdeaSource(data: { idea?: string; ideaFiles?: unknown[] }): boolean {
+  return Boolean(data.idea) || (data.ideaFiles?.length ?? 0) > 0;
 }
 
 const topicSchema = z.object({

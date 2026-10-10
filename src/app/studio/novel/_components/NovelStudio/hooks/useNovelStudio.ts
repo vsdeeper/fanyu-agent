@@ -235,14 +235,14 @@ export function useNovelStudio(task: NovelTaskDetail) {
   /** 想法与思路文件至少一项；文件读失败时返回原因，不把异常原文给用户。 */
   async function readIdeaPayload(
     panel: NovelPanelValues,
-  ): Promise<{ idea?: string; ideaFile?: NovelIdeaFile } | 'missing' | 'unreadable'> {
+  ): Promise<{ idea?: string; ideaFiles?: NovelIdeaFile[] } | 'missing' | 'unreadable'> {
     try {
-      const ideaFile = await toNovelIdeaFileInput(panel.ideaFiles);
+      const ideaFiles = await toNovelIdeaFileInput(panel.ideaFiles);
       const idea = panel.idea.trim();
-      if (!idea && !ideaFile) return 'missing';
+      if (!idea && ideaFiles.length === 0) return 'missing';
       return {
         ...(idea ? { idea } : {}),
-        ...(ideaFile ? { ideaFile } : {}),
+        ...(ideaFiles.length ? { ideaFiles } : {}),
       };
     } catch (err) {
       console.error('[novel-studio] read idea file', err);

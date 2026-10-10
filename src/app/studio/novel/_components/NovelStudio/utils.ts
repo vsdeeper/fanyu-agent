@@ -1,3 +1,4 @@
+import { NOVEL_MAX_IDEA_FILES } from '@/app/api/studio/novel/_shared/idea-file';
 import type { NovelBible, NovelIdeaFile } from '@/app/api/studio/novel/_shared/types';
 import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
 import { toDocMediaType } from '@/app/studio/_components/ProductDocsUpload/utils';
@@ -882,34 +883,37 @@ function ideaFileMediaType(filename: string, mediaType: string | undefined): str
 }
 
 /**
- * 把左栏思路文件读成调研/设定/结构请求里的 ideaFile。
- * 没有文件时不返回该字段；读失败抛错，由调用方提示用户。
+ * 把左栏思路文件读成调研/设定/结构请求里的 ideaFiles。
+ * 没有文件时返回空数组；读失败抛错，由调用方提示用户。
  */
 export async function toNovelIdeaFileInput(
   files: ProductDocUploadItem[],
-): Promise<NovelIdeaFile | undefined> {
-  const item = files[0];
-  if (!item) return undefined;
-  const filename = item.file?.name || item.name || '思路文件';
-  const mediaType = ideaFileMediaType(
-    filename,
-    item.file ? toDocMediaType(item.file) : item.mimeType,
-  );
-  const dataUrl = await readUploadItemAsDataUrl(item);
-  if (!dataUrl.startsWith('data:')) throw new Error('idea file');
-  return { filename, mediaType, dataUrl };
+): Promise<NovelIdeaFile[]> {
+  const picked = files.slice(0, NOVEL_MAX_IDEA_FILES);
+  const result: NovelIdeaFile[] = [];
+  for (const item of picked) {
+    const filename = item.file?.name || item.name || '思路文件';
+    const mediaType = ideaFileMediaType(
+      filename,
+      item.file ? toDocMediaType(item.file) : item.mimeType,
+    );
+    const dataUrl = await readUploadItemAsDataUrl(item);
+    if (!dataUrl.startsWith('data:')) throw new Error('idea file');
+    result.push({ filename, mediaType, dataUrl });
+  }
+  return result;
 }
 
-/** 从表单值取出至多一份思路文件。不是数组时返回 undefined，便于回退到快照。 */
+/** 从表单值取出至多三份思路文件。不是数组时返回 undefined，便于回退到快照。 */
 export function readFormIdeaFiles(value: unknown): ProductDocUploadItem[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const items: ProductDocUploadItem[] = [];
   for (const item of value) {
+    if (items.length >= NOVEL_MAX_IDEA_FILES) break;
     if (!item || typeof item !== 'object') continue;
     const row = item as ProductDocUploadItem;
     if (!row.uid || typeof row.previewUrl !== 'string' || !row.previewUrl) continue;
     items.push(row);
-    break;
   }
   return items;
 }
@@ -918,22 +922,30 @@ export function readFormIdeaFiles(value: unknown): ProductDocUploadItem[] | unde
 export async function serializeIdeaFiles(
   files: ProductDocUploadItem[],
 ): Promise<ProductDocUploadItem[]> {
-  const first = files[0];
-  if (!first) return [];
-  const saved = await serializeUploadItem(first);
-  return [saved];
+  const picked = files.slice(0, NOVEL_MAX_IDEA_FILES);
+  return Promise.all(picked.map((item) => serializeUploadItem(item)));
 }
 
-/** 从快照还原思路文件；只接受 data URL，避免刷新后留下失效的 blob。 */
+/**
+ * 落盘后的思路文件地址。
+ * 保存时服务端把 data URL 换成 /api/studio/novel/.../assets/...；只认 data: 会把已落盘文件丢掉。
+ * blob: 刷新即失效，仍然丢弃。
+ */
+function isDurableIdeaFileUrl(url: string): boolean {
+  return url.startsWith('data:') || url.startsWith('/');
+}
+
+/** 从快照还原思路文件；至多三份。 */
 function readStoredIdeaFiles(value: unknown): ProductDocUploadItem[] {
   if (!Array.isArray(value)) return [];
   const items: ProductDocUploadItem[] = [];
   for (const item of value) {
+    if (items.length >= NOVEL_MAX_IDEA_FILES) break;
     if (!item || typeof item !== 'object') continue;
     const row = item as Record<string, unknown>;
     const uid = asString(row.uid);
     const previewUrl = asString(row.previewUrl);
-    if (!uid || !previewUrl?.startsWith('data:')) continue;
+    if (!uid || !previewUrl || !isDurableIdeaFileUrl(previewUrl)) continue;
     const name = asString(row.name);
     const mimeType = asString(row.mimeType);
     items.push({
@@ -943,7 +955,6 @@ function readStoredIdeaFiles(value: unknown): ProductDocUploadItem[] {
       ...(mimeType ? { mimeType } : {}),
       ...(typeof row.size === 'number' && Number.isFinite(row.size) ? { size: row.size } : {}),
     });
-    break;
   }
   return items;
 }

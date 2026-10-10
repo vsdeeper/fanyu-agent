@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 
 import { isNovelIdeaFile } from '../_shared/idea-file';
-import { resolveNovelIdeaFile } from './idea-file';
+import { resolveNovelIdeaFiles } from './idea-file';
 import { parseBibleBody, parseResearchBody } from './parse-request';
 import { buildBiblePrompt, buildResearchPrompt } from './prompt';
 
@@ -36,8 +36,8 @@ describe('parseResearchBody', () => {
       idea: '院子',
       volume: 'short',
     });
-    expect(parseResearchBody({ ideaFile: TXT, volume: 'medium' })).toMatchObject({
-      ideaFile: TXT,
+    expect(parseResearchBody({ ideaFiles: [TXT], volume: 'medium' })).toMatchObject({
+      ideaFiles: [TXT],
       volume: 'medium',
     });
   });
@@ -47,33 +47,57 @@ describe('parseResearchBody', () => {
     expect(parseResearchBody({ idea: '   ', volume: 'short' })).toBeNull();
     expect(
       parseResearchBody({
-        ideaFile: {
-          filename: 'a.docx',
-          mediaType: 'application/octet-stream',
-          dataUrl: TXT.dataUrl,
-        },
+        ideaFiles: [
+          {
+            filename: 'a.docx',
+            mediaType: 'application/octet-stream',
+            dataUrl: TXT.dataUrl,
+          },
+        ],
         volume: 'short',
       }),
     ).toBeNull();
   });
 });
 
-describe('resolveNovelIdeaFile', () => {
+describe('resolveNovelIdeaFiles', () => {
   it('抽出 txt 正文', async () => {
-    const resolved = await resolveNovelIdeaFile(TXT);
+    const resolved = await resolveNovelIdeaFiles([TXT]);
     expect(resolved.ok).toBe(true);
     if (!resolved.ok) return;
     expect(resolved.documentsText).toContain('夏天停电');
-    expect(resolved.pdfPart).toBeUndefined();
+    expect(resolved.pdfParts).toEqual([]);
   });
 
-  it('空 PDF 视为无法读取', async () => {
-    const resolved = await resolveNovelIdeaFile({
-      filename: '空.pdf',
-      mediaType: 'application/pdf',
-      dataUrl: 'data:application/pdf;base64,',
-    });
-    expect(resolved.ok).toBe(false);
+  it('多份文本拼在一起，空 PDF 视为无法读取', async () => {
+    const second = {
+      filename: '设定.md',
+      mediaType: 'text/markdown',
+      dataUrl: `data:text/markdown;base64,${Buffer.from('山海').toString('base64')}`,
+    };
+    const resolved = await resolveNovelIdeaFiles([TXT, second]);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.documentsText).toContain('夏天停电');
+    expect(resolved.documentsText).toContain('山海');
+
+    const emptyPdf = await resolveNovelIdeaFiles([
+      {
+        filename: '空.pdf',
+        mediaType: 'application/pdf',
+        dataUrl: 'data:application/pdf;base64,',
+      },
+    ]);
+    expect(emptyPdf.ok).toBe(false);
+  });
+
+  it('超过三份时拒绝', () => {
+    expect(
+      parseResearchBody({
+        ideaFiles: [TXT, TXT, TXT, TXT],
+        volume: 'short',
+      }),
+    ).toBeNull();
   });
 });
 
@@ -96,17 +120,10 @@ describe('buildResearchPrompt', () => {
 
 describe('buildBiblePrompt', () => {
   it('PDF 思路文件写成附件说明', () => {
-    const prompt = buildBiblePrompt(
-      {
-        volume: 'short',
-        topic,
-        ideaFile: { ...TXT, filename: '大纲.pdf', mediaType: 'application/pdf' },
-      },
-      { hasPdf: true },
-    );
-    expect(prompt).toContain('1 份 PDF');
-    expect(parseBibleBody({ volume: 'short', topic, ideaFile: TXT })?.ideaFile?.filename).toBe(
-      '大纲.txt',
-    );
+    const prompt = buildBiblePrompt({ volume: 'short', topic }, { pdfCount: 2 });
+    expect(prompt).toContain('2 份 PDF');
+    expect(
+      parseBibleBody({ volume: 'short', topic, ideaFiles: [TXT] })?.ideaFiles?.[0]?.filename,
+    ).toBe('大纲.txt');
   });
 });

@@ -1,3 +1,6 @@
+/** 思路文件份数上限。调研、设定、结构共用。 */
+export const NOVEL_MAX_IDEA_FILES = 3;
+
 const IDEA_FILE_EXTS = new Set(['txt', 'md', 'pdf']);
 
 /** 从文件名取小写扩展名；无扩展名返回空串。 */

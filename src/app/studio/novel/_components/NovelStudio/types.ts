@@ -36,7 +36,7 @@ export type { StyleDimensionSelections };
 /** 左栏表单值：与 ControlPanel 的 Form.Item name 一一对应。 */
 export type NovelPanelValues = {
   idea: string;
-  /** 思路文件，至多一份；与 idea 二选一即可。 */
+  /** 思路文件，至多三份；与 idea 二选一即可。 */
   ideaFiles: ProductDocUploadItem[];
   genres: string[];
   volume: NovelVolume;
@@ -126,7 +126,7 @@ export type BibleGenerated = {
 /** 选题调研步骤落盘快照。 */
 export type ResearchStepSnapshot = {
   idea: string;
-  /** 已序列化的思路文件，至多一份；previewUrl 为 data URL。 */
+  /** 已序列化的思路文件，至多三份；previewUrl 为站内资产地址或 data URL。 */
   ideaFiles?: ProductDocUploadItem[];
   genres: string[];
   volume: NovelVolume;

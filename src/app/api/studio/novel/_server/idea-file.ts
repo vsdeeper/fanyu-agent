@@ -17,45 +17,47 @@ export type NovelIdeaPdfPart = StudioImageFilePart & {
 
 export type ResolvedNovelIdeaFile = {
   documentsText: string;
-  pdfPart?: NovelIdeaPdfPart;
+  pdfParts: NovelIdeaPdfPart[];
 };
 
 /**
  * 拆分思路文件：TXT/MD 抽正文；PDF 解码为多模态 file part。
- * 未上传时返回空正文。损坏、空白或超限视为失败，由调用方拒绝请求。
+ * 未上传时返回空正文。任一文件损坏、空白或超限视为失败，由调用方拒绝请求。
  */
-export async function resolveNovelIdeaFile(
-  file: NovelIdeaFile | undefined,
+export async function resolveNovelIdeaFiles(
+  files: NovelIdeaFile[] | undefined,
 ): Promise<({ ok: true } & ResolvedNovelIdeaFile) | { ok: false }> {
-  if (!file) return { ok: true, documentsText: '' };
+  if (!files?.length) return { ok: true, documentsText: '', pdfParts: [] };
 
-  if (isNovelIdeaPdf(file.filename, file.mediaType)) {
-    let bytes: Buffer;
-    try {
-      bytes = decodeDataUrl(file.dataUrl);
-    } catch {
-      return { ok: false };
-    }
-    if (bytes.length === 0 || bytes.length > MAX_STUDIO_DOCUMENT_BYTES) return { ok: false };
-    return {
-      ok: true,
-      documentsText: '',
-      pdfPart: {
+  const textDocs: BusinessAnalysisDocumentInput[] = [];
+  const pdfParts: NovelIdeaPdfPart[] = [];
+  for (const file of files) {
+    if (isNovelIdeaPdf(file.filename, file.mediaType)) {
+      let bytes: Buffer;
+      try {
+        bytes = decodeDataUrl(file.dataUrl);
+      } catch {
+        return { ok: false };
+      }
+      if (bytes.length === 0 || bytes.length > MAX_STUDIO_DOCUMENT_BYTES) return { ok: false };
+      pdfParts.push({
         type: 'file',
         data: bytes,
         mediaType: 'application/pdf',
         filename: file.filename.trim() || undefined,
-      },
-    };
+      });
+      continue;
+    }
+    textDocs.push({
+      filename: file.filename,
+      mediaType: file.mediaType,
+      dataUrl: file.dataUrl,
+    });
   }
 
-  const input: BusinessAnalysisDocumentInput = {
-    filename: file.filename,
-    mediaType: file.mediaType,
-    dataUrl: file.dataUrl,
-  };
-  const extracted = await extractStudioDocuments([input]);
+  const extracted = await extractStudioDocuments(textDocs);
   const documentsText = formatDocumentsPrompt(extracted).trim();
-  if (!documentsText) return { ok: false };
-  return { ok: true, documentsText };
+  if (!documentsText && pdfParts.length === 0) return { ok: false };
+  if (textDocs.length > 0 && !documentsText) return { ok: false };
+  return { ok: true, documentsText, pdfParts };
 }

@@ -103,10 +103,10 @@ function resolveLongFormat(
   return longFormat === 'web' ? 'web' : 'publish';
 }
 
-/** 已抽出的思路文件正文，或一份待附件阅读的 PDF。 */
+/** 已抽出的思路文件正文，以及待附件阅读的 PDF 份数。 */
 export type IdeaFilePrompt = {
   documentsText?: string;
-  hasPdf?: boolean;
+  pdfCount?: number;
 };
 
 /** 把想法与思路文件写进提示。只填了文件时明确告诉模型以文件为准。 */
@@ -118,8 +118,9 @@ function pushIdeaSource(lines: string[], idea: string | undefined, file?: IdeaFi
   if (doc) {
     lines.push('【思路文件】', doc);
   }
-  if (file?.hasPdf) {
-    lines.push('【思路文件】1 份 PDF，见附件。请直接阅读正文。');
+  const pdfCount = file?.pdfCount ?? 0;
+  if (pdfCount > 0) {
+    lines.push(`【思路文件】${pdfCount} 份 PDF，见附件。请直接阅读正文。`);
   }
 }
 

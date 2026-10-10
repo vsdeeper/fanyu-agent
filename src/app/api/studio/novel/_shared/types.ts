@@ -95,7 +95,7 @@ export type NovelIdeaFile = {
 /** 选题调研请求。想法与思路文件至少有一项。 */
 export type NovelResearchRequest = {
   idea?: string;
-  ideaFile?: NovelIdeaFile;
+  ideaFiles?: NovelIdeaFile[];
   genres?: string[];
   volume: NovelVolume;
   /** 仅长篇使用；缺省按出版。 */
@@ -105,7 +105,7 @@ export type NovelResearchRequest = {
 /** 设定生成请求：只产出人物、世界与禁忌。想法与思路文件至少有一项。 */
 export type NovelBibleRequest = {
   idea?: string;
-  ideaFile?: NovelIdeaFile;
+  ideaFiles?: NovelIdeaFile[];
   genres?: string[];
   volume: NovelVolume;
   longFormat?: NovelLongFormat;
@@ -115,7 +115,7 @@ export type NovelBibleRequest = {
 /** 故事结构请求。想法与思路文件至少有一项。 */
 export type NovelStructureRequest = {
   idea?: string;
-  ideaFile?: NovelIdeaFile;
+  ideaFiles?: NovelIdeaFile[];
   genres?: string[];
   volume: NovelVolume;
   longFormat?: NovelLongFormat;

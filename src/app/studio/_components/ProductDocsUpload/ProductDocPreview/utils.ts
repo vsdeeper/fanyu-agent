@@ -6,6 +6,14 @@ export type ProductDocPreviewKind = 'markdown' | 'text' | 'unsupported';
 const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown', 'mdx']);
 const TEXT_EXTENSIONS = new Set(['txt']);
 
+/**
+ * 语雀等编辑器导出的 md 把文字包在 font 里。
+ * 预览开启 escapeRawHtml，不剥掉就会把标签当正文显示。
+ */
+export function unwrapPreviewFontTags(text: string): string {
+  return text.replace(/<\/?font\b[^>]*>/gi, '');
+}
+
 /** 判断资料文件正文应如何预览：MD / TXT 读正文，其余提示不支持。 */
 export function getDocPreviewKind(item: ProductDocUploadItem): ProductDocPreviewKind {
   const display = getProductDocDisplay(item);

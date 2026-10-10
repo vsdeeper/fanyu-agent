@@ -15,7 +15,7 @@ import {
   PREVIEW_UNSUPPORTED,
   PRODUCT_DOC_PREVIEW_WIDTH,
 } from './constants';
-import { getDocPreviewKind, loadDocText } from './utils';
+import { getDocPreviewKind, loadDocText, unwrapPreviewFontTags } from './utils';
 import styles from './ProductDocPreview.module.css';
 
 type ProductDocPreviewProps = {
@@ -60,7 +60,7 @@ export default function ProductDocPreview({ open, onClose, item }: ProductDocPre
       return hydrated ? (
         <XMarkdown
           className={`${mode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'} ${styles.markdown}`}
-          content={text}
+          content={unwrapPreviewFontTags(text)}
           components={MARKDOWN_COMPONENTS}
           paragraphTag="div"
           openLinksInNewTab

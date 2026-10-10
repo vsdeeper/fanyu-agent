@@ -408,6 +408,51 @@ describe('readResearchStepSnapshot', () => {
     expect(snapshot?.ideaFiles?.[0]?.name).toBe('大纲.txt');
   });
 
+  it('读回服务端落盘后的资产地址', () => {
+    const snapshot = readResearchStepSnapshot({
+      idea: '将按山经划分的势力转为国名',
+      ideaFiles: [
+        {
+          uid: 'file-1',
+          previewUrl: '/api/studio/novel/tasks/task-1/assets/asset-1',
+          name: '势力体系设定.md',
+          mimeType: 'text/markdown',
+          size: 29720,
+        },
+      ],
+      volume: 'short',
+    });
+    expect(snapshot?.ideaFiles).toEqual([
+      {
+        uid: 'file-1',
+        previewUrl: '/api/studio/novel/tasks/task-1/assets/asset-1',
+        name: '势力体系设定.md',
+        mimeType: 'text/markdown',
+        size: 29720,
+      },
+    ]);
+  });
+
+  it('最多读回三份思路文件，并跳过 blob', () => {
+    const file = (uid: string, previewUrl: string) => ({
+      uid,
+      previewUrl,
+      name: `${uid}.md`,
+    });
+    const snapshot = readResearchStepSnapshot({
+      idea: '',
+      ideaFiles: [
+        file('a', '/api/studio/novel/tasks/t/assets/a'),
+        file('b', 'data:text/plain;base64,YQ=='),
+        file('c', 'blob:http://local/1'),
+        file('d', '/api/studio/novel/tasks/t/assets/d'),
+        file('e', '/api/studio/novel/tasks/t/assets/e'),
+      ],
+      volume: 'short',
+    });
+    expect(snapshot?.ideaFiles?.map((item) => item.uid)).toEqual(['a', 'b', 'd']);
+  });
+
   it('丢掉刷新后失效的 blob 地址；想法、文件、选题都没有则无效', () => {
     expect(
       readResearchStepSnapshot({

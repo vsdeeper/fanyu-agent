@@ -1,3 +1,4 @@
+import { NOVEL_MAX_IDEA_FILES } from '@/app/api/studio/novel/_shared/idea-file';
 import { listStyleAxisLabels } from '@/app/studio/_components/StyleDimensionPicker';
 import type {
   NovelCharacterGender,
@@ -97,7 +98,7 @@ export const IDEA_FILE_SUBTITLE = '支持 TXT / MD / PDF';
 export const IDEA_FILE_HINT = '上传大纲或构思；与「我的想法」二选一即可';
 export const IDEA_FILE_ACCEPT = '.txt,.md,.pdf';
 export const IDEA_FILE_TYPE_WARNING = '仅支持 TXT、MD、PDF';
-export const IDEA_FILE_MAX = 1;
+export const IDEA_FILE_MAX = NOVEL_MAX_IDEA_FILES;
 export const IDEA_FILE_READ_FAILED = '思路文件无法读取，请重新上传';
 export const GENRE_LABEL = '偏好类型';
 export const GENRE_PLACEHOLDER = '可选，多选';
