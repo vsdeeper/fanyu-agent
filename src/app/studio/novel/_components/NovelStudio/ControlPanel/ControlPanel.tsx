@@ -291,7 +291,8 @@ export default function ControlPanel({
           </>
         ) : null}
 
-        {showReasoningEffort ? (
+        {/* 只在调研步露出；后续设定/结构/写作仍用同一份已落盘强度。 */}
+        {showReasoningEffort && researchStep ? (
           <Form.Item label={REASONING_EFFORT_LABEL}>
             <Select
               value={reasoningValue}
