@@ -3,6 +3,7 @@ import type { NovelBible, NovelIdeaFile } from '@/app/api/studio/novel/_shared/t
 import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
 import { toDocMediaType } from '@/app/studio/_components/ProductDocsUpload/utils';
 import { readUploadItemAsDataUrl, serializeUploadItem } from '@/app/studio/_utils/upload-items';
+import { readNovelReasoningEffort } from '@/app/api/studio/novel/_shared/constants';
 import { NOVEL_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/novel/_shared/task-constants';
 import type { NovelStepKey, NovelTaskStepRecord } from '@/app/api/studio/novel/_shared/task-types';
 import {
@@ -979,7 +980,8 @@ export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | 
   }
   const selectedTopicId = asString(record.selectedTopicId);
   const streamText = asString(record.streamText);
-  if (!idea && ideaFiles.length === 0 && topics.length === 0) return undefined;
+  const hasStoredEffort = typeof record.reasoningEffort === 'string';
+  if (!idea && ideaFiles.length === 0 && topics.length === 0 && !hasStoredEffort) return undefined;
   return {
     idea,
     ...(ideaFiles.length ? { ideaFiles } : {}),
@@ -987,6 +989,7 @@ export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | 
     volume,
     longFormat,
     topics,
+    reasoningEffort: readNovelReasoningEffort(record.reasoningEffort),
     ...(selectedTopicId ? { selectedTopicId } : {}),
     ...(streamText ? { streamText } : {}),
   };

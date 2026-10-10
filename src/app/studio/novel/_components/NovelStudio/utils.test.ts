@@ -406,6 +406,18 @@ describe('readResearchStepSnapshot', () => {
     });
     expect(snapshot?.idea).toBe('');
     expect(snapshot?.ideaFiles?.[0]?.name).toBe('大纲.txt');
+    expect(snapshot?.reasoningEffort).toBe('max');
+  });
+
+  it('读回左栏思考强度；只有强度时也保留', () => {
+    expect(
+      readResearchStepSnapshot({
+        idea: '',
+        reasoningEffort: 'low',
+        volume: 'long',
+      })?.reasoningEffort,
+    ).toBe('low');
+    expect(readResearchStepSnapshot({ idea: '', volume: 'short' })).toBeUndefined();
   });
 
   it('读回服务端落盘后的资产地址', () => {

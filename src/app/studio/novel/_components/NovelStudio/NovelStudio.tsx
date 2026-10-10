@@ -66,6 +66,8 @@ export default function NovelStudio({ task }: NovelStudioProps) {
               <ControlPanel
                 form={studio.panelForm}
                 initialValues={studio.panelInitialValues}
+                reasoningEffort={studio.reasoningEffort}
+                onReasoningEffortChange={studio.handleReasoningEffortChange}
                 phase={studio.phase}
                 selectedTopic={studio.selectedTopic}
                 structure={studio.structure}

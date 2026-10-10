@@ -107,6 +107,13 @@ export const LONG_FORMAT_LABEL = '长篇赛道';
 export const SELECTED_TOPIC_LABEL = '选定选题';
 export const SELECTED_TOPIC_EMPTY = '尚未选择选题';
 export const STYLE_LABEL = '文风';
+export const REASONING_EFFORT_LABEL = '思考强度';
+export const REASONING_EFFORT_OPTION_LABEL: Record<'none' | 'low' | 'high' | 'max', string> = {
+  none: '关闭',
+  low: '低',
+  high: '高',
+  max: '最高',
+};
 
 export const MISSING_IDEA_WARNING = '请填写我的想法或上传思路文件';
 export const MISSING_TOPIC_WARNING = '请先点选一个选题';

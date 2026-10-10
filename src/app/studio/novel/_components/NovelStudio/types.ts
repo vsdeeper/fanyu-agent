@@ -1,3 +1,4 @@
+import type { NovelReasoningEffort } from '@/app/api/studio/novel/_shared/constants';
 import type {
   NovelCharacter,
   NovelCharacterGender,
@@ -134,6 +135,8 @@ export type ResearchStepSnapshot = {
   topics: TopicCard[];
   selectedTopicId?: string;
   streamText?: string;
+  /** 覆盖对话设置；旧快照缺省按 max。 */
+  reasoningEffort: NovelReasoningEffort;
 };
 
 /** 故事结构步骤落盘快照。 */

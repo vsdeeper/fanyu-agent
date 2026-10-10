@@ -1,4 +1,11 @@
+import { useEffect } from 'react';
 import { Button, Form, Input, Select, type FormInstance } from 'antd';
+import {
+  DEEPSEEK_REASONING_EFFORTS,
+  ZHIPU_REASONING_EFFORTS,
+} from '@/app/api/chat/_shared/chat-settings';
+import type { NovelReasoningEffort } from '@/app/api/studio/novel/_shared/constants';
+import { useChatSettingsStore } from '@/stores/chat-settings';
 import StyleDimensionPicker, {
   StyleClipboardActions,
   type StyleDimensionSelections,
@@ -25,6 +32,8 @@ import {
   LONG_FORMAT_LABEL,
   LONG_FORMAT_OPTIONS,
   RESEARCH_BUTTON,
+  REASONING_EFFORT_LABEL,
+  REASONING_EFFORT_OPTION_LABEL,
   SELECTED_TOPIC_EMPTY,
   SELECTED_TOPIC_LABEL,
   NARRATION_TITLE,
@@ -50,6 +59,8 @@ import styles from './ControlPanel.module.css';
 type ControlPanelProps = {
   form: FormInstance<NovelPanelValues>;
   initialValues: NovelPanelValues;
+  reasoningEffort: NovelReasoningEffort;
+  onReasoningEffortChange: (next: NovelReasoningEffort) => void;
   phase: StudioPhase;
   selectedTopic?: TopicCard;
   structure?: StructureSnapshot;
@@ -72,6 +83,8 @@ type ControlPanelProps = {
 export default function ControlPanel({
   form,
   initialValues,
+  reasoningEffort,
+  onReasoningEffortChange,
   phase,
   selectedTopic,
   structure,
@@ -89,6 +102,18 @@ export default function ControlPanel({
   onToggleWritingUnit,
   onStyleSelectionsChange,
 }: ControlPanelProps) {
+  const chatProvider = useChatSettingsStore((state) => state.settings?.chatProvider);
+  const settingsHydrated = useChatSettingsStore((state) => state.hydrated);
+  useEffect(() => {
+    if (!settingsHydrated) useChatSettingsStore.getState().hydrate();
+  }, [settingsHydrated]);
+  const reasoningOptions =
+    chatProvider === 'zhipu' ? ZHIPU_REASONING_EFFORTS : DEEPSEEK_REASONING_EFFORTS;
+  const reasoningValue = (reasoningOptions as readonly string[]).includes(reasoningEffort)
+    ? reasoningEffort
+    : 'max';
+  const showReasoningEffort = settingsHydrated && chatProvider !== 'ark' && Boolean(chatProvider);
+
   const researchBusy = phase === 'researching';
   const bibleBusy = phase === 'bibling';
   const structureBusy = phase === 'structuring';
@@ -264,6 +289,19 @@ export default function ControlPanel({
               onToggle={onToggleWritingUnit}
             />
           </>
+        ) : null}
+
+        {showReasoningEffort ? (
+          <Form.Item label={REASONING_EFFORT_LABEL}>
+            <Select
+              value={reasoningValue}
+              options={reasoningOptions.map((value) => ({
+                value,
+                label: REASONING_EFFORT_OPTION_LABEL[value],
+              }))}
+              onChange={(value: NovelReasoningEffort) => onReasoningEffortChange(value)}
+            />
+          </Form.Item>
         ) : null}
       </Form>
     </StudioControlPanel>

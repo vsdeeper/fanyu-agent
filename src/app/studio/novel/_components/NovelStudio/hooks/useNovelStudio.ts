@@ -2,6 +2,10 @@
 
 import { App, Form } from 'antd';
 import { useEffect, useRef, useState } from 'react';
+import {
+  NOVEL_DEFAULT_REASONING_EFFORT,
+  type NovelReasoningEffort,
+} from '@/app/api/studio/novel/_shared/constants';
 import type { NovelIdeaFile } from '@/app/api/studio/novel/_shared/types';
 import type { NovelTaskDetail } from '@/app/api/studio/novel/_shared/task-types';
 import { revokeLocalUploadItemUrls } from '@/lib/client/upload-items';
@@ -130,6 +134,11 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const initialStructure = readStructureStepSnapshot(task.steps.structure?.data);
   const initialWrite = readWriteStepSnapshot(task.steps.write?.data);
 
+  const [reasoningEffort, setReasoningEffort] = useState<NovelReasoningEffort>(
+    () => initialResearch?.reasoningEffort ?? NOVEL_DEFAULT_REASONING_EFFORT,
+  );
+  const reasoningEffortRef = useRef(reasoningEffort);
+  const researchStreamTextRef = useRef(initialResearch?.streamText);
   const [panelForm] = Form.useForm<NovelPanelValues>();
   const [panelInitialValues] = useState<NovelPanelValues>(() => ({
     idea: initialResearch?.idea ?? DEFAULT_PANEL_VALUES.idea,
@@ -264,12 +273,43 @@ export function useNovelStudio(task: NovelTaskDetail) {
   async function persistResearch(
     next: ResearchStepSnapshot,
   ): Promise<ResearchStepSnapshot | undefined> {
+    if (next.streamText) researchStreamTextRef.current = next.streamText;
     try {
       return await saveNovelStep(task.id, 'research', next);
     } catch (err) {
       console.error('[novel-studio] persist research', err);
       return undefined;
     }
+  }
+
+  /** 把当前左栏与选题收成调研快照，并带上思考强度。 */
+  async function researchSnapshot(
+    topics: TopicCard[],
+    extra?: Pick<ResearchStepSnapshot, 'selectedTopicId' | 'streamText'>,
+  ): Promise<ResearchStepSnapshot> {
+    const panel = readPanelValues();
+    const ideaFiles = await storedIdeaFiles(panel);
+    const selectedTopicId = extra?.selectedTopicId ?? selectedTopicIdRef.current;
+    const streamText = extra?.streamText ?? researchStreamTextRef.current;
+    return {
+      idea: panel.idea,
+      ...(ideaFiles.length ? { ideaFiles } : {}),
+      genres: panel.genres,
+      volume: panel.volume,
+      longFormat: panel.longFormat,
+      topics,
+      reasoningEffort: reasoningEffortRef.current,
+      ...(selectedTopicId ? { selectedTopicId } : {}),
+      ...(streamText ? { streamText } : {}),
+    };
+  }
+
+  /** 左栏改思考强度后立即落盘，刷新后仍覆盖对话设置。 */
+  async function handleReasoningEffortChange(next: NovelReasoningEffort) {
+    if (next === reasoningEffortRef.current) return;
+    reasoningEffortRef.current = next;
+    setReasoningEffort(next);
+    await persistResearch(await researchSnapshot(topicsRef.current));
   }
 
   async function persistBible(next: BibleStepSnapshot): Promise<BibleStepSnapshot | undefined> {
@@ -364,7 +404,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify(withChatSettingsBody(body)),
+        body: JSON.stringify(
+          withChatSettingsBody({ ...body, reasoningEffort: reasoningEffortRef.current }),
+        ),
         signal: controller.signal,
       });
       await assertOkOrJsonFail(res);
@@ -445,17 +487,13 @@ export function useNovelStudio(task: NovelTaskDetail) {
         }
         setTopics(nextTopics);
         setSelectedTopicId(undefined);
+        selectedTopicIdRef.current = undefined;
         setPhase('researched');
-        const ideaFiles = await storedIdeaFiles(panel);
-        await persistResearch({
-          idea: panel.idea,
-          ...(ideaFiles.length ? { ideaFiles } : {}),
-          genres: panel.genres,
-          volume: panel.volume,
-          longFormat: panel.longFormat,
-          topics: nextTopics,
-          streamText: stripTrailingJsonFenceForDisplay(prose || fullText),
-        });
+        await persistResearch(
+          await researchSnapshot(nextTopics, {
+            streamText: stripTrailingJsonFenceForDisplay(prose || fullText),
+          }),
+        );
       },
       'researching',
       'research',
@@ -465,19 +503,10 @@ export function useNovelStudio(task: NovelTaskDetail) {
   /** 点选选题卡并落盘。 */
   async function handleSelectTopic(id: string) {
     setSelectedTopicId(id);
-    const panel = readPanelValues();
+    selectedTopicIdRef.current = id;
     const currentTopics = topicsRef.current;
     if (currentTopics.length === 0) return;
-    const ideaFiles = await storedIdeaFiles(panel);
-    await persistResearch({
-      idea: panel.idea,
-      ...(ideaFiles.length ? { ideaFiles } : {}),
-      genres: panel.genres,
-      volume: panel.volume,
-      longFormat: panel.longFormat,
-      topics: currentTopics,
-      selectedTopicId: id,
-    });
+    await persistResearch(await researchSnapshot(currentTopics, { selectedTopicId: id }));
   }
 
   /** 生成设定：已有设定或下游内容时先确认；覆盖后清空结构与正文。 */
@@ -700,6 +729,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify(
           withChatSettingsBody({
+            reasoningEffort: reasoningEffortRef.current,
             topic: selectedTopic,
             bible: bibleBody,
             ...longFormatBody(readPanelValues()),
@@ -797,6 +827,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify(
           withChatSettingsBody({
+            reasoningEffort: reasoningEffortRef.current,
             topic: selectedTopic,
             bible: bibleBody,
             ...(structure.kind === 'volumes' ? longFormatBody(readPanelValues()) : {}),
@@ -1052,6 +1083,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
           headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
           body: JSON.stringify(
             withChatSettingsBody({
+              reasoningEffort: reasoningEffortRef.current,
               unitId,
               beatText: resolved.beatText,
               topic: selectedTopic,
@@ -1154,6 +1186,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify(
           withChatSettingsBody({
+            reasoningEffort: reasoningEffortRef.current,
             body: previousBody.trim(),
             ...(resolved.beatText?.trim() ? { beatText: resolved.beatText.trim() } : {}),
             ...(stylePrompt ? { stylePrompt } : {}),
@@ -1465,6 +1498,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
   return {
     panelForm,
     panelInitialValues,
+    reasoningEffort,
     phase,
     topics,
     selectedTopicId,
@@ -1479,6 +1513,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     generatingVolumeId,
     generatingUnitIds,
     polishingUnitId,
+    handleReasoningEffortChange,
     handleResearch,
     handleSelectTopic,
     handleGenerateBible,

@@ -50,6 +50,7 @@ import {
   WRITING_TRUNCATED,
 } from './constants';
 import { resolveNovelIdeaFiles, type NovelIdeaPdfPart } from './idea-file';
+import { resolveNovelReasoningEffort } from './reasoning';
 import {
   BIBLE_INSTRUCTIONS,
   CHAPTER_BEATS_INSTRUCTIONS,
@@ -119,20 +120,30 @@ async function pipeTextStream(
   await send(NOVEL_SSE_EVENT.done, {});
 }
 
+/** 从尚未被 schema 裁剪的请求体读取左栏思考强度。 */
+function requestReasoningEffort(rest: unknown): unknown {
+  if (!rest || typeof rest !== 'object') return undefined;
+  return (rest as Record<string, unknown>).reasoningEffort;
+}
+
 function createProStream(params: {
   instructions: string;
   prompt: string;
   pdfParts?: NovelIdeaPdfPart[];
+  reasoningEffort?: unknown;
   maxOutputTokens: number;
   abortSignal: AbortSignal;
 }) {
   const provider = getChatProvider();
   const runtime = getChatProviderRuntimeFor(provider);
   const capabilities = runtime.getCapabilities();
-  const openaiOptions = {
+  const openaiOptions: Record<string, unknown> = {
     ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
     ...runtime.getOpenAIOptions(),
   };
+  // 左栏覆盖对话设置里的 reasoningEffort；方舟不传该字段。
+  const reasoningEffort = resolveNovelReasoningEffort(provider, params.reasoningEffort);
+  if (reasoningEffort) openaiOptions.reasoningEffort = reasoningEffort;
   const pdfParts = params.pdfParts ?? [];
   const content =
     pdfParts.length > 0
@@ -218,6 +229,7 @@ export async function handleNovelBible(req: Request): Promise<Response> {
         pdfParts: ideaFiles.pdfParts,
         maxOutputTokens: NOVEL_BIBLE_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
+        reasoningEffort: requestReasoningEffort(split.rest),
       });
       await pipeTextStream(result, req.signal, send, BIBLE_FAILED, BIBLE_TRUNCATED, 'novel/bible');
     });
@@ -257,6 +269,7 @@ export async function handleNovelResearch(req: Request): Promise<Response> {
         pdfParts: ideaFiles.pdfParts,
         maxOutputTokens: NOVEL_RESEARCH_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
+        reasoningEffort: requestReasoningEffort(split.rest),
       });
       await pipeTextStream(
         result,
@@ -302,6 +315,7 @@ export async function handleNovelStructure(req: Request): Promise<Response> {
         pdfParts: ideaFiles.pdfParts,
         maxOutputTokens: NOVEL_STRUCTURE_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
+        reasoningEffort: requestReasoningEffort(split.rest),
       });
       await pipeTextStream(
         result,
@@ -340,6 +354,7 @@ export async function handleNovelVolumeChapters(req: Request): Promise<Response>
         prompt: buildVolumeChaptersPrompt(body),
         maxOutputTokens: NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
+        reasoningEffort: requestReasoningEffort(split.rest),
       });
       await pipeTextStream(
         result,
@@ -378,6 +393,7 @@ export async function handleNovelChapterBeats(req: Request): Promise<Response> {
         prompt: buildChapterBeatsPrompt(body),
         maxOutputTokens: NOVEL_CHAPTER_BEATS_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
+        reasoningEffort: requestReasoningEffort(split.rest),
       });
       await pipeTextStream(
         result,
@@ -417,6 +433,7 @@ export async function handleNovelWriting(req: Request): Promise<Response> {
         prompt: buildWritingPrompt(body),
         maxOutputTokens: NOVEL_WRITING_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
+        reasoningEffort: requestReasoningEffort(split.rest),
       });
       await pipeTextStream(
         result,
@@ -457,6 +474,7 @@ export async function handleNovelPolish(req: Request): Promise<Response> {
         prompt: buildPolishPrompt(body),
         maxOutputTokens: NOVEL_POLISH_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
+        reasoningEffort: requestReasoningEffort(split.rest),
       });
       await pipeTextStream(
         result,
