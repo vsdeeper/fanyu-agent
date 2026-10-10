@@ -21,16 +21,18 @@ export const MISSING_CHAPTER_BEATS_INPUT = '请提供有效的章节信息';
 export const MISSING_WRITING_INPUT = '请提供有效的写作单元';
 export const MISSING_POLISH_INPUT = '请先写好要润色的正文';
 
-/** 设定输出上限（核心班底 + 关系 + 规则）。 */
-export const NOVEL_BIBLE_MAX_OUTPUT_TOKENS = 16384;
-/** 调研输出上限（简述 + topics JSON）。 */
-export const NOVEL_RESEARCH_MAX_OUTPUT_TOKENS = 8192;
-/** 结构输出上限。 */
-export const NOVEL_STRUCTURE_MAX_OUTPUT_TOKENS = 8192;
-/** 按卷章纲输出上限。 */
-export const NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS = 8192;
-/** 章内节拍输出上限。 */
-export const NOVEL_CHAPTER_BEATS_MAX_OUTPUT_TOKENS = 4096;
+/**
+ * 设定 / 调研 / 结构等规划步输出上限。
+ * 思考模型把 reasoning 与可见正文计入同一 maxOutputTokens；
+ * 默认 reasoningEffort=max 时，过小会在写出 JSON 前被 length 截断（可见文本甚至为 0）。
+ */
+export const NOVEL_BIBLE_MAX_OUTPUT_TOKENS = 24576;
+export const NOVEL_RESEARCH_MAX_OUTPUT_TOKENS = 24576;
+export const NOVEL_STRUCTURE_MAX_OUTPUT_TOKENS = 24576;
+/** 按卷章纲输出上限（同上：reasoning 与 JSON 同预算）。 */
+export const NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS = 24576;
+/** 章内节拍输出上限（同上：reasoning 与 JSON 同预算）。 */
+export const NOVEL_CHAPTER_BEATS_MAX_OUTPUT_TOKENS = 16384;
 /** 单节拍正文输出上限（约 2000 字 + reasoning）。 */
 export const NOVEL_WRITING_MAX_OUTPUT_TOKENS = 24576;
 /** 润色须整段回写，reasoning 与正文同一预算，与写作同档。 */
