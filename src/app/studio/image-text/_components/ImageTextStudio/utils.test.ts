@@ -7,7 +7,10 @@ import {
   parseCaptionFromBody,
   readGenerateSnapshot,
   stripCaptionFromBody,
+  stripHeadingPinyin,
+  stripHeadingPinyinFromBody,
   stripMarkdownFence,
+  stripMetaLeaks,
   titleFromBody,
 } from './utils';
 import type { ImageTextCard, ImageTextGeneratedImage } from './types';
@@ -47,6 +50,56 @@ describe('normalizeCardBody', () => {
   it('从正文提取一级标题', () => {
     expect(titleFromBody('# 晨间咖啡\n\n正文')).toBe('晨间咖啡');
     expect(titleFromBody('没有标题')).toBeUndefined();
+  });
+
+  it('规范化时去掉各级标题中的拼音注音，正文段落保留', () => {
+    const raw = `# 乳中 (rǔ zhōng)
+
+> 取穴、按法
+
+## 取穴与命名（qǔ xué）
+
+乳中 (rǔ zhōng) 在乳头中央。`;
+    expect(normalizeCardBody(raw)).toBe(`# 乳中
+
+> 取穴、按法
+
+## 取穴与命名
+
+乳中 (rǔ zhōng) 在乳头中央。`);
+  });
+});
+
+describe('stripMetaLeaks', () => {
+  it('去掉摘要里泄漏的「素材」', () => {
+    expect(stripMetaLeaks('力度以轻为准。素材把功用分为两方面。')).toBe(
+      '力度以轻为准。功用分为两方面。',
+    );
+    expect(stripMetaLeaks('力度以轻为准。素材巴功用分为两方面。')).toBe(
+      '力度以轻为准。功用分为两方面。',
+    );
+  });
+
+  it('去掉「本文整理」一类元叙述', () => {
+    expect(stripMetaLeaks('本文整理其命名与取穴。')).toBe('其命名与取穴。');
+  });
+});
+
+describe('stripHeadingPinyin', () => {
+  it('去掉括号注音与尾随音节', () => {
+    expect(stripHeadingPinyin('乳中 (rǔ zhōng)')).toBe('乳中');
+    expect(stripHeadingPinyin('乳中（rǔ zhōng）')).toBe('乳中');
+    expect(stripHeadingPinyin('乳中 rǔ zhōng')).toBe('乳中');
+  });
+
+  it('无拼音时原样返回', () => {
+    expect(stripHeadingPinyin('取穴与命名')).toBe('取穴与命名');
+  });
+
+  it('正文级联只改标题行', () => {
+    expect(stripHeadingPinyinFromBody('## 合谷 (hé gǔ)\n\n合谷 (hé gǔ) 在虎口。')).toBe(
+      '## 合谷\n\n合谷 (hé gǔ) 在虎口。',
+    );
   });
 });
 

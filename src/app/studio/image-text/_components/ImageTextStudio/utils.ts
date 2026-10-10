@@ -77,9 +77,52 @@ export function stripMarkdownFence(text: string): string {
   return body.replace(/\n?```\s*$/, '').trim();
 }
 
-/** 规范化图文卡片正文；空串视为无效。 */
+/** 拉丁拼音字符（含声调字母）。 */
+const PINYIN_LATIN = String.raw`a-zA-ZüÜāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜńňǹḿ`;
+
+/** 去掉标题文案里的拼音注音（括号注音或尾随拉丁音节）。 */
+export function stripHeadingPinyin(title: string): string {
+  return title
+    .replace(new RegExp(`[（(]\\s*[${PINYIN_LATIN}][${PINYIN_LATIN}\\s\\-']*[）)]`, 'g'), '')
+    .replace(new RegExp(`\\s+[${PINYIN_LATIN}]+(?:\\s+[${PINYIN_LATIN}]+)*\\s*$`, 'g'), '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** 去掉正文中所有 Markdown 标题行的拼音注音；正文段落不动。 */
+export function stripHeadingPinyinFromBody(body: string): string {
+  return body
+    .split('\n')
+    .map((line) => {
+      const match = /^(#{1,6})\s+(.+)$/.exec(line);
+      if (!match) return line;
+      const hashes = match[1] ?? '';
+      const title = stripHeadingPinyin(match[2] ?? '');
+      return title ? `${hashes} ${title}` : line;
+    })
+    .join('\n');
+}
+
+/**
+ * 去掉提示词元叙述泄漏（如「素材」「本文整理」）。
+ * 「素材」是编辑用语，不应出现在成品任何位置。
+ */
+export function stripMetaLeaks(body: string): string {
+  return body
+    .replace(/本文整理|本文将|本文介绍|本文围绕|下面整理/g, '')
+    .replace(/根据(?:上述)?(?:内容|素材)/g, '')
+    .replace(/文本素材|素材图/g, '')
+    .replace(/素材[里中]的/g, '')
+    .replace(/素材[把巴里中]/g, '')
+    .replace(/素材/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/ ([，。；：、])/g, '$1')
+    .replace(/([，。；：、]) (?=\S)/g, '$1');
+}
+
+/** 规范化图文卡片正文；空串视为无效。顺带去标题拼音与元叙述泄漏。 */
 export function normalizeCardBody(text: string): string | null {
-  const body = stripMarkdownFence(text);
+  const body = stripMetaLeaks(stripHeadingPinyinFromBody(stripMarkdownFence(text)));
   return body ? body : null;
 }
 

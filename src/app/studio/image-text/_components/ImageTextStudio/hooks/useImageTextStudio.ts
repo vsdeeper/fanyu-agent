@@ -49,6 +49,8 @@ import {
   saveImageTextStep,
   serializePlanDocuments,
   stripCaptionFromBody,
+  stripHeadingPinyinFromBody,
+  stripMetaLeaks,
   titleFromBody,
   toImageItems,
   toMaterialItems,
@@ -311,7 +313,9 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
   }
 
   async function handleGenerate() {
-    const prompt = stripCaptionFromBody(bodyRef.current);
+    const prompt = stripMetaLeaks(
+      stripHeadingPinyinFromBody(stripCaptionFromBody(bodyRef.current)),
+    );
     if (!prompt) {
       message.warning(MISSING_BODY_WARNING);
       return;

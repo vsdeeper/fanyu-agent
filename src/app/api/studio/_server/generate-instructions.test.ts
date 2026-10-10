@@ -1237,6 +1237,9 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('Markdown 硬约束');
     expect(prompt).toContain('禁止出现在画面任何可读文字中');
     expect(prompt).toContain('主标题取正文 `#` 后的文字（不含 `#`）');
+    expect(prompt).toContain('标题硬约束');
+    expect(prompt).toContain('画面所有标题（主标题与小节标题）都不要带拼音或注音');
+    expect(prompt).toContain('不要另画副标题条或内容摘要条');
     expect(prompt).toContain('禁止复刻参考图文案与标注落点');
     expect(prompt).toContain('例如 `# 主题标题`');
     expect(prompt).not.toContain('人物模特');
@@ -1335,7 +1338,8 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('科普口径硬约束');
     expect(prompt).toContain('认识本穴、古籍记载可保留正文里已有的病名和症状');
     expect(prompt).toContain('症状可以上屏，也可以按古籍记载来写');
-    expect(prompt).toContain('不写成「某病怎么按」或「某症：配某穴」');
+    expect(prompt).toContain('主标题以正文 `#` 为准原样上屏');
+    expect(prompt).toContain('禁止「某症：配某穴」或「一按就好」');
     expect(prompt).toContain('古籍引文和画面文字去掉「治」「主治」「医治」「诊疗」「诊治」');
     expect(prompt).not.toContain('消肿止痛');
     expect(prompt).not.toContain('某痛时这样按');
