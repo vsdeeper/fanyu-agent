@@ -1220,7 +1220,10 @@ describe('图文配图指令', () => {
     expect(prompt).not.toContain('手形硬约束');
     expect(prompt).not.toContain('三间穴');
     expect(prompt).toContain('画面须含小字「仅供了解，非诊疗建议」');
-    expect(prompt).not.toContain('科普口径硬约束');
+    expect(prompt).toContain('科普口径硬约束');
+    expect(prompt).toContain('疗效承诺');
+    expect(prompt).toContain('诊断宣称');
+    expect(prompt).toContain('冲突时只删这些违规字');
     expect(prompt).not.toContain('手部解剖');
     expect(prompt).not.toContain('标穴位');
     expect(prompt).not.toContain('手形须按上方手形硬约束');
@@ -1258,8 +1261,8 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('【我的要求】');
     expect(prompt).toContain(requirement);
     expect(prompt).toContain('优先于正文与视觉参考');
-    expect(prompt).not.toContain('仍低于上方科普口径硬约束');
-    expect(prompt).not.toContain('科普口径硬约束');
+    expect(prompt).toContain('仍低于上方科普口径硬约束');
+    expect(prompt).toContain('科普口径硬约束');
     expect(prompt).toContain('画面须含小字「仅供了解，非诊疗建议」');
     expect(prompt).toContain('姿态硬约束');
     expect(prompt).not.toContain('手形硬约束');
@@ -1295,7 +1298,9 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('不要改成穴位、按摩或疾病科普');
     expect(prompt).not.toContain('穴位标记');
     expect(prompt).not.toContain('三间穴');
-    expect(prompt).not.toContain('科普口径硬约束');
+    expect(prompt).toContain('科普口径硬约束');
+    expect(prompt).toContain('疗效承诺');
+    expect(prompt).toContain('画面文字去掉「治」「主治」「医治」「诊疗」「诊治」');
     expect(prompt).toContain('画面须含小字「仅供了解，非诊疗建议」');
     expect(prompt).not.toContain('画面不要出现');
   });
@@ -1310,7 +1315,7 @@ describe('图文配图指令', () => {
     expect(prompt).not.toContain('穴位标记');
   });
 
-  it('穴位或疾病正文才注入手形、穴位标记与科普口径', () => {
+  it('穴位或疾病正文才注入手形、穴位标记；科普口径始终注入', () => {
     const body = '# 认识本穴\n\n## 取穴\n沿经找到本穴，配穴只列穴名';
     const requirement = '保留取穴板块';
     const prompt = buildImageTextPrompt(body, {
@@ -1336,20 +1341,19 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('单指拉长或畸形');
     expect(prompt.indexOf('手形硬约束')).toBeLessThan(prompt.indexOf('留足边距'));
     expect(prompt).toContain('科普口径硬约束');
-    expect(prompt).toContain('认识本穴、古籍记载可保留正文里已有的病名和症状');
-    expect(prompt).toContain('症状可以上屏，也可以按古籍记载来写');
-    expect(prompt).toContain('主标题以正文 `#` 为准原样上屏');
-    expect(prompt).toContain('禁止「某症：配某穴」或「一按就好」');
-    expect(prompt).toContain('古籍引文和画面文字去掉「治」「主治」「医治」「诊疗」「诊治」');
+    expect(prompt).toContain('全文生效');
+    expect(prompt).toContain('作用、症状、病名与记载可上屏');
+    expect(prompt).toContain('主标题以正文 `#` 为准');
+    expect(prompt).toContain('画面文字去掉「治」「主治」「医治」「诊疗」「诊治」');
     expect(prompt).not.toContain('消肿止痛');
     expect(prompt).not.toContain('某痛时这样按');
     expect(prompt).toContain('仅供了解，非诊疗建议');
     expect(prompt).toContain('画面须含小字「仅供了解，非诊疗建议」');
-    expect(prompt).toContain('不得出现可诊断');
+    expect(prompt).toContain('禁止诊断宣称');
+    expect(prompt).toContain('可诊断、诊断为、确诊');
     expect(prompt).not.toContain('高血压、高血糖、高血脂、糖尿病');
     expect(prompt).not.toContain('气喘、哮喘不要上屏');
-    expect(prompt).toContain('止咳平喘、利咽消肿可出现在正文，不要做标题');
-    expect(prompt).toContain('症状和感受');
+    expect(prompt).not.toContain('止咳平喘、利咽消肿可出现在正文，不要做标题');
     expect(prompt).not.toContain('中性感受');
     expect(prompt).not.toContain('面部放松、日常保健');
     expect(prompt).toContain('疗效承诺');
@@ -1357,11 +1361,8 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('冲突时只删这些违规字');
     expect(prompt).not.toContain('不得出现任何病名或诊断名');
     expect(prompt).not.toContain('正文若仍含病名');
-    expect(prompt).toContain('身体信号');
-    expect(prompt).toContain(
-      '禁止把「只列穴名」「不绑定具体症状」「中医功用术语」「传统记载的范畴」「认识本穴的背景」「只作记载」「一起被提到」「本穴多与这些情况相关」「病名」「记载中出现的病名」「常归为」「这类手法常归为」「功用表述」「供认识」「供参考」「相关记述里出现的情形」「配伍取」「给出的顺序是」等编辑说明画进画面',
-    );
-    expect(prompt).toContain('利于排便');
+    expect(prompt).not.toContain('身体信号');
+    expect(prompt).not.toContain('利于排便');
     expect(prompt).toContain('仍低于上方科普口径硬约束');
     expect(prompt).not.toContain('三间穴');
     expect(prompt).not.toContain('不要改成穴位、按摩或疾病科普');

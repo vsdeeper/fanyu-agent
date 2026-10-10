@@ -39,6 +39,12 @@ export const DE_AI_FLAVOR_BANNED_PHRASES = [
   '原因很简单',
   '原因很清楚',
   '道理很简单',
+  '本文整理',
+  '本文将',
+  '本文介绍',
+  '本文围绕',
+  '下面整理',
+  '根据上述内容',
 ] as const;
 
 /** 拼进成稿 instructions 的反模板约束（始终生效）。 */
