@@ -13,6 +13,7 @@ import {
   resolveGenerateUnitIds,
   expandedChapterIds,
   isSameWriteSnapshot,
+  readResearchStepSnapshot,
   retainWritingSelection,
   syncWritingUnits,
   toBibleRequest,
@@ -385,6 +386,38 @@ describe('isBibleReadyForStructure', () => {
         characters: [{ ...readyBible.characters[0]!, gender: undefined }],
       }),
     ).toBe(false);
+  });
+});
+
+describe('readResearchStepSnapshot', () => {
+  it('只有思路文件时仍能读回', () => {
+    const snapshot = readResearchStepSnapshot({
+      idea: '',
+      ideaFiles: [
+        {
+          uid: 'file-1',
+          previewUrl: 'data:text/plain;base64,YQ==',
+          name: '大纲.txt',
+          mimeType: 'text/plain',
+          size: 1,
+        },
+      ],
+      volume: 'short',
+    });
+    expect(snapshot?.idea).toBe('');
+    expect(snapshot?.ideaFiles?.[0]?.name).toBe('大纲.txt');
+  });
+
+  it('丢掉刷新后失效的 blob 地址；想法、文件、选题都没有则无效', () => {
+    expect(
+      readResearchStepSnapshot({
+        idea: '',
+        ideaFiles: [{ uid: 'file-1', previewUrl: 'blob:http://local/1', name: '大纲.txt' }],
+      }),
+    ).toBeUndefined();
+    expect(
+      readResearchStepSnapshot({ idea: '院子', volume: 'long', longFormat: 'web' })?.idea,
+    ).toBe('院子');
   });
 });
 

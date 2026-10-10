@@ -1,4 +1,7 @@
-import type { NovelBible } from '@/app/api/studio/novel/_shared/types';
+import type { NovelBible, NovelIdeaFile } from '@/app/api/studio/novel/_shared/types';
+import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
+import { toDocMediaType } from '@/app/studio/_components/ProductDocsUpload/utils';
+import { readUploadItemAsDataUrl, serializeUploadItem } from '@/app/studio/_utils/upload-items';
 import { NOVEL_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/novel/_shared/task-constants';
 import type { NovelStepKey, NovelTaskStepRecord } from '@/app/api/studio/novel/_shared/task-types';
 import {
@@ -858,12 +861,99 @@ export function parseChapterBeatsPayload(json: unknown): StructureBeat[] {
   return beats;
 }
 
-/** 从落盘 data 读取调研快照。 */
+/** 按扩展名兜底思路文件的 MIME；浏览器常把 md 报成空类型。 */
+function mediaTypeFromName(filename: string): string {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (lower.endsWith('.md')) return 'text/markdown';
+  return 'text/plain';
+}
+
+/** 只接受 text/plain、markdown、pdf；其余按扩展名。 */
+function ideaFileMediaType(filename: string, mediaType: string | undefined): string {
+  if (
+    mediaType === 'text/plain' ||
+    mediaType === 'text/markdown' ||
+    mediaType === 'application/pdf'
+  ) {
+    return mediaType;
+  }
+  return mediaTypeFromName(filename);
+}
+
+/**
+ * 把左栏思路文件读成调研/设定/结构请求里的 ideaFile。
+ * 没有文件时不返回该字段；读失败抛错，由调用方提示用户。
+ */
+export async function toNovelIdeaFileInput(
+  files: ProductDocUploadItem[],
+): Promise<NovelIdeaFile | undefined> {
+  const item = files[0];
+  if (!item) return undefined;
+  const filename = item.file?.name || item.name || '思路文件';
+  const mediaType = ideaFileMediaType(
+    filename,
+    item.file ? toDocMediaType(item.file) : item.mimeType,
+  );
+  const dataUrl = await readUploadItemAsDataUrl(item);
+  if (!dataUrl.startsWith('data:')) throw new Error('idea file');
+  return { filename, mediaType, dataUrl };
+}
+
+/** 从表单值取出至多一份思路文件。不是数组时返回 undefined，便于回退到快照。 */
+export function readFormIdeaFiles(value: unknown): ProductDocUploadItem[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const items: ProductDocUploadItem[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as ProductDocUploadItem;
+    if (!row.uid || typeof row.previewUrl !== 'string' || !row.previewUrl) continue;
+    items.push(row);
+    break;
+  }
+  return items;
+}
+
+/** 落盘前去掉不可序列化的 File，并把本地 blob 换成 data URL。没有文件时返回空数组。 */
+export async function serializeIdeaFiles(
+  files: ProductDocUploadItem[],
+): Promise<ProductDocUploadItem[]> {
+  const first = files[0];
+  if (!first) return [];
+  const saved = await serializeUploadItem(first);
+  return [saved];
+}
+
+/** 从快照还原思路文件；只接受 data URL，避免刷新后留下失效的 blob。 */
+function readStoredIdeaFiles(value: unknown): ProductDocUploadItem[] {
+  if (!Array.isArray(value)) return [];
+  const items: ProductDocUploadItem[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const uid = asString(row.uid);
+    const previewUrl = asString(row.previewUrl);
+    if (!uid || !previewUrl?.startsWith('data:')) continue;
+    const name = asString(row.name);
+    const mimeType = asString(row.mimeType);
+    items.push({
+      uid,
+      previewUrl,
+      ...(name ? { name } : {}),
+      ...(mimeType ? { mimeType } : {}),
+      ...(typeof row.size === 'number' && Number.isFinite(row.size) ? { size: row.size } : {}),
+    });
+    break;
+  }
+  return items;
+}
+
+/** 从落盘 data 读取调研快照。想法、思路文件、选题卡至少有一项才视为有效。 */
 export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | undefined {
   if (!data || typeof data !== 'object') return undefined;
   const record = data as Record<string, unknown>;
-  const idea = asString(record.idea);
-  if (!idea) return undefined;
+  const idea = typeof record.idea === 'string' ? record.idea.trim() : '';
+  const ideaFiles = readStoredIdeaFiles(record.ideaFiles);
   const volume = isNovelVolume(record.volume) ? record.volume : 'short';
   const longFormat = isNovelLongFormat(record.longFormat) ? record.longFormat : 'publish';
   const genres = Array.isArray(record.genres)
@@ -878,8 +968,10 @@ export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | 
   }
   const selectedTopicId = asString(record.selectedTopicId);
   const streamText = asString(record.streamText);
+  if (!idea && ideaFiles.length === 0 && topics.length === 0) return undefined;
   return {
     idea,
+    ...(ideaFiles.length ? { ideaFiles } : {}),
     genres,
     volume,
     longFormat,

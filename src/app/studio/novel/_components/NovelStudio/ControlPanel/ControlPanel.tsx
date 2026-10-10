@@ -3,6 +3,7 @@ import StyleDimensionPicker, {
   StyleClipboardActions,
   type StyleDimensionSelections,
 } from '@/app/studio/_components/StyleDimensionPicker';
+import ProductDocsUpload from '@/app/studio/_components/ProductDocsUpload';
 import StudioControlPanel, {
   studioControlFormClassName,
 } from '@/app/studio/_components/StudioControlPanel';
@@ -11,13 +12,18 @@ import {
   GENRE_LABEL,
   GENRE_OPTIONS,
   GENRE_PLACEHOLDER,
+  IDEA_FILE_ACCEPT,
+  IDEA_FILE_HINT,
+  IDEA_FILE_LABEL,
+  IDEA_FILE_MAX,
+  IDEA_FILE_SUBTITLE,
+  IDEA_FILE_TYPE_WARNING,
   IDEA_LABEL,
   BIBLE_BUTTON,
   BIBLE_HIDDEN_AXIS_LABELS,
   IDEA_PLACEHOLDER,
   LONG_FORMAT_LABEL,
   LONG_FORMAT_OPTIONS,
-  MISSING_IDEA_WARNING,
   RESEARCH_BUTTON,
   SELECTED_TOPIC_EMPTY,
   SELECTED_TOPIC_LABEL,
@@ -38,6 +44,7 @@ import type {
   TopicCard,
 } from '../types';
 import WritingUnitList from './WritingUnitList';
+import { isAllowedIdeaFile, requireIdeaOrFile } from './utils';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
@@ -143,9 +150,39 @@ export default function ControlPanel({
         {researchStep ? (
           <>
             <Form.Item
+              name="ideaFiles"
+              dependencies={['idea']}
+              rules={[
+                {
+                  validator: async (_, value: NovelPanelValues['ideaFiles'] | undefined) => {
+                    await requireIdeaOrFile(form.getFieldValue('idea'), value);
+                  },
+                },
+              ]}
+            >
+              <ProductDocsUpload
+                max={IDEA_FILE_MAX}
+                label={IDEA_FILE_LABEL}
+                subtitle={IDEA_FILE_SUBTITLE}
+                hint={IDEA_FILE_HINT}
+                accept={IDEA_FILE_ACCEPT}
+                typeWarning={IDEA_FILE_TYPE_WARNING}
+                isAllowedFile={isAllowedIdeaFile}
+                ariaLabel="上传思路文件"
+                disabled={researchBusy}
+              />
+            </Form.Item>
+            <Form.Item
               name="idea"
               label={IDEA_LABEL}
-              rules={[{ required: true, whitespace: true, message: MISSING_IDEA_WARNING }]}
+              dependencies={['ideaFiles']}
+              rules={[
+                {
+                  validator: async (_, value: string | undefined) => {
+                    await requireIdeaOrFile(value, form.getFieldValue('ideaFiles'));
+                  },
+                },
+              ]}
             >
               <Input.TextArea rows={6} placeholder={IDEA_PLACEHOLDER} />
             </Form.Item>

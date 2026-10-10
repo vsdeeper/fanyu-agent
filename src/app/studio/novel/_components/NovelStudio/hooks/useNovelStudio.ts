@@ -2,7 +2,9 @@
 
 import { App, Form } from 'antd';
 import { useEffect, useRef, useState } from 'react';
+import type { NovelIdeaFile } from '@/app/api/studio/novel/_shared/types';
 import type { NovelTaskDetail } from '@/app/api/studio/novel/_shared/task-types';
+import { revokeLocalUploadItemUrls } from '@/lib/client/upload-items';
 import {
   formatStyleSelections,
   type StyleDimensionSelections,
@@ -21,6 +23,7 @@ import {
   COPY_BODY_FAILED,
   COPY_BODY_OK,
   DEFAULT_PANEL_VALUES,
+  IDEA_FILE_READ_FAILED,
   MISSING_BIBLE_WARNING,
   MISSING_IDEA_WARNING,
   MISSING_PREVIEW_BODY_WARNING,
@@ -78,7 +81,10 @@ import {
   parseStructurePayload,
   parseVolumeChaptersPayload,
   readBibleStepSnapshot,
+  readFormIdeaFiles,
   readResearchStepSnapshot,
+  serializeIdeaFiles,
+  toNovelIdeaFileInput,
   readStructureStepSnapshot,
   readWriteStepSnapshot,
   resolveGenerateUnitIds,
@@ -127,6 +133,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const [panelForm] = Form.useForm<NovelPanelValues>();
   const [panelInitialValues] = useState<NovelPanelValues>(() => ({
     idea: initialResearch?.idea ?? DEFAULT_PANEL_VALUES.idea,
+    ideaFiles: initialResearch?.ideaFiles ?? DEFAULT_PANEL_VALUES.ideaFiles,
     genres: initialResearch?.genres ?? DEFAULT_PANEL_VALUES.genres,
     volume: initialResearch?.volume ?? DEFAULT_PANEL_VALUES.volume,
     longFormat: initialResearch?.longFormat ?? DEFAULT_PANEL_VALUES.longFormat,
@@ -185,8 +192,10 @@ export function useNovelStudio(task: NovelTaskDetail) {
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      const files = panelForm.getFieldValue('ideaFiles');
+      if (Array.isArray(files)) revokeLocalUploadItemUrls(files);
     };
-  }, []);
+  }, [panelForm]);
 
   const selectedTopic = topics.find((topic) => topic.id === selectedTopicId);
 
@@ -206,17 +215,50 @@ export function useNovelStudio(task: NovelTaskDetail) {
   function readPanelValues(): NovelPanelValues {
     // true：包含已卸载 Form.Item（切到结构/写作步后 idea/volume 不再挂载）
     const values = panelForm.getFieldsValue(true);
-    const idea = String(values.idea ?? '').trim() || initialResearch?.idea || '';
+    // 空字符串是用户清空，不能回退到上次落盘；只有字段根本不在表单里才用快照。
+    const idea =
+      typeof values.idea === 'string' ? values.idea.trim() : (initialResearch?.idea ?? '');
+    const formIdeaFiles = readFormIdeaFiles(values.ideaFiles);
+    const ideaFiles = formIdeaFiles ?? initialResearch?.ideaFiles ?? [];
     const genres = Array.isArray(values.genres)
       ? values.genres.map((item: unknown) => String(item).trim()).filter(Boolean)
       : (initialResearch?.genres ?? []);
     const volume = isNovelVolume(values.volume)
       ? values.volume
-      : (initialResearch?.volume ?? 'short');
+      : (initialResearch?.volume ?? DEFAULT_PANEL_VALUES.volume);
     const longFormat = isNovelLongFormat(values.longFormat)
       ? values.longFormat
-      : (initialResearch?.longFormat ?? 'publish');
-    return { idea, genres, volume, longFormat };
+      : (initialResearch?.longFormat ?? DEFAULT_PANEL_VALUES.longFormat);
+    return { idea, ideaFiles, genres, volume, longFormat };
+  }
+
+  /** 想法与思路文件至少一项；文件读失败时返回原因，不把异常原文给用户。 */
+  async function readIdeaPayload(
+    panel: NovelPanelValues,
+  ): Promise<{ idea?: string; ideaFile?: NovelIdeaFile } | 'missing' | 'unreadable'> {
+    try {
+      const ideaFile = await toNovelIdeaFileInput(panel.ideaFiles);
+      const idea = panel.idea.trim();
+      if (!idea && !ideaFile) return 'missing';
+      return {
+        ...(idea ? { idea } : {}),
+        ...(ideaFile ? { ideaFile } : {}),
+      };
+    } catch (err) {
+      console.error('[novel-studio] read idea file', err);
+      return 'unreadable';
+    }
+  }
+
+  /** 把当前思路文件收成可落盘的 data URL；失败时记日志并当没文件，避免挡住选题保存。 */
+  async function storedIdeaFiles(panel: NovelPanelValues) {
+    try {
+      return await serializeIdeaFiles(panel.ideaFiles);
+    } catch (err) {
+      console.error('[novel-studio] serialize idea file', err);
+      message.error(IDEA_FILE_READ_FAILED);
+      return [];
+    }
   }
 
   async function persistResearch(
@@ -355,8 +397,13 @@ export function useNovelStudio(task: NovelTaskDetail) {
   async function handleResearch() {
     if (!(await validateForm(panelForm))) return;
     const panel = readPanelValues();
-    if (!panel.idea) {
+    const ideaPayload = await readIdeaPayload(panel);
+    if (ideaPayload === 'missing') {
       message.warning(MISSING_IDEA_WARNING);
+      return;
+    }
+    if (ideaPayload === 'unreadable') {
+      message.error(IDEA_FILE_READ_FAILED);
       return;
     }
 
@@ -379,7 +426,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     await runSse(
       '/api/studio/novel/research',
       {
-        idea: panel.idea,
+        ...ideaPayload,
         volume: panel.volume,
         ...(panel.genres.length ? { genres: panel.genres } : {}),
         ...longFormatBody(panel),
@@ -399,8 +446,10 @@ export function useNovelStudio(task: NovelTaskDetail) {
         setTopics(nextTopics);
         setSelectedTopicId(undefined);
         setPhase('researched');
+        const ideaFiles = await storedIdeaFiles(panel);
         await persistResearch({
           idea: panel.idea,
+          ...(ideaFiles.length ? { ideaFiles } : {}),
           genres: panel.genres,
           volume: panel.volume,
           longFormat: panel.longFormat,
@@ -419,8 +468,10 @@ export function useNovelStudio(task: NovelTaskDetail) {
     const panel = readPanelValues();
     const currentTopics = topicsRef.current;
     if (currentTopics.length === 0) return;
+    const ideaFiles = await storedIdeaFiles(panel);
     await persistResearch({
-      idea: panel.idea || initialResearch?.idea || '',
+      idea: panel.idea,
+      ...(ideaFiles.length ? { ideaFiles } : {}),
       genres: panel.genres,
       volume: panel.volume,
       longFormat: panel.longFormat,
@@ -436,6 +487,17 @@ export function useNovelStudio(task: NovelTaskDetail) {
       return;
     }
 
+    const panel = readPanelValues();
+    const ideaPayload = await readIdeaPayload(panel);
+    if (ideaPayload === 'missing') {
+      message.warning(MISSING_IDEA_WARNING);
+      return;
+    }
+    if (ideaPayload === 'unreadable') {
+      message.error(IDEA_FILE_READ_FAILED);
+      return;
+    }
+
     if (bible?.characters.length || structure || hasWritingBody(writing)) {
       const confirmed = await confirmOverwrite(
         BIBLE_REGENERATE_CONFIRM_TITLE,
@@ -444,7 +506,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
       if (!confirmed) return;
     }
 
-    const panel = readPanelValues();
     const keptVoice = bibleRef.current?.voiceFocus ?? {};
     const keptTense = bibleRef.current?.tense;
     const hadDraft = hasBibleDraft(bibleRef.current);
@@ -464,7 +525,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     await runSse(
       '/api/studio/novel/bible',
       {
-        idea: panel.idea,
+        ...ideaPayload,
         volume: panel.volume,
         topic: selectedTopic,
         ...(panel.genres.length ? { genres: panel.genres } : {}),
@@ -536,6 +597,17 @@ export function useNovelStudio(task: NovelTaskDetail) {
       return;
     }
 
+    const panel = readPanelValues();
+    const ideaPayload = await readIdeaPayload(panel);
+    if (ideaPayload === 'missing') {
+      message.warning(MISSING_IDEA_WARNING);
+      return;
+    }
+    if (ideaPayload === 'unreadable') {
+      message.error(IDEA_FILE_READ_FAILED);
+      return;
+    }
+
     if (structure) {
       const confirmed = await confirmOverwrite(
         STRUCTURE_REGENERATE_CONFIRM_TITLE,
@@ -544,7 +616,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
       if (!confirmed) return;
     }
 
-    const panel = readPanelValues();
     const hadStructure = Boolean(structure);
     setWriting(undefined);
     setSelectedUnitIds([]);
@@ -561,7 +632,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     await runSse(
       '/api/studio/novel/structure',
       {
-        idea: panel.idea,
+        ...ideaPayload,
         volume: panel.volume,
         topic: selectedTopic,
         bible: bibleBody,

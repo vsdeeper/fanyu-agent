@@ -85,27 +85,37 @@ export type NovelStructureSnapshot =
   | { kind: 'chapters'; chapters: NovelStructureChapter[] }
   | { kind: 'volumes'; volumes: NovelStructureVolume[] };
 
-/** 选题调研请求。 */
+/** 选题调研上传的思路文件。TXT/MD 抽正文，PDF 由模型直接阅读。 */
+export type NovelIdeaFile = {
+  filename: string;
+  mediaType: string;
+  dataUrl: string;
+};
+
+/** 选题调研请求。想法与思路文件至少有一项。 */
 export type NovelResearchRequest = {
-  idea: string;
+  idea?: string;
+  ideaFile?: NovelIdeaFile;
   genres?: string[];
   volume: NovelVolume;
   /** 仅长篇使用；缺省按出版。 */
   longFormat?: NovelLongFormat;
 };
 
-/** 设定生成请求：只产出人物、世界与禁忌。 */
+/** 设定生成请求：只产出人物、世界与禁忌。想法与思路文件至少有一项。 */
 export type NovelBibleRequest = {
-  idea: string;
+  idea?: string;
+  ideaFile?: NovelIdeaFile;
   genres?: string[];
   volume: NovelVolume;
   longFormat?: NovelLongFormat;
   topic: NovelTopicCard;
 };
 
-/** 故事结构请求。 */
+/** 故事结构请求。想法与思路文件至少有一项。 */
 export type NovelStructureRequest = {
-  idea: string;
+  idea?: string;
+  ideaFile?: NovelIdeaFile;
   genres?: string[];
   volume: NovelVolume;
   longFormat?: NovelLongFormat;

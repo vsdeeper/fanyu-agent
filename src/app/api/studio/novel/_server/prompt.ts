@@ -103,15 +103,33 @@ function resolveLongFormat(
   return longFormat === 'web' ? 'web' : 'publish';
 }
 
+/** 已抽出的思路文件正文，或一份待附件阅读的 PDF。 */
+export type IdeaFilePrompt = {
+  documentsText?: string;
+  hasPdf?: boolean;
+};
+
+/** 把想法与思路文件写进提示。只填了文件时明确告诉模型以文件为准。 */
+function pushIdeaSource(lines: string[], idea: string | undefined, file?: IdeaFilePrompt) {
+  const text = idea?.trim() ?? '';
+  if (text) lines.push(`我的想法：${text}`);
+  else lines.push('我的想法：（未填写，以思路文件为准）');
+  const doc = file?.documentsText?.trim();
+  if (doc) {
+    lines.push('【思路文件】', doc);
+  }
+  if (file?.hasPdf) {
+    lines.push('【思路文件】1 份 PDF，见附件。请直接阅读正文。');
+  }
+}
+
 /** 拼装选题调研用户提示。 */
-export function buildResearchPrompt(body: NovelResearchRequest): string {
+export function buildResearchPrompt(body: NovelResearchRequest, file?: IdeaFilePrompt): string {
   const genres =
     body.genres && body.genres.length > 0 ? body.genres.join('、') : '未指定（可自由发挥）';
-  const lines = [
-    `我的想法：${body.idea}`,
-    `偏好类型：${genres}`,
-    `体量倾向：${VOLUME_LABEL[body.volume]}`,
-  ];
+  const lines: string[] = [];
+  pushIdeaSource(lines, body.idea, file);
+  lines.push(`偏好类型：${genres}`, `体量倾向：${VOLUME_LABEL[body.volume]}`);
   if (body.volume === 'long') {
     lines.push(`长篇赛道：${LONG_FORMAT_LABEL[resolveLongFormat('long', body.longFormat)]}`);
   }
@@ -120,15 +138,13 @@ export function buildResearchPrompt(body: NovelResearchRequest): string {
 }
 
 /** 拼装设定用户提示。 */
-export function buildBiblePrompt(body: NovelBibleRequest): string {
+export function buildBiblePrompt(body: NovelBibleRequest, file?: IdeaFilePrompt): string {
   const genres = body.genres && body.genres.length > 0 ? body.genres.join('、') : '未指定';
   const risk = body.topic.risk ? `\n风险/难点：${body.topic.risk}` : '';
   const longFormat = resolveLongFormat(body.volume, body.longFormat);
-  const lines = [
-    `我的想法：${body.idea}`,
-    `偏好类型：${genres}`,
-    `体量：${VOLUME_LABEL[body.volume]}`,
-  ];
+  const lines: string[] = [];
+  pushIdeaSource(lines, body.idea, file);
+  lines.push(`偏好类型：${genres}`, `体量：${VOLUME_LABEL[body.volume]}`);
   if (body.volume === 'long') {
     lines.push(`长篇赛道：${LONG_FORMAT_LABEL[longFormat]}`);
   }
@@ -144,7 +160,7 @@ export function buildBiblePrompt(body: NovelBibleRequest): string {
 }
 
 /** 拼装故事结构用户提示。 */
-export function buildStructurePrompt(body: NovelStructureRequest): string {
+export function buildStructurePrompt(body: NovelStructureRequest, file?: IdeaFilePrompt): string {
   const genres = body.genres && body.genres.length > 0 ? body.genres.join('、') : '未指定';
   const risk = body.topic.risk ? `\n风险/难点：${body.topic.risk}` : '';
   const longFormat = resolveLongFormat(body.volume, body.longFormat);
@@ -156,11 +172,9 @@ export function buildStructurePrompt(body: NovelStructureRequest): string {
           ? '请输出 volumes 结构（约 8～12 卷，volumes[].chapters 必须为空数组），末尾附 JSON。'
           : '请输出 volumes 结构（约 3～5 卷，volumes[].chapters 必须为空数组），末尾附 JSON。'
         : '请输出 chapters 结构（chapters[].beats 必须为空数组），末尾附 JSON。';
-  const lines = [
-    `我的想法：${body.idea}`,
-    `偏好类型：${genres}`,
-    `体量：${VOLUME_LABEL[body.volume]}`,
-  ];
+  const lines: string[] = [];
+  pushIdeaSource(lines, body.idea, file);
+  lines.push(`偏好类型：${genres}`, `体量：${VOLUME_LABEL[body.volume]}`);
   if (body.volume === 'long') {
     lines.push(`长篇赛道：${LONG_FORMAT_LABEL[longFormat]}`);
   }

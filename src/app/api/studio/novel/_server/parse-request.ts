@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { z } from 'zod';
+import { isNovelIdeaFile } from '../_shared/idea-file';
 import type {
   NovelBibleRequest,
   NovelChapterBeatsRequest,
@@ -14,6 +15,24 @@ import type {
 const volumeSchema = z.enum(['short', 'medium', 'long']);
 const longFormatSchema = z.enum(['publish', 'web']);
 
+const ideaFileSchema = z
+  .object({
+    filename: z.string().trim().min(1),
+    mediaType: z.string().trim().min(1),
+    dataUrl: z.string().trim().startsWith('data:'),
+  })
+  .refine((value) => isNovelIdeaFile(value.filename, value.mediaType));
+
+/** 想法正文与思路文件至少有一项。空字符串过不了 min(1)，调用方应省略该字段。 */
+const ideaSourceSchema = {
+  idea: z.string().trim().min(1).optional(),
+  ideaFile: ideaFileSchema.optional(),
+};
+
+function hasIdeaSource(data: { idea?: string; ideaFile?: unknown }): boolean {
+  return Boolean(data.idea) || Boolean(data.ideaFile);
+}
+
 const topicSchema = z.object({
   id: z.string().trim().min(1),
   title: z.string().trim().min(1),
@@ -23,12 +42,14 @@ const topicSchema = z.object({
   risk: z.string().trim().optional(),
 });
 
-const researchSchema = z.object({
-  idea: z.string().trim().min(1),
-  genres: z.array(z.string().trim().min(1)).optional(),
-  volume: volumeSchema,
-  longFormat: longFormatSchema.optional(),
-});
+const researchSchema = z
+  .object({
+    ...ideaSourceSchema,
+    genres: z.array(z.string().trim().min(1)).optional(),
+    volume: volumeSchema,
+    longFormat: longFormatSchema.optional(),
+  })
+  .refine(hasIdeaSource);
 
 const characterSchema = z.object({
   id: z.string().trim().min(1),
@@ -56,22 +77,26 @@ const bibleSchema = z.object({
   voicePrompt: z.string().trim().min(1),
 });
 
-const bibleRequestSchema = z.object({
-  idea: z.string().trim().min(1),
-  genres: z.array(z.string().trim().min(1)).optional(),
-  volume: volumeSchema,
-  longFormat: longFormatSchema.optional(),
-  topic: topicSchema,
-});
+const bibleRequestSchema = z
+  .object({
+    ...ideaSourceSchema,
+    genres: z.array(z.string().trim().min(1)).optional(),
+    volume: volumeSchema,
+    longFormat: longFormatSchema.optional(),
+    topic: topicSchema,
+  })
+  .refine(hasIdeaSource);
 
-const structureSchema = z.object({
-  idea: z.string().trim().min(1),
-  genres: z.array(z.string().trim().min(1)).optional(),
-  volume: volumeSchema,
-  longFormat: longFormatSchema.optional(),
-  topic: topicSchema,
-  bible: bibleSchema,
-});
+const structureSchema = z
+  .object({
+    ...ideaSourceSchema,
+    genres: z.array(z.string().trim().min(1)).optional(),
+    volume: volumeSchema,
+    longFormat: longFormatSchema.optional(),
+    topic: topicSchema,
+    bible: bibleSchema,
+  })
+  .refine(hasIdeaSource);
 
 const volumeChaptersSchema = z.object({
   topic: topicSchema,

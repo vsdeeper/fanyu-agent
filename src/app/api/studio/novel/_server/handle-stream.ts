@@ -17,12 +17,13 @@ import {
 } from '@/app/api/studio/_server/stream-encode';
 import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 import { NOVEL_SSE_EVENT } from '../_shared/constants';
-import type { NovelSseTextEvent } from '../_shared/types';
+import type { NovelIdeaFile, NovelSseTextEvent } from '../_shared/types';
 import {
   BIBLE_FAILED,
   BIBLE_TRUNCATED,
   CHAPTER_BEATS_FAILED,
   CHAPTER_BEATS_TRUNCATED,
+  IDEA_FILE_INVALID,
   MISSING_BIBLE_INPUT,
   MISSING_CHAPTER_BEATS_INPUT,
   MISSING_RESEARCH_INPUT,
@@ -48,6 +49,7 @@ import {
   WRITING_FAILED,
   WRITING_TRUNCATED,
 } from './constants';
+import { resolveNovelIdeaFile, type NovelIdeaPdfPart } from './idea-file';
 import {
   BIBLE_INSTRUCTIONS,
   CHAPTER_BEATS_INSTRUCTIONS,
@@ -120,6 +122,7 @@ async function pipeTextStream(
 function createProStream(params: {
   instructions: string;
   prompt: string;
+  pdfPart?: NovelIdeaPdfPart;
   maxOutputTokens: number;
   abortSignal: AbortSignal;
 }) {
@@ -130,14 +133,30 @@ function createProStream(params: {
     ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
     ...runtime.getOpenAIOptions(),
   };
+  const content = params.pdfPart
+    ? [
+        { type: 'text' as const, text: params.prompt },
+        { type: 'text' as const, text: '以下附件是【思路文件】，请直接阅读文件正文：' },
+        params.pdfPart,
+      ]
+    : params.prompt;
   return streamText({
     model: runtime.getMainModel(getModelId(provider, 'pro')),
     instructions: params.instructions,
-    messages: [{ role: 'user', content: params.prompt }],
+    messages: [{ role: 'user', content }],
     abortSignal: params.abortSignal,
     maxOutputTokens: params.maxOutputTokens,
     providerOptions: { openai: openaiOptions },
   });
+}
+
+/** 解码思路文件。未上传视为成功；损坏时返回 400，避免流已经 200 才失败。 */
+async function readIdeaFile(
+  file: NovelIdeaFile | undefined,
+): Promise<{ documentsText: string; pdfPart?: NovelIdeaPdfPart } | Response> {
+  const resolved = await resolveNovelIdeaFile(file);
+  if (!resolved.ok) return jsonFail(ApiErrorCode.INVALID_PARAMS, IDEA_FILE_INVALID, 400);
+  return { documentsText: resolved.documentsText, pdfPart: resolved.pdfPart };
 }
 
 function createNovelSse(
@@ -183,11 +202,18 @@ export async function handleNovelBible(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_BIBLE_INPUT, 400);
   }
 
+  const ideaFile = await readIdeaFile(body.ideaFile);
+  if (ideaFile instanceof Response) return ideaFile;
+
   return createNovelSse('novel/bible', BIBLE_FAILED, async (send) => {
     await withStudioChatSettings(split.settings, async () => {
       const result = createProStream({
         instructions: BIBLE_INSTRUCTIONS,
-        prompt: buildBiblePrompt(body),
+        prompt: buildBiblePrompt(body, {
+          documentsText: ideaFile.documentsText,
+          hasPdf: Boolean(ideaFile.pdfPart),
+        }),
+        pdfPart: ideaFile.pdfPart,
         maxOutputTokens: NOVEL_BIBLE_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
       });
@@ -215,11 +241,18 @@ export async function handleNovelResearch(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_RESEARCH_INPUT, 400);
   }
 
+  const ideaFile = await readIdeaFile(body.ideaFile);
+  if (ideaFile instanceof Response) return ideaFile;
+
   return createNovelSse('novel/research', RESEARCH_FAILED, async (send) => {
     await withStudioChatSettings(split.settings, async () => {
       const result = createProStream({
         instructions: RESEARCH_INSTRUCTIONS,
-        prompt: buildResearchPrompt(body),
+        prompt: buildResearchPrompt(body, {
+          documentsText: ideaFile.documentsText,
+          hasPdf: Boolean(ideaFile.pdfPart),
+        }),
+        pdfPart: ideaFile.pdfPart,
         maxOutputTokens: NOVEL_RESEARCH_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
       });
@@ -253,11 +286,18 @@ export async function handleNovelStructure(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_STRUCTURE_INPUT, 400);
   }
 
+  const ideaFile = await readIdeaFile(body.ideaFile);
+  if (ideaFile instanceof Response) return ideaFile;
+
   return createNovelSse('novel/structure', STRUCTURE_FAILED, async (send) => {
     await withStudioChatSettings(split.settings, async () => {
       const result = createProStream({
         instructions: STRUCTURE_INSTRUCTIONS,
-        prompt: buildStructurePrompt(body),
+        prompt: buildStructurePrompt(body, {
+          documentsText: ideaFile.documentsText,
+          hasPdf: Boolean(ideaFile.pdfPart),
+        }),
+        pdfPart: ideaFile.pdfPart,
         maxOutputTokens: NOVEL_STRUCTURE_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
       });

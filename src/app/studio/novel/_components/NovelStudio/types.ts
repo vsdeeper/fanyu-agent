@@ -1,9 +1,11 @@
 import type {
   NovelCharacter,
+  NovelCharacterGender,
   NovelCharacterRole,
   NovelRelation,
   NovelTense,
 } from '@/app/api/studio/novel/_shared/types';
+import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
 import type { StyleDimensionSelections } from '@/app/studio/_components/StyleDimensionPicker';
 
 /** 小说工作室 UI 阶段：选题调研 → 设定 → 故事结构 → 写作 → 预览。 */
@@ -34,6 +36,8 @@ export type { StyleDimensionSelections };
 /** 左栏表单值：与 ControlPanel 的 Form.Item name 一一对应。 */
 export type NovelPanelValues = {
   idea: string;
+  /** 思路文件，至多一份；与 idea 二选一即可。 */
+  ideaFiles: ProductDocUploadItem[];
   genres: string[];
   volume: NovelVolume;
   /** 长篇赛道；短中篇可保留默认值但不参与算法。 */
@@ -122,6 +126,8 @@ export type BibleGenerated = {
 /** 选题调研步骤落盘快照。 */
 export type ResearchStepSnapshot = {
   idea: string;
+  /** 已序列化的思路文件，至多一份；previewUrl 为 data URL。 */
+  ideaFiles?: ProductDocUploadItem[];
   genres: string[];
   volume: NovelVolume;
   longFormat: NovelLongFormat;

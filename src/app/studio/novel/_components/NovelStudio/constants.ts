@@ -75,9 +75,10 @@ export const LONG_FORMAT_OPTIONS: { label: string; value: NovelLongFormat }[] = 
 
 export const DEFAULT_PANEL_VALUES: NovelPanelValues = {
   idea: '',
+  ideaFiles: [],
   genres: [],
-  volume: 'short',
-  longFormat: 'publish',
+  volume: 'long',
+  longFormat: 'web',
 };
 
 export const RESEARCH_BUTTON = '开始调研';
@@ -91,6 +92,13 @@ export const NEXT_BUTTON = '下一步';
 export const PREVIEW_RELATION_GRAPH_BUTTON = '预览人物关系图谱';
 export const IDEA_LABEL = '我的想法';
 export const IDEA_PLACEHOLDER = '例如：小时候夏天停电，全家在院子里乘凉聊天';
+export const IDEA_FILE_LABEL = '思路文件';
+export const IDEA_FILE_SUBTITLE = '支持 TXT / MD / PDF';
+export const IDEA_FILE_HINT = '上传大纲或构思；与「我的想法」二选一即可';
+export const IDEA_FILE_ACCEPT = '.txt,.md,.pdf';
+export const IDEA_FILE_TYPE_WARNING = '仅支持 TXT、MD、PDF';
+export const IDEA_FILE_MAX = 1;
+export const IDEA_FILE_READ_FAILED = '思路文件无法读取，请重新上传';
 export const GENRE_LABEL = '偏好类型';
 export const GENRE_PLACEHOLDER = '可选，多选';
 export const VOLUME_LABEL = '体量倾向';
@@ -99,13 +107,14 @@ export const SELECTED_TOPIC_LABEL = '选定选题';
 export const SELECTED_TOPIC_EMPTY = '尚未选择选题';
 export const STYLE_LABEL = '文风';
 
-export const MISSING_IDEA_WARNING = '请先填写我的想法';
+export const MISSING_IDEA_WARNING = '请填写我的想法或上传思路文件';
 export const MISSING_TOPIC_WARNING = '请先点选一个选题';
 export const MISSING_BIBLE_WARNING = '请先完成设定：至少一名写全性别的人物、时空、人称、聚焦和时态';
 export const MISSING_STRUCTURE_WARNING = '请先生成故事结构';
 export const MISSING_WRITE_SELECTION_WARNING = '请先选择有节拍的章节或节拍';
 export const MISSING_PREVIEW_BODY_WARNING = '请先生成或填写正文后再预览';
-export const EMPTY_RESEARCH_HINT = '填写想法后点击「开始调研」，将产出若干选题卡供点选';
+export const EMPTY_RESEARCH_HINT =
+  '填写想法或上传思路文件后点击「开始调研」，将产出若干选题卡供点选';
 export const EMPTY_BIBLE_HINT = '确认选题后点击「生成设定」，产出核心人物、关系、时空与规矩';
 export const EMPTY_STRUCTURE_HINT = '确认设定后点击「生成结构」，产出故事结构供编辑';
 export const EMPTY_WRITE_HINT = '在左侧选择有节拍的章节或节拍';
