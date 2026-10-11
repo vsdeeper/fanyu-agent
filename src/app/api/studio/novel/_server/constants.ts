@@ -32,7 +32,7 @@ export const NOVEL_STRUCTURE_MAX_OUTPUT_TOKENS = 24576;
 /** 按卷章纲输出上限（同上：reasoning 与 JSON 同预算）。 */
 export const NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS = 24576;
 /** 章内节拍输出上限（同上：reasoning 与 JSON 同预算）。 */
-export const NOVEL_CHAPTER_BEATS_MAX_OUTPUT_TOKENS = 16384;
+export const NOVEL_CHAPTER_BEATS_MAX_OUTPUT_TOKENS = 24576;
 /** 单节拍正文输出上限（约 2000 字 + reasoning）。 */
 export const NOVEL_WRITING_MAX_OUTPUT_TOKENS = 24576;
 /** 润色须整段回写，reasoning 与正文同一预算，与写作同档。 */

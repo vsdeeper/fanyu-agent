@@ -654,8 +654,8 @@ function parseCharacter(value: unknown): NovelCharacter | null {
   const gender = parseCharacterGender(record.gender);
   const identity = asString(record.identity);
   const desire = asString(record.desire);
-  const flaw = asString(record.flaw);
-  if (!id || !name || !role || !gender || !identity || !desire || !flaw) return null;
+  const flaw = typeof record.flaw === 'string' ? record.flaw.trim() : '';
+  if (!id || !name || !role || !gender || !identity || !desire) return null;
   return { id, name, role, gender, identity, desire, flaw };
 }
 
@@ -724,8 +724,7 @@ function isCompleteCharacter(
     character.name.trim() &&
     character.gender &&
     character.identity.trim() &&
-    character.desire.trim() &&
-    character.flaw.trim(),
+    character.desire.trim(),
   );
 }
 

@@ -13,8 +13,9 @@ const character: NovelCharacter = {
 };
 
 describe('isSavableCharacter', () => {
-  it('姓名、性别、身份、欲望、缺陷都有才可保存', () => {
+  it('姓名、性别、身份、欲望有内容即可保存；缺陷可空', () => {
     expect(isSavableCharacter(character)).toBe(true);
+    expect(isSavableCharacter({ ...character, flaw: '' })).toBe(true);
     expect(isSavableCharacter({ ...character, desire: '  ' })).toBe(false);
     expect(isSavableCharacter({ ...character, gender: undefined })).toBe(false);
   });

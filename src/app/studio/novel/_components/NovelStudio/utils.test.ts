@@ -378,6 +378,12 @@ describe('hasBibleDraft', () => {
 describe('isBibleReadyForStructure', () => {
   it('人称、聚焦、时态和写全的人物都在时才放行', () => {
     expect(isBibleReadyForStructure(readyBible)).toBe(true);
+    expect(
+      isBibleReadyForStructure({
+        ...readyBible,
+        characters: [{ ...readyBible.characters[0]!, flaw: '' }],
+      }),
+    ).toBe(true);
     expect(isBibleReadyForStructure({ ...readyBible, tense: undefined })).toBe(false);
     expect(isBibleReadyForStructure({ ...readyBible, voiceFocus: {} })).toBe(false);
     expect(

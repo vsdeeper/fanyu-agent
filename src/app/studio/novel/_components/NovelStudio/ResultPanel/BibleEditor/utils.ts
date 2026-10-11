@@ -1,13 +1,12 @@
 import type { NovelCharacter, NovelRelation } from '../../types';
 
-/** 人物卡是否写全：姓名、性别、身份、欲望、缺陷都有内容。 */
+/** 人物卡是否可保存：姓名、性别、身份、欲望有内容；缺陷可空。 */
 export function isSavableCharacter(character: NovelCharacter): boolean {
   return Boolean(
     character.name.trim() &&
     character.gender &&
     character.identity.trim() &&
-    character.desire.trim() &&
-    character.flaw.trim(),
+    character.desire.trim(),
   );
 }
 

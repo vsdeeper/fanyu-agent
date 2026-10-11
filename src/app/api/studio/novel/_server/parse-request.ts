@@ -58,7 +58,7 @@ const characterSchema = z.object({
   gender: z.enum(['female', 'male', 'unspecified']),
   identity: z.string().trim().min(1),
   desire: z.string().trim().min(1),
-  flaw: z.string().trim().min(1),
+  flaw: z.string().trim(),
 });
 
 const relationSchema = z.object({

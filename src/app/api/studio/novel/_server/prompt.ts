@@ -58,10 +58,11 @@ function bibleScaleHint(volume: NovelVolume, longFormat: NovelLongFormat | undef
 export function formatBiblePrompt(bible: NovelBible): string {
   const names = new Map(bible.characters.map((character) => [character.id, character.name]));
   const characters = bible.characters
-    .map(
-      (character) =>
-        `- ${character.name}｜${ROLE_LABEL[character.role]}｜${character.gender ? GENDER_LABEL[character.gender] : '不标明'}｜${character.identity}｜想要：${character.desire}｜缺陷：${character.flaw}`,
-    )
+    .map((character) => {
+      const gender = character.gender ? GENDER_LABEL[character.gender] : '不标明';
+      const flaw = character.flaw.trim() ? `｜缺陷：${character.flaw.trim()}` : '';
+      return `- ${character.name}｜${ROLE_LABEL[character.role]}｜${gender}｜${character.identity}｜想要：${character.desire}${flaw}`;
+    })
     .join('\n');
   const relations =
     bible.relations.length > 0
