@@ -1223,7 +1223,7 @@ describe('图文配图指令', () => {
     expect(prompt).toContain('科普口径硬约束');
     expect(prompt).toContain('疗效承诺');
     expect(prompt).toContain('诊断宣称');
-    expect(prompt).toContain('冲突时只删这些违规字');
+    expect(prompt).toContain('冲突时删除违规名称及其关联内容');
     expect(prompt).not.toContain('手部解剖');
     expect(prompt).not.toContain('标穴位');
     expect(prompt).not.toContain('手形须按上方手形硬约束');
@@ -1342,8 +1342,13 @@ describe('图文配图指令', () => {
     expect(prompt.indexOf('手形硬约束')).toBeLessThan(prompt.indexOf('留足边距'));
     expect(prompt).toContain('科普口径硬约束');
     expect(prompt).toContain('全文生效');
-    expect(prompt).toContain('作用、症状、病名与记载可上屏');
+    expect(prompt).toContain('作用与一般生活不适可上屏');
     expect(prompt).toContain('主标题以正文 `#` 为准');
+    expect(prompt).toContain('急性阑尾炎、阑尾炎、细菌性痢疾、痢疾、腹泻、不孕');
+    expect(prompt).not.toContain('伤寒、不孕');
+    expect(prompt).not.toContain('不孕、月经不调');
+    expect(prompt).toContain('删除名称所在的整条列表项或整个小节');
+    expect(prompt).toContain('不要保留对应的配穴、按压顺序或操作步骤');
     expect(prompt).toContain('画面文字去掉「治」「主治」「医治」「诊疗」「诊治」');
     expect(prompt).not.toContain('消肿止痛');
     expect(prompt).not.toContain('某痛时这样按');
@@ -1358,7 +1363,7 @@ describe('图文配图指令', () => {
     expect(prompt).not.toContain('面部放松、日常保健');
     expect(prompt).toContain('疗效承诺');
     expect(prompt).toContain('本条高于用户额外要求与正文');
-    expect(prompt).toContain('冲突时只删这些违规字');
+    expect(prompt).toContain('冲突时删除违规名称及其关联内容');
     expect(prompt).not.toContain('不得出现任何病名或诊断名');
     expect(prompt).not.toContain('正文若仍含病名');
     expect(prompt).not.toContain('身体信号');
