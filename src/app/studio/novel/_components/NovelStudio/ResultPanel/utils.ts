@@ -3,8 +3,10 @@ import {
   BIBLE_HIDDEN_AXIS_LABELS,
   CHARACTER_GENDER_OPTIONS,
   CHARACTER_ROLE_OPTIONS,
+  NOVEL_MARKDOWN_EXPORT_VERSION,
   TENSE_OPTIONS,
 } from '../constants';
+import { hasBibleDraft, readBibleStepSnapshot, readStructureStepSnapshot } from '../utils';
 import type {
   BibleStepSnapshot,
   StructureChapter,
@@ -12,6 +14,85 @@ import type {
   StructureVolume,
 } from '../types';
 import { formatChapterPrefix, stripChapterPrefix, toChineseNumeral } from './ChapterList/utils';
+
+export type NovelMarkdownExportType = 'bible' | 'structure';
+
+export type NovelMarkdownImportError =
+  'missing-payload' | 'invalid-payload' | 'wrong-type' | 'unsupported-version';
+
+export type NovelMarkdownImportResult<T> =
+  { ok: true; data: T } | { ok: false; error: NovelMarkdownImportError };
+
+type NovelMarkdownEnvelope = {
+  version: number;
+  type: NovelMarkdownExportType;
+  data: unknown;
+};
+
+const EXPORT_MARKER = 'fanyu-novel-export';
+const EXPORT_BLOCK_PATTERN = /<!--\s*fanyu-novel-export\s+([A-Za-z0-9+/=\r\n]+?)\s*-->/;
+
+/** 将 UTF-8 文本编码为 Base64，兼容中文且不依赖 Node Buffer。 */
+function encodeUtf8Base64(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+/** 解码 UTF-8 Base64；非法字符或非法 UTF-8 均视为失败。 */
+function decodeUtf8Base64(value: string): string | undefined {
+  try {
+    const binary = atob(value);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return undefined;
+  }
+}
+
+/** 在可读 Markdown 末尾附加带版本和类型的机器载荷。 */
+function appendExportEnvelope(
+  markdown: string,
+  type: NovelMarkdownExportType,
+  data: unknown,
+): string {
+  const envelope: NovelMarkdownEnvelope = {
+    version: NOVEL_MARKDOWN_EXPORT_VERSION,
+    type,
+    data,
+  };
+  const payload = encodeUtf8Base64(JSON.stringify(envelope));
+  return `${markdown.trimEnd()}\n\n<!-- ${EXPORT_MARKER}\n${payload}\n-->\n`;
+}
+
+/** 从 Markdown 提取并校验导出信封；业务数据由类型专属解析器继续清洗。 */
+function parseExportEnvelope(
+  markdown: string,
+  expectedType: NovelMarkdownExportType,
+): NovelMarkdownImportResult<unknown> {
+  const match = markdown.match(EXPORT_BLOCK_PATTERN);
+  if (!match?.[1]) return { ok: false, error: 'missing-payload' };
+  const decoded = decodeUtf8Base64(match[1].replace(/\s/g, ''));
+  if (!decoded) return { ok: false, error: 'invalid-payload' };
+
+  let envelope: unknown;
+  try {
+    envelope = JSON.parse(decoded);
+  } catch {
+    return { ok: false, error: 'invalid-payload' };
+  }
+  if (!envelope || typeof envelope !== 'object') {
+    return { ok: false, error: 'invalid-payload' };
+  }
+  const record = envelope as Record<string, unknown>;
+  if (record.version !== NOVEL_MARKDOWN_EXPORT_VERSION) {
+    return { ok: false, error: 'unsupported-version' };
+  }
+  if (record.type !== expectedType) return { ok: false, error: 'wrong-type' };
+  if (!('data' in record)) return { ok: false, error: 'invalid-payload' };
+  return { ok: true, data: record.data };
+}
 
 /** 把当前设定整理成人可读的 Markdown，关系中的人物 id 转为姓名。 */
 export function buildBibleMarkdown(bible: BibleStepSnapshot): string {
@@ -63,7 +144,9 @@ export function buildBibleMarkdown(bible: BibleStepSnapshot): string {
   if (narration) lines.push(narration);
   if (tense) lines.push(`时态：${tense}`);
 
-  return `${lines.join('\n').trim()}\n`;
+  const data = { ...bible };
+  delete data.streamText;
+  return appendExportEnvelope(`${lines.join('\n').trim()}\n`, 'bible', data);
 }
 
 /** 将一章及其节拍追加到 Markdown；标题层级由调用方决定。 */
@@ -121,7 +204,31 @@ export function buildStructureMarkdown(structure: StructureSnapshot): string {
       chapterOffset += volume.chapters.length;
     }
   }
-  return `${lines.join('\n').trim()}\n`;
+  return appendExportEnvelope(`${lines.join('\n').trim()}\n`, 'structure', structure);
+}
+
+/** 解析设定导出文件，并复用快照读取逻辑清洗字段与关系引用。 */
+export function parseBibleMarkdownImport(
+  markdown: string,
+): NovelMarkdownImportResult<BibleStepSnapshot> {
+  const result = parseExportEnvelope(markdown, 'bible');
+  if (!result.ok) return result;
+  const bible = readBibleStepSnapshot(result.data);
+  if (!bible || !hasBibleDraft(bible)) return { ok: false, error: 'invalid-payload' };
+  return { ok: true, data: bible };
+}
+
+/** 解析故事结构导出文件，校验结构类型及各层必要字段。 */
+export function parseStructureMarkdownImport(
+  markdown: string,
+): NovelMarkdownImportResult<StructureSnapshot> {
+  const result = parseExportEnvelope(markdown, 'structure');
+  if (!result.ok) return result;
+  const structure = readStructureStepSnapshot(result.data);
+  if (!structure) return { ok: false, error: 'invalid-payload' };
+  const data = { ...structure };
+  delete data.streamText;
+  return { ok: true, data };
 }
 
 /** 在浏览器中下载文本文件。 */

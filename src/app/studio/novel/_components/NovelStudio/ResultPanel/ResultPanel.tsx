@@ -10,6 +10,8 @@ import {
   BIBLE_EXPORT_FILE_NAME,
   BIBLE_EXPORT_MEDIA_TYPE,
   BIBLE_GENERATING_HINT,
+  BIBLE_IMPORT_CONFIRM_CONTENT,
+  BIBLE_IMPORT_CONFIRM_TITLE,
   BIBLE_PANEL_TITLE,
   CHAPTERS_TITLE,
   EMPTY_BIBLE_HINT,
@@ -25,6 +27,8 @@ import {
   STRUCTURE_EXPORT_FILE_NAME,
   STRUCTURE_EXPORT_MEDIA_TYPE,
   STRUCTURE_GENERATING_HINT,
+  STRUCTURE_IMPORT_CONFIRM_CONTENT,
+  STRUCTURE_IMPORT_CONFIRM_TITLE,
   STRUCTURE_PANEL_TITLE,
   SYNOPSIS_TITLE,
   VOLUMES_TITLE,
@@ -45,10 +49,16 @@ import RelationGraph from './BibleEditor/RelationGraph';
 import { RELATION_GRAPH_MODAL_WIDTH } from './BibleEditor/RelationGraph/constants';
 import { hasNamedCharacter } from './BibleEditor/RelationGraph/utils';
 import ChapterList from './ChapterList';
+import MarkdownImportButton from './MarkdownImportButton';
 import VolumeList from './VolumeList';
 import WritingEditor from './WritingEditor';
 import styles from './ResultPanel.module.css';
-import { downloadBibleMarkdown, downloadStructureMarkdown } from './utils';
+import {
+  downloadBibleMarkdown,
+  downloadStructureMarkdown,
+  parseBibleMarkdownImport,
+  parseStructureMarkdownImport,
+} from './utils';
 
 type ResultPanelProps = {
   phase: StudioPhase;
@@ -65,6 +75,8 @@ type ResultPanelProps = {
   onSelectTopic: (id: string) => void;
   onUpdateTopic: (next: TopicCard) => void;
   onChangeBible: (next: BibleStepSnapshot) => void;
+  onImportBible: (next: BibleStepSnapshot) => Promise<boolean>;
+  onImportStructure: (next: StructureSnapshot) => Promise<boolean>;
   onPrev: () => void;
   onNext: () => void;
   onUpdateSynopsis: (synopsis: string) => void;
@@ -99,6 +111,8 @@ export default function ResultPanel({
   onSelectTopic,
   onUpdateTopic,
   onChangeBible,
+  onImportBible,
+  onImportStructure,
   onPrev,
   onNext,
   onUpdateSynopsis,
@@ -167,6 +181,13 @@ export default function ResultPanel({
             {panelTitle}
             {bibleView ? (
               <div className={studioStageHeadActionsClassName}>
+                <MarkdownImportButton
+                  disabled={bibling}
+                  confirmTitle={BIBLE_IMPORT_CONFIRM_TITLE}
+                  confirmContent={BIBLE_IMPORT_CONFIRM_CONTENT}
+                  parse={parseBibleMarkdownImport}
+                  onImport={onImportBible}
+                />
                 <Button
                   size="small"
                   type="link"
@@ -182,6 +203,13 @@ export default function ResultPanel({
             ) : null}
             {structureView ? (
               <div className={studioStageHeadActionsClassName}>
+                <MarkdownImportButton
+                  disabled={structuring}
+                  confirmTitle={STRUCTURE_IMPORT_CONFIRM_TITLE}
+                  confirmContent={STRUCTURE_IMPORT_CONFIRM_CONTENT}
+                  parse={parseStructureMarkdownImport}
+                  onImport={onImportStructure}
+                />
                 <Button
                   size="small"
                   type="link"

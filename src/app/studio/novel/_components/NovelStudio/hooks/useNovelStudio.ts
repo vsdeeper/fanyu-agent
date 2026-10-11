@@ -628,6 +628,24 @@ export function useNovelStudio(task: NovelTaskDetail) {
     void persistBible(next);
   }
 
+  /** 覆盖并落盘导入的设定；不改动已有结构与正文。 */
+  async function importBible(next: BibleStepSnapshot): Promise<boolean> {
+    const saved = await persistBible(next);
+    if (!saved) return false;
+    bibleRef.current = saved;
+    setBible(saved);
+    return true;
+  }
+
+  /** 覆盖并落盘导入的故事结构；不清空或同步已有正文。 */
+  async function importStructure(next: StructureSnapshot): Promise<boolean> {
+    const saved = await persistStructure(next);
+    if (!saved) return false;
+    structureRef.current = next;
+    setStructure(next);
+    return true;
+  }
+
   /** 把用户选的人称、聚焦或时态写入设定快照；尚无正文时也落盘。 */
   function updateBibleNarration(patch: {
     voiceFocus?: StyleDimensionSelections;
@@ -1575,6 +1593,8 @@ export function useNovelStudio(task: NovelTaskDetail) {
     updateTopic,
     handleGenerateBible,
     updateBible,
+    importBible,
+    importStructure,
     updateBibleNarration,
     handleGenerateStructure,
     handleGenerateVolumeChapters,

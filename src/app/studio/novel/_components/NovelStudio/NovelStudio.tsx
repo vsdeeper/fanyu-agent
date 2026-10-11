@@ -102,6 +102,8 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 onSelectTopic={studio.handleSelectTopic}
                 onUpdateTopic={studio.updateTopic}
                 onChangeBible={studio.updateBible}
+                onImportBible={studio.importBible}
+                onImportStructure={studio.importStructure}
                 onPrev={studio.handlePrev}
                 onNext={studio.handleNext}
                 onUpdateSynopsis={studio.updateSynopsis}
