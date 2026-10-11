@@ -100,6 +100,7 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 generatingUnitIds={studio.generatingUnitIds}
                 polishingUnitId={studio.polishingUnitId}
                 onSelectTopic={studio.handleSelectTopic}
+                onUpdateTopic={studio.updateTopic}
                 onChangeBible={studio.updateBible}
                 onPrev={studio.handlePrev}
                 onNext={studio.handleNext}

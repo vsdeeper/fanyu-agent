@@ -529,6 +529,14 @@ export function useNovelStudio(task: NovelTaskDetail) {
     await persistResearch(await researchSnapshot(currentTopics, { selectedTopicId: id }));
   }
 
+  /** 写回已编辑的选题卡并落盘。 */
+  function updateTopic(next: TopicCard) {
+    const updated = topicsRef.current.map((topic) => (topic.id === next.id ? next : topic));
+    topicsRef.current = updated;
+    setTopics(updated);
+    void researchSnapshot(updated).then((snapshot) => persistResearch(snapshot));
+  }
+
   /** 生成设定：已有设定或下游内容时先确认；覆盖后清空结构与正文。 */
   async function handleGenerateBible() {
     if (!selectedTopicId || !selectedTopic) {
@@ -1564,6 +1572,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     handleReasoningEffortChange,
     handleResearch,
     handleSelectTopic,
+    updateTopic,
     handleGenerateBible,
     updateBible,
     updateBibleNarration,

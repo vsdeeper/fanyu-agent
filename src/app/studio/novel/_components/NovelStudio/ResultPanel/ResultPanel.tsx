@@ -54,6 +54,7 @@ type ResultPanelProps = {
   generatingUnitIds?: string[];
   polishingUnitId?: string;
   onSelectTopic: (id: string) => void;
+  onUpdateTopic: (next: TopicCard) => void;
   onChangeBible: (next: BibleStepSnapshot) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -87,6 +88,7 @@ export default function ResultPanel({
   generatingUnitIds = [],
   polishingUnitId,
   onSelectTopic,
+  onUpdateTopic,
   onChangeBible,
   onPrev,
   onNext,
@@ -197,6 +199,7 @@ export default function ResultPanel({
                     topic={topic}
                     selected={topic.id === selectedTopicId}
                     onSelect={() => onSelectTopic(topic.id)}
+                    onSave={onUpdateTopic}
                   />
                 ))}
               </div>

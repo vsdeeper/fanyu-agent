@@ -180,6 +180,7 @@ export const WRITE_REGENERATE_CONFIRM_CONTENT = '将覆盖已选单元的已有�
 export const CONFIRM_OK = '继续';
 export const CONFIRM_CANCEL = '取消';
 
+export const TOPIC_TITLE_LABEL = '选题标题';
 export const TOPIC_SLOT_GENRE_VOLUME_LABEL = '类型与体量';
 export const TOPIC_SLOT_WHY_LABEL = '为什么值得写';
 export const TOPIC_SLOT_CORE_LABEL = '故事核';
