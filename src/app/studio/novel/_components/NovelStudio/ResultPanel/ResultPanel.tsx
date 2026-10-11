@@ -1,9 +1,14 @@
-import StudioStagePanel from '@/app/studio/_components/StudioStagePanel';
+import StudioStagePanel, {
+  studioStageHeadActionsClassName,
+} from '@/app/studio/_components/StudioStagePanel';
 import { StarOutlined } from '@ant-design/icons';
 import { Button, Input, Modal, Spin } from 'antd';
 import { useState } from 'react';
 import {
   BEATS_TITLE,
+  BIBLE_EXPORT_BUTTON,
+  BIBLE_EXPORT_FILE_NAME,
+  BIBLE_EXPORT_MEDIA_TYPE,
   BIBLE_GENERATING_HINT,
   BIBLE_PANEL_TITLE,
   CHAPTERS_TITLE,
@@ -16,6 +21,9 @@ import {
   RESEARCH_GENERATING_HINT,
   RESEARCH_PANEL_TITLE,
   RESEARCH_TOPICS_TITLE,
+  STRUCTURE_EXPORT_BUTTON,
+  STRUCTURE_EXPORT_FILE_NAME,
+  STRUCTURE_EXPORT_MEDIA_TYPE,
   STRUCTURE_GENERATING_HINT,
   STRUCTURE_PANEL_TITLE,
   SYNOPSIS_TITLE,
@@ -40,6 +48,7 @@ import ChapterList from './ChapterList';
 import VolumeList from './VolumeList';
 import WritingEditor from './WritingEditor';
 import styles from './ResultPanel.module.css';
+import { downloadBibleMarkdown, downloadStructureMarkdown } from './utils';
 
 type ResultPanelProps = {
   phase: StudioPhase;
@@ -156,6 +165,40 @@ export default function ResultPanel({
           <>
             <StarOutlined />
             {panelTitle}
+            {bibleView ? (
+              <div className={studioStageHeadActionsClassName}>
+                <Button
+                  size="small"
+                  type="link"
+                  disabled={bibling || !bible || bibleEmpty}
+                  onClick={() =>
+                    bible &&
+                    downloadBibleMarkdown(bible, BIBLE_EXPORT_FILE_NAME, BIBLE_EXPORT_MEDIA_TYPE)
+                  }
+                >
+                  {BIBLE_EXPORT_BUTTON}
+                </Button>
+              </div>
+            ) : null}
+            {structureView ? (
+              <div className={studioStageHeadActionsClassName}>
+                <Button
+                  size="small"
+                  type="link"
+                  disabled={structuring || !structure}
+                  onClick={() =>
+                    structure &&
+                    downloadStructureMarkdown(
+                      structure,
+                      STRUCTURE_EXPORT_FILE_NAME,
+                      STRUCTURE_EXPORT_MEDIA_TYPE,
+                    )
+                  }
+                >
+                  {STRUCTURE_EXPORT_BUTTON}
+                </Button>
+              </div>
+            ) : null}
           </>
         }
         footer={
