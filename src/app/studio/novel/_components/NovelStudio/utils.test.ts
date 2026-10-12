@@ -203,11 +203,11 @@ describe('buildPreviewDocument', () => {
   it('短篇读取整篇正文，无章标题', () => {
     const writing = syncWritingUnits(shortStructure, {
       kind: 'short',
-      units: [{ unitId: SHORT_WRITING_UNIT_ID, body: '第一段\n\n第二段' }],
+      units: [{ unitId: SHORT_WRITING_UNIT_ID, body: '第一段\n第二段' }],
     });
     const doc = buildPreviewDocument(shortStructure, writing);
-    expect(doc.sections).toEqual([{ paragraphs: ['第一段\n\n第二段'] }]);
-    expect(doc.plainText).toBe('第一段\n\n第二段');
+    expect(doc.sections).toEqual([{ paragraphs: ['第一段', '第二段'] }]);
+    expect(doc.plainText).toBe('第一段\n第二段');
   });
 
   it('中长篇按整章分隔，跳过无正文的章', () => {
@@ -222,7 +222,7 @@ describe('buildPreviewDocument', () => {
     expect(doc.sections).toEqual([
       {
         chapterLabel: '第一章　钥匙',
-        paragraphs: ['钥匙开了\n\n门后无人'],
+        paragraphs: ['钥匙开了', '门后无人'],
       },
     ]);
     expect(doc.plainText).toBe('第一章　钥匙\n\n钥匙开了\n\n门后无人');

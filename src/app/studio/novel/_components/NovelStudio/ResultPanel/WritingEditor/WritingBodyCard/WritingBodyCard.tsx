@@ -6,7 +6,7 @@ import {
   WRITE_CHAR_COUNT,
   WRITE_UNIT_EMPTY_HINT,
 } from '../../../constants';
-import { countTextChars } from '../../../utils';
+import { countTextChars, splitWritingParagraphs } from '../../../utils';
 import styles from '../WritingEditor.module.css';
 import { COPY_BUTTON } from './constants';
 
@@ -93,7 +93,13 @@ export default function WritingBodyCard({
       textareaRows={16}
     >
       {hasBody ? (
-        <p className={styles.bodyText}>{body}</p>
+        <div className={styles.bodyText}>
+          {splitWritingParagraphs(body).map((paragraph, index) => (
+            <p key={index} className={styles.bodyParagraph}>
+              {paragraph}
+            </p>
+          ))}
+        </div>
       ) : (
         <p className={styles.emptyHint}>{WRITE_UNIT_EMPTY_HINT}</p>
       )}

@@ -206,6 +206,14 @@ export function countTextChars(text: string): number {
   return text.replace(/\s/g, '').length;
 }
 
+/** 按正文换行拆成展示段落，同时兼容历史数据中的连续空行。 */
+export function splitWritingParagraphs(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
 /** 解析 unitId 对应的展示与生成上下文。 */
 export function resolveWritingUnit(
   structure: StructureSnapshot,
@@ -333,7 +341,7 @@ export function buildPreviewDocument(
   if (structure.kind === 'short') {
     const body = bodyOf(SHORT_WRITING_UNIT_ID);
     return {
-      sections: body ? [{ paragraphs: [body] }] : [],
+      sections: body ? [{ paragraphs: splitWritingParagraphs(body) }] : [],
       plainText: body,
     };
   }
@@ -347,7 +355,7 @@ export function buildPreviewDocument(
 
     const titleName = stripChapterPrefix(chapter.title);
     const chapterLabel = `${formatChapterPrefix(chapterIndex + 1)}${titleName ? `　${titleName}` : ''}`;
-    sections.push({ chapterLabel, paragraphs: [body] });
+    sections.push({ chapterLabel, paragraphs: splitWritingParagraphs(body) });
     plainParts.push(`${chapterLabel}\n\n${body}`);
   });
 

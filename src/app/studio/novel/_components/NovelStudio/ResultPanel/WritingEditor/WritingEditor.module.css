@@ -23,8 +23,13 @@
 }
 
 .bodyText {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bodyParagraph {
   margin: 0;
-  white-space: pre-wrap;
   font-size: 13px;
   line-height: 1.7;
   color: var(--fanyu-color-text);
