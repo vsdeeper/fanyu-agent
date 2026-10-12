@@ -230,10 +230,10 @@ export function buildChapterBeatsPrompt(body: NovelChapterBeatsRequest): string 
   const siblings =
     body.siblingChapters && body.siblingChapters.length > 0
       ? [
-          '同书其它章纲：',
+          '【同书其它章纲】只用于避免重复后文高潮和提前写完后面的目的，不作为本章开场。',
           ...body.siblingChapters.map((ch) => `- [${ch.id}] ${ch.title}：${ch.purpose}`),
         ].join('\n')
-      : '同书其它章纲：无';
+      : '【同书其它章纲】无';
   const lines = [
     `选题：${body.topic.title}（${body.topic.genreVolume}）`,
     `故事核：${body.topic.core}`,
@@ -242,13 +242,38 @@ export function buildChapterBeatsPrompt(body: NovelChapterBeatsRequest): string 
   if (body.longFormat) {
     lines.push(`长篇赛道：${LONG_FORMAT_LABEL[longFormat]}`);
   }
+  if (body.previousChapter) {
+    lines.push(
+      '【上一章衔接】地点、动作、信息状态和未完成决定从这里续上。',
+      `标题：${body.previousChapter.title}`,
+      `目的：${body.previousChapter.purpose}`,
+    );
+    if (body.previousChapter.beats && body.previousChapter.beats.length > 0) {
+      lines.push(
+        '全部节拍：',
+        ...body.previousChapter.beats.map((beat, index) => `${index + 1}. ${beat.text}`),
+      );
+    }
+    if (body.previousChapter.ending) {
+      lines.push('正文结尾（现场以此为准）：', body.previousChapter.ending);
+    }
+  } else {
+    lines.push('【上一章衔接】无（这是首章）');
+  }
   lines.push(
+    '【当前章】',
     `本章 id：${body.chapter.id}`,
     `本章标题：${body.chapter.title}`,
     `本章目的：${body.chapter.purpose}`,
-    siblings,
-    `请为本章节生成节拍列表（${beatHint}），末尾附 beats JSON。`,
   );
+  if (body.nextChapter) {
+    lines.push(
+      '【下一章边界】不要提前完成这一章的目的。',
+      `标题：${body.nextChapter.title}`,
+      `目的：${body.nextChapter.purpose}`,
+    );
+  }
+  lines.push(siblings, `请为本章节生成节拍列表（${beatHint}），末尾附 beats JSON。`);
   return lines.join('\n');
 }
 

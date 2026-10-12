@@ -120,23 +120,36 @@ const volumeChaptersSchema = z.object({
   existingChapterCount: z.number().int().min(0).optional(),
 });
 
+const structureBeatSchema = z.object({
+  id: z.string().trim().min(1),
+  text: z.string().trim().min(1),
+});
+
+const chapterOutlineSchema = z.object({
+  id: z.string().trim().min(1),
+  title: z.string().trim().min(1),
+  purpose: z.string().trim().min(1),
+});
+
 const chapterBeatsSchema = z.object({
   topic: topicSchema,
   bible: bibleSchema,
   longFormat: longFormatSchema.optional(),
-  chapter: z.object({
-    id: z.string().trim().min(1),
-    title: z.string().trim().min(1),
-    purpose: z.string().trim().min(1),
-  }),
-  siblingChapters: z
-    .array(
-      z.object({
-        id: z.string().trim().min(1),
-        title: z.string().trim().min(1),
-        purpose: z.string().trim().min(1),
-      }),
-    )
+  chapter: chapterOutlineSchema,
+  siblingChapters: z.array(chapterOutlineSchema).optional(),
+  previousChapter: z
+    .object({
+      title: z.string().trim().min(1),
+      purpose: z.string().trim().min(1),
+      beats: z.array(structureBeatSchema).min(1).optional(),
+      ending: z.string().trim().min(1).max(NOVEL_PREVIOUS_CHAPTER_CONTEXT_MAX_CHARS).optional(),
+    })
+    .optional(),
+  nextChapter: z
+    .object({
+      title: z.string().trim().min(1),
+      purpose: z.string().trim().min(1),
+    })
     .optional(),
 });
 
@@ -165,10 +178,7 @@ const writingBaseSchema = {
   stylePrompt: z.string().trim().min(1).optional(),
 };
 
-const writingBeatSchema = z.object({
-  id: z.string().trim().min(1),
-  text: z.string().trim().min(1),
-});
+const writingBeatSchema = structureBeatSchema;
 
 const writingSchema = z.discriminatedUnion('scope', [
   z.object({

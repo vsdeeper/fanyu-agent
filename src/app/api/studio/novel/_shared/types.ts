@@ -153,12 +153,24 @@ export type NovelChapterBeatsRequest = {
     title: string;
     purpose: string;
   };
-  /** 可选：同书其它章纲摘要，帮助节拍衔接。 */
+  /** 可选：同书其它章纲摘要，只用于把握后文，不负责现场衔接。 */
   siblingChapters?: Array<{
     id: string;
     title: string;
     purpose: string;
   }>;
+  /** 紧邻前一章。首章省略。正文结尾仅在已有正文时附上。 */
+  previousChapter?: {
+    title: string;
+    purpose: string;
+    beats?: Array<{ id: string; text: string }>;
+    ending?: string;
+  };
+  /** 紧邻后一章的边界，只含标题和目的。 */
+  nextChapter?: {
+    title: string;
+    purpose: string;
+  };
 };
 
 /** 正文写作共用字段。 */

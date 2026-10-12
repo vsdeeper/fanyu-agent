@@ -859,8 +859,16 @@ export function useNovelStudio(task: NovelTaskDetail) {
       return;
     }
     const chapters = listStructureChapters(structure);
-    const chapter = chapters.find((item) => item.id === chapterId);
+    const chapterIndex = chapters.findIndex((item) => item.id === chapterId);
+    const chapter = chapters[chapterIndex];
     if (!chapter) return;
+    const previousChapter = chapterIndex > 0 ? chapters[chapterIndex - 1] : undefined;
+    const nextChapter = chapters[chapterIndex + 1];
+    const previousBody = previousChapter
+      ? (writingRef.current ?? writing)?.units
+          .find((unit) => unit.unitId === previousChapter.id)
+          ?.body.trim()
+      : undefined;
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -893,6 +901,23 @@ export function useNovelStudio(task: NovelTaskDetail) {
                 title: item.title,
                 purpose: item.purpose,
               })),
+            ...(previousChapter
+              ? {
+                  previousChapter: {
+                    title: previousChapter.title,
+                    purpose: previousChapter.purpose,
+                    ...(previousChapter.beats.length > 0 ? { beats: previousChapter.beats } : {}),
+                    ...(previousBody
+                      ? {
+                          ending: previousBody.slice(-NOVEL_PREVIOUS_CHAPTER_CONTEXT_MAX_CHARS),
+                        }
+                      : {}),
+                  },
+                }
+              : {}),
+            ...(nextChapter
+              ? { nextChapter: { title: nextChapter.title, purpose: nextChapter.purpose } }
+              : {}),
           }),
         ),
         signal: controller.signal,
