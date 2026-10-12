@@ -132,6 +132,7 @@ describe('buildWritingPrompt', () => {
     expect(prompt).toContain('2. 她发现信封');
     expect(prompt).toContain('正文结尾：\n门锁响了一声。');
     expect(prompt).toContain('当前章不要提前写掉下一章的核心任务');
+    expect(prompt).toContain('自然段之间只换一行，不要留空白行');
     expect(prompt).not.toContain('请只写本节拍正文');
   });
 
@@ -147,5 +148,6 @@ describe('buildWritingPrompt', () => {
     });
     expect(prompt).toContain('梗概：一个停电夜改变一家人');
     expect(prompt).toContain('请一次写完整篇正文');
+    expect(prompt).toContain('自然段之间只换一行，不要留空白行');
   });
 });

@@ -43,5 +43,6 @@ describe('buildPolishPrompt', () => {
     expect(prompt).toContain('【文风】\n态度=低调陈述');
     expect(prompt).toContain('【原文】\n原文一段。');
     expect(prompt).toContain('不改情节');
+    expect(prompt).toContain('自然段之间只换一行，不要留空白行');
   });
 });

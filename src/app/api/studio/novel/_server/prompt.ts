@@ -304,7 +304,7 @@ export function buildWritingPrompt(body: NovelWritingRequest): string {
       `梗概：${body.synopsis}`,
       '【整篇节拍】',
       ...body.beats.map((beat, index) => `${index + 1}. ${beat.text}`),
-      `请一次写完整篇正文（${lengthHint}）。覆盖全部节拍，但不要显示节拍标题或分隔标记。`,
+      `请一次写完整篇正文（${lengthHint}）。覆盖全部节拍，但不要显示节拍标题或分隔标记；自然段之间只换一行，不要留空白行。`,
     );
     return lines.join('\n');
   }
@@ -337,7 +337,7 @@ export function buildWritingPrompt(body: NovelWritingRequest): string {
     );
   }
   lines.push(
-    `请一次写完当前章正文（${lengthHint}）。覆盖全部节拍，但不要显示节拍标题或分隔标记；从上一章结尾自然续写，不要复述上一章。`,
+    `请一次写完当前章正文（${lengthHint}）。覆盖全部节拍，但不要显示节拍标题或分隔标记；从上一章结尾自然续写，不要复述上一章；自然段之间只换一行，不要留空白行。`,
   );
   return lines.join('\n');
 }
@@ -356,6 +356,6 @@ export function buildPolishPrompt(body: NovelPolishRequest): string {
     '【原文】',
     body.body.trim(),
     '',
-    '请输出润色后的整篇或整章正文（修正段落衔接、重复、句读、不当搭配、主谓错位、指称偷换与半吊子术语；不改情节、对话内容与人称；空行分段；不要标题、说明或代码块）。',
+    '请输出润色后的整篇或整章正文（修正段落衔接、重复、句读、不当搭配、主谓错位、指称偷换与半吊子术语；不改情节、对话内容与人称；自然段之间只换一行，不要留空白行；不要标题、说明或代码块）。',
   ].join('\n');
 }
