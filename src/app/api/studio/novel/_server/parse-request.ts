@@ -237,7 +237,7 @@ export function parseWritingBody(json: unknown): NovelWritingRequest | null {
   return parsed.success ? parsed.data : null;
 }
 
-/** 解析单节拍通顺润色请求体；失败返回 null。 */
+/** 解析整篇或整章通顺润色请求体；失败返回 null。 */
 export function parsePolishBody(json: unknown): NovelPolishRequest | null {
   const parsed = polishSchema.safeParse(json);
   return parsed.success ? parsed.data : null;
