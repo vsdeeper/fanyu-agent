@@ -7,11 +7,14 @@ import {
   SAVE_BUTTON,
 } from '@/app/studio/_components/StudioCard/constants';
 import {
-  CHAPTERS_TITLE,
+  CONFIRM_CANCEL,
+  CONFIRM_OK,
   VOLUME_CHAPTERS_BUTTON,
   VOLUME_CHAPTERS_EMPTY_HINT,
   VOLUME_CHAPTERS_LABEL,
   VOLUME_CHAPTERS_REGENERATE_BUTTON,
+  VOLUME_CHAPTERS_REGENERATE_CONFIRM_CONTENT,
+  VOLUME_CHAPTERS_REGENERATE_CONFIRM_TITLE,
   VOLUME_DELETE_CONFIRM_TITLE,
   VOLUME_PURPOSE_LABEL,
   VOLUME_TITLE_PLACEHOLDER,
@@ -155,15 +158,34 @@ function VolumeItem({
           <div className={styles.chaptersBlock}>
             <div className={styles.chaptersHead}>
               <p className={styles.chaptersLabel}>{VOLUME_CHAPTERS_LABEL}</p>
-              <Button
-                type="link"
-                size="small"
-                className={styles.actionBtn}
-                loading={generatingChapters}
-                onClick={onGenerateChapters}
-              >
-                {hasChapters ? VOLUME_CHAPTERS_REGENERATE_BUTTON : VOLUME_CHAPTERS_BUTTON}
-              </Button>
+              {hasChapters ? (
+                <Popconfirm
+                  title={VOLUME_CHAPTERS_REGENERATE_CONFIRM_TITLE}
+                  description={VOLUME_CHAPTERS_REGENERATE_CONFIRM_CONTENT}
+                  okText={CONFIRM_OK}
+                  cancelText={CONFIRM_CANCEL}
+                  onConfirm={onGenerateChapters}
+                >
+                  <Button
+                    type="link"
+                    size="small"
+                    className={styles.actionBtn}
+                    loading={generatingChapters}
+                  >
+                    {VOLUME_CHAPTERS_REGENERATE_BUTTON}
+                  </Button>
+                </Popconfirm>
+              ) : (
+                <Button
+                  type="link"
+                  size="small"
+                  className={styles.actionBtn}
+                  loading={generatingChapters}
+                  onClick={onGenerateChapters}
+                >
+                  {VOLUME_CHAPTERS_BUTTON}
+                </Button>
+              )}
             </div>
             {hasChapters ? (
               <ChapterList

@@ -12,9 +12,13 @@ import {
   CHAPTER_BEATS_BUTTON,
   CHAPTER_BEATS_LABEL,
   CHAPTER_BEATS_REGENERATE_BUTTON,
+  CHAPTER_BEATS_REGENERATE_CONFIRM_CONTENT,
+  CHAPTER_BEATS_REGENERATE_CONFIRM_TITLE,
   CHAPTER_DELETE_CONFIRM_TITLE,
   CHAPTER_PURPOSE_LABEL,
   CHAPTER_TITLE_PLACEHOLDER,
+  CONFIRM_CANCEL,
+  CONFIRM_OK,
 } from '../../../constants';
 import type { StructureChapter } from '../../../types';
 import { formatChapterPrefix, stripChapterPrefix } from '../utils';
@@ -157,15 +161,34 @@ export default function ChapterItem({
           <div className={styles.beatsBlock}>
             <div className={styles.beatsHead}>
               <p className={styles.beatsLabel}>{CHAPTER_BEATS_LABEL}</p>
-              <Button
-                type="link"
-                size="small"
-                className={styles.actionBtn}
-                loading={generatingBeats}
-                onClick={onGenerateBeats}
-              >
-                {hasBeats ? CHAPTER_BEATS_REGENERATE_BUTTON : CHAPTER_BEATS_BUTTON}
-              </Button>
+              {hasBeats ? (
+                <Popconfirm
+                  title={CHAPTER_BEATS_REGENERATE_CONFIRM_TITLE}
+                  description={CHAPTER_BEATS_REGENERATE_CONFIRM_CONTENT}
+                  okText={CONFIRM_OK}
+                  cancelText={CONFIRM_CANCEL}
+                  onConfirm={onGenerateBeats}
+                >
+                  <Button
+                    type="link"
+                    size="small"
+                    className={styles.actionBtn}
+                    loading={generatingBeats}
+                  >
+                    {CHAPTER_BEATS_REGENERATE_BUTTON}
+                  </Button>
+                </Popconfirm>
+              ) : (
+                <Button
+                  type="link"
+                  size="small"
+                  className={styles.actionBtn}
+                  loading={generatingBeats}
+                  onClick={onGenerateBeats}
+                >
+                  {CHAPTER_BEATS_BUTTON}
+                </Button>
+              )}
             </div>
             {hasBeats ? (
               <div className={styles.beatsList}>

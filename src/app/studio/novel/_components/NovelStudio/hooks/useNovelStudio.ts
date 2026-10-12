@@ -20,8 +20,6 @@ import {
   BIBLE_REGENERATE_CONFIRM_CONTENT,
   BIBLE_REGENERATE_CONFIRM_TITLE,
   CHAPTER_BEATS_FAILED,
-  CHAPTER_BEATS_REGENERATE_CONFIRM_CONTENT,
-  CHAPTER_BEATS_REGENERATE_CONFIRM_TITLE,
   CONFIRM_CANCEL,
   CONFIRM_OK,
   COPY_BODY_FAILED,
@@ -44,8 +42,6 @@ import {
   STRUCTURE_REGENERATE_CONFIRM_CONTENT,
   STRUCTURE_REGENERATE_CONFIRM_TITLE,
   VOLUME_CHAPTERS_FAILED,
-  VOLUME_CHAPTERS_REGENERATE_CONFIRM_CONTENT,
-  VOLUME_CHAPTERS_REGENERATE_CONFIRM_TITLE,
   WRITE_REGENERATE_CONFIRM_CONTENT,
   WRITE_HIDDEN_AXIS_LABELS,
   WRITE_REGENERATE_CONFIRM_TITLE,
@@ -763,14 +759,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
     const volume = structure.volumes.find((item) => item.id === volumeId);
     if (!volume) return;
 
-    if (volume.chapters.length > 0) {
-      const confirmed = await confirmOverwrite(
-        VOLUME_CHAPTERS_REGENERATE_CONFIRM_TITLE,
-        VOLUME_CHAPTERS_REGENERATE_CONFIRM_CONTENT,
-      );
-      if (!confirmed) return;
-    }
-
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -864,14 +852,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
     const chapters = listStructureChapters(structure);
     const chapter = chapters.find((item) => item.id === chapterId);
     if (!chapter) return;
-
-    if (chapter.beats.length > 0) {
-      const confirmed = await confirmOverwrite(
-        CHAPTER_BEATS_REGENERATE_CONFIRM_TITLE,
-        CHAPTER_BEATS_REGENERATE_CONFIRM_CONTENT,
-      );
-      if (!confirmed) return;
-    }
 
     abortRef.current?.abort();
     const controller = new AbortController();
