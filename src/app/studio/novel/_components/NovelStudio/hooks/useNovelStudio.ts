@@ -4,6 +4,7 @@ import { App, Form } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import {
   NOVEL_DEFAULT_REASONING_EFFORT,
+  NOVEL_PREVIOUS_CHAPTER_CONTEXT_MAX_CHARS,
   type NovelReasoningEffort,
 } from '@/app/api/studio/novel/_shared/constants';
 import type { NovelIdeaFile } from '@/app/api/studio/novel/_shared/types';
@@ -45,6 +46,7 @@ import {
   WRITE_REGENERATE_CONFIRM_CONTENT,
   WRITE_HIDDEN_AXIS_LABELS,
   WRITE_REGENERATE_CONFIRM_TITLE,
+  WRITE_SEQUENCE_WARNING,
   WRITING_FAILED,
 } from '../constants';
 import type {
@@ -65,6 +67,7 @@ import {
   assertOkOrJsonFail,
   areVolumesReadyForWrite,
   buildPreviewDocument,
+  canGenerateWritingUnit,
   consumeAnalyzeSse,
   copyText,
   createRafTextBuffer,
@@ -128,7 +131,13 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const initialResearch = readResearchStepSnapshot(task.steps.research?.data);
   const initialBible = readBibleStepSnapshot(task.steps.bible?.data);
   const initialStructure = readStructureStepSnapshot(task.steps.structure?.data);
-  const initialWrite = readWriteStepSnapshot(task.steps.write?.data);
+  const storedInitialWrite = readWriteStepSnapshot(task.steps.write?.data);
+  const initialStructureSnapshot = initialStructure
+    ? toStructureSnapshot(initialStructure)
+    : undefined;
+  const initialWrite = initialStructureSnapshot
+    ? syncWritingUnits(initialStructureSnapshot, storedInitialWrite)
+    : storedInitialWrite;
 
   const [reasoningEffort, setReasoningEffort] = useState<NovelReasoningEffort>(
     () => initialResearch?.reasoningEffort ?? NOVEL_DEFAULT_REASONING_EFFORT,
@@ -149,8 +158,8 @@ export function useNovelStudio(task: NovelTaskDetail) {
     initialResearch?.selectedTopicId,
   );
   const [bible, setBible] = useState<BibleStepSnapshot | undefined>(initialBible);
-  const [structure, setStructure] = useState<StructureSnapshot | undefined>(() =>
-    initialStructure ? toStructureSnapshot(initialStructure) : undefined,
+  const [structure, setStructure] = useState<StructureSnapshot | undefined>(
+    initialStructureSnapshot,
   );
   const [writing, setWriting] = useState<WritingSnapshot | undefined>(initialWrite);
   const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>(
@@ -176,7 +185,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const structureRef = useRef(structure);
   const writingRef = useRef(writing);
   /** 上次成功落盘的写作快照，用于跳过无变更的写入。 */
-  const persistedWriteRef = useRef<WritingSnapshot | undefined>(initialWrite);
+  const persistedWriteRef = useRef<WritingSnapshot | undefined>(storedInitialWrite);
   const topicsRef = useRef(topics);
   const selectedTopicIdRef = useRef(selectedTopicId);
 
@@ -393,7 +402,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
    */
   async function runSse(
     url: string,
-    body: unknown,
+    body: Record<string, unknown>,
     buffer: ReturnType<typeof createRafTextBuffer>,
     failedMessage: string,
     onDone: (fullText: string) => Promise<void> | void,
@@ -1068,7 +1077,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  /** 切换写作单元选中（章单选 / 同章节拍多选）。只改内存，等生成、编辑保存或下一步再落盘。 */
+  /** 切换整篇或章节单选。只改内存，等生成、编辑保存或下一步再落盘。 */
   function toggleWritingUnit(unitId: string) {
     if (!structure) return;
     const next = toggleWritingSelection(structure, selectedUnitIds, unitId);
@@ -1080,7 +1089,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     commitWriting(withSelection(base, next, nextFocus));
   }
 
-  /** 对指定单元串行 SSE 生成正文（仅节拍）；已有正文时先确认。 */
+  /** 一次生成完整短篇或章节；新章节必须等前面章节全部完成。 */
   async function handleGenerateWriting(unitIds: string[]) {
     if (!structure || !writing || !selectedTopic) return;
     const bibleBody = toBibleRequest(bibleRef.current);
@@ -1089,16 +1098,24 @@ export function useNovelStudio(task: NovelTaskDetail) {
       return;
     }
 
-    const generateIds = resolveGenerateUnitIds(structure, unitIds);
-    if (generateIds.length === 0) {
+    const unitId = resolveGenerateUnitIds(structure, unitIds)[0];
+    if (!unitId) {
       message.warning(MISSING_WRITE_SELECTION_WARNING);
       return;
     }
+    const currentWriting = writingRef.current ?? writing;
+    const resolved = resolveWritingUnit(structure, unitId);
+    if (!resolved || resolved.beats.length === 0) {
+      message.warning(MISSING_WRITE_SELECTION_WARNING);
+      return;
+    }
+    if (!canGenerateWritingUnit(structure, currentWriting, unitId)) {
+      message.warning(WRITE_SEQUENCE_WARNING);
+      return;
+    }
 
-    const hasExistingBody = generateIds.some((unitId) =>
-      Boolean(writing.units.find((unit) => unit.unitId === unitId)?.body.trim()),
-    );
-    if (hasExistingBody) {
+    const previousBody = currentWriting.units.find((unit) => unit.unitId === unitId)?.body ?? '';
+    if (previousBody.trim()) {
       const confirmed = await confirmOverwrite(
         WRITE_REGENERATE_CONFIRM_TITLE,
         WRITE_REGENERATE_CONFIRM_CONTENT,
@@ -1114,99 +1131,104 @@ export function useNovelStudio(task: NovelTaskDetail) {
     const controller = new AbortController();
     abortRef.current = controller;
     generatingRef.current = true;
-    const cleared = writingRef.current ?? writing;
-    commitWriting({
-      ...cleared,
-      units: cleared.units.map((unit) =>
-        generateIds.includes(unit.unitId) ? { ...unit, body: '' } : unit,
-      ),
-    });
-    setGeneratingUnitIds(generateIds);
+    commitWriting(withUnitBody(currentWriting, unitId, ''));
+    setGeneratingUnitIds([unitId]);
     setPhase('writing');
-    setFocusUnitId(generateIds[0] ?? focusUnitId);
+    setFocusUnitId(unitId);
 
-    const bodies = new Map<string, string>();
+    const buffer = createRafTextBuffer((text) => {
+      const base = writingRef.current ?? currentWriting;
+      commitWriting(withUnitBody(base, unitId, text));
+    });
 
     try {
-      for (const unitId of generateIds) {
-        if (controller.signal.aborted) return;
-        const resolved = resolveWritingUnit(structure, unitId);
-        if (!resolved || resolved.kind !== 'beat' || !resolved.beatText) continue;
-
-        setFocusUnitId(unitId);
-        const buffer = createRafTextBuffer((text) => {
-          bodies.set(unitId, text);
-          setWriting((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              units: prev.units.map((unit) =>
-                unit.unitId === unitId ? { ...unit, body: text } : unit,
-              ),
-            };
-          });
-        });
-
-        const res = await fetch('/api/studio/novel/writing', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-          body: JSON.stringify(
-            withChatSettingsBody({
-              reasoningEffort: reasoningEffortRef.current,
-              unitId,
-              beatText: resolved.beatText,
-              topic: selectedTopic,
-              bible: bibleBody,
-              volume: panel.volume,
-              ...longFormatBody(panel),
-              ...(stylePrompt ? { stylePrompt } : {}),
-              ...(resolved.chapterTitle ? { chapterTitle: resolved.chapterTitle } : {}),
-              ...(resolved.chapterPurpose ? { chapterPurpose: resolved.chapterPurpose } : {}),
-            }),
-          ),
-          signal: controller.signal,
-        });
-        await assertOkOrJsonFail(res);
-        let receivedDone = false;
-        await consumeAnalyzeSse(res, {
-          onText: (delta) => buffer.append(delta),
-          onDone: () => {
-            receivedDone = true;
-          },
-          onError: (text) => message.error(text),
-        });
-        buffer.flushNow();
-        if (controller.signal.aborted) return;
-        const generated = buffer.getText();
-        if (generated.trim()) {
-          const nextWriting = withUnitBody(writingRef.current ?? writing, unitId, generated);
-          commitWriting(nextWriting);
-          bodies.set(unitId, generated);
-          await persistWrite(nextWriting);
-        }
-        if (!receivedDone) {
-          setPhase(hasWritingBody(writingRef.current) ? 'written' : 'write');
-          return;
-        }
+      const commonBody = {
+        reasoningEffort: reasoningEffortRef.current,
+        unitId,
+        topic: selectedTopic,
+        bible: bibleBody,
+        ...(stylePrompt ? { stylePrompt } : {}),
+      };
+      let writingBody: Record<string, unknown>;
+      if (resolved.kind === 'short') {
+        writingBody = {
+          ...commonBody,
+          scope: 'short',
+          volume: 'short',
+          synopsis: resolved.synopsis,
+          beats: resolved.beats,
+        };
+      } else {
+        const chapters = listStructureChapters(structure);
+        const chapterIndex = chapters.findIndex((chapter) => chapter.id === unitId);
+        const previousChapter = chapters[chapterIndex - 1];
+        const nextChapter = chapters[chapterIndex + 1];
+        const previousChapterBody = previousChapter
+          ? currentWriting.units.find((unit) => unit.unitId === previousChapter.id)?.body.trim()
+          : undefined;
+        writingBody = {
+          ...commonBody,
+          scope: 'chapter',
+          volume: structure.kind === 'volumes' ? 'long' : 'medium',
+          ...(structure.kind === 'volumes' ? longFormatBody(panel) : {}),
+          chapterTitle: resolved.chapterTitle,
+          chapterPurpose: resolved.chapterPurpose,
+          beats: resolved.beats,
+          ...(previousChapter && previousChapterBody
+            ? {
+                previousChapter: {
+                  title: previousChapter.title,
+                  purpose: previousChapter.purpose,
+                  ending: previousChapterBody.slice(-NOVEL_PREVIOUS_CHAPTER_CONTEXT_MAX_CHARS),
+                },
+              }
+            : {}),
+          ...(nextChapter
+            ? {
+                nextChapter: {
+                  title: nextChapter.title,
+                  purpose: nextChapter.purpose,
+                },
+              }
+            : {}),
+        };
       }
 
+      const res = await fetch('/api/studio/novel/writing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+        body: JSON.stringify(withChatSettingsBody(writingBody)),
+        signal: controller.signal,
+      });
+      await assertOkOrJsonFail(res);
+      let receivedDone = false;
+      await consumeAnalyzeSse(res, {
+        onText: (delta) => buffer.append(delta),
+        onDone: () => {
+          receivedDone = true;
+        },
+        onError: (text) => message.error(text),
+      });
+      buffer.flushNow();
       if (controller.signal.aborted) return;
-      setPhase('written');
-      const base = writingRef.current ?? writing;
-      const nextWriting: WritingSnapshot = {
-        ...base,
-        units: base.units.map((unit) =>
-          bodies.has(unit.unitId) ? { ...unit, body: bodies.get(unit.unitId) ?? '' } : unit,
-        ),
-      };
+      const generated = buffer.getText();
+      if (!receivedDone || !generated.trim()) {
+        commitWriting(withUnitBody(writingRef.current ?? currentWriting, unitId, previousBody));
+        setPhase(hasWritingBody(writingRef.current) ? 'written' : 'write');
+        return;
+      }
+      const nextWriting = withUnitBody(writingRef.current ?? currentWriting, unitId, generated);
       commitWriting(nextWriting);
+      setPhase('written');
       await persistWrite(nextWriting);
     } catch (err) {
       if (isAbortError(err) || controller.signal.aborted) return;
       console.error('[novel-studio] writing', err);
+      commitWriting(withUnitBody(writingRef.current ?? currentWriting, unitId, previousBody));
       message.error(err instanceof Error && err.message ? err.message : WRITING_FAILED);
       setPhase(hasWritingBody(writingRef.current) ? 'written' : 'write');
     } finally {
+      buffer.dispose();
       if (abortRef.current === controller) {
         abortRef.current = null;
         generatingRef.current = false;
@@ -1215,7 +1237,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  /** 润色单个节拍正文：流式替换，失败则回落到点击前的正文。 */
+  /** 润色整篇或整章正文：流式替换，失败则回落到点击前的正文。 */
   async function handlePolishWriting(unitId: string) {
     const currentWriting = writingRef.current;
     const currentStructure = structureRef.current;
@@ -1224,7 +1246,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     if (!previousBody.trim()) return;
 
     const resolved = resolveWritingUnit(currentStructure, unitId);
-    if (!resolved || resolved.kind !== 'beat') return;
+    if (!resolved) return;
 
     const stylePrompt = formatStyleSelections(currentWriting.styleSelections ?? {}, {
       hiddenAxisLabels: WRITE_HIDDEN_AXIS_LABELS,
@@ -1257,7 +1279,10 @@ export function useNovelStudio(task: NovelTaskDetail) {
           withChatSettingsBody({
             reasoningEffort: reasoningEffortRef.current,
             body: previousBody.trim(),
-            ...(resolved.beatText?.trim() ? { beatText: resolved.beatText.trim() } : {}),
+            label: resolved.label,
+            ...(resolved.chapterPurpose ? { purpose: resolved.chapterPurpose } : {}),
+            ...(resolved.synopsis ? { synopsis: resolved.synopsis } : {}),
+            beats: resolved.beats,
             ...(stylePrompt ? { stylePrompt } : {}),
           }),
         ),

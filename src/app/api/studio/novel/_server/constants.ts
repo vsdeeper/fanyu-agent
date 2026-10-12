@@ -18,7 +18,7 @@ export const MISSING_BIBLE_INPUT = '请先选定选题并确认体量';
 export const MISSING_STRUCTURE_INPUT = '请先完成设定并确认选题';
 export const MISSING_VOLUME_CHAPTERS_INPUT = '请提供有效的卷信息';
 export const MISSING_CHAPTER_BEATS_INPUT = '请提供有效的章节信息';
-export const MISSING_WRITING_INPUT = '请提供有效的写作单元';
+export const MISSING_WRITING_INPUT = '请提供有效的整篇或章节写作信息';
 export const MISSING_POLISH_INPUT = '请先写好要润色的正文';
 
 /**
@@ -33,7 +33,7 @@ export const NOVEL_STRUCTURE_MAX_OUTPUT_TOKENS = 24576;
 export const NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS = 24576;
 /** 章内节拍输出上限（同上：reasoning 与 JSON 同预算）。 */
 export const NOVEL_CHAPTER_BEATS_MAX_OUTPUT_TOKENS = 24576;
-/** 单节拍正文输出上限（约 2000 字 + reasoning）。 */
-export const NOVEL_WRITING_MAX_OUTPUT_TOKENS = 24576;
-/** 润色须整段回写，reasoning 与正文同一预算，与写作同档。 */
-export const NOVEL_POLISH_MAX_OUTPUT_TOKENS = 24576;
+/** 整篇/整章正文输出上限；需容纳最长约 12000 字正文及 reasoning。 */
+export const NOVEL_WRITING_MAX_OUTPUT_TOKENS = 32768;
+/** 润色须整篇/整章回写，reasoning 与正文同一预算，与写作同档。 */
+export const NOVEL_POLISH_MAX_OUTPUT_TOKENS = 32768;

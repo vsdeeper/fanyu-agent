@@ -85,13 +85,13 @@ export type StructureSnapshot =
   | { kind: 'chapters'; chapters: StructureChapter[] }
   | { kind: 'volumes'; volumes: StructureVolume[] };
 
-/** 写作单元正文；unitId 为 chapter.id 或 beat.id。 */
+/** 写作单元正文；短篇使用固定整篇 id，中长篇使用 chapter.id。 */
 export type WritingUnit = {
   unitId: string;
   body: string;
 };
 
-/** 写作快照：短篇用 short；中篇与长篇扁平章/拍用 chapters。 */
+/** 写作快照：短篇保存整篇正文；中篇与长篇按章保存正文。 */
 export type WritingSnapshot = {
   kind: 'short' | 'chapters';
   units: WritingUnit[];

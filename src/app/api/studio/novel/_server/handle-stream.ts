@@ -137,13 +137,13 @@ function createProStream(params: {
   const provider = getChatProvider();
   const runtime = getChatProviderRuntimeFor(provider);
   const capabilities = runtime.getCapabilities();
-  const openaiOptions: Record<string, unknown> = {
-    ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
-    ...runtime.getOpenAIOptions(),
-  };
   // 左栏覆盖对话设置里的 reasoningEffort；方舟不传该字段。
   const reasoningEffort = resolveNovelReasoningEffort(provider, params.reasoningEffort);
-  if (reasoningEffort) openaiOptions.reasoningEffort = reasoningEffort;
+  const openaiOptions = {
+    ...(capabilities.needsOpenaiStoreFalse ? { store: false } : {}),
+    ...runtime.getOpenAIOptions(),
+    ...(reasoningEffort ? { reasoningEffort } : {}),
+  };
   const pdfParts = params.pdfParts ?? [];
   const content =
     pdfParts.length > 0
@@ -406,7 +406,7 @@ export async function handleNovelChapterBeats(req: Request): Promise<Response> {
     });
   });
 }
-/** POST /api/studio/novel/writing：流式产出单节拍正文。 */
+/** POST /api/studio/novel/writing：流式产出完整短篇或章节正文。 */
 export async function handleNovelWriting(req: Request): Promise<Response> {
   let json: unknown;
   try {
@@ -447,7 +447,7 @@ export async function handleNovelWriting(req: Request): Promise<Response> {
   });
 }
 
-/** POST /api/studio/novel/polish：对单节拍正文做通顺润色（不改情节）。 */
+/** POST /api/studio/novel/polish：对整篇或整章正文做通顺润色（不改情节）。 */
 export async function handleNovelPolish(req: Request): Promise<Response> {
   let json: unknown;
   try {

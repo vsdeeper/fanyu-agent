@@ -1,8 +1,7 @@
-import { Button } from 'antd';
-import { EMPTY_WRITE_HINT, WRITE_BUTTON, WRITE_CHAR_COUNT } from '../../constants';
+import { EMPTY_WRITE_HINT } from '../../constants';
 import type { StructureSnapshot, WritingSnapshot } from '../../types';
-import { buildWritingEditorBlocks, countTextChars } from '../../utils';
-import BeatWritingCard from './BeatWritingCard';
+import { buildWritingEditorBlocks } from '../../utils';
+import WritingBodyCard from './WritingBodyCard';
 import styles from './WritingEditor.module.css';
 
 type WritingEditorProps = {
@@ -17,7 +16,7 @@ type WritingEditorProps = {
   onCopyWritingBody: (unitId: string) => void;
 };
 
-/** 写作右栏：章 / 节拍嵌套；摘要与正文区分；卡片内生成正文。 */
+/** 写作右栏：一次只展示并编辑一篇或一章连续正文。 */
 export default function WritingEditor({
   structure,
   writing,
@@ -43,69 +42,21 @@ export default function WritingEditor({
 
   return (
     <div className={styles.editor}>
-      {blocks.map((block) => {
-        if (block.type === 'short') {
-          return (
-            <div key="short" className={styles.block}>
-              {block.beats.map((beat) => (
-                <BeatWritingCard
-                  key={beat.unitId}
-                  index={beat.index}
-                  summary={beat.summary}
-                  body={beat.body}
-                  generating={generatingSet.has(beat.unitId)}
-                  polishing={polishingUnitId === beat.unitId}
-                  writeBusy={writingBusy}
-                  onSave={(value) => onSaveBody(beat.unitId, value)}
-                  onGenerate={() => onGenerateWriting([beat.unitId])}
-                  onPolish={() => onPolishWriting(beat.unitId)}
-                  onCopy={() => onCopyWritingBody(beat.unitId)}
-                />
-              ))}
-            </div>
-          );
-        }
-
-        const chapterBeatIds = block.beats.map((beat) => beat.unitId);
-        const chapterGenerating = chapterBeatIds.some((id) => generatingSet.has(id));
-        const chapterCharCount = countTextChars(block.beats.map((beat) => beat.body).join(''));
-
-        return (
-          <div key={block.chapterId} className={styles.block}>
-            <div className={styles.chapterHead}>
-              <p className={styles.chapterTitle}>{block.chapterLabel}</p>
-              <span className={styles.charCount}>{WRITE_CHAR_COUNT(chapterCharCount)}</span>
-              <Button
-                type="link"
-                size="small"
-                className={styles.generateBtn}
-                loading={chapterGenerating}
-                disabled={writingBusy || chapterBeatIds.length === 0}
-                onClick={() => onGenerateWriting(chapterBeatIds)}
-              >
-                {WRITE_BUTTON}
-              </Button>
-            </div>
-            <div className={styles.beatNest}>
-              {block.beats.map((beat) => (
-                <BeatWritingCard
-                  key={beat.unitId}
-                  index={beat.index}
-                  summary={beat.summary}
-                  body={beat.body}
-                  generating={generatingSet.has(beat.unitId)}
-                  polishing={polishingUnitId === beat.unitId}
-                  writeBusy={writingBusy}
-                  onSave={(value) => onSaveBody(beat.unitId, value)}
-                  onGenerate={() => onGenerateWriting([beat.unitId])}
-                  onPolish={() => onPolishWriting(beat.unitId)}
-                  onCopy={() => onCopyWritingBody(beat.unitId)}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      })}
+      {blocks.map((block) => (
+        <WritingBodyCard
+          key={block.unitId}
+          label={block.label}
+          body={block.body}
+          generating={generatingSet.has(block.unitId)}
+          polishing={polishingUnitId === block.unitId}
+          writeBusy={writingBusy}
+          canGenerate={block.canGenerate}
+          onSave={(value) => onSaveBody(block.unitId, value)}
+          onGenerate={() => onGenerateWriting([block.unitId])}
+          onPolish={() => onPolishWriting(block.unitId)}
+          onCopy={() => onCopyWritingBody(block.unitId)}
+        />
+      ))}
     </div>
   );
 }

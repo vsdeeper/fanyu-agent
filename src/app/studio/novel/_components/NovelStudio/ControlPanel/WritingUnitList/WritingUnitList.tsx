@@ -1,6 +1,10 @@
 import { CaretDownOutlined, CaretRightOutlined } from '@ant-design/icons';
 import { useState, type MouseEvent } from 'react';
-import { WRITE_CHAPTER_NO_BEATS_HINT, WRITE_UNITS_LABEL } from '../../constants';
+import {
+  SHORT_WRITING_UNIT_ID,
+  WRITE_CHAPTER_NO_BEATS_HINT,
+  WRITE_UNITS_LABEL,
+} from '../../constants';
 import type { StructureSnapshot } from '../../types';
 import {
   expandedChapterIds,
@@ -18,7 +22,7 @@ type WritingUnitListProps = {
   onToggle: (unitId: string) => void;
 };
 
-/** 写作左栏单元列表：短篇节拍多选；中长篇章可折叠，章单选、同章节拍可多选。 */
+/** 写作左栏：整篇或章节单选；节拍只读展示，不参与选中与生成。 */
 export default function WritingUnitList({
   structure,
   selectedUnitIds,
@@ -41,41 +45,33 @@ export default function WritingUnitList({
     });
   };
 
-  const expandChapter = (chapterId: string) => {
-    setExpandedIds((prev) => {
-      if (prev.has(chapterId)) return prev;
-      const next = new Set(prev);
-      next.add(chapterId);
-      return next;
-    });
-  };
-
   return (
     <div className={styles.root}>
       <div className={styles.label}>{WRITE_UNITS_LABEL}</div>
       {structure.kind === 'short' ? (
-        <div className={styles.list}>
-          {structure.beats.map((beat, index) => {
-            const isSelected = selected.has(beat.id);
-            const isFocus = isSelected && focusUnitId === beat.id;
-            return (
-              <button
-                key={beat.id}
-                type="button"
-                className={[
-                  styles.item,
-                  isSelected ? styles.selected : '',
-                  isFocus ? styles.focus : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => onToggle(beat.id)}
-              >
+        <div className={styles.group}>
+          <button
+            type="button"
+            className={[
+              styles.item,
+              styles.chapterItem,
+              selected.has(SHORT_WRITING_UNIT_ID) ? styles.selected : '',
+              focusUnitId === SHORT_WRITING_UNIT_ID ? styles.focus : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => onToggle(SHORT_WRITING_UNIT_ID)}
+          >
+            <span className={styles.itemText}>整篇正文</span>
+          </button>
+          <div className={styles.beatList}>
+            {structure.beats.map((beat, index) => (
+              <div key={beat.id} className={styles.readonlyBeat}>
                 <span className={styles.itemIndex}>{index + 1}</span>
                 <span className={styles.itemText}>{beat.text}</span>
-              </button>
-            );
-          })}
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className={styles.groups}>
@@ -91,7 +87,6 @@ export default function WritingUnitList({
                 <div
                   className={[
                     styles.chapterRow,
-                    !hasBeats ? styles.disabled : '',
                     chapterSelected ? styles.selected : '',
                     chapterFocus ? styles.focus : '',
                   ]
@@ -109,13 +104,8 @@ export default function WritingUnitList({
                   </button>
                   <button
                     type="button"
-                    disabled={!hasBeats}
                     className={styles.chapterTitleBtn}
-                    onClick={() => {
-                      if (!hasBeats) return;
-                      expandChapter(chapter.id);
-                      onToggle(chapter.id);
-                    }}
+                    onClick={() => onToggle(chapter.id)}
                   >
                     <span className={styles.itemText}>{chapterLabel}</span>
                   </button>
@@ -124,28 +114,11 @@ export default function WritingUnitList({
                   hasBeats ? (
                     <div className={styles.beatList}>
                       {chapter.beats.map((beat, beatIndex) => {
-                        const isSelected = selected.has(beat.id);
-                        const isFocus = isSelected && focusUnitId === beat.id;
                         return (
-                          <button
-                            key={beat.id}
-                            type="button"
-                            className={[
-                              styles.item,
-                              styles.beatItem,
-                              isSelected ? styles.selected : '',
-                              isFocus ? styles.focus : '',
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
-                            onClick={() => {
-                              expandChapter(chapter.id);
-                              onToggle(beat.id);
-                            }}
-                          >
+                          <div key={beat.id} className={styles.readonlyBeat}>
                             <span className={styles.itemIndex}>{beatIndex + 1}</span>
                             <span className={styles.itemText}>{beat.text}</span>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>

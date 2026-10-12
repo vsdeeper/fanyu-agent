@@ -88,6 +88,7 @@ export const STRUCTURE_BUTTON = '生成结构';
 export const WRITE_BUTTON = '生成正文';
 export const POLISH_BUTTON = '润色';
 export const POLISH_FAILED = '润色失败，已保留当前正文';
+export const SHORT_WRITING_UNIT_ID = '__short_story__';
 export const PREV_BUTTON = '上一步';
 export const NEXT_BUTTON = '下一步';
 export const PREVIEW_RELATION_GRAPH_BUTTON = '预览人物关系图谱';
@@ -119,13 +120,14 @@ export const MISSING_IDEA_WARNING = '请填写我的想法或上传思路文件'
 export const MISSING_TOPIC_WARNING = '请先点选一个选题';
 export const MISSING_BIBLE_WARNING = '请先完成设定：至少一名写全性别的人物、时空、人称、聚焦和时态';
 export const MISSING_STRUCTURE_WARNING = '请先生成故事结构';
-export const MISSING_WRITE_SELECTION_WARNING = '请先选择有节拍的章节或节拍';
+export const MISSING_WRITE_SELECTION_WARNING = '请先选择要写作的章节';
+export const WRITE_SEQUENCE_WARNING = '请先按顺序完成前面的章节';
 export const MISSING_PREVIEW_BODY_WARNING = '请先生成或填写正文后再预览';
 export const EMPTY_RESEARCH_HINT =
   '填写想法或上传思路文件后点击「开始调研」，将产出若干选题卡供点选';
 export const EMPTY_BIBLE_HINT = '确认选题后点击「生成设定」，产出核心人物、关系、时空与规矩';
 export const EMPTY_STRUCTURE_HINT = '确认设定后点击「生成结构」，产出故事结构供编辑';
-export const EMPTY_WRITE_HINT = '在左侧选择有节拍的章节或节拍';
+export const EMPTY_WRITE_HINT = '在左侧选择整篇或章节';
 export const EMPTY_PREVIEW_HINT = '暂无正文';
 export const WRITE_UNIT_EMPTY_HINT = '点击「生成正文」后将在此流式展示；也可直接编辑';
 export const WRITE_CHAR_COUNT = (count: number) => `共 ${count} 字`;
@@ -198,7 +200,8 @@ export const STRUCTURE_REGENERATE_CONFIRM_CONTENT = '将覆盖当前故事结构
 export const CHAPTER_BEATS_REGENERATE_CONFIRM_TITLE = '重新生成本章节拍？';
 export const CHAPTER_BEATS_REGENERATE_CONFIRM_CONTENT = '将覆盖本章已有节拍';
 export const WRITE_REGENERATE_CONFIRM_TITLE = '重新生成正文？';
-export const WRITE_REGENERATE_CONFIRM_CONTENT = '将覆盖已选单元的已有正文';
+export const WRITE_REGENERATE_CONFIRM_CONTENT =
+  '将覆盖当前正文；若后续章节已经生成，它们与本章的衔接可能需要重新调整';
 export const CONFIRM_OK = '继续';
 export const CONFIRM_CANCEL = '取消';
 

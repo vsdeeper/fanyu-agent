@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { z } from 'zod';
+import { NOVEL_PREVIOUS_CHAPTER_CONTEXT_MAX_CHARS } from '../_shared/constants';
 import { isNovelIdeaFile, NOVEL_MAX_IDEA_FILES } from '../_shared/idea-file';
 import type {
   NovelBibleRequest,
@@ -141,21 +142,64 @@ const chapterBeatsSchema = z.object({
 
 const polishSchema = z.object({
   body: z.string().trim().min(1),
-  beatText: z.string().trim().min(1).optional(),
+  label: z.string().trim().min(1).optional(),
+  purpose: z.string().trim().min(1).optional(),
+  synopsis: z.string().trim().min(1).optional(),
+  beats: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1),
+        text: z.string().trim().min(1),
+      }),
+    )
+    .min(1)
+    .optional(),
   stylePrompt: z.string().trim().min(1).optional(),
 });
 
-const writingSchema = z.object({
+const writingBaseSchema = {
   unitId: z.string().trim().min(1),
-  beatText: z.string().trim().min(1),
-  chapterTitle: z.string().trim().min(1).optional(),
-  chapterPurpose: z.string().trim().min(1).optional(),
   topic: topicSchema,
   bible: bibleSchema,
-  volume: volumeSchema,
   longFormat: longFormatSchema.optional(),
   stylePrompt: z.string().trim().min(1).optional(),
+};
+
+const writingBeatSchema = z.object({
+  id: z.string().trim().min(1),
+  text: z.string().trim().min(1),
 });
+
+const writingSchema = z.discriminatedUnion('scope', [
+  z.object({
+    ...writingBaseSchema,
+    scope: z.literal('short'),
+    volume: z.literal('short'),
+    synopsis: z.string().trim().min(1),
+    beats: z.array(writingBeatSchema).min(1),
+  }),
+  z.object({
+    ...writingBaseSchema,
+    scope: z.literal('chapter'),
+    volume: z.enum(['medium', 'long']),
+    chapterTitle: z.string().trim().min(1),
+    chapterPurpose: z.string().trim().min(1),
+    beats: z.array(writingBeatSchema).min(1),
+    previousChapter: z
+      .object({
+        title: z.string().trim().min(1),
+        purpose: z.string().trim().min(1),
+        ending: z.string().trim().min(1).max(NOVEL_PREVIOUS_CHAPTER_CONTEXT_MAX_CHARS),
+      })
+      .optional(),
+    nextChapter: z
+      .object({
+        title: z.string().trim().min(1),
+        purpose: z.string().trim().min(1),
+      })
+      .optional(),
+  }),
+]);
 
 /** 解析设定生成请求体；失败返回 null。 */
 export function parseBibleBody(json: unknown): NovelBibleRequest | null {

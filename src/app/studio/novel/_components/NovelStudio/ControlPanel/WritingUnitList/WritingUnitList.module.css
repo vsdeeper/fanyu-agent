@@ -79,10 +79,6 @@
   font-weight: 600;
 }
 
-.chapterTitleBtn:disabled {
-  cursor: not-allowed;
-}
-
 .beatList {
   display: flex;
   flex-direction: column;
@@ -115,15 +111,17 @@
   box-shadow: 0 0 0 1px var(--fanyu-color-primary);
 }
 
-.disabled {
-  opacity: 0.55;
-}
-
 .chapterItem {
   font-weight: 600;
 }
 
-.beatItem {
+.readonlyBeat {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  color: var(--fanyu-color-text-secondary);
   font-weight: 400;
 }
 

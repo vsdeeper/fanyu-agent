@@ -12,7 +12,7 @@ import {
   parseStyleSelections,
 } from '@/app/studio/_components/StyleDimensionPicker';
 import { apiDelete, apiPut } from '@/lib/client/api-client';
-import { BIBLE_HIDDEN_AXIS_LABELS, NARRATOR_AXIS_LABELS } from './constants';
+import { BIBLE_HIDDEN_AXIS_LABELS, NARRATOR_AXIS_LABELS, SHORT_WRITING_UNIT_ID } from './constants';
 import type {
   BibleGenerated,
   BibleStepSnapshot,
@@ -41,7 +41,7 @@ export { formatChapterPrefix, stripChapterPrefix };
 export { assertOkOrJsonFail, isAbortError } from '@/app/studio/_utils/generate-stream';
 export { createRafTextBuffer, consumeAnalyzeSse } from '@/app/studio/_utils/analyze-stream';
 
-export type WritingUnitKind = 'chapter' | 'beat';
+export type WritingUnitKind = 'short' | 'chapter';
 
 export type ResolvedWritingUnit = {
   unitId: string;
@@ -50,8 +50,8 @@ export type ResolvedWritingUnit = {
   chapterId?: string;
   chapterTitle?: string;
   chapterPurpose?: string;
-  beatText?: string;
-  beatTexts?: string[];
+  synopsis?: string;
+  beats: StructureBeat[];
 };
 
 /** 中篇 chapters 或长篇 volumes 扁平为章列表（全书顺序）。 */
@@ -73,28 +73,76 @@ export function areVolumesReadyForWrite(structure: StructureSnapshot): boolean {
   return structure.volumes.some((volume) => volume.chapters.length > 0);
 }
 
-/** 收集结构中全部可写 unitId（短篇仅节拍；中长篇含章 id + 各章节拍 id）。 */
+/** 收集结构中全部正文 unitId：短篇唯一整篇单元，中长篇仅章节。 */
 export function listWritableUnitIds(structure: StructureSnapshot): string[] {
-  if (structure.kind === 'short') {
-    return structure.beats.map((beat) => beat.id);
-  }
-  return listStructureChapters(structure).flatMap((chapter) => [
-    chapter.id,
-    ...chapter.beats.map((beat) => beat.id),
-  ]);
+  if (structure.kind === 'short') return [SHORT_WRITING_UNIT_ID];
+  return listStructureChapters(structure).map((chapter) => chapter.id);
 }
 
-/** 按当前结构对齐写作 units：保留仍存在的 body、文风与选中，新 id 补空串。 */
+/** 按结构顺序拼接旧节拍正文，迁移到整篇或整章正文。 */
+function mergeLegacyBeatBodies(beats: StructureBeat[], bodyById: Map<string, string>): string {
+  return beats
+    .map((beat) => bodyById.get(beat.id)?.trim() ?? '')
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/** 把旧节拍选中映射到整篇或所属章节，并保持单选。 */
+function migrateWritingSelection(
+  structure: StructureSnapshot,
+  selectedUnitIds: readonly string[] | undefined,
+  focusUnitId: string | undefined,
+): Pick<WritingSnapshot, 'selectedUnitIds' | 'focusUnitId'> {
+  const candidates = [focusUnitId, ...[...(selectedUnitIds ?? [])].reverse()].filter(
+    (id): id is string => Boolean(id),
+  );
+  if (structure.kind === 'short') {
+    const oldIds = new Set(structure.beats.map((beat) => beat.id));
+    if (candidates.some((id) => id === SHORT_WRITING_UNIT_ID || oldIds.has(id))) {
+      return {
+        selectedUnitIds: [SHORT_WRITING_UNIT_ID],
+        focusUnitId: SHORT_WRITING_UNIT_ID,
+      };
+    }
+    return {};
+  }
+
+  const chapters = listStructureChapters(structure);
+  for (const id of candidates) {
+    const chapter = chapters.find(
+      (item) => item.id === id || item.beats.some((beat) => beat.id === id),
+    );
+    if (chapter) return { selectedUnitIds: [chapter.id], focusUnitId: chapter.id };
+  }
+  return {};
+}
+
+/**
+ * 按当前结构对齐写作 units。
+ * 旧快照若仍按节拍保存，短篇合并为整篇、中长篇按章合并；非空整章正文优先保留。
+ */
 export function syncWritingUnits(
   structure: StructureSnapshot,
   prev?: WritingSnapshot,
 ): WritingSnapshot {
   const prevMap = new Map((prev?.units ?? []).map((unit) => [unit.unitId, unit.body]));
-  const units: WritingUnit[] = listWritableUnitIds(structure).map((unitId) => ({
-    unitId,
-    body: prevMap.get(unitId) ?? '',
-  }));
-  const selection = retainWritingSelection(structure, prev?.selectedUnitIds, prev?.focusUnitId);
+  const units: WritingUnit[] =
+    structure.kind === 'short'
+      ? [
+          {
+            unitId: SHORT_WRITING_UNIT_ID,
+            body: prevMap.get(SHORT_WRITING_UNIT_ID)?.trim()
+              ? (prevMap.get(SHORT_WRITING_UNIT_ID) ?? '')
+              : mergeLegacyBeatBodies(structure.beats, prevMap),
+          },
+        ]
+      : listStructureChapters(structure).map((chapter) => ({
+          unitId: chapter.id,
+          body: prevMap.get(chapter.id)?.trim()
+            ? (prevMap.get(chapter.id) ?? '')
+            : mergeLegacyBeatBodies(chapter.beats, prevMap),
+        }));
+  const selection = migrateWritingSelection(structure, prev?.selectedUnitIds, prev?.focusUnitId);
   return {
     kind: writingKindFromStructure(structure),
     units,
@@ -111,26 +159,17 @@ export function retainWritingSelection(
   selectedUnitIds: readonly string[] | undefined,
   focusUnitId: string | undefined,
 ): Pick<WritingSnapshot, 'selectedUnitIds' | 'focusUnitId'> {
-  const valid = new Set(listWritableUnitIds(structure));
-  const nextIds = (selectedUnitIds ?? []).filter((id) => valid.has(id));
-  const nextFocus = focusUnitId && nextIds.includes(focusUnitId) ? focusUnitId : nextIds.at(-1);
-  return {
-    ...(nextIds.length ? { selectedUnitIds: nextIds } : {}),
-    ...(nextFocus ? { focusUnitId: nextFocus } : {}),
-  };
+  return migrateWritingSelection(structure, selectedUnitIds, focusUnitId);
 }
 
-/** 进入写作步时默认展开的章：章本身或其任一节拍已选中。 */
+/** 进入写作步时默认展开当前选中章，便于只读查看节拍。 */
 export function expandedChapterIds(
   structure: StructureSnapshot,
   selectedUnitIds: readonly string[],
 ): string[] {
   if (structure.kind === 'short' || selectedUnitIds.length === 0) return [];
-  const selected = new Set(selectedUnitIds);
   return listStructureChapters(structure)
-    .filter(
-      (chapter) => selected.has(chapter.id) || chapter.beats.some((beat) => selected.has(beat.id)),
-    )
+    .filter((chapter) => selectedUnitIds.includes(chapter.id))
     .map((chapter) => chapter.id);
 }
 
@@ -167,35 +206,19 @@ export function countTextChars(text: string): number {
   return text.replace(/\s/g, '').length;
 }
 
-function findChapterByBeatId(
-  chapters: StructureChapter[],
-  beatId: string,
-): StructureChapter | undefined {
-  return chapters.find((chapter) => chapter.beats.some((beat) => beat.id === beatId));
-}
-
-function findBeat(chapters: StructureChapter[], beatId: string): StructureBeat | undefined {
-  for (const chapter of chapters) {
-    const beat = chapter.beats.find((item) => item.id === beatId);
-    if (beat) return beat;
-  }
-  return undefined;
-}
-
 /** 解析 unitId 对应的展示与生成上下文。 */
 export function resolveWritingUnit(
   structure: StructureSnapshot,
   unitId: string,
 ): ResolvedWritingUnit | undefined {
   if (structure.kind === 'short') {
-    const index = structure.beats.findIndex((beat) => beat.id === unitId);
-    if (index < 0) return undefined;
-    const beat = structure.beats[index];
+    if (unitId !== SHORT_WRITING_UNIT_ID) return undefined;
     return {
       unitId,
-      kind: 'beat',
-      label: `节拍 ${index + 1}`,
-      beatText: beat.text,
+      kind: 'short',
+      label: '整篇正文',
+      synopsis: structure.synopsis,
+      beats: structure.beats,
     };
   }
 
@@ -211,148 +234,81 @@ export function resolveWritingUnit(
       chapterId: chapter.id,
       chapterTitle: titleName,
       chapterPurpose: chapter.purpose,
-      beatTexts: chapter.beats.map((beat) => beat.text),
+      beats: chapter.beats,
     };
   }
-
-  const chapter = findChapterByBeatId(chapters, unitId);
-  const beat = findBeat(chapters, unitId);
-  if (!chapter || !beat) return undefined;
-  const chapterIndex2 = chapters.findIndex((item) => item.id === chapter.id);
-  const beatIndex = chapter.beats.findIndex((item) => item.id === beat.id);
-  const titleName = stripChapterPrefix(chapter.title);
-  return {
-    unitId,
-    kind: 'beat',
-    label: `${formatChapterPrefix(chapterIndex2 + 1)} · 节拍 ${beatIndex + 1}`,
-    chapterId: chapter.id,
-    chapterTitle: titleName,
-    chapterPurpose: chapter.purpose,
-    beatText: beat.text,
-  };
+  return undefined;
 }
 
 /**
  * 切换写作单元选中态。
- * 短篇：节拍多选。
- * 中长篇：无节拍的章不可选；有节拍的章点选即全选该章节拍；同章节拍可多选；不可跨章混选。
- * 同章节拍全部选中时，同步选中章标题。
+ * 短篇仅有整篇单元；中长篇仅章节可选，且始终单选。
  */
 export function toggleWritingSelection(
   structure: StructureSnapshot,
   prevSelected: string[],
   unitId: string,
 ): string[] {
-  if (structure.kind === 'short') {
-    if (prevSelected.includes(unitId)) {
-      return prevSelected.filter((id) => id !== unitId);
-    }
-    return [...prevSelected, unitId];
-  }
-
-  const chapters = listStructureChapters(structure);
-  const chapterIndex = chapters.findIndex((chapter) => chapter.id === unitId);
-  if (chapterIndex >= 0) {
-    const chapter = chapters[chapterIndex];
-    if (chapter.beats.length === 0) return prevSelected;
-    const allIds = [chapter.id, ...chapter.beats.map((beat) => beat.id)];
-    const allSelected = allIds.every((id) => prevSelected.includes(id));
-    if (allSelected) return [];
-    return allIds;
-  }
-
-  const owner = findChapterByBeatId(chapters, unitId);
-  if (!owner || owner.beats.length === 0) return prevSelected;
-
-  const ownerBeatIds = owner.beats.map((beat) => beat.id);
-  const ownerBeatIdSet = new Set(ownerBeatIds);
-  const prevBeatOnly = prevSelected.filter((id) => ownerBeatIdSet.has(id));
-  const prevIsSameChapterContext =
-    prevSelected.length > 0 &&
-    prevSelected.every((id) => id === owner.id || ownerBeatIdSet.has(id));
-
-  let nextBeats: string[];
-  if (prevIsSameChapterContext) {
-    if (prevBeatOnly.includes(unitId)) {
-      nextBeats = prevBeatOnly.filter((id) => id !== unitId);
-    } else {
-      nextBeats = [...prevBeatOnly, unitId];
-    }
-  } else {
-    nextBeats = [unitId];
-  }
-
-  if (nextBeats.length === 0) return [];
-
-  if (ownerBeatIds.every((id) => nextBeats.includes(id))) {
-    return [owner.id, ...nextBeats];
-  }
-  return nextBeats;
+  if (!listWritableUnitIds(structure).includes(unitId)) return prevSelected;
+  return prevSelected.includes(unitId) ? [] : [unitId];
 }
 
-/** 章行是否应显示为选中：显式选中章，或该章全部节拍已选中。 */
+/** 章行是否选中。节拍在写作步只读，不参与选中态。 */
 export function isChapterRowSelected(
   chapter: StructureChapter,
   selectedUnitIds: string[],
 ): boolean {
-  if (chapter.beats.length === 0) return false;
-  if (selectedUnitIds.includes(chapter.id)) return true;
-  return chapter.beats.every((beat) => selectedUnitIds.includes(beat.id));
+  return selectedUnitIds.includes(chapter.id);
 }
 
-/**
- * 生成正文的 unitId：仅节拍。
- * 若选中整章，展开为该章全部节拍；无节拍则得到空数组。
- */
+/** 返回有效的整篇或章节 unitId；正文生成不再展开到节拍。 */
 export function resolveGenerateUnitIds(
   structure: StructureSnapshot,
   selectedUnitIds: string[],
 ): string[] {
-  if (structure.kind === 'short') return selectedUnitIds;
-
-  const chapters = listStructureChapters(structure);
-  const beatIds: string[] = [];
-  for (const id of selectedUnitIds) {
-    const chapter = chapters.find((item) => item.id === id);
-    if (chapter) {
-      for (const beat of chapter.beats) {
-        if (!beatIds.includes(beat.id)) beatIds.push(beat.id);
-      }
-      continue;
-    }
-    if (!beatIds.includes(id)) beatIds.push(id);
-  }
-  return beatIds;
+  const valid = new Set(listWritableUnitIds(structure));
+  return selectedUnitIds.filter(
+    (id, index) => valid.has(id) && selectedUnitIds.indexOf(id) === index,
+  );
 }
 
-/** 是否可生成正文：选中集合能解析出至少一个节拍。 */
+/** 是否可生成正文：单元有效且已有完整节拍大纲。 */
 export function canGenerateWriting(
   structure: StructureSnapshot | undefined,
   selectedUnitIds: string[],
 ): boolean {
   if (!structure || selectedUnitIds.length === 0) return false;
-  return resolveGenerateUnitIds(structure, selectedUnitIds).length > 0;
+  const unitId = resolveGenerateUnitIds(structure, selectedUnitIds)[0];
+  const resolved = unitId ? resolveWritingUnit(structure, unitId) : undefined;
+  return Boolean(resolved?.beats.length);
 }
 
-export type WritingEditorBeatItem = {
-  unitId: string;
-  index: number;
-  /** 节拍原文摘要，与正文区分展示。 */
-  summary: string;
-  body: string;
-};
+/**
+ * 判断正文单元能否生成：已有正文可重生成；新章节须等所有前章都有正文。
+ * 短篇没有章节顺序限制。
+ */
+export function canGenerateWritingUnit(
+  structure: StructureSnapshot,
+  writing: WritingSnapshot,
+  unitId: string,
+): boolean {
+  const resolved = resolveWritingUnit(structure, unitId);
+  if (!resolved || resolved.beats.length === 0) return false;
+  if (resolved.kind === 'short') return true;
+  const bodyById = new Map(writing.units.map((unit) => [unit.unitId, unit.body.trim()]));
+  if (bodyById.get(unitId)) return true;
+  const chapters = listStructureChapters(structure);
+  const index = chapters.findIndex((chapter) => chapter.id === unitId);
+  return index >= 0 && chapters.slice(0, index).every((chapter) => bodyById.get(chapter.id));
+}
 
-export type WritingEditorBlock =
-  | {
-      type: 'short';
-      beats: WritingEditorBeatItem[];
-    }
-  | {
-      type: 'chapter';
-      chapterId: string;
-      chapterLabel: string;
-      beats: WritingEditorBeatItem[];
-    };
+export type WritingEditorBlock = {
+  type: WritingUnitKind;
+  unitId: string;
+  label: string;
+  body: string;
+  canGenerate: boolean;
+};
 
 /** 预览节：中长篇带章标题；短篇无章标题。 */
 export type PreviewSection = {
@@ -366,7 +322,7 @@ export type PreviewDocument = {
   plainText: string;
 };
 
-/** 按全结构顺序组装预览文稿：仅非空节拍正文；中长篇保留章标题分隔。 */
+/** 按全结构顺序组装预览文稿：短篇整篇、中长篇整章。 */
 export function buildPreviewDocument(
   structure: StructureSnapshot,
   writing: WritingSnapshot,
@@ -375,12 +331,10 @@ export function buildPreviewDocument(
     writing.units.find((unit) => unit.unitId === unitId)?.body.trim() ?? '';
 
   if (structure.kind === 'short') {
-    const paragraphs = structure.beats
-      .map((beat) => bodyOf(beat.id))
-      .filter((body) => body.length > 0);
+    const body = bodyOf(SHORT_WRITING_UNIT_ID);
     return {
-      sections: paragraphs.length > 0 ? [{ paragraphs }] : [],
-      plainText: paragraphs.join('\n\n'),
+      sections: body ? [{ paragraphs: [body] }] : [],
+      plainText: body,
     };
   }
 
@@ -388,15 +342,13 @@ export function buildPreviewDocument(
   const plainParts: string[] = [];
 
   listStructureChapters(structure).forEach((chapter, chapterIndex) => {
-    const paragraphs = chapter.beats
-      .map((beat) => bodyOf(beat.id))
-      .filter((body) => body.length > 0);
-    if (paragraphs.length === 0) return;
+    const body = bodyOf(chapter.id);
+    if (!body) return;
 
     const titleName = stripChapterPrefix(chapter.title);
     const chapterLabel = `${formatChapterPrefix(chapterIndex + 1)}${titleName ? `　${titleName}` : ''}`;
-    sections.push({ chapterLabel, paragraphs });
-    plainParts.push(`${chapterLabel}\n\n${paragraphs.join('\n\n')}`);
+    sections.push({ chapterLabel, paragraphs: [body] });
+    plainParts.push(`${chapterLabel}\n\n${body}`);
   });
 
   return {
@@ -410,70 +362,25 @@ export async function copyText(text: string): Promise<void> {
   await navigator.clipboard.writeText(text);
 }
 
-/** 按当前选中集合构建正文区嵌套展示块。 */
+/** 为当前单选的整篇或章节构建正文编辑块。 */
 export function buildWritingEditorBlocks(
   structure: StructureSnapshot,
   writing: WritingSnapshot,
   selectedUnitIds: string[],
 ): WritingEditorBlock[] {
-  const bodyOf = (unitId: string) =>
-    writing.units.find((unit) => unit.unitId === unitId)?.body ?? '';
-
-  if (selectedUnitIds.length === 0) return [];
-
-  if (structure.kind === 'short') {
-    const beats = structure.beats
-      .filter((beat) => selectedUnitIds.includes(beat.id))
-      .map((beat, index) => {
-        const order = structure.beats.findIndex((item) => item.id === beat.id) + 1;
-        return {
-          unitId: beat.id,
-          index: order || index + 1,
-          summary: beat.text,
-          body: bodyOf(beat.id),
-        };
-      });
-    return beats.length > 0 ? [{ type: 'short', beats }] : [];
-  }
-
-  const selected = new Set(selectedUnitIds);
-  const blocks: WritingEditorBlock[] = [];
-
-  listStructureChapters(structure).forEach((chapter, chapterIndex) => {
-    const titleName = stripChapterPrefix(chapter.title);
-    const chapterLabel = `${formatChapterPrefix(chapterIndex + 1)}${titleName ? `　${titleName}` : ''}`;
-    let selectedBeats = chapter.beats
-      .map((beat, beatIndex) => ({ beat, beatIndex }))
-      .filter(({ beat }) => selected.has(beat.id))
-      .map(({ beat, beatIndex }) => ({
-        unitId: beat.id,
-        index: beatIndex + 1,
-        summary: beat.text,
-        body: bodyOf(beat.id),
-      }));
-
-    // 仅选中章标题时，展开为该章全部节拍展示（无节拍则跳过）
-    if (selected.has(chapter.id) && selectedBeats.length === 0) {
-      if (chapter.beats.length === 0) return;
-      selectedBeats = chapter.beats.map((beat, beatIndex) => ({
-        unitId: beat.id,
-        index: beatIndex + 1,
-        summary: beat.text,
-        body: bodyOf(beat.id),
-      }));
-    }
-
-    if (selectedBeats.length === 0) return;
-
-    blocks.push({
-      type: 'chapter',
-      chapterId: chapter.id,
-      chapterLabel,
-      beats: selectedBeats,
-    });
-  });
-
-  return blocks;
+  const unitId = resolveGenerateUnitIds(structure, selectedUnitIds)[0];
+  if (!unitId) return [];
+  const resolved = resolveWritingUnit(structure, unitId);
+  if (!resolved) return [];
+  return [
+    {
+      type: resolved.kind,
+      unitId,
+      label: resolved.label,
+      body: writing.units.find((unit) => unit.unitId === unitId)?.body ?? '',
+      canGenerate: canGenerateWritingUnit(structure, writing, unitId),
+    },
+  ];
 }
 
 /** 流式展示用：去掉末尾 ```json 围栏（含尚未闭合的）。 */

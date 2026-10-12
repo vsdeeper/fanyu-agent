@@ -257,17 +257,10 @@ export function buildWritingPrompt(body: NovelWritingRequest): string {
   const longFormat = resolveLongFormat(body.volume, body.longFormat);
   const lengthHint =
     body.volume === 'short'
-      ? '本节拍约 600～1200 字'
+      ? '整篇约 3000～10000 字'
       : body.volume === 'long' && longFormat === 'web'
-        ? '本节拍约 600～1500 字'
-        : '本节拍约 700～2000 字';
-  const chapterLines =
-    body.chapterTitle || body.chapterPurpose
-      ? [
-          body.chapterTitle ? `所属章节：${body.chapterTitle}` : '',
-          body.chapterPurpose ? `本章目的：${body.chapterPurpose}` : '',
-        ].filter(Boolean)
-      : ['所属：短篇节拍（无章节）'];
+        ? '本章约 2000～5000 字'
+        : '本章约 2000～12000 字';
   const lines = [
     `选题：${body.topic.title}（${body.topic.genreVolume}）`,
     `故事核：${body.topic.core}`,
@@ -280,25 +273,64 @@ export function buildWritingPrompt(body: NovelWritingRequest): string {
   if (body.stylePrompt?.trim()) {
     lines.push('【文风】', body.stylePrompt.trim());
   }
+  if (body.scope === 'short') {
+    lines.push(
+      `正文 unitId：${body.unitId}`,
+      `梗概：${body.synopsis}`,
+      '【整篇节拍】',
+      ...body.beats.map((beat, index) => `${index + 1}. ${beat.text}`),
+      `请一次写完整篇正文（${lengthHint}）。覆盖全部节拍，但不要显示节拍标题或分隔标记。`,
+    );
+    return lines.join('\n');
+  }
+
+  if (body.previousChapter) {
+    lines.push(
+      '【上一章衔接】',
+      `标题：${body.previousChapter.title}`,
+      `目的：${body.previousChapter.purpose}`,
+      '正文结尾：',
+      body.previousChapter.ending,
+    );
+  } else {
+    lines.push('【上一章衔接】无（这是首章或上一章尚无正文）');
+  }
   lines.push(
-    ...chapterLines,
-    `节拍 unitId：${body.unitId}`,
-    `节拍内容：${body.beatText}`,
-    `请只写本节拍正文（${lengthHint}）。`,
+    '【当前章】',
+    `正文 unitId：${body.unitId}`,
+    `标题：${body.chapterTitle}`,
+    `目的：${body.chapterPurpose}`,
+    '完整章内节拍：',
+    ...body.beats.map((beat, index) => `${index + 1}. ${beat.text}`),
+  );
+  if (body.nextChapter) {
+    lines.push(
+      '【下一章边界】',
+      `标题：${body.nextChapter.title}`,
+      `目的：${body.nextChapter.purpose}`,
+      '当前章不要提前写掉下一章的核心任务。',
+    );
+  }
+  lines.push(
+    `请一次写完当前章正文（${lengthHint}）。覆盖全部节拍，但不要显示节拍标题或分隔标记；从上一章结尾自然续写，不要复述上一章。`,
   );
   return lines.join('\n');
 }
 
-/** 拼装单节拍通顺润色用户提示。 */
+/** 拼装整篇或整章通顺润色用户提示。 */
 export function buildPolishPrompt(body: NovelPolishRequest): string {
-  const beat = body.beatText?.trim();
   const style = body.stylePrompt?.trim();
   return [
-    ...(beat ? ['【节拍】', beat] : []),
+    ...(body.label ? ['【正文单元】', body.label] : []),
+    ...(body.purpose ? ['【本章目的】', body.purpose] : []),
+    ...(body.synopsis ? ['【梗概】', body.synopsis] : []),
+    ...(body.beats?.length
+      ? ['【完整节拍】', ...body.beats.map((beat, index) => `${index + 1}. ${beat.text}`)]
+      : []),
     ...(style ? ['【文风】', style] : []),
     '【原文】',
     body.body.trim(),
     '',
-    '请输出润色后的完整正文（改通顺、不当搭配、主谓错位、指称偷换与半吊子术语，不改情节、对话内容与人称；空行分段；不要标题、说明或代码块）。',
+    '请输出润色后的整篇或整章正文（修正段落衔接、重复、句读、不当搭配、主谓错位、指称偷换与半吊子术语；不改情节、对话内容与人称；空行分段；不要标题、说明或代码块）。',
   ].join('\n');
 }

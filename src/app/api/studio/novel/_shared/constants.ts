@@ -16,6 +16,9 @@ export type NovelReasoningEffort = (typeof NOVEL_REASONING_EFFORTS)[number];
 /** 长篇默认拉满；旧任务没写这个字段时也用这一档。 */
 export const NOVEL_DEFAULT_REASONING_EFFORT: NovelReasoningEffort = 'max';
 
+/** 续写下一章时携带的上一章正文结尾最大字符数。 */
+export const NOVEL_PREVIOUS_CHAPTER_CONTEXT_MAX_CHARS = 3000;
+
 /** 读取落盘或请求里的思考强度；缺省、非法都回落 max。 */
 export function readNovelReasoningEffort(value: unknown): NovelReasoningEffort {
   if (

@@ -161,26 +161,48 @@ export type NovelChapterBeatsRequest = {
   }>;
 };
 
-/** 单单元正文写作请求。 */
-export type NovelWritingRequest = {
+/** 正文写作共用字段。 */
+type NovelWritingRequestBase = {
   unitId: string;
-  beatText: string;
-  chapterTitle?: string;
-  chapterPurpose?: string;
   topic: NovelTopicCard;
   bible: NovelBible;
-  volume: NovelVolume;
   longFormat?: NovelLongFormat;
   /** 文风提示词；可选。 */
   stylePrompt?: string;
 };
 
-/** 单节拍正文通顺润色：改句读与用词，不改情节。 */
+/** 整篇或整章正文写作请求。 */
+export type NovelWritingRequest =
+  | (NovelWritingRequestBase & {
+      scope: 'short';
+      volume: 'short';
+      synopsis: string;
+      beats: NovelStructureBeat[];
+    })
+  | (NovelWritingRequestBase & {
+      scope: 'chapter';
+      volume: 'medium' | 'long';
+      chapterTitle: string;
+      chapterPurpose: string;
+      beats: NovelStructureBeat[];
+      previousChapter?: {
+        title: string;
+        purpose: string;
+        ending: string;
+      };
+      nextChapter?: {
+        title: string;
+        purpose: string;
+      };
+    });
+
+/** 整篇或整章正文通顺润色：改句读、衔接与用词，不改情节。 */
 export type NovelPolishRequest = {
-  /** 当前节拍正文。 */
   body: string;
-  /** 节拍摘要；有则用来守住这一拍要完成的事。 */
-  beatText?: string;
+  label?: string;
+  purpose?: string;
+  synopsis?: string;
+  beats?: NovelStructureBeat[];
   /** 文风提示；有则润色时保留语气质地。 */
   stylePrompt?: string;
 };

@@ -10,64 +10,53 @@ import { countTextChars } from '../../../utils';
 import styles from '../WritingEditor.module.css';
 import { COPY_BUTTON } from './constants';
 
-type BeatWritingCardProps = {
-  index: number;
-  summary: string;
+type WritingBodyCardProps = {
+  label: string;
   body: string;
-  /** 本节拍正在生成（显示 loading）。 */
   generating: boolean;
-  /** 本节拍正在润色。 */
   polishing: boolean;
-  /** 任意写作生成或润色进行中（禁用其它入口，避免打断）。 */
   writeBusy: boolean;
+  canGenerate: boolean;
   onSave: (value: string) => void;
   onGenerate: () => void;
   onPolish: () => void;
   onCopy: () => void;
 };
 
-const BEAT_CARD_STYLES = {
+const WRITING_CARD_STYLES = {
   header: { padding: '14px 16px', minHeight: 'auto' },
   body: { padding: '14px 16px' },
 } as const;
 
-/** 单节拍正文卡：标题区为摘要，正文区为生成内容；可生成，有正文时可润色。 */
-export default function BeatWritingCard({
-  index,
-  summary,
+/** 整篇或整章正文卡：正文只保留一个连续编辑区。 */
+export default function WritingBodyCard({
+  label,
   body,
   generating,
   polishing,
   writeBusy,
+  canGenerate,
   onSave,
   onGenerate,
   onPolish,
   onCopy,
-}: BeatWritingCardProps) {
+}: WritingBodyCardProps) {
   const hasBody = Boolean(body.trim());
-  const charCount = countTextChars(body);
 
   return (
     <StudioCard
-      className={styles.beatCard}
-      styles={BEAT_CARD_STYLES}
-      title={
-        <span className={styles.summaryTitle}>
-          <span className={styles.summaryIndex} aria-hidden>
-            {index}
-          </span>
-          <span className={styles.summaryText}>{summary}</span>
-        </span>
-      }
+      className={styles.writingCard}
+      styles={WRITING_CARD_STYLES}
+      title={<span className={styles.bodyTitle}>{label}</span>}
       extra={
         <span className={styles.extraRow}>
-          <span className={styles.charCount}>{WRITE_CHAR_COUNT(charCount)}</span>
+          <span className={styles.charCount}>{WRITE_CHAR_COUNT(countTextChars(body))}</span>
           <Button
             type="link"
             size="small"
             className={styles.generateBtn}
             loading={generating}
-            disabled={writeBusy}
+            disabled={writeBusy || !canGenerate}
             onClick={(event) => {
               event.stopPropagation();
               onGenerate();
@@ -101,8 +90,7 @@ export default function BeatWritingCard({
       }
       value={body}
       onSave={onSave}
-      textareaRows={6}
-      editorClassName={styles.editorIndent}
+      textareaRows={16}
     >
       {hasBody ? (
         <p className={styles.bodyText}>{body}</p>
