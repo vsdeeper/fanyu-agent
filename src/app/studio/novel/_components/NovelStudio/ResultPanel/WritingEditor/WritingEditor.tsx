@@ -14,6 +14,7 @@ type WritingEditorProps = {
   onSaveBody: (unitId: string, body: string) => void;
   onGenerateWriting: (unitIds: string[]) => void;
   onPolishWriting: (unitId: string) => void;
+  onCopyWritingBody: (unitId: string) => void;
 };
 
 /** 写作右栏：章 / 节拍嵌套；摘要与正文区分；卡片内生成正文。 */
@@ -26,6 +27,7 @@ export default function WritingEditor({
   onSaveBody,
   onGenerateWriting,
   onPolishWriting,
+  onCopyWritingBody,
 }: WritingEditorProps) {
   const blocks = buildWritingEditorBlocks(structure, writing, selectedUnitIds);
   const generatingSet = new Set(generatingUnitIds);
@@ -57,6 +59,7 @@ export default function WritingEditor({
                   onSave={(value) => onSaveBody(beat.unitId, value)}
                   onGenerate={() => onGenerateWriting([beat.unitId])}
                   onPolish={() => onPolishWriting(beat.unitId)}
+                  onCopy={() => onCopyWritingBody(beat.unitId)}
                 />
               ))}
             </div>
@@ -96,6 +99,7 @@ export default function WritingEditor({
                   onSave={(value) => onSaveBody(beat.unitId, value)}
                   onGenerate={() => onGenerateWriting([beat.unitId])}
                   onPolish={() => onPolishWriting(beat.unitId)}
+                  onCopy={() => onCopyWritingBody(beat.unitId)}
                 />
               ))}
             </div>

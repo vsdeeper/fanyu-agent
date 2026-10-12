@@ -8,6 +8,7 @@ import {
 } from '../../../constants';
 import { countTextChars } from '../../../utils';
 import styles from '../WritingEditor.module.css';
+import { COPY_BUTTON } from './constants';
 
 type BeatWritingCardProps = {
   index: number;
@@ -22,6 +23,7 @@ type BeatWritingCardProps = {
   onSave: (value: string) => void;
   onGenerate: () => void;
   onPolish: () => void;
+  onCopy: () => void;
 };
 
 const BEAT_CARD_STYLES = {
@@ -40,6 +42,7 @@ export default function BeatWritingCard({
   onSave,
   onGenerate,
   onPolish,
+  onCopy,
 }: BeatWritingCardProps) {
   const hasBody = Boolean(body.trim());
   const charCount = countTextChars(body);
@@ -78,15 +81,22 @@ export default function BeatWritingCard({
       editDisabled={polishing}
       bodyActions={
         hasBody || polishing ? (
-          <Button
-            type="link"
-            size="small"
-            loading={polishing}
-            disabled={writeBusy && !polishing}
-            onClick={onPolish}
-          >
-            {POLISH_BUTTON}
-          </Button>
+          <>
+            <Button
+              type="link"
+              size="small"
+              loading={polishing}
+              disabled={writeBusy && !polishing}
+              onClick={onPolish}
+            >
+              {POLISH_BUTTON}
+            </Button>
+            {hasBody ? (
+              <Button type="link" size="small" disabled={writeBusy} onClick={onCopy}>
+                {COPY_BUTTON}
+              </Button>
+            ) : null}
+          </>
         ) : null
       }
       value={body}

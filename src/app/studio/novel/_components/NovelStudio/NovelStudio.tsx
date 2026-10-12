@@ -120,6 +120,7 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 onUpdateWritingBody={studio.updateWritingBody}
                 onGenerateWriting={studio.handleGenerateWriting}
                 onPolishWriting={studio.handlePolishWriting}
+                onCopyWritingBody={studio.handleCopyWritingBody}
               />
             </>
           )}

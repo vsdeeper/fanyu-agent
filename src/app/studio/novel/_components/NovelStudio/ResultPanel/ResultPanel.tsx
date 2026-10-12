@@ -93,6 +93,7 @@ type ResultPanelProps = {
   onUpdateWritingBody: (unitId: string, body: string) => void;
   onGenerateWriting: (unitIds: string[]) => void;
   onPolishWriting: (unitId: string) => void;
+  onCopyWritingBody: (unitId: string) => void;
 };
 
 /** 右侧结果区：选题卡 / 设定 / 故事结构 / 正文写作。 */
@@ -129,6 +130,7 @@ export default function ResultPanel({
   onUpdateWritingBody,
   onGenerateWriting,
   onPolishWriting,
+  onCopyWritingBody,
 }: ResultPanelProps) {
   const researchView = phase === 'research' || phase === 'researching' || phase === 'researched';
   const bibleView = phase === 'bible' || phase === 'bibling' || phase === 'bibled';
@@ -367,6 +369,7 @@ export default function ResultPanel({
                 onSaveBody={onUpdateWritingBody}
                 onGenerateWriting={onGenerateWriting}
                 onPolishWriting={onPolishWriting}
+                onCopyWritingBody={onCopyWritingBody}
               />
             </div>
           ) : (

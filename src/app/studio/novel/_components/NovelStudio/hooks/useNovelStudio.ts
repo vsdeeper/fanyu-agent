@@ -1054,6 +1054,20 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
+  /** 复制指定写作单元的正文，不包含节拍摘要或章节标题。 */
+  async function handleCopyWritingBody(unitId: string) {
+    const body = (writingRef.current ?? writing)?.units.find(
+      (unit) => unit.unitId === unitId,
+    )?.body;
+    if (!body?.trim()) return;
+    try {
+      await copyText(body);
+      message.success(COPY_BODY_OK);
+    } catch {
+      message.error(COPY_BODY_FAILED);
+    }
+  }
+
   /** 切换写作单元选中（章单选 / 同章节拍多选）。只改内存，等生成、编辑保存或下一步再落盘。 */
   function toggleWritingUnit(unitId: string) {
     if (!structure) return;
@@ -1584,6 +1598,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     handlePrev,
     handleNext,
     handleCopyPreview,
+    handleCopyWritingBody,
     toggleWritingUnit,
     updateWritingBody,
     updateStyleSelections,
