@@ -10,7 +10,6 @@ import {
   CHARACTER_GENDER_OPTIONS,
   CHARACTER_NAME_LABEL,
   CHARACTER_ORIGIN_LABEL,
-  CHARACTER_ROLE_LABEL,
   CHARACTER_ROLE_OPTIONS,
   CHARACTER_TRAIT_LABEL,
   ARC_EARLY_LABEL,
@@ -27,16 +26,20 @@ import { EMPTY_CHARACTER_FIELD, UNNAMED_CHARACTER } from '../constants';
 import { isSavableCharacter, trimCharacter } from '../utils';
 import styles from './CharacterCard.module.css';
 
-function formatArc(arc: NovelCharacter['arc']): string {
-  if (!arc) return '';
-  return [
-    arc.early ? `${ARC_EARLY_LABEL} ${arc.early}` : '',
-    arc.mid ? `${ARC_MID_LABEL} ${arc.mid}` : '',
-    arc.late ? `${ARC_LATE_LABEL} ${arc.late}` : '',
-    arc.end ? `${ARC_END_LABEL} ${arc.end}` : '',
-  ]
-    .filter(Boolean)
-    .join('；');
+const ARC_STAGES = [
+  { key: 'early', label: ARC_EARLY_LABEL },
+  { key: 'mid', label: ARC_MID_LABEL },
+  { key: 'late', label: ARC_LATE_LABEL },
+  { key: 'end', label: ARC_END_LABEL },
+] as const;
+
+/** 只保留写了内容的阶段，供只读卡分行展示。 */
+function readArcStages(arc: NovelCharacter['arc']): { label: string; text: string }[] {
+  if (!arc) return [];
+  return ARC_STAGES.flatMap((stage) => {
+    const text = arc[stage.key]?.trim();
+    return text ? [{ label: stage.label, text }] : [];
+  });
 }
 
 type CharacterCardProps = {
@@ -65,6 +68,7 @@ export default function CharacterCard({
     (option) => option.value === character.gender,
   )?.label;
   const canSave = isSavableCharacter(draft);
+  const arcStages = readArcStages(character.arc);
 
   function startEdit() {
     setDraft(character);
@@ -89,7 +93,16 @@ export default function CharacterCard({
     return (
       <div className={styles.card}>
         <div className={styles.head}>
-          <p className={styles.name}>{character.name.trim() || UNNAMED_CHARACTER}</p>
+          <div className={styles.identity}>
+            <p className={styles.name}>{character.name.trim() || UNNAMED_CHARACTER}</p>
+            <p className={styles.meta}>
+              <span>{roleLabel}</span>
+              <span className={styles.metaSep} aria-hidden="true">
+                ·
+              </span>
+              {genderLabel || <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>}
+            </p>
+          </div>
           <div className={styles.actions}>
             <Button type="link" size="small" className={styles.editButton} onClick={startEdit}>
               {EDIT_BUTTON}
@@ -109,28 +122,37 @@ export default function CharacterCard({
             ) : null}
           </div>
         </div>
-        <p className={styles.line}>
-          <span className={styles.label}>{CHARACTER_ROLE_LABEL}</span>
-          {roleLabel}
-        </p>
-        <p className={styles.line}>
-          <span className={styles.label}>{CHARACTER_GENDER_LABEL}</span>
-          {genderLabel || <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>}
-        </p>
-        <p className={styles.line}>
-          <span className={styles.label}>{CHARACTER_ORIGIN_LABEL}</span>
-          {character.origin.trim() || <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>}
-        </p>
-        <p className={styles.line}>
-          <span className={styles.label}>{CHARACTER_TRAIT_LABEL}</span>
-          {character.trait.trim() || <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>}
-        </p>
-        <p className={styles.line}>
-          <span className={styles.label}>{CHARACTER_ARC_LABEL}</span>
-          {formatArc(character.arc) || (
-            <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>
+        <div className={styles.field}>
+          <p className={styles.fieldLabel}>{CHARACTER_ORIGIN_LABEL}</p>
+          <p className={styles.fieldText}>
+            {character.origin.trim() || (
+              <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>
+            )}
+          </p>
+        </div>
+        <div className={styles.field}>
+          <p className={styles.fieldLabel}>{CHARACTER_TRAIT_LABEL}</p>
+          <p className={styles.fieldText}>
+            {character.trait.trim() || (
+              <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>
+            )}
+          </p>
+        </div>
+        <div className={styles.field}>
+          <p className={styles.fieldLabel}>{CHARACTER_ARC_LABEL}</p>
+          {arcStages.length ? (
+            <div className={styles.stages}>
+              {arcStages.map((stage) => (
+                <div key={stage.label} className={styles.stage}>
+                  <span className={styles.stageLabel}>{stage.label}</span>
+                  <p className={styles.fieldText}>{stage.text}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.empty}>{EMPTY_CHARACTER_FIELD}</p>
           )}
-        </p>
+        </div>
       </div>
     );
   }

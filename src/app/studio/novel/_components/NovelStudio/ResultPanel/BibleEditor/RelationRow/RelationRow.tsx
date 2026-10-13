@@ -38,13 +38,19 @@ function compactArc(arc: NovelRelationArc | undefined): NovelRelationArc | undef
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
-function arcSummary(arc: NovelRelationArc | undefined): string {
-  const parts = [
-    arc?.early ? `${ARC_EARLY_LABEL}：${arc.early}` : '',
-    arc?.mid ? `${ARC_MID_LABEL}：${arc.mid}` : '',
-    arc?.late ? `${ARC_LATE_LABEL}：${arc.late}` : '',
-  ].filter(Boolean);
-  return parts.join('；');
+const RELATION_ARC_STAGES = [
+  { key: 'early', label: ARC_EARLY_LABEL },
+  { key: 'mid', label: ARC_MID_LABEL },
+  { key: 'late', label: ARC_LATE_LABEL },
+] as const;
+
+/** 只保留写了内容的阶段，供只读行分行展示。 */
+function readRelationStages(arc: NovelRelationArc | undefined): { label: string; text: string }[] {
+  if (!arc) return [];
+  return RELATION_ARC_STAGES.flatMap((stage) => {
+    const text = arc[stage.key]?.trim();
+    return text ? [{ label: stage.label, text }] : [];
+  });
 }
 
 /** 一条关系：只读文本，编辑、取消、保存和删除都在这一行。 */
@@ -62,7 +68,7 @@ export default function RelationRow({
   const [editing, setEditing] = useState(pending);
   const [draft, setDraft] = useState(relation);
   const canSave = isSavableRelation(draft, characterIds);
-  const stages = arcSummary(relation.arc);
+  const stages = readRelationStages(relation.arc);
 
   function cancelEdit() {
     if (pending) {
@@ -139,7 +145,16 @@ export default function RelationRow({
           <p className={styles.text}>
             {fromName} — {relation.label} — {toName}
           </p>
-          {stages ? <p className={styles.stages}>{stages}</p> : null}
+          {stages.length ? (
+            <div className={styles.stages}>
+              {stages.map((stage) => (
+                <div key={stage.label} className={styles.stage}>
+                  <span className={styles.stageLabel}>{stage.label}</span>
+                  <p className={styles.stageText}>{stage.text}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       )}
       <ItemActions

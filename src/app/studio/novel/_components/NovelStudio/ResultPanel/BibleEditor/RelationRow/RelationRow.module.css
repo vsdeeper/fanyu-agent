@@ -39,9 +39,29 @@
 }
 
 .stages {
-  margin: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: 2.5em minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: start;
+}
+
+.stageLabel {
   font-size: 12px;
-  line-height: 1.7;
+  line-height: 1.75;
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.stageText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.75;
   color: var(--fanyu-color-text-secondary);
   white-space: pre-wrap;
   word-break: break-word;

@@ -1,8 +1,8 @@
 .card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--fanyu-color-border-secondary);
   border-radius: 8px;
 }
@@ -20,7 +20,12 @@
 }
 
 .head {
+  align-items: flex-start;
   justify-content: space-between;
+}
+
+.identity {
+  min-width: 0;
 }
 
 .editActions {
@@ -36,22 +41,65 @@
   word-break: break-word;
 }
 
-.line {
+.meta {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--fanyu-color-text-secondary);
+}
+
+.metaSep {
+  margin: 0 6px;
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldLabel,
+.stageLabel {
+  color: var(--fanyu-color-text-tertiary);
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.fieldLabel {
+  margin: 0;
+}
+
+.fieldText {
   margin: 0;
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--fanyu-color-text);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.label {
-  margin-right: 8px;
-  color: var(--fanyu-color-text-tertiary);
+.stages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: 2.5em minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: start;
 }
 
 .empty {
   color: var(--fanyu-color-text-tertiary);
+}
+
+p.empty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.75;
 }
 
 .editButton {
