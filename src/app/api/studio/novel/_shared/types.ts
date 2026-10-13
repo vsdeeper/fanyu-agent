@@ -1,8 +1,8 @@
 /** 人物在故事中的位置。 */
 export type NovelCharacterRole = 'protagonist' | 'antagonist' | 'supporting';
 
-/** 人物性别。不标明表示这个故事不锁定该人的他/她。 */
-export type NovelCharacterGender = 'female' | 'male' | 'unspecified';
+/** 人物性别：女或男。 */
+export type NovelCharacterGender = 'female' | 'male';
 
 /** 语法时态：全书锁定，与文风「时间位置」不是同一根轴。 */
 export type NovelTense = 'past' | 'present';

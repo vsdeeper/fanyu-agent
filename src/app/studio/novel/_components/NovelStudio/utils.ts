@@ -379,7 +379,7 @@ function parseCharacterRole(value: unknown): NovelCharacterRole | undefined {
 }
 
 function parseCharacterGender(value: unknown): NovelCharacterGender | undefined {
-  if (value === 'female' || value === 'male' || value === 'unspecified') return value;
+  if (value === 'female' || value === 'male') return value;
   return undefined;
 }
 

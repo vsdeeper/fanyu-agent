@@ -166,7 +166,7 @@ function mapCharacter(value: unknown): {
     id,
     name,
     role,
-    ...(gender === 'female' || gender === 'male' || gender === 'unspecified' ? { gender } : {}),
+    ...(gender === 'female' || gender === 'male' ? { gender } : {}),
     origin,
     trait,
     ...(arc ? { arc } : {}),

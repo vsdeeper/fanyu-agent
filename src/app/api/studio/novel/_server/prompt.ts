@@ -27,7 +27,6 @@ const ROLE_LABEL: Record<NovelCharacterRole, string> = {
 const GENDER_LABEL: Record<NovelCharacterGender, string> = {
   female: '女',
   male: '男',
-  unspecified: '不标明',
 };
 
 const TENSE_LABEL: Record<NovelTense, string> = {
@@ -98,7 +97,7 @@ export function formatCastPrompt(cast: NovelCast): string {
   const names = new Map(cast.characters.map((character) => [character.id, character.name]));
   const characters = cast.characters
     .map((character) => {
-      const gender = character.gender ? GENDER_LABEL[character.gender] : '不标明';
+      const gender = character.gender ? GENDER_LABEL[character.gender] : '未填写';
       return `- ${character.name}｜${ROLE_LABEL[character.role]}｜${gender}｜出身：${character.origin}｜特质：${character.trait}${formatArc(character.arc)}`;
     })
     .join('\n');

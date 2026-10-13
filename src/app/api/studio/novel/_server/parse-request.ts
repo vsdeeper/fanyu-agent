@@ -52,7 +52,7 @@ const characterSchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),
   role: z.enum(['protagonist', 'antagonist', 'supporting']),
-  gender: z.enum(['female', 'male', 'unspecified']),
+  gender: z.enum(['female', 'male']),
   origin: z.string().trim().min(1),
   trait: z.string().trim().min(1),
   arc: arcSchema,

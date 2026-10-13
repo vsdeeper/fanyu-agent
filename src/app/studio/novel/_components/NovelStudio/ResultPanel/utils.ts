@@ -83,7 +83,7 @@ function roleLabel(role: string): string {
 }
 
 function genderLabel(gender: string | undefined): string {
-  return CHARACTER_GENDER_OPTIONS.find((option) => option.value === gender)?.label ?? '不标明';
+  return CHARACTER_GENDER_OPTIONS.find((option) => option.value === gender)?.label ?? '未填写';
 }
 
 /** 把当前角色整理成人可读的 Markdown。 */

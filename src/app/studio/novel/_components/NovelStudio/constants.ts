@@ -226,7 +226,6 @@ export const CHARACTER_ROLE_OPTIONS: { label: string; value: NovelCharacterRole 
 export const CHARACTER_GENDER_OPTIONS: { label: string; value: NovelCharacterGender }[] = [
   { label: '女', value: 'female' },
   { label: '男', value: 'male' },
-  { label: '不标明', value: 'unspecified' },
 ];
 
 export const TENSE_OPTIONS: { label: string; value: NovelTense }[] = [
