@@ -1,5 +1,8 @@
-/** 思路文件份数上限。调研、设定、结构共用。 */
+/** 体系设定份数上限。选题、创作方案、角色与卷章共用；写作不再附原文。 */
 export const NOVEL_MAX_IDEA_FILES = 3;
+
+/** 创作方案上传份数上限。 */
+export const NOVEL_MAX_PLAN_FILES = 1;
 
 const IDEA_FILE_EXTS = new Set(['txt', 'md', 'pdf']);
 

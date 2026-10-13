@@ -2,152 +2,100 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import type { NovelBible, NovelTopicCard } from '../_shared/types';
+import type { NovelCast, NovelPlan, NovelTopicCard, NovelWritingRequest } from '../_shared/types';
 import { parseWritingBody } from './parse-request';
 import { buildWritingPrompt } from './prompt';
 
 const topic: NovelTopicCard = {
   id: 'topic-1',
   title: '停电之夜',
-  genreVolume: '现实 · 中篇',
+  genreVolume: '现实 · 网文长篇',
   why: '人物关系集中',
   core: '一家人在停电夜说出旧事',
 };
 
-const bible: NovelBible = {
+const cast: NovelCast = {
   characters: [
     {
       id: 'c1',
       name: '李夏',
       role: 'protagonist',
       gender: 'female',
-      identity: '供电所临时工',
-      desire: '保住工作',
-      flaw: '不肯把话说完',
+      origin: '供电所临时工',
+      trait: '不肯把话说完',
     },
   ],
   relations: [],
-  timePlace: '九十年代县城',
-  rules: ['夜里经常停电'],
-  taboos: [],
+};
+
+const plan: NovelPlan = {
+  threads: [
+    {
+      id: 't1',
+      name: '旧信',
+      core: '一封没寄出的信',
+      advances: [{ volumeId: 'v1', text: '信被找到' }],
+    },
+  ],
+  volumes: [
+    {
+      id: 'v1',
+      title: '县城',
+      geography: '九十年代县城',
+      conflict: '家里人不肯说',
+      targetChars: 20000,
+    },
+  ],
+};
+
+const writingBody: NovelWritingRequest = {
+  unitId: 'ch-2',
+  topic,
+  plan,
+  cast,
   tense: 'past',
-  voicePrompt: '人称=第三人称；聚焦=内聚焦',
+  previousChapters: [
+    {
+      title: '钥匙',
+      scene: '旧屋门口',
+      event: '拿到钥匙',
+      hook: '门锁响了一声',
+      body: '门锁响了一声。这是此前章节的全文，不应被截断。',
+    },
+  ],
+  chapter: {
+    title: '旧址',
+    scene: '旧屋客厅',
+    event: '找到旧信',
+    hook: '信上没有落款',
+  },
+  nextChapter: { title: '来客', hook: '陌生人登门' },
 };
 
 describe('parseWritingBody', () => {
-  it('接受短篇整篇请求', () => {
-    const body = {
-      scope: 'short',
-      unitId: '__short_story__',
-      synopsis: '一个停电夜改变一家人',
-      beats: [{ id: 'b1', text: '灯灭了' }],
-      topic,
-      bible,
-      volume: 'short',
-    };
-    expect(parseWritingBody(body)).toEqual(body);
+  it('接受带此前全文和下一章边界的写作请求', () => {
+    expect(parseWritingBody(writingBody)).toEqual(writingBody);
   });
 
-  it('接受带相邻章上下文的整章请求', () => {
-    const body = {
-      scope: 'chapter',
-      unitId: 'ch-2',
-      chapterTitle: '旧址',
-      chapterPurpose: '找到旧信',
-      beats: [{ id: 'b1', text: '李夏回到旧屋' }],
-      previousChapter: { title: '钥匙', purpose: '拿到钥匙', ending: '门锁响了一声。' },
-      nextChapter: { title: '来客', purpose: '陌生人登门' },
-      topic,
-      bible,
-      volume: 'medium',
-    };
-    expect(parseWritingBody(body)).toEqual(body);
-  });
-
-  it('拒绝空节拍与 scope、volume 不匹配', () => {
+  it('拒绝缺场景的当前章', () => {
     expect(
       parseWritingBody({
-        scope: 'chapter',
-        unitId: 'ch-1',
-        chapterTitle: '钥匙',
-        chapterPurpose: '拿到钥匙',
-        beats: [],
-        topic,
-        bible,
-        volume: 'medium',
-      }),
-    ).toBeNull();
-    expect(
-      parseWritingBody({
-        scope: 'short',
-        unitId: '__short_story__',
-        synopsis: '梗概',
-        beats: [{ id: 'b1', text: '开场' }],
-        topic,
-        bible,
-        volume: 'long',
-      }),
-    ).toBeNull();
-  });
-
-  it('拒绝超过上限的上一章正文结尾', () => {
-    expect(
-      parseWritingBody({
-        scope: 'chapter',
-        unitId: 'ch-2',
-        chapterTitle: '旧址',
-        chapterPurpose: '找到旧信',
-        beats: [{ id: 'b1', text: '回到旧屋' }],
-        previousChapter: {
-          title: '钥匙',
-          purpose: '拿到钥匙',
-          ending: '字'.repeat(3001),
-        },
-        topic,
-        bible,
-        volume: 'medium',
+        ...writingBody,
+        chapter: { title: '旧址', scene: '', event: '找到旧信', hook: '信上没有落款' },
       }),
     ).toBeNull();
   });
 });
 
 describe('buildWritingPrompt', () => {
-  it('整章提示包含全部节拍和相邻章边界', () => {
-    const prompt = buildWritingPrompt({
-      scope: 'chapter',
-      unitId: 'ch-2',
-      chapterTitle: '旧址',
-      chapterPurpose: '找到旧信',
-      beats: [
-        { id: 'b1', text: '李夏回到旧屋' },
-        { id: 'b2', text: '她发现信封' },
-      ],
-      previousChapter: { title: '钥匙', purpose: '拿到钥匙', ending: '门锁响了一声。' },
-      nextChapter: { title: '来客', purpose: '陌生人登门' },
-      topic,
-      bible,
-      volume: 'medium',
-    });
-    expect(prompt).toContain('1. 李夏回到旧屋');
-    expect(prompt).toContain('2. 她发现信封');
-    expect(prompt).toContain('正文结尾：\n门锁响了一声。');
-    expect(prompt).toContain('当前章不要提前写掉下一章的核心任务');
-    expect(prompt).toContain('自然段之间只换一行，不要留空白行');
-    expect(prompt).not.toContain('请只写本节拍正文');
-  });
-
-  it('短篇提示要求一次写完整篇', () => {
-    const prompt = buildWritingPrompt({
-      scope: 'short',
-      unitId: '__short_story__',
-      synopsis: '一个停电夜改变一家人',
-      beats: [{ id: 'b1', text: '灯灭了' }],
-      topic,
-      bible,
-      volume: 'short',
-    });
-    expect(prompt).toContain('梗概：一个停电夜改变一家人');
-    expect(prompt).toContain('请一次写完整篇正文');
-    expect(prompt).toContain('自然段之间只换一行，不要留空白行');
+  it('带上完整方案、此前全文，以及下一章的标题和钩子', () => {
+    const prompt = buildWritingPrompt(writingBody);
+    expect(prompt).toContain('【创作方案】');
+    expect(prompt).toContain('【角色设定】');
+    expect(prompt).toContain('门锁响了一声。这是此前章节的全文，不应被截断。');
+    expect(prompt).toContain('【下一章边界】');
+    expect(prompt).toContain('钩子：陌生人登门');
+    expect(prompt).not.toContain('【体系设定】');
+    expect(prompt).not.toContain('节拍');
   });
 });

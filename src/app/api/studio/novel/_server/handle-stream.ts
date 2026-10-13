@@ -19,31 +19,27 @@ import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 import { NOVEL_SSE_EVENT } from '../_shared/constants';
 import type { NovelIdeaFile, NovelSseTextEvent } from '../_shared/types';
 import {
-  BIBLE_FAILED,
-  BIBLE_TRUNCATED,
-  CHAPTER_BEATS_FAILED,
-  CHAPTER_BEATS_TRUNCATED,
+  CAST_FAILED,
+  CAST_TRUNCATED,
   IDEA_FILE_INVALID,
-  MISSING_BIBLE_INPUT,
-  MISSING_CHAPTER_BEATS_INPUT,
+  MISSING_CAST_INPUT,
+  MISSING_PLAN_INPUT,
   MISSING_RESEARCH_INPUT,
-  MISSING_STRUCTURE_INPUT,
   MISSING_VOLUME_CHAPTERS_INPUT,
   MISSING_POLISH_INPUT,
   MISSING_WRITING_INPUT,
-  NOVEL_BIBLE_MAX_OUTPUT_TOKENS,
+  NOVEL_CAST_MAX_OUTPUT_TOKENS,
+  NOVEL_PLAN_MAX_OUTPUT_TOKENS,
   NOVEL_POLISH_MAX_OUTPUT_TOKENS,
-  NOVEL_CHAPTER_BEATS_MAX_OUTPUT_TOKENS,
   NOVEL_RESEARCH_MAX_OUTPUT_TOKENS,
-  NOVEL_STRUCTURE_MAX_OUTPUT_TOKENS,
   NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS,
   NOVEL_WRITING_MAX_OUTPUT_TOKENS,
+  PLAN_FAILED,
+  PLAN_TRUNCATED,
   POLISH_FAILED,
   POLISH_TRUNCATED,
   RESEARCH_FAILED,
   RESEARCH_TRUNCATED,
-  STRUCTURE_FAILED,
-  STRUCTURE_TRUNCATED,
   VOLUME_CHAPTERS_FAILED,
   VOLUME_CHAPTERS_TRUNCATED,
   WRITING_FAILED,
@@ -52,29 +48,26 @@ import {
 import { resolveNovelIdeaFiles, type NovelIdeaPdfPart } from './idea-file';
 import { resolveNovelReasoningEffort } from './reasoning';
 import {
-  BIBLE_INSTRUCTIONS,
-  CHAPTER_BEATS_INSTRUCTIONS,
+  CAST_INSTRUCTIONS,
+  PLAN_INSTRUCTIONS,
   POLISH_INSTRUCTIONS,
   RESEARCH_INSTRUCTIONS,
-  STRUCTURE_INSTRUCTIONS,
   VOLUME_CHAPTERS_INSTRUCTIONS,
   WRITING_INSTRUCTIONS,
 } from './instructions';
 import {
-  parseBibleBody,
-  parseChapterBeatsBody,
+  parseCastBody,
+  parsePlanBody,
   parsePolishBody,
   parseResearchBody,
-  parseStructureBody,
   parseVolumeChaptersBody,
   parseWritingBody,
 } from './parse-request';
 import {
-  buildBiblePrompt,
-  buildChapterBeatsPrompt,
+  buildCastPrompt,
+  buildPlanPrompt,
   buildPolishPrompt,
   buildResearchPrompt,
-  buildStructurePrompt,
   buildVolumeChaptersPrompt,
   buildWritingPrompt,
 } from './prompt';
@@ -133,6 +126,8 @@ function createProStream(params: {
   reasoningEffort?: unknown;
   maxOutputTokens: number;
   abortSignal: AbortSignal;
+  /** 附件说明。有 PDF 时写在正文之前。 */
+  attachmentIntro?: string;
 }) {
   const provider = getChatProvider();
   const runtime = getChatProviderRuntimeFor(provider);
@@ -149,7 +144,10 @@ function createProStream(params: {
     pdfParts.length > 0
       ? [
           { type: 'text' as const, text: params.prompt },
-          { type: 'text' as const, text: '以下附件是【思路文件】，请直接阅读文件正文：' },
+          {
+            type: 'text' as const,
+            text: params.attachmentIntro ?? '以下附件请直接阅读文件正文：',
+          },
           ...pdfParts,
         ]
       : params.prompt;
@@ -196,7 +194,7 @@ function createNovelSse(
   );
 }
 
-/** POST /api/studio/novel/bible：流式产出人物、世界与禁忌。 */
+/** POST /api/studio/novel/bible：流式产出人物与关系。 */
 export async function handleNovelBible(req: Request): Promise<Response> {
   let json: unknown;
   try {
@@ -210,28 +208,32 @@ export async function handleNovelBible(req: Request): Promise<Response> {
     return settingsFailResponse(split.message);
   }
 
-  const body = parseBibleBody(split.rest);
+  const body = parseCastBody(split.rest);
   if (!body) {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_BIBLE_INPUT, 400);
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_CAST_INPUT, 400);
   }
 
   const ideaFiles = await readIdeaFiles(body.ideaFiles);
   if (ideaFiles instanceof Response) return ideaFiles;
+  const planFile = await readIdeaFiles(body.planFile ? [body.planFile] : undefined);
+  if (planFile instanceof Response) return planFile;
 
-  return createNovelSse('novel/bible', BIBLE_FAILED, async (send) => {
+  return createNovelSse('novel/bible', CAST_FAILED, async (send) => {
     await withStudioChatSettings(split.settings, async () => {
       const result = createProStream({
-        instructions: BIBLE_INSTRUCTIONS,
-        prompt: buildBiblePrompt(body, {
-          documentsText: ideaFiles.documentsText,
-          pdfCount: ideaFiles.pdfParts.length,
-        }),
-        pdfParts: ideaFiles.pdfParts,
-        maxOutputTokens: NOVEL_BIBLE_MAX_OUTPUT_TOKENS,
+        instructions: CAST_INSTRUCTIONS,
+        prompt: buildCastPrompt(
+          body,
+          { documentsText: ideaFiles.documentsText, pdfCount: ideaFiles.pdfParts.length },
+          { documentsText: planFile.documentsText, pdfCount: planFile.pdfParts.length },
+        ),
+        pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
+        attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
+        maxOutputTokens: NOVEL_CAST_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });
-      await pipeTextStream(result, req.signal, send, BIBLE_FAILED, BIBLE_TRUNCATED, 'novel/bible');
+      await pipeTextStream(result, req.signal, send, CAST_FAILED, CAST_TRUNCATED, 'novel/bible');
     });
   });
 }
@@ -257,16 +259,20 @@ export async function handleNovelResearch(req: Request): Promise<Response> {
 
   const ideaFiles = await readIdeaFiles(body.ideaFiles);
   if (ideaFiles instanceof Response) return ideaFiles;
+  const planFile = await readIdeaFiles(body.planFile ? [body.planFile] : undefined);
+  if (planFile instanceof Response) return planFile;
 
   return createNovelSse('novel/research', RESEARCH_FAILED, async (send) => {
     await withStudioChatSettings(split.settings, async () => {
       const result = createProStream({
         instructions: RESEARCH_INSTRUCTIONS,
-        prompt: buildResearchPrompt(body, {
-          documentsText: ideaFiles.documentsText,
-          pdfCount: ideaFiles.pdfParts.length,
-        }),
-        pdfParts: ideaFiles.pdfParts,
+        prompt: buildResearchPrompt(
+          body,
+          { documentsText: ideaFiles.documentsText, pdfCount: ideaFiles.pdfParts.length },
+          { documentsText: planFile.documentsText, pdfCount: planFile.pdfParts.length },
+        ),
+        pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
+        attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
         maxOutputTokens: NOVEL_RESEARCH_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
@@ -282,8 +288,8 @@ export async function handleNovelResearch(req: Request): Promise<Response> {
     });
   });
 }
-/** POST /api/studio/novel/structure：流式产出故事结构。 */
-export async function handleNovelStructure(req: Request): Promise<Response> {
+/** POST /api/studio/novel/plan：流式产出主线与分卷。 */
+export async function handleNovelPlan(req: Request): Promise<Response> {
   let json: unknown;
   try {
     json = await req.json();
@@ -296,35 +302,32 @@ export async function handleNovelStructure(req: Request): Promise<Response> {
     return settingsFailResponse(split.message);
   }
 
-  const body = parseStructureBody(split.rest);
+  const body = parsePlanBody(split.rest);
   if (!body) {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_STRUCTURE_INPUT, 400);
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PLAN_INPUT, 400);
   }
 
   const ideaFiles = await readIdeaFiles(body.ideaFiles);
   if (ideaFiles instanceof Response) return ideaFiles;
+  const planFile = await readIdeaFiles(body.planFile ? [body.planFile] : undefined);
+  if (planFile instanceof Response) return planFile;
 
-  return createNovelSse('novel/structure', STRUCTURE_FAILED, async (send) => {
+  return createNovelSse('novel/plan', PLAN_FAILED, async (send) => {
     await withStudioChatSettings(split.settings, async () => {
       const result = createProStream({
-        instructions: STRUCTURE_INSTRUCTIONS,
-        prompt: buildStructurePrompt(body, {
-          documentsText: ideaFiles.documentsText,
-          pdfCount: ideaFiles.pdfParts.length,
-        }),
-        pdfParts: ideaFiles.pdfParts,
-        maxOutputTokens: NOVEL_STRUCTURE_MAX_OUTPUT_TOKENS,
+        instructions: PLAN_INSTRUCTIONS,
+        prompt: buildPlanPrompt(
+          body,
+          { documentsText: ideaFiles.documentsText, pdfCount: ideaFiles.pdfParts.length },
+          { documentsText: planFile.documentsText, pdfCount: planFile.pdfParts.length },
+        ),
+        pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
+        attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
+        maxOutputTokens: NOVEL_PLAN_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });
-      await pipeTextStream(
-        result,
-        req.signal,
-        send,
-        STRUCTURE_FAILED,
-        STRUCTURE_TRUNCATED,
-        'novel/structure',
-      );
+      await pipeTextStream(result, req.signal, send, PLAN_FAILED, PLAN_TRUNCATED, 'novel/plan');
     });
   });
 }
@@ -347,11 +350,22 @@ export async function handleNovelVolumeChapters(req: Request): Promise<Response>
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_VOLUME_CHAPTERS_INPUT, 400);
   }
 
+  const ideaFiles = await readIdeaFiles(body.ideaFiles);
+  if (ideaFiles instanceof Response) return ideaFiles;
+  const planFile = await readIdeaFiles(body.planFile ? [body.planFile] : undefined);
+  if (planFile instanceof Response) return planFile;
+
   return createNovelSse('novel/volume-chapters', VOLUME_CHAPTERS_FAILED, async (send) => {
     await withStudioChatSettings(split.settings, async () => {
       const result = createProStream({
         instructions: VOLUME_CHAPTERS_INSTRUCTIONS,
-        prompt: buildVolumeChaptersPrompt(body),
+        prompt: buildVolumeChaptersPrompt(
+          body,
+          { documentsText: ideaFiles.documentsText, pdfCount: ideaFiles.pdfParts.length },
+          { documentsText: planFile.documentsText, pdfCount: planFile.pdfParts.length },
+        ),
+        pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
+        attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
         maxOutputTokens: NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
@@ -367,46 +381,7 @@ export async function handleNovelVolumeChapters(req: Request): Promise<Response>
     });
   });
 }
-/** POST /api/studio/novel/chapter-beats：流式产出章内节拍。 */
-export async function handleNovelChapterBeats(req: Request): Promise<Response> {
-  let json: unknown;
-  try {
-    json = await req.json();
-  } catch {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
-  }
-
-  const split = splitChatSettings(json);
-  if (!split.ok) {
-    return settingsFailResponse(split.message);
-  }
-
-  const body = parseChapterBeatsBody(split.rest);
-  if (!body) {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_CHAPTER_BEATS_INPUT, 400);
-  }
-
-  return createNovelSse('novel/chapter-beats', CHAPTER_BEATS_FAILED, async (send) => {
-    await withStudioChatSettings(split.settings, async () => {
-      const result = createProStream({
-        instructions: CHAPTER_BEATS_INSTRUCTIONS,
-        prompt: buildChapterBeatsPrompt(body),
-        maxOutputTokens: NOVEL_CHAPTER_BEATS_MAX_OUTPUT_TOKENS,
-        abortSignal: req.signal,
-        reasoningEffort: requestReasoningEffort(split.rest),
-      });
-      await pipeTextStream(
-        result,
-        req.signal,
-        send,
-        CHAPTER_BEATS_FAILED,
-        CHAPTER_BEATS_TRUNCATED,
-        'novel/chapter-beats',
-      );
-    });
-  });
-}
-/** POST /api/studio/novel/writing：流式产出完整短篇或章节正文。 */
+/** POST /api/studio/novel/writing：流式产出当前章正文。 */
 export async function handleNovelWriting(req: Request): Promise<Response> {
   let json: unknown;
   try {

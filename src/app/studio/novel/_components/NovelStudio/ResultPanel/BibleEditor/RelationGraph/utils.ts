@@ -1,8 +1,7 @@
 import {
-  CHARACTER_DESIRE_LABEL,
-  CHARACTER_FLAW_LABEL,
-  CHARACTER_IDENTITY_LABEL,
+  CHARACTER_ORIGIN_LABEL,
   CHARACTER_ROLE_OPTIONS,
+  CHARACTER_TRAIT_LABEL,
 } from '../../../constants';
 import type { NovelCharacter, NovelCharacterRole, NovelRelation } from '../../../types';
 import { EMPTY_CHARACTER_FIELD } from '../constants';
@@ -20,9 +19,8 @@ export type RelationGraphPalette = {
 export type RelationNodePayload = {
   name: string;
   role: NovelCharacterRole;
-  identity: string;
-  desire: string;
-  flaw: string;
+  origin: string;
+  trait: string;
 };
 
 export type RelationGraphNode = {
@@ -75,9 +73,8 @@ export function buildRelationGraphData(
       data: {
         name: character.name.trim(),
         role: character.role,
-        identity: character.identity.trim(),
-        desire: character.desire.trim(),
-        flaw: character.flaw.trim(),
+        origin: character.origin.trim(),
+        trait: character.trait.trim(),
       },
     }));
   const ids = new Set(nodes.map((node) => node.id));
@@ -101,6 +98,7 @@ export function buildRelationGraphData(
           degree.get(relation.fromId) ?? 0,
           degree.get(relation.toId) ?? 0,
         ),
+        bidirectional: false,
       },
     ];
   });
@@ -143,14 +141,13 @@ export function buildRelationGraphData(
   };
 }
 
-/** 人物节点的悬停内容：姓名、定位，以及身份、欲望、缺陷。 */
+/** 人物节点的悬停内容：姓名、定位、出身、特质。 */
 export function buildRelationNodeTooltip(node: RelationNodePayload): string {
   const role =
     CHARACTER_ROLE_OPTIONS.find((option) => option.value === node.role)?.label ?? node.role;
   const fields = [
-    [CHARACTER_IDENTITY_LABEL, node.identity],
-    [CHARACTER_DESIRE_LABEL, node.desire],
-    [CHARACTER_FLAW_LABEL, node.flaw],
+    [CHARACTER_ORIGIN_LABEL, node.origin],
+    [CHARACTER_TRAIT_LABEL, node.trait],
   ];
   const body = fields
     .map(([label, value]) => {

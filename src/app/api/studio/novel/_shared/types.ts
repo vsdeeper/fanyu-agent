@@ -7,16 +7,31 @@ export type NovelCharacterGender = 'female' | 'male' | 'unspecified';
 /** 语法时态：全书锁定，与文风「时间位置」不是同一根轴。 */
 export type NovelTense = 'past' | 'present';
 
-/** 核心人物。 */
+/** 人物在全书中的变化，某一阶段可以空。 */
+export type NovelCharacterArc = {
+  early?: string;
+  mid?: string;
+  late?: string;
+  end?: string;
+};
+
+/** 核心人物。出身、特质必填；变化按阶段可选。 */
 export type NovelCharacter = {
   id: string;
   name: string;
   role: NovelCharacterRole;
   /** 旧快照可能还没有；写全并进入下一步前必须选定。 */
   gender?: NovelCharacterGender;
-  identity: string;
-  desire: string;
-  flaw: string;
+  origin: string;
+  trait: string;
+  arc?: NovelCharacterArc;
+};
+
+/** 关系在故事里的阶段变化，某一阶段可以空。 */
+export type NovelRelationArc = {
+  early?: string;
+  mid?: string;
+  late?: string;
 };
 
 /** 两人之间的一条关系。 */
@@ -24,197 +39,147 @@ export type NovelRelation = {
   fromId: string;
   toId: string;
   label: string;
+  arc?: NovelRelationArc;
 };
 
-/** 传给后续步骤的设定：人称、聚焦已压成 voicePrompt。 */
-export type NovelBible = {
+/** 角色设定：只含人物与关系。人称、聚焦、时态在写作步。 */
+export type NovelCast = {
   characters: NovelCharacter[];
   relations: NovelRelation[];
-  /** 故事发生的时间与地点，一句即可。 */
-  timePlace: string;
-  /** 全书已经成立、不能改口的事实；不限于奇幻或科幻法则。 */
-  rules: string[];
-  /** 这个故事里不要发生的事。 */
-  taboos?: string[];
-  tense: NovelTense;
-  voicePrompt: string;
 };
 
-/** 体量倾向。 */
-export type NovelVolume = 'short' | 'medium' | 'long';
+/** 一条主线在某一卷的推进。 */
+export type NovelThreadAdvance = {
+  volumeId: string;
+  text: string;
+};
 
-/** 长篇赛道：仅 volume=long 时生效。 */
-export type NovelLongFormat = 'publish' | 'web';
+/** 贯穿全书的主线。 */
+export type NovelThread = {
+  id: string;
+  name: string;
+  /** 核心悬念或核心矛盾。 */
+  core: string;
+  advances: NovelThreadAdvance[];
+};
+
+/** 分卷地图上的一卷，尚不含章。 */
+export type NovelVolumeOutline = {
+  id: string;
+  title: string;
+  /** 地点、地域或时间跨度。 */
+  geography: string;
+  conflict: string;
+  /** 这一卷结束时多出来的能力、关系或状态。旧快照可能还没有。 */
+  outcome?: string;
+  targetChars: number;
+};
+
+/** 创作方案：主线与分卷。 */
+export type NovelPlan = {
+  threads: NovelThread[];
+  volumes: NovelVolumeOutline[];
+};
+
+/** 卷内一章。钩子是悬念、冲突、发现三者之一。 */
+export type NovelChapterCard = {
+  id: string;
+  title: string;
+  scene: string;
+  event: string;
+  hook: string;
+};
 
 /** 选题卡。 */
 export type NovelTopicCard = {
   id: string;
   title: string;
-  /** 类型与体量建议，如「现实 · 短篇」。 */
+  /** 类型建议，如「奇幻 · 网文长篇」。 */
   genreVolume: string;
   why: string;
   core: string;
   risk?: string;
 };
 
-/** 短篇或章内节拍。 */
-export type NovelStructureBeat = {
-  id: string;
-  text: string;
-};
-
-/** 中长篇章纲条目。 */
-export type NovelStructureChapter = {
-  id: string;
-  title: string;
-  purpose: string;
-  beats: NovelStructureBeat[];
-};
-
-/** 长篇卷纲条目。 */
-export type NovelStructureVolume = {
-  id: string;
-  title: string;
-  purpose: string;
-  chapters: NovelStructureChapter[];
-};
-
-/** 故事结构快照。 */
-export type NovelStructureSnapshot =
-  | { kind: 'short'; synopsis: string; beats: NovelStructureBeat[] }
-  | { kind: 'chapters'; chapters: NovelStructureChapter[] }
-  | { kind: 'volumes'; volumes: NovelStructureVolume[] };
-
-/** 选题调研上传的思路文件。TXT/MD 抽正文，PDF 由模型直接阅读。 */
+/** 选题调研上传的文件。TXT/MD 抽正文，PDF 由模型直接阅读。 */
 export type NovelIdeaFile = {
   filename: string;
   mediaType: string;
   dataUrl: string;
 };
 
-/** 选题调研请求。想法与思路文件至少有一项。 */
+/** 选题调研请求。体系设定必填；想法与创作方案文件可选。 */
 export type NovelResearchRequest = {
   idea?: string;
-  ideaFiles?: NovelIdeaFile[];
+  ideaFiles: NovelIdeaFile[];
+  planFile?: NovelIdeaFile;
   genres?: string[];
-  volume: NovelVolume;
-  /** 仅长篇使用；缺省按出版。 */
-  longFormat?: NovelLongFormat;
 };
 
-/** 设定生成请求：只产出人物、世界与禁忌。想法与思路文件至少有一项。 */
-export type NovelBibleRequest = {
+/** 创作方案生成请求。体系设定必填；创作方案文件可选。 */
+export type NovelPlanRequest = {
   idea?: string;
-  ideaFiles?: NovelIdeaFile[];
+  ideaFiles: NovelIdeaFile[];
+  planFile?: NovelIdeaFile;
   genres?: string[];
-  volume: NovelVolume;
-  longFormat?: NovelLongFormat;
   topic: NovelTopicCard;
 };
 
-/** 故事结构请求。想法与思路文件至少有一项。 */
-export type NovelStructureRequest = {
+/** 角色设定生成请求。体系设定必填；创作方案文件可选。 */
+export type NovelCastRequest = {
   idea?: string;
-  ideaFiles?: NovelIdeaFile[];
+  ideaFiles: NovelIdeaFile[];
+  planFile?: NovelIdeaFile;
   genres?: string[];
-  volume: NovelVolume;
-  longFormat?: NovelLongFormat;
   topic: NovelTopicCard;
-  bible: NovelBible;
+  plan: NovelPlan;
 };
 
-/** 按卷生成章纲请求。 */
+/** 按卷一次出齐章卡的请求。体系设定必填；创作方案文件可选。 */
 export type NovelVolumeChaptersRequest = {
   topic: NovelTopicCard;
-  bible: NovelBible;
-  longFormat?: NovelLongFormat;
-  volume: {
-    id: string;
-    title: string;
-    purpose: string;
-  };
-  /** 同书其它卷摘要，帮助卷间衔接。 */
-  siblingVolumes?: Array<{
-    id: string;
-    title: string;
-    purpose: string;
-  }>;
-  /** 全书已有章数，便于模型续编章号感（不写进标题）。 */
-  existingChapterCount?: number;
+  plan: NovelPlan;
+  cast: NovelCast;
+  ideaFiles: NovelIdeaFile[];
+  planFile?: NovelIdeaFile;
+  volume: NovelVolumeOutline;
+  siblingVolumes?: NovelVolumeOutline[];
 };
 
-/** 章内节拍请求。 */
-export type NovelChapterBeatsRequest = {
-  topic: NovelTopicCard;
-  bible: NovelBible;
-  longFormat?: NovelLongFormat;
-  chapter: {
-    id: string;
-    title: string;
-    purpose: string;
-  };
-  /** 可选：同书其它章纲摘要，只用于把握后文，不负责现场衔接。 */
-  siblingChapters?: Array<{
-    id: string;
-    title: string;
-    purpose: string;
-  }>;
-  /** 紧邻前一章。首章省略。正文结尾仅在已有正文时附上。 */
-  previousChapter?: {
-    title: string;
-    purpose: string;
-    beats?: Array<{ id: string; text: string }>;
-    ending?: string;
-  };
-  /** 紧邻后一章的边界，只含标题和目的。 */
-  nextChapter?: {
-    title: string;
-    purpose: string;
-  };
+/** 此前一章：设计卡片，以及已经写下的全文。 */
+export type NovelPreviousChapterContext = {
+  title: string;
+  scene: string;
+  event: string;
+  hook: string;
+  body?: string;
 };
 
-/** 正文写作共用字段。 */
-type NovelWritingRequestBase = {
+/** 正文写作请求。此前各章全文不截断。 */
+export type NovelWritingRequest = {
   unitId: string;
   topic: NovelTopicCard;
-  bible: NovelBible;
-  longFormat?: NovelLongFormat;
-  /** 文风提示词；可选。 */
+  plan: NovelPlan;
+  cast: NovelCast;
+  /** 文风提示词，含人称与聚焦。 */
   stylePrompt?: string;
+  tense: NovelTense;
+  previousChapters: NovelPreviousChapterContext[];
+  chapter: Pick<NovelChapterCard, 'title' | 'scene' | 'event' | 'hook'>;
+  /** 下一章只用来卡住边界。 */
+  nextChapter?: {
+    title: string;
+    hook: string;
+  };
 };
 
-/** 整篇或整章正文写作请求。 */
-export type NovelWritingRequest =
-  | (NovelWritingRequestBase & {
-      scope: 'short';
-      volume: 'short';
-      synopsis: string;
-      beats: NovelStructureBeat[];
-    })
-  | (NovelWritingRequestBase & {
-      scope: 'chapter';
-      volume: 'medium' | 'long';
-      chapterTitle: string;
-      chapterPurpose: string;
-      beats: NovelStructureBeat[];
-      previousChapter?: {
-        title: string;
-        purpose: string;
-        ending: string;
-      };
-      nextChapter?: {
-        title: string;
-        purpose: string;
-      };
-    });
-
-/** 整篇或整章正文通顺润色：改句读、衔接与用词，不改情节。 */
+/** 整章通顺润色：改句读、衔接与用词，不改情节。 */
 export type NovelPolishRequest = {
   body: string;
   label?: string;
-  purpose?: string;
-  synopsis?: string;
-  beats?: NovelStructureBeat[];
+  scene?: string;
+  event?: string;
+  hook?: string;
   /** 文风提示；有则润色时保留语气质地。 */
   stylePrompt?: string;
 };

@@ -18,13 +18,13 @@ type NovelStudioProps = {
   task: NovelTaskDetail;
 };
 
-/** 小说写作工作台：选题调研 → 设定 → 故事结构 → 写作 → 预览。 */
+/** 小说写作工作台：选题调研 → 创作方案 → 角色设定 → 卷章设计 → 写作 → 预览。 */
 export default function NovelStudio({ task }: NovelStudioProps) {
   const router = useRouter();
   const studio = useNovelStudio(task);
   const previewDocument =
-    studio.structure && studio.writing
-      ? buildPreviewDocument(studio.structure, studio.writing)
+    studio.plan && studio.writing
+      ? buildPreviewDocument(studio.plan, studio.chapters, studio.writing)
       : { sections: [], plainText: '' };
 
   return (
@@ -70,53 +70,44 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 onReasoningEffortChange={studio.handleReasoningEffortChange}
                 phase={studio.phase}
                 selectedTopic={studio.selectedTopic}
-                structure={studio.structure}
-                onGenerateBible={studio.handleGenerateBible}
+                plan={studio.plan}
+                chapters={studio.chapters}
                 selectedUnitIds={studio.selectedUnitIds}
                 focusUnitId={studio.focusUnitId}
                 styleSelections={studio.writing?.styleSelections ?? {}}
-                bibleVoiceFocus={studio.bible?.voiceFocus ?? {}}
-                bibleTense={studio.bible?.tense}
+                tense={studio.writing?.tense}
                 writeBusy={studio.generatingUnitIds.length > 0 || Boolean(studio.polishingUnitId)}
                 onResearch={studio.handleResearch}
-                onBibleVoiceFocusChange={(voiceFocus) =>
-                  studio.updateBibleNarration({ voiceFocus })
-                }
-                onBibleTenseChange={(tense) => studio.updateBibleNarration({ tense })}
-                onGenerateStructure={studio.handleGenerateStructure}
+                onGeneratePlan={studio.handleGeneratePlan}
+                onGenerateCast={studio.handleGenerateCast}
                 onToggleWritingUnit={studio.toggleWritingUnit}
                 onStyleSelectionsChange={studio.updateStyleSelections}
+                onTenseChange={studio.updateTense}
               />
               <ResultPanel
                 phase={studio.phase}
                 topics={studio.topics}
                 selectedTopicId={studio.selectedTopicId}
-                bible={studio.bible}
-                structure={studio.structure}
+                plan={studio.plan}
+                cast={studio.cast}
+                chapters={studio.chapters}
                 writing={studio.writing}
                 selectedUnitIds={studio.selectedUnitIds}
-                generatingChapterId={studio.generatingChapterId}
                 generatingVolumeId={studio.generatingVolumeId}
                 generatingUnitIds={studio.generatingUnitIds}
                 polishingUnitId={studio.polishingUnitId}
                 onSelectTopic={studio.handleSelectTopic}
                 onUpdateTopic={studio.updateTopic}
-                onChangeBible={studio.updateBible}
-                onImportBible={studio.importBible}
-                onImportStructure={studio.importStructure}
+                onChangePlan={studio.updatePlan}
+                onImportPlan={studio.importPlan}
+                onChangeCast={studio.updateCast}
+                onImportCast={studio.importCast}
+                onImportChapters={studio.importChapters}
                 onPrev={studio.handlePrev}
                 onNext={studio.handleNext}
-                onUpdateSynopsis={studio.updateSynopsis}
-                onUpdateBeat={studio.updateBeat}
-                onRemoveBeat={studio.removeBeat}
-                onUpdateVolume={studio.updateVolume}
-                onRemoveVolume={studio.removeVolume}
                 onGenerateVolumeChapters={studio.handleGenerateVolumeChapters}
                 onUpdateChapter={studio.updateChapter}
                 onRemoveChapter={studio.removeChapter}
-                onGenerateChapterBeats={studio.handleGenerateChapterBeats}
-                onUpdateChapterBeat={studio.updateChapterBeat}
-                onRemoveChapterBeat={studio.removeChapterBeat}
                 onUpdateWritingBody={studio.updateWritingBody}
                 onGenerateWriting={studio.handleGenerateWriting}
                 onPolishWriting={studio.handlePolishWriting}

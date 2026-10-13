@@ -1,31 +1,22 @@
 import 'server-only';
 
 import type {
-  NovelBible,
-  NovelBibleRequest,
-  NovelChapterBeatsRequest,
+  NovelCast,
+  NovelCastRequest,
+  NovelCharacterArc,
   NovelCharacterGender,
   NovelCharacterRole,
-  NovelLongFormat,
-  NovelResearchRequest,
-  NovelStructureRequest,
-  NovelTense,
-  NovelVolume,
+  NovelPlan,
+  NovelPlanRequest,
   NovelPolishRequest,
+  NovelRelationArc,
+  NovelResearchRequest,
+  NovelTense,
+  NovelThread,
   NovelVolumeChaptersRequest,
+  NovelVolumeOutline,
   NovelWritingRequest,
 } from '../_shared/types';
-
-const VOLUME_LABEL: Record<NovelVolume, string> = {
-  short: '短篇',
-  medium: '中篇',
-  long: '长篇',
-};
-
-const LONG_FORMAT_LABEL: Record<NovelLongFormat, string> = {
-  publish: '出版（单部约数十万字）',
-  web: '网文（约百万字向）',
-};
 
 const ROLE_LABEL: Record<NovelCharacterRole, string> = {
   protagonist: '主角',
@@ -44,318 +35,285 @@ const TENSE_LABEL: Record<NovelTense, string> = {
   present: '现在时',
 };
 
-/** 核心班底人数与规矩条数，按体量写进设定提示。 */
-function bibleScaleHint(volume: NovelVolume, longFormat: NovelLongFormat | undefined): string {
-  if (volume === 'short') return '核心人物 2～4 人，规矩 1～3 条';
-  if (volume === 'medium') return '核心人物 4～8 人，规矩 2～4 条';
-  if (resolveLongFormat('long', longFormat) === 'web') {
-    return '核心人物 12～20 人，规矩 3～6 条';
-  }
-  return '核心人物 8～15 人，规矩 3～6 条';
-}
+const RELATION_ARC_LABEL: Record<keyof NovelRelationArc, string> = {
+  early: '初期',
+  mid: '中期',
+  late: '后期',
+};
 
-/** 把设定压成后续步骤共用的短文本。 */
-export function formatBiblePrompt(bible: NovelBible): string {
-  const names = new Map(bible.characters.map((character) => [character.id, character.name]));
-  const characters = bible.characters
-    .map((character) => {
-      const gender = character.gender ? GENDER_LABEL[character.gender] : '不标明';
-      const flaw = character.flaw.trim() ? `｜缺陷：${character.flaw.trim()}` : '';
-      return `- ${character.name}｜${ROLE_LABEL[character.role]}｜${gender}｜${character.identity}｜想要：${character.desire}${flaw}`;
+function formatRelationArc(arc: NovelRelationArc | undefined): string {
+  if (!arc) return '';
+  const parts = (Object.keys(RELATION_ARC_LABEL) as (keyof NovelRelationArc)[])
+    .map((key) => {
+      const text = arc[key]?.trim();
+      return text ? `${RELATION_ARC_LABEL[key]}：${text}` : '';
     })
-    .join('\n');
-  const relations =
-    bible.relations.length > 0
-      ? bible.relations
-          .map((relation) => {
-            const from = names.get(relation.fromId) ?? relation.fromId;
-            const to = names.get(relation.toId) ?? relation.toId;
-            return `- ${from} — ${relation.label} — ${to}`;
-          })
-          .join('\n')
-      : '无';
-  const rules = bible.rules.length > 0 ? bible.rules.map((rule) => `- ${rule}`).join('\n') : '无';
-  const taboos =
-    bible.taboos && bible.taboos.length > 0
-      ? bible.taboos.map((taboo) => `- ${taboo}`).join('\n')
-      : '无';
-  return [
-    '【设定】',
-    bible.voicePrompt.trim(),
-    `时态：${TENSE_LABEL[bible.tense]}`,
-    `时空：${bible.timePlace}`,
-    '规矩：',
-    rules,
-    '禁忌：',
-    taboos,
-    '人物：',
-    characters,
-    '关系：',
-    relations,
-  ].join('\n');
+    .filter(Boolean);
+  return parts.length > 0 ? `（${parts.join('；')}）` : '';
 }
 
-/** 解析长篇赛道；非长篇或未传时按出版（短中篇算法不受影响）。 */
-function resolveLongFormat(
-  volume: NovelVolume | undefined,
-  longFormat: NovelLongFormat | undefined,
-): NovelLongFormat {
-  if (volume && volume !== 'long') return 'publish';
-  return longFormat === 'web' ? 'web' : 'publish';
-}
+const ARC_LABEL: Record<keyof NovelCharacterArc, string> = {
+  early: '初期',
+  mid: '中期',
+  late: '后期',
+  end: '终局',
+};
 
-/** 已抽出的思路文件正文，以及待附件阅读的 PDF 份数。 */
+/** 已抽出的文件正文，以及待附件阅读的 PDF 份数。 */
 export type IdeaFilePrompt = {
   documentsText?: string;
   pdfCount?: number;
 };
 
-/** 把想法与思路文件写进提示。只填了文件时明确告诉模型以文件为准。 */
-function pushIdeaSource(lines: string[], idea: string | undefined, file?: IdeaFilePrompt) {
+/** 把想法写进提示。只填了文件时明确告诉模型以文件为准。 */
+function pushIdea(lines: string[], idea: string | undefined) {
   const text = idea?.trim() ?? '';
   if (text) lines.push(`我的想法：${text}`);
-  else lines.push('我的想法：（未填写，以思路文件为准）');
+  else lines.push('我的想法：（未填写，以体系设定为准）');
+}
+
+/** 把一类上传文件写进提示。 */
+function pushFileBlock(lines: string[], label: string, file?: IdeaFilePrompt) {
   const doc = file?.documentsText?.trim();
-  if (doc) {
-    lines.push('【思路文件】', doc);
-  }
+  if (doc) lines.push(`【${label}】`, doc);
   const pdfCount = file?.pdfCount ?? 0;
   if (pdfCount > 0) {
-    lines.push(`【思路文件】${pdfCount} 份 PDF，见附件。请直接阅读正文。`);
+    lines.push(`【${label}】${pdfCount} 份 PDF，见附件。请直接阅读正文。`);
   }
+}
+
+function formatArc(arc: NovelCharacterArc | undefined): string {
+  if (!arc) return '';
+  const parts = (Object.keys(ARC_LABEL) as (keyof NovelCharacterArc)[])
+    .map((key) => {
+      const text = arc[key]?.trim();
+      return text ? `${ARC_LABEL[key]}：${text}` : '';
+    })
+    .filter(Boolean);
+  return parts.length > 0 ? `｜变化：${parts.join('；')}` : '';
+}
+
+/** 把角色设定压成后续步骤共用的短文本。 */
+export function formatCastPrompt(cast: NovelCast): string {
+  const names = new Map(cast.characters.map((character) => [character.id, character.name]));
+  const characters = cast.characters
+    .map((character) => {
+      const gender = character.gender ? GENDER_LABEL[character.gender] : '不标明';
+      return `- ${character.name}｜${ROLE_LABEL[character.role]}｜${gender}｜出身：${character.origin}｜特质：${character.trait}${formatArc(character.arc)}`;
+    })
+    .join('\n');
+  const relations =
+    cast.relations.length > 0
+      ? cast.relations
+          .map((relation) => {
+            const from = names.get(relation.fromId) ?? relation.fromId;
+            const to = names.get(relation.toId) ?? relation.toId;
+            return `- ${from} — ${relation.label}${formatRelationArc(relation.arc)} — ${to}`;
+          })
+          .join('\n')
+      : '无';
+  return ['【角色设定】', '人物：', characters, '关系：', relations].join('\n');
+}
+
+/** 把创作方案压成后续步骤共用的文本。 */
+export function formatPlanPrompt(plan: NovelPlan): string {
+  const volumeTitle = new Map(plan.volumes.map((volume) => [volume.id, volume.title]));
+  const threads = plan.threads.map((thread) => formatThread(thread, volumeTitle)).join('\n');
+  const volumes = plan.volumes
+    .map(
+      (volume, index) =>
+        `${index + 1}. [${volume.id}] ${volume.title}｜范围：${volume.geography}｜冲突：${volume.conflict}｜本卷结果：${volume.outcome?.trim() || '未写'}｜目标 ${volume.targetChars} 字`,
+    )
+    .join('\n');
+  return ['【创作方案】', '主线：', threads || '无', '分卷：', volumes || '无'].join('\n');
+}
+
+function formatThread(thread: NovelThread, volumeTitle: Map<string, string>): string {
+  const advances = thread.advances
+    .map((advance) => {
+      const title = volumeTitle.get(advance.volumeId) ?? advance.volumeId;
+      return `  - ${title}：${advance.text}`;
+    })
+    .join('\n');
+  return `- ${thread.name}：${thread.core}${advances ? `\n${advances}` : ''}`;
+}
+
+/** 按目标字数给出本卷应铺满的章数区间。 */
+export function chapterCountHint(targetChars: number): string {
+  if (targetChars >= 2000) {
+    const min = Math.max(1, Math.round(targetChars / 5000));
+    const max = Math.max(min, Math.round(targetChars / 2000));
+    return `约 ${min}～${max} 章（本卷目标 ${targetChars} 字，单章 2000～5000 字）`;
+  }
+  return '按本卷冲突从开卷写到交给下一卷，单章约 2000～5000 字';
+}
+
+function formatVolumeLine(volume: NovelVolumeOutline): string {
+  return `- [${volume.id}] ${volume.title}｜范围：${volume.geography}｜冲突：${volume.conflict}｜本卷结果：${volume.outcome?.trim() || '未写'}｜目标 ${volume.targetChars} 字`;
 }
 
 /** 拼装选题调研用户提示。 */
-export function buildResearchPrompt(body: NovelResearchRequest, file?: IdeaFilePrompt): string {
+export function buildResearchPrompt(
+  body: NovelResearchRequest,
+  systemFile?: IdeaFilePrompt,
+  planFile?: IdeaFilePrompt,
+): string {
   const genres =
     body.genres && body.genres.length > 0 ? body.genres.join('、') : '未指定（可自由发挥）';
   const lines: string[] = [];
-  pushIdeaSource(lines, body.idea, file);
-  lines.push(`偏好类型：${genres}`, `体量倾向：${VOLUME_LABEL[body.volume]}`);
-  if (body.volume === 'long') {
-    lines.push(`长篇赛道：${LONG_FORMAT_LABEL[resolveLongFormat('long', body.longFormat)]}`);
-  }
-  lines.push('请产出 3～5 张选题卡，末尾附 topics JSON。');
+  pushIdea(lines, body.idea);
+  pushFileBlock(lines, '体系设定', systemFile);
+  pushFileBlock(lines, '创作方案文件', planFile);
+  lines.push(`偏好类型：${genres}`, '体裁：网文长篇', '请产出 3～5 张选题卡，末尾附 topics JSON。');
   return lines.join('\n');
 }
 
-/** 拼装设定用户提示。 */
-export function buildBiblePrompt(body: NovelBibleRequest, file?: IdeaFilePrompt): string {
+/** 拼装创作方案用户提示。 */
+export function buildPlanPrompt(
+  body: NovelPlanRequest,
+  systemFile?: IdeaFilePrompt,
+  planFile?: IdeaFilePrompt,
+): string {
   const genres = body.genres && body.genres.length > 0 ? body.genres.join('、') : '未指定';
   const risk = body.topic.risk ? `\n风险/难点：${body.topic.risk}` : '';
-  const longFormat = resolveLongFormat(body.volume, body.longFormat);
   const lines: string[] = [];
-  pushIdeaSource(lines, body.idea, file);
-  lines.push(`偏好类型：${genres}`, `体量：${VOLUME_LABEL[body.volume]}`);
-  if (body.volume === 'long') {
-    lines.push(`长篇赛道：${LONG_FORMAT_LABEL[longFormat]}`);
-  }
+  pushIdea(lines, body.idea);
+  pushFileBlock(lines, '体系设定', systemFile);
+  pushFileBlock(lines, '创作方案文件', planFile);
   lines.push(
+    `偏好类型：${genres}`,
     `选定选题：${body.topic.title}`,
-    `类型与体量：${body.topic.genreVolume}`,
+    `类型：${body.topic.genreVolume}`,
     `为什么值得写：${body.topic.why}`,
     `故事核：${body.topic.core}${risk}`,
-    `规模：${bibleScaleHint(body.volume, body.longFormat)}`,
-    '请直接输出核心班底、关系、时空、规矩与禁忌的 JSON，不要前言或取舍说明。不要写人称、聚焦或时态。',
+    '请输出 2～4 条主线与分卷（约 5～8 卷，含终卷；已写明的保持，未写明的按需扩展；不要写章节），末尾附 JSON。',
   );
   return lines.join('\n');
 }
 
-/** 拼装故事结构用户提示。 */
-export function buildStructurePrompt(body: NovelStructureRequest, file?: IdeaFilePrompt): string {
+/** 拼装角色设定用户提示。 */
+export function buildCastPrompt(
+  body: NovelCastRequest,
+  systemFile?: IdeaFilePrompt,
+  planFile?: IdeaFilePrompt,
+): string {
   const genres = body.genres && body.genres.length > 0 ? body.genres.join('、') : '未指定';
   const risk = body.topic.risk ? `\n风险/难点：${body.topic.risk}` : '';
-  const longFormat = resolveLongFormat(body.volume, body.longFormat);
-  const shapeHint =
-    body.volume === 'short'
-      ? '请输出 short 结构（synopsis + beats），末尾附 JSON。'
-      : body.volume === 'long'
-        ? longFormat === 'web'
-          ? '请输出 volumes 结构（约 8～12 卷，volumes[].chapters 必须为空数组），末尾附 JSON。'
-          : '请输出 volumes 结构（约 3～5 卷，volumes[].chapters 必须为空数组），末尾附 JSON。'
-        : '请输出 chapters 结构（chapters[].beats 必须为空数组），末尾附 JSON。';
   const lines: string[] = [];
-  pushIdeaSource(lines, body.idea, file);
-  lines.push(`偏好类型：${genres}`, `体量：${VOLUME_LABEL[body.volume]}`);
-  if (body.volume === 'long') {
-    lines.push(`长篇赛道：${LONG_FORMAT_LABEL[longFormat]}`);
-  }
+  pushIdea(lines, body.idea);
+  pushFileBlock(lines, '体系设定', systemFile);
+  pushFileBlock(lines, '创作方案文件', planFile);
   lines.push(
+    `偏好类型：${genres}`,
     `选定选题：${body.topic.title}`,
-    `类型与体量：${body.topic.genreVolume}`,
+    `类型：${body.topic.genreVolume}`,
     `为什么值得写：${body.topic.why}`,
     `故事核：${body.topic.core}${risk}`,
-    formatBiblePrompt(body.bible),
-    shapeHint,
+    formatPlanPrompt(body.plan),
+    '规模：核心人物约 12～20 人。',
+    '请直接输出人物与关系的 JSON，不要前言。不要写人称、聚焦或时态。',
   );
   return lines.join('\n');
 }
 
-/** 拼装按卷章纲用户提示。 */
-export function buildVolumeChaptersPrompt(body: NovelVolumeChaptersRequest): string {
-  const longFormat = resolveLongFormat('long', body.longFormat);
-  const chapterHint = longFormat === 'web' ? '本卷约 15～25 章' : '本卷约 4～8 章';
+/** 拼装按卷章卡用户提示。 */
+export function buildVolumeChaptersPrompt(
+  body: NovelVolumeChaptersRequest,
+  systemFile?: IdeaFilePrompt,
+  planFile?: IdeaFilePrompt,
+): string {
   const siblings =
     body.siblingVolumes && body.siblingVolumes.length > 0
-      ? [
-          '同书其它卷：',
-          ...body.siblingVolumes.map((vol) => `- [${vol.id}] ${vol.title}：${vol.purpose}`),
-        ].join('\n')
+      ? ['同书其它卷：', ...body.siblingVolumes.map(formatVolumeLine)].join('\n')
       : '同书其它卷：无';
-  const existing =
-    typeof body.existingChapterCount === 'number'
-      ? `全书已有章数（不含本卷）：${body.existingChapterCount}`
-      : '全书已有章数（不含本卷）：0';
-  return [
+  const threadLines = body.plan.threads.map((thread) => {
+    const here = thread.advances.find((advance) => advance.volumeId === body.volume.id);
+    return `- ${thread.name}：${thread.core}${here ? `｜本卷推进：${here.text}` : ''}`;
+  });
+  const lines: string[] = [];
+  pushFileBlock(lines, '体系设定', systemFile);
+  pushFileBlock(lines, '创作方案文件', planFile);
+  lines.push(
     `选题：${body.topic.title}（${body.topic.genreVolume}）`,
     `故事核：${body.topic.core}`,
-    formatBiblePrompt(body.bible),
-    `长篇赛道：${LONG_FORMAT_LABEL[longFormat]}`,
+    formatCastPrompt(body.cast),
+    '本卷相关主线：',
+    threadLines.join('\n') || '无',
     `本卷 id：${body.volume.id}`,
     `本卷标题：${body.volume.title}`,
-    `本卷目的：${body.volume.purpose}`,
-    existing,
+    `范围：${body.volume.geography}`,
+    `核心冲突：${body.volume.conflict}`,
+    `本卷结果：${body.volume.outcome?.trim() || '未写'}`,
+    `目标字数：${body.volume.targetChars}`,
     siblings,
-    `请为本卷生成章纲列表（${chapterHint}；beats 皆为空数组），末尾附 chapters JSON。`,
-  ].join('\n');
-}
-
-/** 拼装章内节拍用户提示。 */
-export function buildChapterBeatsPrompt(body: NovelChapterBeatsRequest): string {
-  const longFormat = resolveLongFormat('long', body.longFormat);
-  const beatHint =
-    body.longFormat === 'web'
-      ? '通常 3～5 条节拍；章目标篇幅约 2000～5000 字'
-      : '通常 3～6 条节拍；章目标篇幅约 2000～12000 字';
-  const siblings =
-    body.siblingChapters && body.siblingChapters.length > 0
-      ? [
-          '【同书其它章纲】只用于避免重复后文高潮和提前写完后面的目的，不作为本章开场。',
-          ...body.siblingChapters.map((ch) => `- [${ch.id}] ${ch.title}：${ch.purpose}`),
-        ].join('\n')
-      : '【同书其它章纲】无';
-  const lines = [
-    `选题：${body.topic.title}（${body.topic.genreVolume}）`,
-    `故事核：${body.topic.core}`,
-    formatBiblePrompt(body.bible),
-  ];
-  if (body.longFormat) {
-    lines.push(`长篇赛道：${LONG_FORMAT_LABEL[longFormat]}`);
-  }
-  if (body.previousChapter) {
-    lines.push(
-      '【上一章衔接】地点、动作、信息状态和未完成决定从这里续上。',
-      `标题：${body.previousChapter.title}`,
-      `目的：${body.previousChapter.purpose}`,
-    );
-    if (body.previousChapter.beats && body.previousChapter.beats.length > 0) {
-      lines.push(
-        '全部节拍：',
-        ...body.previousChapter.beats.map((beat, index) => `${index + 1}. ${beat.text}`),
-      );
-    }
-    if (body.previousChapter.ending) {
-      lines.push('正文结尾（现场以此为准）：', body.previousChapter.ending);
-    }
-  } else {
-    lines.push('【上一章衔接】无（这是首章）');
-  }
-  lines.push(
-    '【当前章】',
-    `本章 id：${body.chapter.id}`,
-    `本章标题：${body.chapter.title}`,
-    `本章目的：${body.chapter.purpose}`,
+    `请为本卷一次出齐全部章卡（${chapterCountHint(body.volume.targetChars)}）。场景和事件写成一小段，末尾附 chapters JSON。`,
   );
-  if (body.nextChapter) {
-    lines.push(
-      '【下一章边界】不要提前完成这一章的目的。',
-      `标题：${body.nextChapter.title}`,
-      `目的：${body.nextChapter.purpose}`,
-    );
-  }
-  lines.push(siblings, `请为本章节生成节拍列表（${beatHint}），末尾附 beats JSON。`);
   return lines.join('\n');
 }
 
-/** 拼装正文写作用户提示。 */
+/** 拼装正文写作用户提示。此前各章全文原样进入。写作不再附体系设定或创作方案原文。 */
 export function buildWritingPrompt(body: NovelWritingRequest): string {
-  const longFormat = resolveLongFormat(body.volume, body.longFormat);
-  const lengthHint =
-    body.volume === 'short'
-      ? '整篇约 3000～10000 字'
-      : body.volume === 'long' && longFormat === 'web'
-        ? '本章约 2000～5000 字'
-        : '本章约 2000～12000 字';
   const lines = [
     `选题：${body.topic.title}（${body.topic.genreVolume}）`,
     `故事核：${body.topic.core}`,
-    formatBiblePrompt(body.bible),
-    `体量：${VOLUME_LABEL[body.volume]}`,
+    formatPlanPrompt(body.plan),
+    formatCastPrompt(body.cast),
+    `时态：${TENSE_LABEL[body.tense]}`,
   ];
-  if (body.volume === 'long') {
-    lines.push(`长篇赛道：${LONG_FORMAT_LABEL[longFormat]}`);
-  }
   if (body.stylePrompt?.trim()) {
     lines.push('【文风】', body.stylePrompt.trim());
   }
-  if (body.scope === 'short') {
-    lines.push(
-      `正文 unitId：${body.unitId}`,
-      `梗概：${body.synopsis}`,
-      '【整篇节拍】',
-      ...body.beats.map((beat, index) => `${index + 1}. ${beat.text}`),
-      `请一次写完整篇正文（${lengthHint}）。覆盖全部节拍，但不要显示节拍标题或分隔标记；自然段之间只换一行，不要留空白行。`,
-    );
-    return lines.join('\n');
-  }
-
-  if (body.previousChapter) {
-    lines.push(
-      '【上一章衔接】',
-      `标题：${body.previousChapter.title}`,
-      `目的：${body.previousChapter.purpose}`,
-      '正文结尾：',
-      body.previousChapter.ending,
-    );
+  if (body.previousChapters.length > 0) {
+    lines.push('【此前各章】按顺序。已有正文以全文为准。');
+    body.previousChapters.forEach((chapter, index) => {
+      lines.push(
+        `第${index + 1}章 ${chapter.title}`,
+        `场景：${chapter.scene}`,
+        `事件：${chapter.event}`,
+        `钩子：${chapter.hook}`,
+      );
+      if (chapter.body?.trim()) {
+        lines.push('全文：', chapter.body.trim());
+      } else {
+        lines.push('全文：（尚未写下）');
+      }
+    });
   } else {
-    lines.push('【上一章衔接】无（这是首章或上一章尚无正文）');
+    lines.push('【此前各章】无（这是全书第一章）');
   }
   lines.push(
     '【当前章】',
     `正文 unitId：${body.unitId}`,
-    `标题：${body.chapterTitle}`,
-    `目的：${body.chapterPurpose}`,
-    '完整章内节拍：',
-    ...body.beats.map((beat, index) => `${index + 1}. ${beat.text}`),
+    `标题：${body.chapter.title}`,
+    `场景：${body.chapter.scene}`,
+    `事件：${body.chapter.event}`,
+    `钩子：${body.chapter.hook}`,
   );
   if (body.nextChapter) {
     lines.push(
-      '【下一章边界】',
+      '【下一章边界】不要提前写掉这一章的钩子。',
       `标题：${body.nextChapter.title}`,
-      `目的：${body.nextChapter.purpose}`,
-      '当前章不要提前写掉下一章的核心任务。',
+      `钩子：${body.nextChapter.hook}`,
     );
   }
   lines.push(
-    `请一次写完当前章正文（${lengthHint}）。覆盖全部节拍，但不要显示节拍标题或分隔标记；从上一章结尾自然续写，不要复述上一章；自然段之间只换一行，不要留空白行。`,
+    '请一次写完当前章正文（约 2000～5000 字）。写出场景里的事件，落到本章钩子再收束；从此前章节自然续写，不要复述；自然段之间只换一行，不要留空白行。',
   );
   return lines.join('\n');
 }
 
-/** 拼装整篇或整章通顺润色用户提示。 */
+/** 拼装整章通顺润色用户提示。 */
 export function buildPolishPrompt(body: NovelPolishRequest): string {
   const style = body.stylePrompt?.trim();
   return [
     ...(body.label ? ['【正文单元】', body.label] : []),
-    ...(body.purpose ? ['【本章目的】', body.purpose] : []),
-    ...(body.synopsis ? ['【梗概】', body.synopsis] : []),
-    ...(body.beats?.length
-      ? ['【完整节拍】', ...body.beats.map((beat, index) => `${index + 1}. ${beat.text}`)]
-      : []),
+    ...(body.scene ? ['【场景】', body.scene] : []),
+    ...(body.event ? ['【事件】', body.event] : []),
+    ...(body.hook ? ['【钩子】', body.hook] : []),
     ...(style ? ['【文风】', style] : []),
     '【原文】',
     body.body.trim(),
     '',
-    '请输出润色后的整篇或整章正文（修正段落衔接、重复、句读、不当搭配、主谓错位、指称偷换与半吊子术语；不改情节、对话内容与人称；自然段之间只换一行，不要留空白行；不要标题、说明或代码块）。',
+    '请输出润色后的整章正文（修正段落衔接、重复、句读、不当搭配、主谓错位、指称偷换与半吊子术语；不改情节、对话内容与人称；自然段之间只换一行，不要留空白行；不要标题、说明或代码块）。',
   ].join('\n');
 }

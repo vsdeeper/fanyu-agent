@@ -1,4 +1,4 @@
-/** 小说工作室 SSE 事件名（research / structure / chapter-beats / writing 共用）。 */
+/** 小说工作室 SSE 事件名（调研 / 创作方案 / 角色 / 卷章 / 写作 / 润色共用）。 */
 export const NOVEL_SSE_EVENT = {
   text: 'text',
   done: 'done',
@@ -16,8 +16,9 @@ export type NovelReasoningEffort = (typeof NOVEL_REASONING_EFFORTS)[number];
 /** 长篇默认拉满；旧任务没写这个字段时也用这一档。 */
 export const NOVEL_DEFAULT_REASONING_EFFORT: NovelReasoningEffort = 'max';
 
-/** 续写下一章时携带的上一章正文结尾最大字符数。 */
-export const NOVEL_PREVIOUS_CHAPTER_CONTEXT_MAX_CHARS = 3000;
+/** 新生成的创作方案主线条数。已保存的旧方案可以落在这个区间之外。 */
+export const NOVEL_THREAD_COUNT_MIN = 2;
+export const NOVEL_THREAD_COUNT_MAX = 4;
 
 /** 读取落盘或请求里的思考强度；缺省、非法都回落 max。 */
 export function readNovelReasoningEffort(value: unknown): NovelReasoningEffort {

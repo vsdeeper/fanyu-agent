@@ -8,7 +8,13 @@ import { createTaskParseRequest } from '@/app/api/studio/_server/create-task-par
 import { createTaskStore } from '@/app/api/studio/_server/create-task-store';
 import { serveTaskAsset } from '@/app/api/studio/_server/serve-task-asset';
 import { NOVEL_STEP_KEYS, NOVEL_WORKFLOW_VERSION } from '../_shared/task-constants';
-import type { CreateNovelTaskRequest, NovelStepKey } from '../_shared/task-types';
+import type { CreateNovelTaskRequest, NovelStepKey, NovelTaskDetail } from '../_shared/task-types';
+import {
+  mergeLegacyNovelDetail,
+  readAllNovelStepRows,
+  readNovelStepRows,
+  withLegacyListKeys,
+} from './legacy-snapshot';
 
 const assets = createTaskAssets({
   assetsTable: novelTaskAssets,
@@ -31,14 +37,26 @@ const parse = createTaskParseRequest<NovelStepKey, CreateNovelTaskRequest>({
   }),
 });
 
+/** 读取任务，并把旧的设定/结构步骤映射到角色、方案与卷章。 */
+function loadNovelTask(id: string): NovelTaskDetail | undefined {
+  const detail = store.load(id);
+  if (!detail) return undefined;
+  return mergeLegacyNovelDetail(detail, readNovelStepRows(id));
+}
+
+/** 列表里的旧步骤键显示为当前步骤名。 */
+function listNovelTasks(query: Parameters<typeof store.list>[0]): ReturnType<typeof store.list> {
+  return withLegacyListKeys(store.list(query), readAllNovelStepRows());
+}
+
 const handlers = createTaskHandlers({
   logTag: 'novel-tasks',
   notFoundMessage: '小说任务不存在',
   createInvalidMessage: '任务名称无效',
   ...parse,
   create: (name) => store.create(name),
-  list: store.list,
-  load: store.load,
+  list: listNovelTasks,
+  load: loadNovelTask,
   hasName: store.hasName,
   exists: store.exists,
   updateName: store.updateName,
@@ -50,9 +68,9 @@ const handlers = createTaskHandlers({
 
 export const { persistSnapshotAssets, getTaskAsset, findAssetTaskId, readTaskAsset } = assets;
 
-export const loadNovelTask = store.load;
+export { loadNovelTask };
 export const createNovelTask = store.create;
-export const listNovelTasks = store.list;
+export { listNovelTasks };
 export const hasNovelTaskName = store.hasName;
 export const novelTaskExists = store.exists;
 export const updateNovelTaskName = store.updateName;

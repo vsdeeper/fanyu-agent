@@ -5,7 +5,7 @@ import {
   type IElementEvent,
   type NodeData,
 } from '@antv/g6';
-import type { BibleStepSnapshot, NovelCharacterRole } from '../../../types';
+import type { CastStepSnapshot, NovelCharacterRole } from '../../../types';
 import {
   RELATION_COLOR_FALLBACK,
   RELATION_COLOR_TOKEN,
@@ -25,7 +25,7 @@ const TOOLTIP_KEY = 'relation-tooltip';
 let palette: RelationGraphPalette = RELATION_COLOR_FALLBACK;
 
 /** 创建只读关系图。拖动节点只影响当前画布，不写回设定。 */
-export function createRelationGraph(container: HTMLElement, bible: BibleStepSnapshot): Graph {
+export function createRelationGraph(container: HTMLElement, bible: CastStepSnapshot): Graph {
   palette = readRelationGraphPalette();
   const graph = new Graph({
     container,
@@ -91,7 +91,7 @@ export function createRelationGraph(container: HTMLElement, bible: BibleStepSnap
 }
 
 /** 用最新人物和关系重绘。位置重新计算，不保留拖动结果。 */
-export function syncRelationGraph(graph: Graph, bible: BibleStepSnapshot): void {
+export function syncRelationGraph(graph: Graph, bible: CastStepSnapshot): void {
   palette = readRelationGraphPalette();
   graph.setData(buildRelationGraphData(bible.characters, bible.relations));
   void graph.render();

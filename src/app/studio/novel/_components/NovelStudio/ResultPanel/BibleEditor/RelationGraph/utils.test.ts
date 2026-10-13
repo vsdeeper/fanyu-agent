@@ -8,9 +8,8 @@ function character(
 ): NovelCharacter {
   return {
     role: 'supporting',
-    identity: '',
-    desire: '',
-    flaw: '',
+    origin: '',
+    trait: '',
     ...patch,
   };
 }
@@ -28,9 +27,8 @@ describe('buildRelationGraphData', () => {
       id: 'a',
       name: ' 甲 ',
       role: 'protagonist',
-      identity: '临时工',
-      desire: '留下',
-      flaw: '嘴硬',
+      origin: '临时工',
+      trait: '嘴硬',
     }),
     character({ id: 'b', name: '乙', role: 'antagonist' }),
     character({ id: 'c', name: '   ' }),
@@ -124,15 +122,13 @@ describe('buildRelationNodeTooltip', () => {
     const html = buildRelationNodeTooltip({
       name: '<甲>',
       role: 'protagonist',
-      identity: '',
-      desire: '想&要',
-      flaw: '缺"陷',
+      origin: '',
+      trait: '想&要',
     });
     expect(html).toContain('&lt;甲&gt;');
     expect(html).toContain('主角');
-    expect(html).toContain('身份：未填写');
-    expect(html).toContain('欲望：想&amp;要');
-    expect(html).toContain('缺陷：缺&quot;陷');
+    expect(html).toContain('出身：未填写');
+    expect(html).toContain('特质：想&amp;要');
     expect(html).not.toContain('<甲>');
   });
 });

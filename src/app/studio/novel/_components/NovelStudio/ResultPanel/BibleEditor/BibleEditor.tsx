@@ -3,36 +3,25 @@ import { useState } from 'react';
 import {
   ADD_CHARACTER_BUTTON,
   ADD_RELATION_BUTTON,
-  ADD_RULE_BUTTON,
-  ADD_TABOO_BUTTON,
   CHARACTERS_TITLE,
   RELATIONS_TITLE,
-  RULE_DELETE_CONFIRM_TITLE,
-  RULES_TITLE,
-  TABOO_DELETE_CONFIRM_TITLE,
-  TABOOS_TITLE,
-  TIME_PLACE_LABEL,
 } from '../../constants';
-import type { BibleStepSnapshot, NovelCharacter, NovelRelation } from '../../types';
+import type { CastStepSnapshot, NovelCharacter, NovelRelation } from '../../types';
 import CharacterCard from './CharacterCard';
-import { EMPTY_RELATIONS, EMPTY_RULES, EMPTY_TABOOS, UNNAMED_CHARACTER } from './constants';
+import { EMPTY_RELATIONS, UNNAMED_CHARACTER } from './constants';
 import RelationRow from './RelationRow';
 import styles from './BibleEditor.module.css';
-import TextItemRow from './TextItemRow';
-import TimePlaceField from './TimePlaceField';
 import { createBibleLocalId } from './utils';
 
 type BibleEditorProps = {
-  bible: BibleStepSnapshot;
-  onChange: (next: BibleStepSnapshot) => void;
+  bible: CastStepSnapshot;
+  onChange: (next: CastStepSnapshot) => void;
 };
 
-/** 设定右栏：默认纯文字。人物按卡片改；关系、规矩、禁忌按条改，按钮跟在删除旁边。 */
+/** 角色右栏：人物按卡片改，关系按条改。 */
 export default function BibleEditor({ bible, onChange }: BibleEditorProps) {
   const [pendingCharacter, setPendingCharacter] = useState<NovelCharacter | null>(null);
   const [pendingRelation, setPendingRelation] = useState<NovelRelation | null>(null);
-  const [pendingRule, setPendingRule] = useState(false);
-  const [pendingTaboo, setPendingTaboo] = useState(false);
 
   const characterOptions = bible.characters
     .filter((character) => character.name.trim())
@@ -82,34 +71,6 @@ export default function BibleEditor({ bible, onChange }: BibleEditorProps) {
     });
   }
 
-  function saveRule(index: number, next: string) {
-    onChange({
-      ...bible,
-      rules: bible.rules.map((rule, ruleIndex) => (ruleIndex === index ? next : rule)),
-    });
-  }
-
-  function removeRule(index: number) {
-    onChange({
-      ...bible,
-      rules: bible.rules.filter((_, ruleIndex) => ruleIndex !== index),
-    });
-  }
-
-  function saveTaboo(index: number, next: string) {
-    onChange({
-      ...bible,
-      taboos: bible.taboos.map((taboo, tabooIndex) => (tabooIndex === index ? next : taboo)),
-    });
-  }
-
-  function removeTaboo(index: number) {
-    onChange({
-      ...bible,
-      taboos: bible.taboos.filter((_, tabooIndex) => tabooIndex !== index),
-    });
-  }
-
   return (
     <div className={styles.editor}>
       <section className={styles.block}>
@@ -138,9 +99,8 @@ export default function BibleEditor({ bible, onChange }: BibleEditorProps) {
                 id: createBibleLocalId('c'),
                 name: '',
                 role: 'supporting',
-                identity: '',
-                desire: '',
-                flaw: '',
+                origin: '',
+                trait: '',
               })
             }
           >
@@ -195,80 +155,6 @@ export default function BibleEditor({ bible, onChange }: BibleEditorProps) {
             }
           >
             {ADD_RELATION_BUTTON}
-          </Button>
-        )}
-      </section>
-
-      <section className={styles.block}>
-        <p className={styles.fieldLabel}>{TIME_PLACE_LABEL}</p>
-        <TimePlaceField
-          value={bible.timePlace}
-          onSave={(timePlace) => onChange({ ...bible, timePlace })}
-        />
-      </section>
-
-      <section className={styles.block}>
-        <p className={styles.fieldLabel}>{RULES_TITLE}</p>
-        {bible.rules.length ? (
-          bible.rules.map((rule, index) => (
-            <TextItemRow
-              key={`${rule}-${index}`}
-              value={rule}
-              deleteTitle={RULE_DELETE_CONFIRM_TITLE}
-              onSave={(next) => saveRule(index, next)}
-              onDelete={() => removeRule(index)}
-            />
-          ))
-        ) : pendingRule ? null : (
-          <p className={styles.empty}>{EMPTY_RULES}</p>
-        )}
-        {pendingRule ? (
-          <TextItemRow
-            value=""
-            pending
-            deleteTitle={RULE_DELETE_CONFIRM_TITLE}
-            onSave={(next) => {
-              onChange({ ...bible, rules: [...bible.rules, next] });
-              setPendingRule(false);
-            }}
-            onCancelPending={() => setPendingRule(false)}
-          />
-        ) : (
-          <Button color="primary" variant="dashed" onClick={() => setPendingRule(true)}>
-            {ADD_RULE_BUTTON}
-          </Button>
-        )}
-      </section>
-
-      <section className={styles.block}>
-        <p className={styles.fieldLabel}>{TABOOS_TITLE}</p>
-        {bible.taboos.length ? (
-          bible.taboos.map((taboo, index) => (
-            <TextItemRow
-              key={`${taboo}-${index}`}
-              value={taboo}
-              deleteTitle={TABOO_DELETE_CONFIRM_TITLE}
-              onSave={(next) => saveTaboo(index, next)}
-              onDelete={() => removeTaboo(index)}
-            />
-          ))
-        ) : pendingTaboo ? null : (
-          <p className={styles.empty}>{EMPTY_TABOOS}</p>
-        )}
-        {pendingTaboo ? (
-          <TextItemRow
-            value=""
-            pending
-            deleteTitle={TABOO_DELETE_CONFIRM_TITLE}
-            onSave={(next) => {
-              onChange({ ...bible, taboos: [...bible.taboos, next] });
-              setPendingTaboo(false);
-            }}
-            onCancelPending={() => setPendingTaboo(false)}
-          />
-        ) : (
-          <Button color="primary" variant="dashed" onClick={() => setPendingTaboo(true)}>
-            {ADD_TABOO_BUTTON}
           </Button>
         )}
       </section>

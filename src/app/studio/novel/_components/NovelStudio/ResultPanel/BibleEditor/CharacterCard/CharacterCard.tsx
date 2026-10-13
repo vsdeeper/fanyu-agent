@@ -6,15 +6,19 @@ import {
   SAVE_BUTTON,
 } from '@/app/studio/_components/StudioCard/constants';
 import {
-  CHARACTER_DELETE_CONFIRM_TITLE,
-  CHARACTER_DESIRE_LABEL,
-  CHARACTER_FLAW_LABEL,
   CHARACTER_GENDER_LABEL,
   CHARACTER_GENDER_OPTIONS,
-  CHARACTER_IDENTITY_LABEL,
   CHARACTER_NAME_LABEL,
+  CHARACTER_ORIGIN_LABEL,
   CHARACTER_ROLE_LABEL,
   CHARACTER_ROLE_OPTIONS,
+  CHARACTER_TRAIT_LABEL,
+  ARC_EARLY_LABEL,
+  ARC_END_LABEL,
+  ARC_LATE_LABEL,
+  ARC_MID_LABEL,
+  CHARACTER_ARC_LABEL,
+  CHARACTER_DELETE_CONFIRM_TITLE,
   CONFIRM_CANCEL,
   DELETE_BUTTON,
 } from '../../../constants';
@@ -22,6 +26,18 @@ import type { NovelCharacter } from '../../../types';
 import { EMPTY_CHARACTER_FIELD, UNNAMED_CHARACTER } from '../constants';
 import { isSavableCharacter, trimCharacter } from '../utils';
 import styles from './CharacterCard.module.css';
+
+function formatArc(arc: NovelCharacter['arc']): string {
+  if (!arc) return '';
+  return [
+    arc.early ? `${ARC_EARLY_LABEL} ${arc.early}` : '',
+    arc.mid ? `${ARC_MID_LABEL} ${arc.mid}` : '',
+    arc.late ? `${ARC_LATE_LABEL} ${arc.late}` : '',
+    arc.end ? `${ARC_END_LABEL} ${arc.end}` : '',
+  ]
+    .filter(Boolean)
+    .join('；');
+}
 
 type CharacterCardProps = {
   character: NovelCharacter;
@@ -102,18 +118,18 @@ export default function CharacterCard({
           {genderLabel || <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>}
         </p>
         <p className={styles.line}>
-          <span className={styles.label}>{CHARACTER_IDENTITY_LABEL}</span>
-          {character.identity.trim() || (
+          <span className={styles.label}>{CHARACTER_ORIGIN_LABEL}</span>
+          {character.origin.trim() || <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>}
+        </p>
+        <p className={styles.line}>
+          <span className={styles.label}>{CHARACTER_TRAIT_LABEL}</span>
+          {character.trait.trim() || <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>}
+        </p>
+        <p className={styles.line}>
+          <span className={styles.label}>{CHARACTER_ARC_LABEL}</span>
+          {formatArc(character.arc) || (
             <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>
           )}
-        </p>
-        <p className={styles.line}>
-          <span className={styles.label}>{CHARACTER_DESIRE_LABEL}</span>
-          {character.desire.trim() || <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>}
-        </p>
-        <p className={styles.line}>
-          <span className={styles.label}>{CHARACTER_FLAW_LABEL}</span>
-          {character.flaw.trim() || <span className={styles.empty}>{EMPTY_CHARACTER_FIELD}</span>}
         </p>
       </div>
     );
@@ -143,20 +159,45 @@ export default function CharacterCard({
           onChange={(gender) => setDraft({ ...draft, gender })}
         />
       </div>
-      <Input
-        value={draft.identity}
-        placeholder={CHARACTER_IDENTITY_LABEL}
-        onChange={(event) => setDraft({ ...draft, identity: event.target.value })}
+      <Input.TextArea
+        value={draft.origin}
+        placeholder={CHARACTER_ORIGIN_LABEL}
+        autoSize={{ minRows: 2, maxRows: 8 }}
+        onChange={(event) => setDraft({ ...draft, origin: event.target.value })}
       />
-      <Input
-        value={draft.desire}
-        placeholder={CHARACTER_DESIRE_LABEL}
-        onChange={(event) => setDraft({ ...draft, desire: event.target.value })}
+      <Input.TextArea
+        value={draft.trait}
+        placeholder={CHARACTER_TRAIT_LABEL}
+        autoSize={{ minRows: 2, maxRows: 8 }}
+        onChange={(event) => setDraft({ ...draft, trait: event.target.value })}
       />
-      <Input
-        value={draft.flaw}
-        placeholder={CHARACTER_FLAW_LABEL}
-        onChange={(event) => setDraft({ ...draft, flaw: event.target.value })}
+      <Input.TextArea
+        value={draft.arc?.early ?? ''}
+        placeholder={`${CHARACTER_ARC_LABEL}·${ARC_EARLY_LABEL}`}
+        autoSize={{ minRows: 2, maxRows: 8 }}
+        onChange={(event) =>
+          setDraft({ ...draft, arc: { ...draft.arc, early: event.target.value } })
+        }
+      />
+      <Input.TextArea
+        value={draft.arc?.mid ?? ''}
+        placeholder={`${CHARACTER_ARC_LABEL}·${ARC_MID_LABEL}`}
+        autoSize={{ minRows: 2, maxRows: 8 }}
+        onChange={(event) => setDraft({ ...draft, arc: { ...draft.arc, mid: event.target.value } })}
+      />
+      <Input.TextArea
+        value={draft.arc?.late ?? ''}
+        placeholder={`${CHARACTER_ARC_LABEL}·${ARC_LATE_LABEL}`}
+        autoSize={{ minRows: 2, maxRows: 8 }}
+        onChange={(event) =>
+          setDraft({ ...draft, arc: { ...draft.arc, late: event.target.value } })
+        }
+      />
+      <Input.TextArea
+        value={draft.arc?.end ?? ''}
+        placeholder={`${CHARACTER_ARC_LABEL}·${ARC_END_LABEL}`}
+        autoSize={{ minRows: 2, maxRows: 8 }}
+        onChange={(event) => setDraft({ ...draft, arc: { ...draft.arc, end: event.target.value } })}
       />
       <div className={`${styles.actions} ${styles.editActions}`}>
         <Button size="small" onClick={cancelEdit}>

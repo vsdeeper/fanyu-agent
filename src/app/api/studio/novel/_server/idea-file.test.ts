@@ -4,8 +4,8 @@ vi.mock('server-only', () => ({}));
 
 import { isNovelIdeaFile } from '../_shared/idea-file';
 import { resolveNovelIdeaFiles } from './idea-file';
-import { parseBibleBody, parseResearchBody } from './parse-request';
-import { buildBiblePrompt, buildResearchPrompt } from './prompt';
+import { parseCastBody, parseResearchBody } from './parse-request';
+import { buildCastPrompt, buildResearchPrompt } from './prompt';
 
 const TXT = {
   filename: '大纲.txt',
@@ -31,20 +31,18 @@ describe('isNovelIdeaFile', () => {
 });
 
 describe('parseResearchBody', () => {
-  it('想法与思路文件填一项即可', () => {
-    expect(parseResearchBody({ idea: ' 院子 ', volume: 'short' })).toMatchObject({
+  it('体系设定必填，想法可选', () => {
+    expect(parseResearchBody({ idea: ' 院子 ', ideaFiles: [TXT] })).toMatchObject({
       idea: '院子',
-      volume: 'short',
-    });
-    expect(parseResearchBody({ ideaFiles: [TXT], volume: 'medium' })).toMatchObject({
       ideaFiles: [TXT],
-      volume: 'medium',
     });
+    expect(parseResearchBody({ ideaFiles: [TXT] })).toMatchObject({ ideaFiles: [TXT] });
+    expect(parseResearchBody({ idea: '院子' })).toBeNull();
   });
 
   it('两项都空时拒绝', () => {
-    expect(parseResearchBody({ volume: 'short' })).toBeNull();
-    expect(parseResearchBody({ idea: '   ', volume: 'short' })).toBeNull();
+    expect(parseResearchBody({})).toBeNull();
+    expect(parseResearchBody({ idea: '   ' })).toBeNull();
     expect(
       parseResearchBody({
         ideaFiles: [
@@ -54,7 +52,6 @@ describe('parseResearchBody', () => {
             dataUrl: TXT.dataUrl,
           },
         ],
-        volume: 'short',
       }),
     ).toBeNull();
   });
@@ -95,35 +92,51 @@ describe('resolveNovelIdeaFiles', () => {
     expect(
       parseResearchBody({
         ideaFiles: [TXT, TXT, TXT, TXT],
-        volume: 'short',
       }),
     ).toBeNull();
   });
 });
 
 describe('buildResearchPrompt', () => {
-  it('只填想法时不提思路文件', () => {
-    const prompt = buildResearchPrompt({ idea: '院子', volume: 'short' });
+  it('未附文件正文时不写体系设定块', () => {
+    const prompt = buildResearchPrompt({ idea: '院子', ideaFiles: [TXT] });
     expect(prompt).toContain('我的想法：院子');
-    expect(prompt).not.toContain('思路文件');
+    expect(prompt).not.toContain('【体系设定】');
   });
 
-  it('只填文件时说明以文件为准', () => {
+  it('只填文件时说明以体系设定为准', () => {
     const prompt = buildResearchPrompt(
-      { volume: 'short' },
+      { ideaFiles: [TXT] },
       { documentsText: '附件「大纲.txt」：\n夏天停电' },
     );
-    expect(prompt).toContain('未填写，以思路文件为准');
+    expect(prompt).toContain('未填写，以体系设定为准');
     expect(prompt).toContain('夏天停电');
   });
 });
 
-describe('buildBiblePrompt', () => {
-  it('PDF 思路文件写成附件说明', () => {
-    const prompt = buildBiblePrompt({ volume: 'short', topic }, { pdfCount: 2 });
+describe('buildCastPrompt', () => {
+  const plan = {
+    threads: [
+      {
+        id: 't1',
+        name: '院子',
+        core: '停电夜里把话说完',
+        advances: [{ volumeId: 'v1', text: '灯灭了' }],
+      },
+    ],
+    volumes: [
+      { id: 'v1', title: '院子', geography: '夏天', conflict: '家里人不说', targetChars: 20000 },
+    ],
+  };
+
+  it('PDF 体系设定写成附件说明', () => {
+    const prompt = buildCastPrompt(
+      { topic, plan, idea: '院子', ideaFiles: [TXT] },
+      { pdfCount: 2 },
+    );
     expect(prompt).toContain('2 份 PDF');
-    expect(
-      parseBibleBody({ volume: 'short', topic, ideaFiles: [TXT] })?.ideaFiles?.[0]?.filename,
-    ).toBe('大纲.txt');
+    expect(parseCastBody({ topic, ideaFiles: [TXT], plan })?.ideaFiles?.[0]?.filename).toBe(
+      '大纲.txt',
+    );
   });
 });

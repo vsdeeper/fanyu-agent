@@ -1,10 +1,23 @@
 .row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 12px;
   border: 1px solid var(--fanyu-color-border-secondary);
   border-radius: 8px;
+}
+
+.editStack {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.people {
+  display: flex;
+  gap: 8px;
 }
 
 .grow {
@@ -12,12 +25,24 @@
   min-width: 0;
 }
 
-.text {
+.textBlock {
   flex: 1;
   min-width: 0;
+}
+
+.text {
   margin: 0;
   font-size: 13px;
   line-height: 1.7;
   color: var(--fanyu-color-text);
+  word-break: break-word;
+}
+
+.stages {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--fanyu-color-text-secondary);
+  white-space: pre-wrap;
   word-break: break-word;
 }

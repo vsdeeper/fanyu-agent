@@ -1,20 +1,20 @@
 import { useThemeMode } from '@/components/theme';
 import { useEffect, useRef } from 'react';
 import { CHARACTER_ROLE_OPTIONS } from '../../../constants';
-import type { BibleStepSnapshot } from '../../../types';
+import type { CastStepSnapshot } from '../../../types';
 import { RELATION_GRAPH_HEIGHT } from './constants';
 import { createRelationGraph, syncRelationGraph } from './graph';
 import styles from './RelationGraph.module.css';
 
 type RelationGraphProps = {
-  bible: BibleStepSnapshot;
+  bible: CastStepSnapshot;
 };
 
 /** 设定人物关系的只读图谱。关闭弹层后实例销毁，再次打开重新布局。 */
 export default function RelationGraph({ bible }: RelationGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<ReturnType<typeof createRelationGraph> | null>(null);
-  const paintedBible = useRef<BibleStepSnapshot | null>(null);
+  const paintedBible = useRef<CastStepSnapshot | null>(null);
   const { mode } = useThemeMode();
 
   useEffect(() => {

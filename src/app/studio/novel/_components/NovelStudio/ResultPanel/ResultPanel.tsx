@@ -2,176 +2,183 @@ import StudioStagePanel, {
   studioStageHeadActionsClassName,
 } from '@/app/studio/_components/StudioStagePanel';
 import { StarOutlined } from '@ant-design/icons';
-import { Button, Input, Modal, Spin } from 'antd';
+import { Button, Modal, Spin } from 'antd';
 import { useState } from 'react';
 import {
-  BEATS_TITLE,
-  BIBLE_EXPORT_BUTTON,
-  BIBLE_EXPORT_FILE_NAME,
-  BIBLE_EXPORT_MEDIA_TYPE,
-  BIBLE_GENERATING_HINT,
-  BIBLE_IMPORT_CONFIRM_CONTENT,
-  BIBLE_IMPORT_CONFIRM_TITLE,
-  BIBLE_PANEL_TITLE,
-  CHAPTERS_TITLE,
-  EMPTY_BIBLE_HINT,
+  CAST_EXPORT_BUTTON,
+  CAST_EXPORT_FILE_NAME,
+  CAST_EXPORT_MEDIA_TYPE,
+  CAST_GENERATING_HINT,
+  CAST_IMPORT_CONFIRM_CONTENT,
+  CAST_IMPORT_CONFIRM_TITLE,
+  CAST_PANEL_TITLE,
+  CHAPTERS_EXPORT_BUTTON,
+  CHAPTERS_EXPORT_FILE_NAME,
+  CHAPTERS_EXPORT_MEDIA_TYPE,
+  CHAPTERS_GENERATING_HINT,
+  CHAPTERS_IMPORT_CONFIRM_CONTENT,
+  CHAPTERS_IMPORT_CONFIRM_TITLE,
+  CHAPTERS_PANEL_TITLE,
+  EMPTY_CAST_HINT,
+  EMPTY_CHAPTERS_HINT,
+  EMPTY_PLAN_HINT,
   EMPTY_RESEARCH_HINT,
-  EMPTY_STRUCTURE_HINT,
+  EMPTY_WRITE_HINT,
   NEXT_BUTTON,
+  PLAN_EXPORT_BUTTON,
+  PLAN_EXPORT_FILE_NAME,
+  PLAN_EXPORT_MEDIA_TYPE,
+  PLAN_GENERATING_HINT,
+  PLAN_IMPORT_CONFIRM_CONTENT,
+  PLAN_IMPORT_CONFIRM_TITLE,
+  PLAN_PANEL_TITLE,
   PREV_BUTTON,
   PREVIEW_RELATION_GRAPH_BUTTON,
   RESEARCH_GENERATING_HINT,
   RESEARCH_PANEL_TITLE,
   RESEARCH_TOPICS_TITLE,
-  STRUCTURE_EXPORT_BUTTON,
-  STRUCTURE_EXPORT_FILE_NAME,
-  STRUCTURE_EXPORT_MEDIA_TYPE,
-  STRUCTURE_GENERATING_HINT,
-  STRUCTURE_IMPORT_CONFIRM_CONTENT,
-  STRUCTURE_IMPORT_CONFIRM_TITLE,
-  STRUCTURE_PANEL_TITLE,
-  SYNOPSIS_TITLE,
-  VOLUMES_TITLE,
   WRITE_PANEL_TITLE,
 } from '../constants';
-import { hasBibleDraft, isBibleReadyForStructure } from '../utils';
+import { areVolumesReadyForWrite, hasCastDraft, isCastReady, isPlanReady } from '../utils';
 import TopicCardView from '../TopicCardView';
 import type {
-  BibleStepSnapshot,
-  StructureSnapshot,
+  CastStepSnapshot,
+  ChaptersSnapshot,
+  NovelPlan,
+  PlanStepSnapshot,
   StudioPhase,
+  StructureChapter,
   TopicCard,
   WritingSnapshot,
 } from '../types';
-import BeatList from './BeatList';
 import BibleEditor from './BibleEditor';
 import RelationGraph from './BibleEditor/RelationGraph';
 import { RELATION_GRAPH_MODAL_WIDTH } from './BibleEditor/RelationGraph/constants';
 import { hasNamedCharacter } from './BibleEditor/RelationGraph/utils';
-import ChapterList from './ChapterList';
 import MarkdownImportButton from './MarkdownImportButton';
+import PlanEditor from './PlanEditor';
 import VolumeList from './VolumeList';
 import WritingEditor from './WritingEditor';
 import styles from './ResultPanel.module.css';
 import {
-  downloadBibleMarkdown,
-  downloadStructureMarkdown,
-  parseBibleMarkdownImport,
-  parseStructureMarkdownImport,
+  buildCastMarkdown,
+  buildChaptersMarkdown,
+  buildPlanMarkdown,
+  downloadMarkdown,
+  parseCastMarkdownImport,
+  parseChaptersMarkdownImport,
+  parsePlanMarkdownImport,
 } from './utils';
 
 type ResultPanelProps = {
   phase: StudioPhase;
   topics: TopicCard[];
   selectedTopicId?: string;
-  bible?: BibleStepSnapshot;
-  structure?: StructureSnapshot;
+  plan?: PlanStepSnapshot;
+  cast?: CastStepSnapshot;
+  chapters?: ChaptersSnapshot;
   writing?: WritingSnapshot;
   selectedUnitIds: string[];
-  generatingChapterId?: string;
   generatingVolumeId?: string;
   generatingUnitIds?: string[];
   polishingUnitId?: string;
   onSelectTopic: (id: string) => void;
   onUpdateTopic: (next: TopicCard) => void;
-  onChangeBible: (next: BibleStepSnapshot) => void;
-  onImportBible: (next: BibleStepSnapshot) => Promise<boolean>;
-  onImportStructure: (next: StructureSnapshot) => Promise<boolean>;
+  onChangePlan: (next: NovelPlan) => void;
+  onImportPlan: (next: PlanStepSnapshot) => Promise<boolean>;
+  onChangeCast: (next: CastStepSnapshot) => void;
+  onImportCast: (next: CastStepSnapshot) => Promise<boolean>;
+  onImportChapters: (next: ChaptersSnapshot) => Promise<boolean>;
   onPrev: () => void;
   onNext: () => void;
-  onUpdateSynopsis: (synopsis: string) => void;
-  onUpdateBeat: (beatId: string, text: string) => void;
-  onRemoveBeat: (beatId: string) => void;
-  onUpdateVolume: (volumeId: string, patch: { title?: string; purpose?: string }) => void;
-  onRemoveVolume: (volumeId: string) => void;
   onGenerateVolumeChapters: (volumeId: string) => void;
-  onUpdateChapter: (chapterId: string, patch: { title?: string; purpose?: string }) => void;
+  onUpdateChapter: (
+    chapterId: string,
+    patch: Partial<Pick<StructureChapter, 'title' | 'scene' | 'event' | 'hook'>>,
+  ) => void;
   onRemoveChapter: (chapterId: string) => void;
-  onGenerateChapterBeats: (chapterId: string) => void;
-  onUpdateChapterBeat: (chapterId: string, beatId: string, text: string) => void;
-  onRemoveChapterBeat: (chapterId: string, beatId: string) => void;
   onUpdateWritingBody: (unitId: string, body: string) => void;
   onGenerateWriting: (unitIds: string[]) => void;
   onPolishWriting: (unitId: string) => void;
   onCopyWritingBody: (unitId: string) => void;
 };
 
-/** 右侧结果区：选题卡 / 设定 / 故事结构 / 正文写作。 */
+/** 右侧结果区：选题 / 创作方案 / 角色 / 卷章 / 正文。 */
 export default function ResultPanel({
   phase,
   topics,
   selectedTopicId,
-  bible,
-  structure,
+  plan,
+  cast,
+  chapters,
   writing,
   selectedUnitIds,
-  generatingChapterId,
   generatingVolumeId,
   generatingUnitIds = [],
   polishingUnitId,
   onSelectTopic,
   onUpdateTopic,
-  onChangeBible,
-  onImportBible,
-  onImportStructure,
+  onChangePlan,
+  onImportPlan,
+  onChangeCast,
+  onImportCast,
+  onImportChapters,
   onPrev,
   onNext,
-  onUpdateSynopsis,
-  onUpdateBeat,
-  onRemoveBeat,
-  onUpdateVolume,
-  onRemoveVolume,
   onGenerateVolumeChapters,
   onUpdateChapter,
   onRemoveChapter,
-  onGenerateChapterBeats,
-  onUpdateChapterBeat,
-  onRemoveChapterBeat,
   onUpdateWritingBody,
   onGenerateWriting,
   onPolishWriting,
   onCopyWritingBody,
 }: ResultPanelProps) {
   const researchView = phase === 'research' || phase === 'researching' || phase === 'researched';
-  const bibleView = phase === 'bible' || phase === 'bibling' || phase === 'bibled';
-  const structureView = phase === 'structure' || phase === 'structuring' || phase === 'structured';
+  const planView = phase === 'plan' || phase === 'planning' || phase === 'planned';
+  const castView = phase === 'cast' || phase === 'casting' || phase === 'casted';
+  const chaptersView = phase === 'chapters' || phase === 'chaptering' || phase === 'chaptered';
   const writeView = phase === 'write' || phase === 'writing' || phase === 'written';
   const researching = phase === 'researching';
   const researched = phase === 'researched';
-  const bibling = phase === 'bibling';
-  const structuring = phase === 'structuring';
+  const planning = phase === 'planning';
+  const casting = phase === 'casting';
+  const chaptering = phase === 'chaptering';
   const researchEmpty = researchView && !researching && topics.length === 0;
-  const bibleEmpty = bibleView && !bibling && !hasBibleDraft(bible);
-  const structureEmpty = structureView && !structuring && !structure;
+  const planEmpty = planView && !planning && !plan;
+  const castEmpty = castView && !casting && !hasCastDraft(cast);
+  const chaptersEmpty = chaptersView && !plan;
 
   const panelTitle = writeView
     ? WRITE_PANEL_TITLE
-    : structureView
-      ? STRUCTURE_PANEL_TITLE
-      : bibleView
-        ? BIBLE_PANEL_TITLE
-        : RESEARCH_PANEL_TITLE;
+    : chaptersView
+      ? CHAPTERS_PANEL_TITLE
+      : castView
+        ? CAST_PANEL_TITLE
+        : planView
+          ? PLAN_PANEL_TITLE
+          : RESEARCH_PANEL_TITLE;
   const writingLocked = Boolean(polishingUnitId) || generatingUnitIds.length > 0;
-  /** 设定/结构生成中，以及写作步生成/润色时，禁用上一步。 */
-  const prevLocked = bibling || structuring || (writeView && writingLocked);
+  const prevLocked = planning || casting || chaptering || (writeView && writingLocked);
   const [relationGraphOpen, setRelationGraphOpen] = useState(false);
-  const [relationGraphPhase, setRelationGraphPhase] = useState(bibleView);
-  if (relationGraphPhase !== bibleView) {
-    setRelationGraphPhase(bibleView);
-    if (!bibleView) setRelationGraphOpen(false);
+  const [relationGraphPhase, setRelationGraphPhase] = useState(castView);
+  if (relationGraphPhase !== castView) {
+    setRelationGraphPhase(castView);
+    if (!castView) setRelationGraphOpen(false);
   }
-  const canPreviewRelations = Boolean(bible && hasNamedCharacter(bible.characters));
-  const canPrev = bibleView || structureView || writeView;
+  const canPreviewRelations = Boolean(cast && hasNamedCharacter(cast.characters));
+  const canPrev = planView || castView || chaptersView || writeView;
   const canNext =
     (researched && Boolean(selectedTopicId)) ||
-    (bibleView && !bibling && isBibleReadyForStructure(bible)) ||
-    structureView ||
+    (planView && !planning && isPlanReady(plan)) ||
+    (castView && !casting && isCastReady(cast)) ||
+    (chaptersView && !chaptering && areVolumesReadyForWrite(chapters)) ||
     writeView;
   const stageFill =
     (researchView && (researchEmpty || (researching && topics.length === 0))) ||
-    (bibleView && (bibleEmpty || bibling)) ||
-    (structureView && !structure) ||
-    (writeView && !(structure && writing));
+    (planView && (planEmpty || (planning && !plan))) ||
+    (castView && (castEmpty || casting)) ||
+    (chaptersView && chaptersEmpty) ||
+    (writeView && !(plan && writing));
 
   return (
     <div className={styles.frame}>
@@ -181,51 +188,82 @@ export default function ResultPanel({
           <>
             <StarOutlined />
             {panelTitle}
-            {bibleView ? (
+            {planView ? (
               <div className={studioStageHeadActionsClassName}>
                 <MarkdownImportButton
-                  disabled={bibling}
-                  confirmTitle={BIBLE_IMPORT_CONFIRM_TITLE}
-                  confirmContent={BIBLE_IMPORT_CONFIRM_CONTENT}
-                  parse={parseBibleMarkdownImport}
-                  onImport={onImportBible}
+                  disabled={planning}
+                  confirmTitle={PLAN_IMPORT_CONFIRM_TITLE}
+                  confirmContent={PLAN_IMPORT_CONFIRM_CONTENT}
+                  parse={parsePlanMarkdownImport}
+                  onImport={onImportPlan}
                 />
                 <Button
                   size="small"
                   type="link"
-                  disabled={bibling || !bible || bibleEmpty}
+                  disabled={planning || !plan}
                   onClick={() =>
-                    bible &&
-                    downloadBibleMarkdown(bible, BIBLE_EXPORT_FILE_NAME, BIBLE_EXPORT_MEDIA_TYPE)
-                  }
-                >
-                  {BIBLE_EXPORT_BUTTON}
-                </Button>
-              </div>
-            ) : null}
-            {structureView ? (
-              <div className={studioStageHeadActionsClassName}>
-                <MarkdownImportButton
-                  disabled={structuring}
-                  confirmTitle={STRUCTURE_IMPORT_CONFIRM_TITLE}
-                  confirmContent={STRUCTURE_IMPORT_CONFIRM_CONTENT}
-                  parse={parseStructureMarkdownImport}
-                  onImport={onImportStructure}
-                />
-                <Button
-                  size="small"
-                  type="link"
-                  disabled={structuring || !structure}
-                  onClick={() =>
-                    structure &&
-                    downloadStructureMarkdown(
-                      structure,
-                      STRUCTURE_EXPORT_FILE_NAME,
-                      STRUCTURE_EXPORT_MEDIA_TYPE,
+                    plan &&
+                    downloadMarkdown(
+                      PLAN_EXPORT_FILE_NAME,
+                      PLAN_EXPORT_MEDIA_TYPE,
+                      buildPlanMarkdown(plan),
                     )
                   }
                 >
-                  {STRUCTURE_EXPORT_BUTTON}
+                  {PLAN_EXPORT_BUTTON}
+                </Button>
+              </div>
+            ) : null}
+            {castView ? (
+              <div className={studioStageHeadActionsClassName}>
+                <MarkdownImportButton
+                  disabled={casting}
+                  confirmTitle={CAST_IMPORT_CONFIRM_TITLE}
+                  confirmContent={CAST_IMPORT_CONFIRM_CONTENT}
+                  parse={parseCastMarkdownImport}
+                  onImport={onImportCast}
+                />
+                <Button
+                  size="small"
+                  type="link"
+                  disabled={casting || !cast || castEmpty}
+                  onClick={() =>
+                    cast &&
+                    downloadMarkdown(
+                      CAST_EXPORT_FILE_NAME,
+                      CAST_EXPORT_MEDIA_TYPE,
+                      buildCastMarkdown(cast),
+                    )
+                  }
+                >
+                  {CAST_EXPORT_BUTTON}
+                </Button>
+              </div>
+            ) : null}
+            {chaptersView ? (
+              <div className={studioStageHeadActionsClassName}>
+                <MarkdownImportButton
+                  disabled={chaptering || !plan}
+                  confirmTitle={CHAPTERS_IMPORT_CONFIRM_TITLE}
+                  confirmContent={CHAPTERS_IMPORT_CONFIRM_CONTENT}
+                  parse={parseChaptersMarkdownImport}
+                  onImport={onImportChapters}
+                />
+                <Button
+                  size="small"
+                  type="link"
+                  disabled={chaptering || !plan || !chapters}
+                  onClick={() =>
+                    plan &&
+                    chapters &&
+                    downloadMarkdown(
+                      CHAPTERS_EXPORT_FILE_NAME,
+                      CHAPTERS_EXPORT_MEDIA_TYPE,
+                      buildChaptersMarkdown(plan, chapters),
+                    )
+                  }
+                >
+                  {CHAPTERS_EXPORT_BUTTON}
                 </Button>
               </div>
             ) : null}
@@ -233,9 +271,9 @@ export default function ResultPanel({
         }
         footer={
           <>
-            {bibleView ? (
+            {castView ? (
               <Button
-                disabled={bibling || !canPreviewRelations}
+                disabled={casting || !canPreviewRelations}
                 onClick={() => setRelationGraphOpen(true)}
               >
                 {PREVIEW_RELATION_GRAPH_BUTTON}
@@ -280,88 +318,71 @@ export default function ResultPanel({
           )
         ) : null}
 
-        {bibleView ? (
-          bibling ? (
+        {planView ? (
+          planning && !plan ? (
             <div className={styles.body}>
               <Spin />
-              <p className={styles.hint}>{BIBLE_GENERATING_HINT}</p>
+              <p className={styles.hint}>{PLAN_GENERATING_HINT}</p>
             </div>
-          ) : bibleEmpty ? (
+          ) : planEmpty ? (
             <div className={styles.body}>
-              <p className={styles.hint}>{EMPTY_BIBLE_HINT}</p>
+              <p className={styles.hint}>{EMPTY_PLAN_HINT}</p>
             </div>
-          ) : bible ? (
+          ) : plan ? (
             <div className={styles.scrollContent}>
-              <BibleEditor bible={bible} onChange={onChangeBible} />
+              <PlanEditor plan={plan} onChange={onChangePlan} />
             </div>
           ) : null
         ) : null}
 
-        {structureView ? (
-          structureEmpty ? (
-            <div className={styles.body}>
-              <p className={styles.hint}>{EMPTY_STRUCTURE_HINT}</p>
-            </div>
-          ) : structuring && !structure ? (
+        {castView ? (
+          casting ? (
             <div className={styles.body}>
               <Spin />
-              <p className={styles.hint}>{STRUCTURE_GENERATING_HINT}</p>
+              <p className={styles.hint}>{CAST_GENERATING_HINT}</p>
             </div>
-          ) : structure ? (
+          ) : castEmpty ? (
+            <div className={styles.body}>
+              <p className={styles.hint}>{EMPTY_CAST_HINT}</p>
+            </div>
+          ) : cast ? (
             <div className={styles.scrollContent}>
-              {structure.kind === 'short' ? (
-                <>
-                  <div className={styles.synopsisBlock}>
-                    <p className={styles.sectionTitle}>{SYNOPSIS_TITLE}</p>
-                    <Input.TextArea
-                      value={structure.synopsis}
-                      autoSize={{ minRows: 2, maxRows: 6 }}
-                      onChange={(event) => onUpdateSynopsis(event.target.value)}
-                    />
-                  </div>
-                  <BeatList
-                    beats={structure.beats}
-                    title={BEATS_TITLE}
-                    onChangeBeat={onUpdateBeat}
-                    onRemoveBeat={onRemoveBeat}
-                  />
-                </>
-              ) : structure.kind === 'volumes' ? (
-                <VolumeList
-                  volumes={structure.volumes}
-                  title={VOLUMES_TITLE}
-                  generatingVolumeId={generatingVolumeId}
-                  generatingChapterId={generatingChapterId}
-                  onChangeVolume={onUpdateVolume}
-                  onRemoveVolume={onRemoveVolume}
-                  onGenerateVolumeChapters={onGenerateVolumeChapters}
-                  onChangeChapter={onUpdateChapter}
-                  onRemoveChapter={onRemoveChapter}
-                  onGenerateChapterBeats={onGenerateChapterBeats}
-                  onChangeChapterBeat={onUpdateChapterBeat}
-                  onRemoveChapterBeat={onRemoveChapterBeat}
-                />
-              ) : (
-                <ChapterList
-                  chapters={structure.chapters}
-                  title={CHAPTERS_TITLE}
-                  generatingChapterId={generatingChapterId}
-                  onChangeChapter={onUpdateChapter}
-                  onRemoveChapter={onRemoveChapter}
-                  onGenerateChapterBeats={onGenerateChapterBeats}
-                  onChangeChapterBeat={onUpdateChapterBeat}
-                  onRemoveChapterBeat={onRemoveChapterBeat}
-                />
-              )}
+              <BibleEditor bible={cast} onChange={onChangeCast} />
             </div>
           ) : null
+        ) : null}
+
+        {chaptersView ? (
+          !plan ? (
+            <div className={styles.body}>
+              <p className={styles.hint}>{EMPTY_CHAPTERS_HINT}</p>
+            </div>
+          ) : (
+            <div className={styles.scrollContent}>
+              {chaptering && !chapters ? (
+                <div className={styles.body}>
+                  <Spin />
+                  <p className={styles.hint}>{CHAPTERS_GENERATING_HINT}</p>
+                </div>
+              ) : null}
+              <VolumeList
+                plan={plan}
+                chapters={chapters}
+                generatingVolumeId={generatingVolumeId}
+                onGenerateChapters={onGenerateVolumeChapters}
+                onChangeChapter={onUpdateChapter}
+                onRemoveChapter={onRemoveChapter}
+              />
+            </div>
+          )
         ) : null}
 
         {writeView ? (
-          structure && writing ? (
+          plan && writing ? (
             <div className={styles.scrollContent}>
               <WritingEditor
-                structure={structure}
+                plan={plan}
+                chapters={chapters}
                 writing={writing}
                 selectedUnitIds={selectedUnitIds}
                 generatingUnitIds={generatingUnitIds}
@@ -374,12 +395,12 @@ export default function ResultPanel({
             </div>
           ) : (
             <div className={styles.body}>
-              <p className={styles.hint}>{EMPTY_STRUCTURE_HINT}</p>
+              <p className={styles.hint}>{EMPTY_WRITE_HINT}</p>
             </div>
           )
         ) : null}
       </StudioStagePanel>
-      {bible && bibleView ? (
+      {cast && castView ? (
         <Modal
           title={PREVIEW_RELATION_GRAPH_BUTTON}
           open={relationGraphOpen}
@@ -388,7 +409,7 @@ export default function ResultPanel({
           destroyOnHidden
           onCancel={() => setRelationGraphOpen(false)}
         >
-          <RelationGraph bible={bible} />
+          <RelationGraph bible={cast} />
         </Modal>
       ) : null}
     </div>

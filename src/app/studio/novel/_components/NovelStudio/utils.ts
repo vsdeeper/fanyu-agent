@@ -1,34 +1,42 @@
-import { NOVEL_MAX_IDEA_FILES } from '@/app/api/studio/novel/_shared/idea-file';
-import type { NovelBible, NovelIdeaFile } from '@/app/api/studio/novel/_shared/types';
-import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
-import { toDocMediaType } from '@/app/studio/_components/ProductDocsUpload/utils';
-import { readUploadItemAsDataUrl, serializeUploadItem } from '@/app/studio/_utils/upload-items';
-import { readNovelReasoningEffort } from '@/app/api/studio/novel/_shared/constants';
+import {
+  NOVEL_MAX_IDEA_FILES,
+  NOVEL_MAX_PLAN_FILES,
+} from '@/app/api/studio/novel/_shared/idea-file';
+import {
+  NOVEL_THREAD_COUNT_MAX,
+  NOVEL_THREAD_COUNT_MIN,
+  readNovelReasoningEffort,
+} from '@/app/api/studio/novel/_shared/constants';
 import { NOVEL_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/novel/_shared/task-constants';
 import type { NovelStepKey, NovelTaskStepRecord } from '@/app/api/studio/novel/_shared/task-types';
+import type {
+  NovelCast,
+  NovelIdeaFile,
+  NovelPlan,
+  NovelTense,
+} from '@/app/api/studio/novel/_shared/types';
+import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
 import {
   formatStyleSelections,
   hasStyleAxis,
   parseStyleSelections,
 } from '@/app/studio/_components/StyleDimensionPicker';
+import { readUploadItemAsDataUrl, serializeUploadItem } from '@/app/studio/_utils/upload-items';
 import { apiDelete, apiPut } from '@/lib/client/api-client';
-import { BIBLE_HIDDEN_AXIS_LABELS, NARRATOR_AXIS_LABELS, SHORT_WRITING_UNIT_ID } from './constants';
+import { NARRATOR_AXIS_LABELS } from './constants';
 import type {
-  BibleGenerated,
-  BibleStepSnapshot,
+  CastGenerated,
+  CastStepSnapshot,
+  ChaptersSnapshot,
+  ChaptersStepSnapshot,
   NovelCharacter,
+  NovelCharacterArc,
   NovelCharacterGender,
   NovelCharacterRole,
-  NovelLongFormat,
   NovelRelation,
-  NovelTense,
-  NovelVolume,
+  PlanStepSnapshot,
   ResearchStepSnapshot,
-  StructureBeat,
   StructureChapter,
-  StructureSnapshot,
-  StructureStepSnapshot,
-  StructureVolume,
   StudioPhase,
   TopicCard,
   WritingSnapshot,
@@ -41,159 +49,106 @@ export { formatChapterPrefix, stripChapterPrefix };
 export { assertOkOrJsonFail, isAbortError } from '@/app/studio/_utils/generate-stream';
 export { createRafTextBuffer, consumeAnalyzeSse } from '@/app/studio/_utils/analyze-stream';
 
-export type WritingUnitKind = 'short' | 'chapter';
-
 export type ResolvedWritingUnit = {
   unitId: string;
-  kind: WritingUnitKind;
   label: string;
-  chapterId?: string;
-  chapterTitle?: string;
-  chapterPurpose?: string;
-  synopsis?: string;
-  beats: StructureBeat[];
+  chapter: StructureChapter;
+  previous: StructureChapter[];
+  next?: StructureChapter;
 };
 
-/** 中篇 chapters 或长篇 volumes 扁平为章列表（全书顺序）。 */
-export function listStructureChapters(structure: StructureSnapshot): StructureChapter[] {
-  if (structure.kind === 'short') return [];
-  if (structure.kind === 'chapters') return structure.chapters;
-  return structure.volumes.flatMap((volume) => volume.chapters);
+/** 按创作方案的卷序展开已有章卡。 */
+export function listStructureChapters(
+  plan: NovelPlan | undefined,
+  chapters: ChaptersSnapshot | undefined,
+): StructureChapter[] {
+  if (!plan || !chapters) return [];
+  return plan.volumes.flatMap((volume) => {
+    const match = chapters.volumes.find((item) => item.id === volume.id);
+    return match?.chapters ?? [];
+  });
 }
 
-/** 写作快照 kind：volumes 扁平后与 chapters 相同。 */
-export function writingKindFromStructure(structure: StructureSnapshot): WritingSnapshot['kind'] {
-  return structure.kind === 'short' ? 'short' : 'chapters';
+/** 至少有一卷已经生成章卡。 */
+export function areVolumesReadyForWrite(chapters: ChaptersSnapshot | undefined): boolean {
+  return Boolean(chapters?.volumes.some((volume) => volume.chapters.length > 0));
 }
 
-/** 长篇是否至少有一卷已生成章纲（进入写作门槛；允许分批补其余卷）。 */
-export function areVolumesReadyForWrite(structure: StructureSnapshot): boolean {
-  if (structure.kind !== 'volumes') return true;
-  if (structure.volumes.length === 0) return false;
-  return structure.volumes.some((volume) => volume.chapters.length > 0);
-}
-
-/** 收集结构中全部正文 unitId：短篇唯一整篇单元，中长篇仅章节。 */
-export function listWritableUnitIds(structure: StructureSnapshot): string[] {
-  if (structure.kind === 'short') return [SHORT_WRITING_UNIT_ID];
-  return listStructureChapters(structure).map((chapter) => chapter.id);
-}
-
-/** 按结构顺序拼接旧节拍正文，迁移到整篇或整章正文。 */
-function mergeLegacyBeatBodies(beats: StructureBeat[], bodyById: Map<string, string>): string {
-  return beats
-    .map((beat) => bodyById.get(beat.id)?.trim() ?? '')
-    .filter(Boolean)
-    .join('\n\n');
-}
-
-/** 把旧节拍选中映射到整篇或所属章节，并保持单选。 */
-function migrateWritingSelection(
-  structure: StructureSnapshot,
-  selectedUnitIds: readonly string[] | undefined,
-  focusUnitId: string | undefined,
-): Pick<WritingSnapshot, 'selectedUnitIds' | 'focusUnitId'> {
-  const candidates = [focusUnitId, ...[...(selectedUnitIds ?? [])].reverse()].filter(
-    (id): id is string => Boolean(id),
+/** 创作方案是否能进入角色步：主线 2～4 条，且每卷写了本卷结果。 */
+export function isPlanReady(plan: NovelPlan | undefined): boolean {
+  if (!plan || plan.volumes.length === 0) return false;
+  const threadCount = plan.threads.length;
+  if (threadCount < NOVEL_THREAD_COUNT_MIN || threadCount > NOVEL_THREAD_COUNT_MAX) return false;
+  const volumeIds = new Set(plan.volumes.map((volume) => volume.id));
+  const volumesOk = plan.volumes.every(
+    (volume) =>
+      volume.title.trim() &&
+      volume.geography.trim() &&
+      volume.conflict.trim() &&
+      Boolean(volume.outcome?.trim()) &&
+      volume.targetChars > 0,
   );
-  if (structure.kind === 'short') {
-    const oldIds = new Set(structure.beats.map((beat) => beat.id));
-    if (candidates.some((id) => id === SHORT_WRITING_UNIT_ID || oldIds.has(id))) {
-      return {
-        selectedUnitIds: [SHORT_WRITING_UNIT_ID],
-        focusUnitId: SHORT_WRITING_UNIT_ID,
-      };
-    }
-    return {};
-  }
-
-  const chapters = listStructureChapters(structure);
-  for (const id of candidates) {
-    const chapter = chapters.find(
-      (item) => item.id === id || item.beats.some((beat) => beat.id === id),
-    );
-    if (chapter) return { selectedUnitIds: [chapter.id], focusUnitId: chapter.id };
-  }
-  return {};
+  const threadsOk = plan.threads.every(
+    (thread) =>
+      thread.name.trim() &&
+      thread.core.trim() &&
+      thread.advances.length > 0 &&
+      thread.advances.every((advance) => volumeIds.has(advance.volumeId) && advance.text.trim()),
+  );
+  return volumesOk && threadsOk;
 }
 
-/**
- * 按当前结构对齐写作 units。
- * 旧快照若仍按节拍保存，短篇合并为整篇、中长篇按章合并；非空整章正文优先保留。
- */
+/** 新生成的方案是否可以落盘。条数或本卷结果不合规时当作没解析到。 */
+export function isFreshPlanComplete(plan: NovelPlan): boolean {
+  const threadCount = plan.threads.length;
+  if (threadCount < NOVEL_THREAD_COUNT_MIN || threadCount > NOVEL_THREAD_COUNT_MAX) return false;
+  return plan.volumes.every((volume) => Boolean(volume.outcome?.trim()));
+}
+
+/** 按当前章卡对齐写作 units，保留已有正文。 */
 export function syncWritingUnits(
-  structure: StructureSnapshot,
+  plan: NovelPlan | undefined,
+  chapters: ChaptersSnapshot | undefined,
   prev?: WritingSnapshot,
 ): WritingSnapshot {
   const prevMap = new Map((prev?.units ?? []).map((unit) => [unit.unitId, unit.body]));
-  const units: WritingUnit[] =
-    structure.kind === 'short'
-      ? [
-          {
-            unitId: SHORT_WRITING_UNIT_ID,
-            body: prevMap.get(SHORT_WRITING_UNIT_ID)?.trim()
-              ? (prevMap.get(SHORT_WRITING_UNIT_ID) ?? '')
-              : mergeLegacyBeatBodies(structure.beats, prevMap),
-          },
-        ]
-      : listStructureChapters(structure).map((chapter) => ({
-          unitId: chapter.id,
-          body: prevMap.get(chapter.id)?.trim()
-            ? (prevMap.get(chapter.id) ?? '')
-            : mergeLegacyBeatBodies(chapter.beats, prevMap),
-        }));
-  const selection = migrateWritingSelection(structure, prev?.selectedUnitIds, prev?.focusUnitId);
+  const units: WritingUnit[] = listStructureChapters(plan, chapters).map((chapter) => ({
+    unitId: chapter.id,
+    body: prevMap.get(chapter.id) ?? '',
+  }));
+  const valid = new Set(units.map((unit) => unit.unitId));
+  const selectedUnitIds = (prev?.selectedUnitIds ?? []).filter((id) => valid.has(id));
+  const focusUnitId =
+    prev?.focusUnitId && selectedUnitIds.includes(prev.focusUnitId) ? prev.focusUnitId : undefined;
   return {
-    kind: writingKindFromStructure(structure),
     units,
     ...(prev?.styleSelections && Object.keys(prev.styleSelections).length
       ? { styleSelections: prev.styleSelections }
       : {}),
-    ...selection,
+    ...(prev?.tense ? { tense: prev.tense } : {}),
+    ...(selectedUnitIds.length ? { selectedUnitIds } : {}),
+    ...(focusUnitId ? { focusUnitId } : {}),
   };
 }
 
-/** 丢掉结构里已经不存在的选中与焦点。 */
-export function retainWritingSelection(
-  structure: StructureSnapshot,
-  selectedUnitIds: readonly string[] | undefined,
-  focusUnitId: string | undefined,
-): Pick<WritingSnapshot, 'selectedUnitIds' | 'focusUnitId'> {
-  return migrateWritingSelection(structure, selectedUnitIds, focusUnitId);
-}
-
-/** 进入写作步时默认展开当前选中章，便于只读查看节拍。 */
-export function expandedChapterIds(
-  structure: StructureSnapshot,
-  selectedUnitIds: readonly string[],
-): string[] {
-  if (structure.kind === 'short' || selectedUnitIds.length === 0) return [];
-  return listStructureChapters(structure)
-    .filter((chapter) => selectedUnitIds.includes(chapter.id))
-    .map((chapter) => chapter.id);
-}
-
-/**
- * 写作快照是否与上次落盘一致。
- * 选中顺序、焦点、正文和文风都算变更；缺省选中与空数组视为相同。
- */
+/** 写作快照是否与上次落盘一致。 */
 export function isSameWriteSnapshot(
   prev: WritingSnapshot | undefined,
   next: WritingSnapshot | undefined,
 ): boolean {
   if (prev === next) return true;
   if (!prev || !next) return false;
-  return writeSnapshotKey(prev) === writeSnapshotKey(next);
+  return JSON.stringify(snapshotKey(prev)) === JSON.stringify(snapshotKey(next));
 }
 
-function writeSnapshotKey(snapshot: WritingSnapshot): string {
-  return JSON.stringify({
-    kind: snapshot.kind,
+function snapshotKey(snapshot: WritingSnapshot) {
+  return {
     units: snapshot.units.map((unit) => [unit.unitId, unit.body]),
     styleSelections: snapshot.styleSelections ?? null,
+    tense: snapshot.tense ?? null,
     selectedUnitIds: snapshot.selectedUnitIds ?? [],
     focusUnitId: snapshot.focusUnitId ?? null,
-  });
+  };
 }
 
 /** 判断写作快照是否已有任一非空正文。 */
@@ -214,155 +169,106 @@ export function splitWritingParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
-/** 解析 unitId 对应的展示与生成上下文。 */
+/** 解析章节 unitId 的展示与生成上下文，含此前各章和下一章边界。 */
 export function resolveWritingUnit(
-  structure: StructureSnapshot,
+  plan: NovelPlan | undefined,
+  chapters: ChaptersSnapshot | undefined,
   unitId: string,
 ): ResolvedWritingUnit | undefined {
-  if (structure.kind === 'short') {
-    if (unitId !== SHORT_WRITING_UNIT_ID) return undefined;
-    return {
-      unitId,
-      kind: 'short',
-      label: '整篇正文',
-      synopsis: structure.synopsis,
-      beats: structure.beats,
-    };
-  }
-
-  const chapters = listStructureChapters(structure);
-  const chapterIndex = chapters.findIndex((chapter) => chapter.id === unitId);
-  if (chapterIndex >= 0) {
-    const chapter = chapters[chapterIndex];
-    const titleName = stripChapterPrefix(chapter.title);
-    return {
-      unitId,
-      kind: 'chapter',
-      label: `${formatChapterPrefix(chapterIndex + 1)}${titleName ? `　${titleName}` : ''}`,
-      chapterId: chapter.id,
-      chapterTitle: titleName,
-      chapterPurpose: chapter.purpose,
-      beats: chapter.beats,
-    };
-  }
-  return undefined;
+  const list = listStructureChapters(plan, chapters);
+  const index = list.findIndex((chapter) => chapter.id === unitId);
+  if (index < 0) return undefined;
+  const chapter = list[index]!;
+  const titleName = stripChapterPrefix(chapter.title);
+  return {
+    unitId,
+    label: `${formatChapterPrefix(index + 1)}${titleName ? `　${titleName}` : ''}`,
+    chapter,
+    previous: list.slice(0, index),
+    next: list[index + 1],
+  };
 }
 
-/**
- * 切换写作单元选中态。
- * 短篇仅有整篇单元；中长篇仅章节可选，且始终单选。
- */
+/** 切换写作章节。始终单选。 */
 export function toggleWritingSelection(
-  structure: StructureSnapshot,
+  validIds: readonly string[],
   prevSelected: string[],
   unitId: string,
 ): string[] {
-  if (!listWritableUnitIds(structure).includes(unitId)) return prevSelected;
+  if (!validIds.includes(unitId)) return prevSelected;
   return prevSelected.includes(unitId) ? [] : [unitId];
 }
 
-/** 章行是否选中。节拍在写作步只读，不参与选中态。 */
-export function isChapterRowSelected(
-  chapter: StructureChapter,
-  selectedUnitIds: string[],
-): boolean {
-  return selectedUnitIds.includes(chapter.id);
-}
-
-/** 返回有效的整篇或章节 unitId；正文生成不再展开到节拍。 */
+/** 返回仍存在的选中章节。 */
 export function resolveGenerateUnitIds(
-  structure: StructureSnapshot,
+  validIds: readonly string[],
   selectedUnitIds: string[],
 ): string[] {
-  const valid = new Set(listWritableUnitIds(structure));
+  const valid = new Set(validIds);
   return selectedUnitIds.filter(
     (id, index) => valid.has(id) && selectedUnitIds.indexOf(id) === index,
   );
 }
 
-/** 是否可生成正文：单元有效且已有完整节拍大纲。 */
-export function canGenerateWriting(
-  structure: StructureSnapshot | undefined,
-  selectedUnitIds: string[],
-): boolean {
-  if (!structure || selectedUnitIds.length === 0) return false;
-  const unitId = resolveGenerateUnitIds(structure, selectedUnitIds)[0];
-  const resolved = unitId ? resolveWritingUnit(structure, unitId) : undefined;
-  return Boolean(resolved?.beats.length);
-}
-
 /**
- * 判断正文单元能否生成：已有正文可重生成；新章节须等所有前章都有正文。
- * 短篇没有章节顺序限制。
+ * 判断章节能否生成：已有正文可重生成；新章节须等所有前章都有正文。
  */
 export function canGenerateWritingUnit(
-  structure: StructureSnapshot,
+  plan: NovelPlan | undefined,
+  chapters: ChaptersSnapshot | undefined,
   writing: WritingSnapshot,
   unitId: string,
 ): boolean {
-  const resolved = resolveWritingUnit(structure, unitId);
-  if (!resolved || resolved.beats.length === 0) return false;
-  if (resolved.kind === 'short') return true;
+  const resolved = resolveWritingUnit(plan, chapters, unitId);
+  if (!resolved) return false;
+  if (
+    !resolved.chapter.scene.trim() ||
+    !resolved.chapter.event.trim() ||
+    !resolved.chapter.hook.trim()
+  ) {
+    return false;
+  }
   const bodyById = new Map(writing.units.map((unit) => [unit.unitId, unit.body.trim()]));
   if (bodyById.get(unitId)) return true;
-  const chapters = listStructureChapters(structure);
-  const index = chapters.findIndex((chapter) => chapter.id === unitId);
-  return index >= 0 && chapters.slice(0, index).every((chapter) => bodyById.get(chapter.id));
+  return resolved.previous.every((chapter) => bodyById.get(chapter.id));
 }
 
 export type WritingEditorBlock = {
-  type: WritingUnitKind;
   unitId: string;
   label: string;
   body: string;
   canGenerate: boolean;
 };
 
-/** 预览节：中长篇带章标题；短篇无章标题。 */
 export type PreviewSection = {
   chapterLabel?: string;
   paragraphs: string[];
 };
 
-/** 预览文稿：结构化节 + 一键复制用纯文本。 */
 export type PreviewDocument = {
   sections: PreviewSection[];
   plainText: string;
 };
 
-/** 按全结构顺序组装预览文稿：短篇整篇、中长篇整章。 */
+/** 按全书顺序组装预览文稿。 */
 export function buildPreviewDocument(
-  structure: StructureSnapshot,
+  plan: NovelPlan | undefined,
+  chapters: ChaptersSnapshot | undefined,
   writing: WritingSnapshot,
 ): PreviewDocument {
   const bodyOf = (unitId: string) =>
     writing.units.find((unit) => unit.unitId === unitId)?.body.trim() ?? '';
-
-  if (structure.kind === 'short') {
-    const body = bodyOf(SHORT_WRITING_UNIT_ID);
-    return {
-      sections: body ? [{ paragraphs: splitWritingParagraphs(body) }] : [],
-      plainText: body,
-    };
-  }
-
   const sections: PreviewSection[] = [];
   const plainParts: string[] = [];
-
-  listStructureChapters(structure).forEach((chapter, chapterIndex) => {
+  listStructureChapters(plan, chapters).forEach((chapter, chapterIndex) => {
     const body = bodyOf(chapter.id);
     if (!body) return;
-
     const titleName = stripChapterPrefix(chapter.title);
     const chapterLabel = `${formatChapterPrefix(chapterIndex + 1)}${titleName ? `　${titleName}` : ''}`;
     sections.push({ chapterLabel, paragraphs: splitWritingParagraphs(body) });
     plainParts.push(`${chapterLabel}\n\n${body}`);
   });
-
-  return {
-    sections,
-    plainText: plainParts.join('\n\n\n'),
-  };
+  return { sections, plainText: plainParts.join('\n\n\n') };
 }
 
 /** 复制纯文本到剪贴板。 */
@@ -370,23 +276,24 @@ export async function copyText(text: string): Promise<void> {
   await navigator.clipboard.writeText(text);
 }
 
-/** 为当前单选的整篇或章节构建正文编辑块。 */
+/** 为当前选中章节构建正文编辑块。 */
 export function buildWritingEditorBlocks(
-  structure: StructureSnapshot,
+  plan: NovelPlan | undefined,
+  chapters: ChaptersSnapshot | undefined,
   writing: WritingSnapshot,
   selectedUnitIds: string[],
 ): WritingEditorBlock[] {
-  const unitId = resolveGenerateUnitIds(structure, selectedUnitIds)[0];
+  const valid = listStructureChapters(plan, chapters).map((chapter) => chapter.id);
+  const unitId = resolveGenerateUnitIds(valid, selectedUnitIds)[0];
   if (!unitId) return [];
-  const resolved = resolveWritingUnit(structure, unitId);
+  const resolved = resolveWritingUnit(plan, chapters, unitId);
   if (!resolved) return [];
   return [
     {
-      type: resolved.kind,
       unitId,
       label: resolved.label,
       body: writing.units.find((unit) => unit.unitId === unitId)?.body ?? '',
-      canGenerate: canGenerateWritingUnit(structure, writing, unitId),
+      canGenerate: canGenerateWritingUnit(plan, chapters, writing, unitId),
     },
   ];
 }
@@ -394,21 +301,14 @@ export function buildWritingEditorBlocks(
 /** 流式展示用：去掉末尾 ```json 围栏（含尚未闭合的）。 */
 export function stripTrailingJsonFenceForDisplay(text: string): string {
   const complete = text.match(/```json\s*[\s\S]*?```\s*$/i);
-  if (complete?.index != null) {
-    return text.slice(0, complete.index).trimEnd();
-  }
+  if (complete?.index != null) return text.slice(0, complete.index).trimEnd();
   const open = /```json\b/i.exec(text);
-  if (open?.index != null) {
-    return text.slice(0, open.index).trimEnd();
-  }
+  if (open?.index != null) return text.slice(0, open.index).trimEnd();
   return text;
 }
 
 /** 拆分流式全文末尾的 JSON 代码块。 */
-export function extractTrailingJsonBlock(text: string): {
-  prose: string;
-  json: unknown | null;
-} {
+export function extractTrailingJsonBlock(text: string): { prose: string; json: unknown | null } {
   const match = text.match(/```json\s*([\s\S]*?)```\s*$/i);
   if (match?.index != null) {
     const prose = text.slice(0, match.index).trim();
@@ -442,40 +342,22 @@ export function extractTrailingJsonBlock(text: string): {
       }
     }
   }
-  for (const key of [
-    '"topics"',
-    '"characters"',
-    '"beats"',
-    '"kind"',
-    '"chapters"',
-    '"volumes"',
-  ] as const) {
-    const at = text.lastIndexOf(key);
-    if (at < 0) continue;
-    const brace = text.lastIndexOf('{', at);
-    if (brace < 0) continue;
+  for (const key of ['"topics"', '"characters"', '"threads"', '"chapters"']) {
+    const index = text.lastIndexOf(key);
+    if (index < 0) continue;
+    const start = text.lastIndexOf('{', index);
+    if (start < 0) continue;
     try {
-      const json = JSON.parse(text.slice(brace).trim()) as unknown;
-      if (json && typeof json === 'object') {
-        return { prose: text.slice(0, brace).trim(), json };
-      }
+      return { prose: text.slice(0, start).trim(), json: JSON.parse(text.slice(start)) as unknown };
     } catch {
-      /* 尝试下一关键字 */
+      /* 下一种键 */
     }
   }
   return { prose: text.trim(), json: null };
 }
 
 function asString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
-}
-
-function isNovelVolume(value: unknown): value is NovelVolume {
-  return value === 'short' || value === 'medium' || value === 'long';
-}
-
-function isNovelLongFormat(value: unknown): value is NovelLongFormat {
-  return value === 'publish' || value === 'web';
+  return typeof value === 'string' ? value.trim() : undefined;
 }
 
 function parseTopicCard(value: unknown): TopicCard | null {
@@ -491,73 +373,25 @@ function parseTopicCard(value: unknown): TopicCard | null {
   return { id, title, genreVolume, why, core, ...(risk ? { risk } : {}) };
 }
 
-function parseBeat(value: unknown): StructureBeat | null {
-  if (!value || typeof value !== 'object') return null;
-  const record = value as Record<string, unknown>;
-  const id = asString(record.id);
-  const text = asString(record.text);
-  if (!id || !text) return null;
-  return { id, text };
-}
-
-function parseChapter(value: unknown): StructureChapter | null {
-  if (!value || typeof value !== 'object') return null;
-  const record = value as Record<string, unknown>;
-  const id = asString(record.id);
-  const title = asString(record.title);
-  const purpose = asString(record.purpose);
-  if (!id || !title || !purpose) return null;
-  const beats: StructureBeat[] = [];
-  if (Array.isArray(record.beats)) {
-    for (const item of record.beats) {
-      const beat = parseBeat(item);
-      if (beat) beats.push(beat);
-    }
-  }
-  return { id, title, purpose, beats };
-}
-
-function parseVolume(value: unknown): StructureVolume | null {
-  if (!value || typeof value !== 'object') return null;
-  const record = value as Record<string, unknown>;
-  const id = asString(record.id);
-  const title = asString(record.title);
-  const purpose = asString(record.purpose);
-  if (!id || !title || !purpose) return null;
-  const chapters: StructureChapter[] = [];
-  if (Array.isArray(record.chapters)) {
-    for (const item of record.chapters) {
-      const chapter = parseChapter(item);
-      if (chapter) chapters.push(chapter);
-    }
-  }
-  return { id, title, purpose, chapters };
-}
-
-const CHARACTER_ROLES: Record<string, NovelCharacterRole> = {
-  protagonist: 'protagonist',
-  antagonist: 'antagonist',
-  supporting: 'supporting',
-  主角: 'protagonist',
-  对手: 'antagonist',
-  配角: 'supporting',
-};
-
 function parseCharacterRole(value: unknown): NovelCharacterRole | undefined {
-  return typeof value === 'string' ? CHARACTER_ROLES[value.trim()] : undefined;
+  if (value === 'protagonist' || value === 'antagonist' || value === 'supporting') return value;
+  return undefined;
 }
-
-const CHARACTER_GENDERS: Record<string, NovelCharacterGender> = {
-  female: 'female',
-  male: 'male',
-  unspecified: 'unspecified',
-  女: 'female',
-  男: 'male',
-  不标明: 'unspecified',
-};
 
 function parseCharacterGender(value: unknown): NovelCharacterGender | undefined {
-  return typeof value === 'string' ? CHARACTER_GENDERS[value.trim()] : undefined;
+  if (value === 'female' || value === 'male' || value === 'unspecified') return value;
+  return undefined;
+}
+
+function parseArc(value: unknown): NovelCharacterArc | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const record = value as Record<string, unknown>;
+  const arc: NovelCharacterArc = {};
+  for (const key of ['early', 'mid', 'late', 'end'] as const) {
+    const text = asString(record[key]);
+    if (text) arc[key] = text;
+  }
+  return Object.keys(arc).length > 0 ? arc : undefined;
 }
 
 function parseCharacter(value: unknown): NovelCharacter | null {
@@ -566,12 +400,26 @@ function parseCharacter(value: unknown): NovelCharacter | null {
   const id = asString(record.id);
   const name = asString(record.name);
   const role = parseCharacterRole(record.role);
+  const origin = asString(record.origin) || asString(record.identity);
+  const trait =
+    asString(record.trait) ||
+    [asString(record.desire), asString(record.flaw)].filter(Boolean).join('；') ||
+    undefined;
+  if (!id || !name || !role || !origin || !trait) return null;
   const gender = parseCharacterGender(record.gender);
-  const identity = asString(record.identity);
-  const desire = asString(record.desire);
-  const flaw = typeof record.flaw === 'string' ? record.flaw.trim() : '';
-  if (!id || !name || !role || !gender || !identity || !desire) return null;
-  return { id, name, role, gender, identity, desire, flaw };
+  const arc = parseArc(record.arc);
+  return { id, name, role, origin, trait, ...(gender ? { gender } : {}), ...(arc ? { arc } : {}) };
+}
+
+function parseRelationArc(value: unknown): NovelRelation['arc'] | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const record = value as Record<string, unknown>;
+  const arc: NonNullable<NovelRelation['arc']> = {};
+  for (const key of ['early', 'mid', 'late'] as const) {
+    const text = asString(record[key]);
+    if (text) arc[key] = text;
+  }
+  return Object.keys(arc).length > 0 ? arc : undefined;
 }
 
 function parseRelation(value: unknown, characterIds: Set<string>): NovelRelation | null {
@@ -580,432 +428,375 @@ function parseRelation(value: unknown, characterIds: Set<string>): NovelRelation
   const fromId = asString(record.fromId);
   const toId = asString(record.toId);
   const label = asString(record.label);
-  if (!fromId || !toId || !label) return null;
-  if (!characterIds.has(fromId) || !characterIds.has(toId) || fromId === toId) return null;
-  return { fromId, toId, label };
+  if (!fromId || !toId || !label || fromId === toId) return null;
+  if (!characterIds.has(fromId) || !characterIds.has(toId)) return null;
+  const arc = parseRelationArc(record.arc);
+  return { fromId, toId, label, ...(arc ? { arc } : {}) };
 }
 
-function parseStringList(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  const items: string[] = [];
-  for (const item of value) {
-    const text = asString(item);
-    if (text) items.push(text);
-  }
-  return items;
-}
-
-function parseTense(value: unknown): NovelTense | undefined {
-  return value === 'past' || value === 'present' ? value : undefined;
-}
-
-/** 解析设定 JSON；至少要有一名人物和非空时空。 */
-export function parseBiblePayload(json: unknown): BibleGenerated | null {
+/** 解析角色生成结果。旧字段 identity / desire / flaw 会映射到出身和特质。 */
+export function parseCastPayload(json: unknown): CastGenerated | null {
   if (!json || typeof json !== 'object') return null;
   const record = json as Record<string, unknown>;
-  const timePlace = asString(record.timePlace);
-  if (!timePlace || !Array.isArray(record.characters)) return null;
-  const characters: NovelCharacter[] = [];
-  const seen = new Set<string>();
-  for (const item of record.characters) {
-    const character = parseCharacter(item);
-    if (!character || seen.has(character.id)) continue;
-    seen.add(character.id);
-    characters.push(character);
-  }
+  if (!Array.isArray(record.characters)) return null;
+  const characters = record.characters.map(parseCharacter).filter((item) => item !== null);
   if (characters.length === 0) return null;
-  const characterIds = new Set(characters.map((character) => character.id));
-  const relations: NovelRelation[] = [];
-  if (Array.isArray(record.relations)) {
-    for (const item of record.relations) {
-      const relation = parseRelation(item, characterIds);
-      if (relation) relations.push(relation);
-    }
-  }
-  return {
-    characters,
-    relations,
-    timePlace,
-    rules: parseStringList(record.rules),
-    taboos: parseStringList(record.taboos),
-  };
+  const ids = new Set(characters.map((item) => item.id));
+  const relations = Array.isArray(record.relations)
+    ? record.relations.map((item) => parseRelation(item, ids)).filter((item) => item !== null)
+    : [];
+  return { characters, relations };
 }
 
-function isCompleteCharacter(
-  character: NovelCharacter,
-): character is NovelCharacter & { gender: NovelCharacterGender } {
+function isCompleteCharacter(character: NovelCharacter): character is NovelCharacter & {
+  gender: NovelCharacterGender;
+} {
   return Boolean(
-    character.id.trim() &&
-    character.name.trim() &&
-    character.gender &&
-    character.identity.trim() &&
-    character.desire.trim(),
+    character.name.trim() && character.gender && character.origin.trim() && character.trait.trim(),
   );
 }
 
-/** 右栏是否已有可编辑的设定正文；仅有人称、聚焦、时态时仍算空。 */
-export function hasBibleDraft(bible: BibleStepSnapshot | undefined): boolean {
-  if (!bible) return false;
-  return (
-    bible.characters.length > 0 ||
-    Boolean(bible.timePlace.trim()) ||
-    bible.rules.some((rule) => rule.trim()) ||
-    bible.taboos.some((taboo) => taboo.trim())
-  );
+/** 是否已有可展示的角色草稿。 */
+export function hasCastDraft(cast: CastStepSnapshot | undefined): boolean {
+  return Boolean(cast && cast.characters.length > 0);
 }
 
-/** 设定是否足以进入故事结构：一名写全的人物（含性别）、时空、人称、聚焦、时态。 */
-export function isBibleReadyForStructure(bible: BibleStepSnapshot | undefined): boolean {
-  if (!bible) return false;
-  if (!bible.characters.some(isCompleteCharacter)) return false;
-  if (!bible.timePlace.trim() || !bible.tense) return false;
-  return NARRATOR_AXIS_LABELS.every((label) => hasStyleAxis(bible.voiceFocus, label));
+/** 角色是否足以进入卷章设计。 */
+export function isCastReady(cast: CastStepSnapshot | undefined): boolean {
+  return Boolean(cast?.characters.some(isCompleteCharacter));
 }
 
-/** 把设定快照压成下游请求体；未完成时返回 undefined。 */
-export function toBibleRequest(bible: BibleStepSnapshot | undefined): NovelBible | undefined {
-  if (!bible || !isBibleReadyForStructure(bible) || !bible.tense) return undefined;
-  const voicePrompt = formatStyleSelections(bible.voiceFocus, {
-    hiddenAxisLabels: BIBLE_HIDDEN_AXIS_LABELS,
-  }).trim();
-  if (!voicePrompt) return undefined;
-  const characters = bible.characters.filter(isCompleteCharacter).map((character) => ({
+/** 把角色快照压成下游请求体。 */
+export function toCastRequest(cast: CastStepSnapshot | undefined): NovelCast | undefined {
+  if (!isCastReady(cast) || !cast) return undefined;
+  const characters = cast.characters.filter(isCompleteCharacter).map((character) => ({
     id: character.id.trim(),
     name: character.name.trim(),
     role: character.role,
     gender: character.gender,
-    identity: character.identity.trim(),
-    desire: character.desire.trim(),
-    flaw: character.flaw.trim(),
+    origin: character.origin.trim(),
+    trait: character.trait.trim(),
+    ...(character.arc ? { arc: character.arc } : {}),
   }));
   if (characters.length === 0) return undefined;
   const characterIds = new Set(characters.map((character) => character.id));
   return {
     characters,
-    relations: bible.relations.filter(
+    relations: cast.relations.filter(
       (relation) =>
         relation.label.trim() &&
         characterIds.has(relation.fromId) &&
         characterIds.has(relation.toId) &&
         relation.fromId !== relation.toId,
     ),
-    timePlace: bible.timePlace.trim(),
-    rules: bible.rules.map((rule) => rule.trim()).filter(Boolean),
-    taboos: bible.taboos.map((taboo) => taboo.trim()).filter(Boolean),
-    tense: bible.tense,
-    voicePrompt,
   };
 }
 
-/** 解析调研 JSON 为选题卡列表。 */
+/** 写作步的人称、聚焦是否都已选定。 */
+export function hasNarration(writing: WritingSnapshot | undefined): boolean {
+  if (!writing?.tense) return false;
+  return NARRATOR_AXIS_LABELS.every((label) => hasStyleAxis(writing.styleSelections ?? {}, label));
+}
+
+/** 把写作步文风压成提示。含人称与聚焦。 */
+export function writingStylePrompt(writing: WritingSnapshot | undefined): string {
+  return formatStyleSelections(writing?.styleSelections ?? {}).trim();
+}
+
+/** 解析选题卡列表。 */
 export function parseResearchTopics(json: unknown): TopicCard[] {
   if (!json || typeof json !== 'object') return [];
-  const record = json as Record<string, unknown>;
-  const topics: TopicCard[] = [];
-  if (!Array.isArray(record.topics)) return topics;
-  for (const item of record.topics) {
-    const topic = parseTopicCard(item);
-    if (topic) topics.push(topic);
-  }
-  return topics;
+  const topics = (json as Record<string, unknown>).topics;
+  if (!Array.isArray(topics)) return [];
+  return topics.map(parseTopicCard).filter((item) => item !== null);
 }
 
-/** 解析结构 JSON；失败返回 null。 */
-export function parseStructurePayload(json: unknown): StructureSnapshot | null {
-  if (!json || typeof json !== 'object') return null;
-  const record = json as Record<string, unknown>;
-  if (record.kind === 'short') {
-    const synopsis = asString(record.synopsis) ?? '';
-    const beats: StructureBeat[] = [];
-    if (Array.isArray(record.beats)) {
-      for (const item of record.beats) {
-        const beat = parseBeat(item);
-        if (beat) beats.push(beat);
-      }
-    }
-    if (beats.length === 0) return null;
-    return { kind: 'short', synopsis, beats };
-  }
-  if (record.kind === 'chapters') {
-    const chapters: StructureChapter[] = [];
-    if (Array.isArray(record.chapters)) {
-      for (const item of record.chapters) {
-        const chapter = parseChapter(item);
-        if (chapter) chapters.push(chapter);
-      }
-    }
-    if (chapters.length === 0) return null;
-    return { kind: 'chapters', chapters };
-  }
-  if (record.kind === 'volumes') {
-    const volumes: StructureVolume[] = [];
-    if (Array.isArray(record.volumes)) {
-      for (const item of record.volumes) {
-        const volume = parseVolume(item);
-        if (volume) volumes.push(volume);
-      }
-    }
-    if (volumes.length === 0) return null;
-    return { kind: 'volumes', volumes };
-  }
-  return null;
+function parseAdvance(value: unknown): { volumeId: string; text: string } | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const volumeId = asString(record.volumeId);
+  const text = asString(record.text);
+  if (!volumeId || !text) return null;
+  return { volumeId, text };
 }
 
-/** 解析按卷章纲 JSON。 */
-export function parseVolumeChaptersPayload(json: unknown): StructureChapter[] {
-  if (!json || typeof json !== 'object') return [];
-  const record = json as Record<string, unknown>;
-  const chapters: StructureChapter[] = [];
-  if (!Array.isArray(record.chapters)) return chapters;
-  for (const item of record.chapters) {
-    const chapter = parseChapter(item);
-    if (chapter) chapters.push({ ...chapter, beats: [] });
-  }
-  return chapters;
-}
-
-/** 解析章内节拍 JSON。 */
-export function parseChapterBeatsPayload(json: unknown): StructureBeat[] {
-  if (!json || typeof json !== 'object') return [];
-  const record = json as Record<string, unknown>;
-  const beats: StructureBeat[] = [];
-  if (!Array.isArray(record.beats)) return beats;
-  for (const item of record.beats) {
-    const beat = parseBeat(item);
-    if (beat) beats.push(beat);
-  }
-  return beats;
-}
-
-/** 按扩展名兜底思路文件的 MIME；浏览器常把 md 报成空类型。 */
-function mediaTypeFromName(filename: string): string {
-  const lower = filename.toLowerCase();
-  if (lower.endsWith('.pdf')) return 'application/pdf';
-  if (lower.endsWith('.md')) return 'text/markdown';
-  return 'text/plain';
-}
-
-/** 只接受 text/plain、markdown、pdf；其余按扩展名。 */
-function ideaFileMediaType(filename: string, mediaType: string | undefined): string {
-  if (
-    mediaType === 'text/plain' ||
-    mediaType === 'text/markdown' ||
-    mediaType === 'application/pdf'
-  ) {
-    return mediaType;
-  }
-  return mediaTypeFromName(filename);
-}
-
-/**
- * 把左栏思路文件读成调研/设定/结构请求里的 ideaFiles。
- * 没有文件时返回空数组；读失败抛错，由调用方提示用户。
- */
-export async function toNovelIdeaFileInput(
-  files: ProductDocUploadItem[],
-): Promise<NovelIdeaFile[]> {
-  const picked = files.slice(0, NOVEL_MAX_IDEA_FILES);
-  const result: NovelIdeaFile[] = [];
-  for (const item of picked) {
-    const filename = item.file?.name || item.name || '思路文件';
-    const mediaType = ideaFileMediaType(
-      filename,
-      item.file ? toDocMediaType(item.file) : item.mimeType,
-    );
-    const dataUrl = await readUploadItemAsDataUrl(item);
-    if (!dataUrl.startsWith('data:')) throw new Error('idea file');
-    result.push({ filename, mediaType, dataUrl });
-  }
-  return result;
-}
-
-/** 从表单值取出至多三份思路文件。不是数组时返回 undefined，便于回退到快照。 */
-export function readFormIdeaFiles(value: unknown): ProductDocUploadItem[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const items: ProductDocUploadItem[] = [];
-  for (const item of value) {
-    if (items.length >= NOVEL_MAX_IDEA_FILES) break;
-    if (!item || typeof item !== 'object') continue;
-    const row = item as ProductDocUploadItem;
-    if (!row.uid || typeof row.previewUrl !== 'string' || !row.previewUrl) continue;
-    items.push(row);
-  }
-  return items;
-}
-
-/** 落盘前去掉不可序列化的 File，并把本地 blob 换成 data URL。没有文件时返回空数组。 */
-export async function serializeIdeaFiles(
-  files: ProductDocUploadItem[],
-): Promise<ProductDocUploadItem[]> {
-  const picked = files.slice(0, NOVEL_MAX_IDEA_FILES);
-  return Promise.all(picked.map((item) => serializeUploadItem(item)));
-}
-
-/**
- * 落盘后的思路文件地址。
- * 保存时服务端把 data URL 换成 /api/studio/novel/.../assets/...；只认 data: 会把已落盘文件丢掉。
- * blob: 刷新即失效，仍然丢弃。
- */
-function isDurableIdeaFileUrl(url: string): boolean {
-  return url.startsWith('data:') || url.startsWith('/');
-}
-
-/** 从快照还原思路文件；至多三份。 */
-function readStoredIdeaFiles(value: unknown): ProductDocUploadItem[] {
-  if (!Array.isArray(value)) return [];
-  const items: ProductDocUploadItem[] = [];
-  for (const item of value) {
-    if (items.length >= NOVEL_MAX_IDEA_FILES) break;
-    if (!item || typeof item !== 'object') continue;
-    const row = item as Record<string, unknown>;
-    const uid = asString(row.uid);
-    const previewUrl = asString(row.previewUrl);
-    if (!uid || !previewUrl || !isDurableIdeaFileUrl(previewUrl)) continue;
-    const name = asString(row.name);
-    const mimeType = asString(row.mimeType);
-    items.push({
-      uid,
-      previewUrl,
-      ...(name ? { name } : {}),
-      ...(mimeType ? { mimeType } : {}),
-      ...(typeof row.size === 'number' && Number.isFinite(row.size) ? { size: row.size } : {}),
-    });
-  }
-  return items;
-}
-
-/** 从落盘 data 读取调研快照。想法、思路文件、选题卡至少有一项才视为有效。 */
-export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | undefined {
-  if (!data || typeof data !== 'object') return undefined;
-  const record = data as Record<string, unknown>;
-  const idea = typeof record.idea === 'string' ? record.idea.trim() : '';
-  const ideaFiles = readStoredIdeaFiles(record.ideaFiles);
-  const volume = isNovelVolume(record.volume) ? record.volume : 'short';
-  const longFormat = isNovelLongFormat(record.longFormat) ? record.longFormat : 'publish';
-  const genres = Array.isArray(record.genres)
-    ? record.genres.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
-    : [];
-  const topics: TopicCard[] = [];
-  if (Array.isArray(record.topics)) {
-    for (const item of record.topics) {
-      const topic = parseTopicCard(item);
-      if (topic) topics.push(topic);
-    }
-  }
-  const selectedTopicId = asString(record.selectedTopicId);
-  const streamText = asString(record.streamText);
-  const hasStoredEffort = typeof record.reasoningEffort === 'string';
-  if (!idea && ideaFiles.length === 0 && topics.length === 0 && !hasStoredEffort) return undefined;
-  return {
-    idea,
-    ...(ideaFiles.length ? { ideaFiles } : {}),
-    genres,
-    volume,
-    longFormat,
-    topics,
-    reasoningEffort: readNovelReasoningEffort(record.reasoningEffort),
-    ...(selectedTopicId ? { selectedTopicId } : {}),
-    ...(streamText ? { streamText } : {}),
-  };
-}
-
-function parseStoredCharacter(value: unknown): NovelCharacter | null {
+function parseVolumeOutline(value: unknown) {
   if (!value || typeof value !== 'object') return null;
   const record = value as Record<string, unknown>;
   const id = asString(record.id);
-  if (!id) return null;
-  const gender = parseCharacterGender(record.gender);
+  const title = asString(record.title);
+  const geography = asString(record.geography) || asString(record.purpose);
+  const conflict = asString(record.conflict) || asString(record.purpose);
+  const targetChars =
+    typeof record.targetChars === 'number' && record.targetChars > 0
+      ? Math.round(record.targetChars)
+      : undefined;
+  if (!id || !title || !geography || !conflict || !targetChars) return null;
   return {
     id,
-    name: typeof record.name === 'string' ? record.name.trim() : '',
-    role: parseCharacterRole(record.role) ?? 'supporting',
-    ...(gender ? { gender } : {}),
-    identity: typeof record.identity === 'string' ? record.identity.trim() : '',
-    desire: typeof record.desire === 'string' ? record.desire.trim() : '',
-    flaw: typeof record.flaw === 'string' ? record.flaw.trim() : '',
+    title,
+    geography,
+    conflict,
+    outcome: asString(record.outcome) ?? '',
+    targetChars,
   };
 }
 
-/** 从落盘 data 读取设定快照；保留尚未填完的手改人物。 */
-export function readBibleStepSnapshot(data: unknown): BibleStepSnapshot | undefined {
+/** 解析创作方案。 */
+export function parsePlanPayload(json: unknown): NovelPlan | null {
+  if (!json || typeof json !== 'object') return null;
+  const record = json as Record<string, unknown>;
+  if (!Array.isArray(record.threads) || !Array.isArray(record.volumes)) return null;
+  const volumes = record.volumes.map(parseVolumeOutline).filter((item) => item !== null);
+  if (volumes.length === 0) return null;
+  const volumeIds = new Set(volumes.map((volume) => volume.id));
+  const threads = record.threads
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const thread = item as Record<string, unknown>;
+      const id = asString(thread.id);
+      const name = asString(thread.name);
+      const core = asString(thread.core);
+      if (!id || !name || !core || !Array.isArray(thread.advances)) return null;
+      const advances = thread.advances
+        .map(parseAdvance)
+        .filter(
+          (advance): advance is { volumeId: string; text: string } =>
+            advance !== null && volumeIds.has(advance.volumeId),
+        );
+      if (advances.length === 0) return null;
+      return { id, name, core, advances };
+    })
+    .filter((item) => item !== null);
+  if (threads.length === 0) return null;
+  return { threads, volumes };
+}
+
+function parseChapter(value: unknown): StructureChapter | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const id = asString(record.id);
+  const title = asString(record.title);
+  const scene = asString(record.scene);
+  const event = asString(record.event) || asString(record.purpose);
+  const hook = asString(record.hook) || event;
+  if (!id || !title || !scene || !event || !hook) return null;
+  return { id, title, scene, event, hook };
+}
+
+/** 解析某一卷的章卡列表。旧章只有 purpose 时，事件与钩子都用它，场景需另有字段。 */
+export function parseVolumeChaptersPayload(json: unknown): StructureChapter[] {
+  if (!json || typeof json !== 'object') return [];
+  const chapters = (json as Record<string, unknown>).chapters;
+  if (!Array.isArray(chapters)) return [];
+  return chapters
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const record = item as Record<string, unknown>;
+      const scene = asString(record.scene);
+      if (!scene) return null;
+      return parseChapter(item);
+    })
+    .filter((item) => item !== null);
+}
+
+function mediaTypeFromName(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'md') return 'text/markdown';
+  return 'text/plain';
+}
+
+function uploadFileName(item: ProductDocUploadItem): string {
+  return item.file?.name ?? item.name ?? '';
+}
+
+function uploadMediaType(item: ProductDocUploadItem): string {
+  const filename = uploadFileName(item);
+  return item.file?.type || item.mimeType || mediaTypeFromName(filename);
+}
+
+/** 把上传项收成请求体里的文件。读失败时抛出，由调用方提示。 */
+export async function toNovelIdeaFileInput(
+  items: ProductDocUploadItem[],
+): Promise<NovelIdeaFile[]> {
+  const files: NovelIdeaFile[] = [];
+  for (const item of items) {
+    const filename = uploadFileName(item);
+    if (!filename) throw new Error('missing filename');
+    const dataUrl = await readUploadItemAsDataUrl(item);
+    files.push({
+      filename,
+      mediaType: uploadMediaType(item),
+      dataUrl,
+    });
+  }
+  return files;
+}
+
+export function readFormIdeaFiles(value: unknown): ProductDocUploadItem[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((item): item is ProductDocUploadItem => {
+    if (!item || typeof item !== 'object') return false;
+    const record = item as ProductDocUploadItem;
+    return typeof record.uid === 'string' && typeof record.previewUrl === 'string';
+  });
+}
+
+/** 落盘前把上传项收成可持久化的 data URL。 */
+export async function serializeIdeaFiles(
+  items: ProductDocUploadItem[],
+): Promise<ProductDocUploadItem[]> {
+  const stored: ProductDocUploadItem[] = [];
+  for (const item of items) stored.push(await serializeUploadItem(item));
+  return stored;
+}
+
+function isDurableIdeaFileUrl(url: string): boolean {
+  return url.startsWith('data:') || url.startsWith('/api/studio/novel/');
+}
+
+function readStoredFiles(value: unknown, max: number): ProductDocUploadItem[] {
+  if (!Array.isArray(value)) return [];
+  const files: ProductDocUploadItem[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const record = item as Record<string, unknown>;
+    const name = asString(record.name) || asString(record.filename);
+    const previewUrl = asString(record.previewUrl);
+    if (!name || !previewUrl || !isDurableIdeaFileUrl(previewUrl)) continue;
+    const mimeType =
+      asString(record.mimeType) || asString(record.mediaType) || mediaTypeFromName(name);
+    files.push({
+      uid: asString(record.uid) || `stored-${files.length}-${name}`,
+      name,
+      mimeType,
+      previewUrl,
+    });
+    if (files.length >= max) break;
+  }
+  return files;
+}
+
+/** 读取选题调研快照。旧的体量、赛道字段忽略。 */
+export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | undefined {
   if (!data || typeof data !== 'object') return undefined;
   const record = data as Record<string, unknown>;
-  if (!Array.isArray(record.characters) && typeof record.timePlace !== 'string') return undefined;
-  const characters: NovelCharacter[] = [];
-  const seen = new Set<string>();
-  if (Array.isArray(record.characters)) {
-    for (const item of record.characters) {
-      const character = parseStoredCharacter(item);
-      if (!character || seen.has(character.id)) continue;
-      seen.add(character.id);
-      characters.push(character);
-    }
-  }
-  const characterIds = new Set(characters.map((character) => character.id));
-  const relations: NovelRelation[] = [];
-  if (Array.isArray(record.relations)) {
-    for (const item of record.relations) {
-      const relation = parseRelation(item, characterIds);
-      if (relation) relations.push(relation);
-    }
-  }
-  const voiceFocus = parseStyleSelections(record.voiceFocus);
-  const tense = parseTense(record.tense);
+  const topics = Array.isArray(record.topics)
+    ? record.topics.map(parseTopicCard).filter((item) => item !== null)
+    : [];
+  const idea = typeof record.idea === 'string' ? record.idea : '';
+  const genres = Array.isArray(record.genres)
+    ? record.genres.filter(
+        (item): item is string => typeof item === 'string' && item.trim().length > 0,
+      )
+    : [];
+  const selectedTopicId = asString(record.selectedTopicId);
   const streamText = asString(record.streamText);
   return {
-    characters,
-    relations,
-    timePlace: typeof record.timePlace === 'string' ? record.timePlace.trim() : '',
-    rules: parseStringList(record.rules),
-    taboos: parseStringList(record.taboos),
-    voiceFocus,
-    ...(tense ? { tense } : {}),
+    idea,
+    ideaFiles: readStoredFiles(record.ideaFiles, NOVEL_MAX_IDEA_FILES),
+    planFiles: readStoredFiles(record.planFiles, NOVEL_MAX_PLAN_FILES),
+    genres,
+    topics,
+    reasoningEffort: readNovelReasoningEffort(record.reasoningEffort),
+    ...(selectedTopicId && topics.some((topic) => topic.id === selectedTopicId)
+      ? { selectedTopicId }
+      : {}),
     ...(streamText ? { streamText } : {}),
   };
 }
 
-/** 从落盘 data 读取结构快照。 */
-export function readStructureStepSnapshot(data: unknown): StructureStepSnapshot | undefined {
-  const parsed = parseStructurePayload(data);
-  if (!parsed) return undefined;
+/** 读取角色快照，兼容旧人物字段。 */
+export function readCastStepSnapshot(data: unknown): CastStepSnapshot | undefined {
+  const parsed = parseCastPayload(data);
+  return parsed ?? undefined;
+}
+
+/** 读取创作方案快照。 */
+export function readPlanStepSnapshot(data: unknown): PlanStepSnapshot | undefined {
+  const plan = parsePlanPayload(data);
+  if (!plan) return undefined;
   const streamText =
     data && typeof data === 'object'
       ? asString((data as Record<string, unknown>).streamText)
       : undefined;
-  return streamText ? { ...parsed, streamText } : parsed;
+  return { ...plan, ...(streamText ? { streamText } : {}) };
 }
 
-/** 从落盘 data 读取写作快照。 */
+/** 读取卷章快照。没有场景的旧章不收入。 */
+export function readChaptersStepSnapshot(data: unknown): ChaptersStepSnapshot | undefined {
+  if (!data || typeof data !== 'object') return undefined;
+  const volumes = (data as Record<string, unknown>).volumes;
+  if (!Array.isArray(volumes)) return undefined;
+  const parsed = volumes
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const record = item as Record<string, unknown>;
+      const id = asString(record.id);
+      if (!id || !Array.isArray(record.chapters)) return null;
+      const chapters = record.chapters
+        .map((chapter) => {
+          if (!chapter || typeof chapter !== 'object') return null;
+          if (!asString((chapter as Record<string, unknown>).scene)) return null;
+          return parseChapter(chapter);
+        })
+        .filter((chapter) => chapter !== null);
+      if (chapters.length === 0) return null;
+      return { id, chapters };
+    })
+    .filter((item) => item !== null);
+  if (parsed.length === 0) return undefined;
+  return { volumes: parsed };
+}
+
+function parseTense(value: unknown): NovelTense | undefined {
+  return value === 'past' || value === 'present' ? value : undefined;
+}
+
+/** 读取写作快照。 */
 export function readWriteStepSnapshot(data: unknown): WriteStepSnapshot | undefined {
   if (!data || typeof data !== 'object') return undefined;
   const record = data as Record<string, unknown>;
-  if (record.kind !== 'short' && record.kind !== 'chapters') return undefined;
+  if (!Array.isArray(record.units)) return undefined;
   const units: WritingUnit[] = [];
-  if (Array.isArray(record.units)) {
-    for (const item of record.units) {
-      if (!item || typeof item !== 'object') continue;
-      const unit = item as Record<string, unknown>;
-      const unitId = asString(unit.unitId);
-      if (!unitId) continue;
-      const body = typeof unit.body === 'string' ? unit.body : '';
-      units.push({ unitId, body });
-    }
+  for (const item of record.units) {
+    if (!item || typeof item !== 'object') continue;
+    const unit = item as Record<string, unknown>;
+    const unitId = asString(unit.unitId);
+    if (!unitId) continue;
+    units.push({ unitId, body: typeof unit.body === 'string' ? unit.body : '' });
   }
   const styleSelections = parseStyleSelections(record.styleSelections);
-  const selectedUnitIds = parseStringList(record.selectedUnitIds);
+  const selectedUnitIds = Array.isArray(record.selectedUnitIds)
+    ? record.selectedUnitIds.filter(
+        (item): item is string => typeof item === 'string' && item.trim().length > 0,
+      )
+    : [];
   const focusUnitId = asString(record.focusUnitId);
+  const tense = parseTense(record.tense);
   return {
-    kind: record.kind,
     units,
     ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
+    ...(tense ? { tense } : {}),
     ...(selectedUnitIds.length ? { selectedUnitIds } : {}),
     ...(focusUnitId && selectedUnitIds.includes(focusUnitId) ? { focusUnitId } : {}),
   };
 }
 
-/** 首次进入/刷新默认停在第一步选题调研；有选题卡则进入 researched 结果态。 */
-export function resolveInitialPhase(research: ResearchStepSnapshot | undefined): StudioPhase {
-  if (research?.topics.length) return 'researched';
+/** 打开任务时停在最远的已有步骤。 */
+export function resolveInitialPhase(input: {
+  research?: ResearchStepSnapshot;
+  plan?: PlanStepSnapshot;
+  cast?: CastStepSnapshot;
+  chapters?: ChaptersSnapshot;
+  writing?: WritingSnapshot;
+}): StudioPhase {
+  if (hasWritingBody(input.writing)) return 'written';
+  if (areVolumesReadyForWrite(input.chapters)) return 'chaptered';
+  if (hasCastDraft(input.cast)) return 'casted';
+  if (input.plan) return 'planned';
+  if (input.research?.topics.length) return 'researched';
   return 'research';
 }
 
@@ -1013,10 +804,7 @@ export function resolveInitialPhase(research: ResearchStepSnapshot | undefined):
 export async function saveNovelStep<T>(taskId: string, stepKey: NovelStepKey, data: T): Promise<T> {
   const record = await apiPut<NovelTaskStepRecord>(
     `/api/studio/novel/tasks/${encodeURIComponent(taskId)}/steps/${stepKey}`,
-    {
-      snapshotVersion: NOVEL_STEP_SNAPSHOT_VERSION,
-      data,
-    },
+    { snapshotVersion: NOVEL_STEP_SNAPSHOT_VERSION, data },
   );
   return record.data as T;
 }

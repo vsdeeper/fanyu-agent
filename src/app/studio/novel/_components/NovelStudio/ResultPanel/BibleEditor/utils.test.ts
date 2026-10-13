@@ -1,29 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import type { NovelCharacter, NovelRelation } from '../../types';
-import { cleanTextList, isSavableCharacter, isSavableRelation, trimCharacter } from './utils';
+import { isSavableCharacter, isSavableRelation, trimCharacter } from './utils';
 
 const character: NovelCharacter = {
   id: 'c1',
   name: ' 李夏 ',
   role: 'protagonist',
   gender: 'female',
-  identity: ' 临时工 ',
-  desire: '留下',
-  flaw: '嘴硬',
+  origin: ' 临时工 ',
+  trait: '嘴硬',
+  arc: { early: ' 不肯说 ', mid: '  ' },
 };
 
 describe('isSavableCharacter', () => {
-  it('姓名、性别、身份、欲望有内容即可保存；缺陷可空', () => {
+  it('姓名、性别、出身、特质有内容即可保存；变化可空', () => {
     expect(isSavableCharacter(character)).toBe(true);
-    expect(isSavableCharacter({ ...character, flaw: '' })).toBe(true);
-    expect(isSavableCharacter({ ...character, desire: '  ' })).toBe(false);
+    expect(isSavableCharacter({ ...character, arc: undefined })).toBe(true);
+    expect(isSavableCharacter({ ...character, trait: '  ' })).toBe(false);
     expect(isSavableCharacter({ ...character, gender: undefined })).toBe(false);
   });
 });
 
 describe('trimCharacter', () => {
-  it('去掉姓名和身份首尾空白', () => {
-    expect(trimCharacter(character)).toMatchObject({ name: '李夏', identity: '临时工' });
+  it('去掉姓名和出身首尾空白，并丢掉空的变化阶段', () => {
+    expect(trimCharacter(character)).toMatchObject({
+      name: '李夏',
+      origin: '临时工',
+      arc: { early: '不肯说' },
+    });
   });
 });
 
@@ -36,11 +40,5 @@ describe('isSavableRelation', () => {
     expect(isSavableRelation({ ...relation, toId: 'c1' }, ids)).toBe(false);
     expect(isSavableRelation({ ...relation, label: ' ' }, ids)).toBe(false);
     expect(isSavableRelation({ ...relation, toId: 'missing' }, ids)).toBe(false);
-  });
-});
-
-describe('cleanTextList', () => {
-  it('丢掉空白条目', () => {
-    expect(cleanTextList([' 停电 ', '', '  '])).toEqual(['停电']);
   });
 });

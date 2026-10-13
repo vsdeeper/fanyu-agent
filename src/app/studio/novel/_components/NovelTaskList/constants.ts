@@ -10,7 +10,8 @@ export const DELETE_CONFIRM_DESCRIPTION = '任务数据与写作结果将一并�
 
 export const STEP_LABELS: Record<NovelStepKey, string> = {
   research: '选题调研',
-  bible: '设定',
-  structure: '故事结构',
+  plan: '创作方案',
+  cast: '角色设定',
+  chapters: '卷章设计',
   write: '正文写作',
 };

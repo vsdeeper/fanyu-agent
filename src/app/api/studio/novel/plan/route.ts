@@ -1,4 +1,4 @@
-import { handleNovelChapterBeats } from '@/app/api/studio/novel/_server/handle-stream';
+import { handleNovelPlan } from '@/app/api/studio/novel/_server/handle-stream';
 import { SERVICE_UNAVAILABLE } from '@/app/api/studio/_server/constants';
 import { ApiErrorCode, jsonFail } from '@/lib/server/api-response';
 
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    return await handleNovelChapterBeats(req);
+    return await handleNovelPlan(req);
   } catch {
     return jsonFail(ApiErrorCode.INTERNAL_ERROR, SERVICE_UNAVAILABLE, 500);
   }

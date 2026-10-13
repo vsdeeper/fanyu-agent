@@ -1,6 +1,5 @@
 import { Button, Card, Input, Popconfirm } from 'antd';
 import { useState, type MouseEvent } from 'react';
-import StudioCard from '@/app/studio/_components/StudioCard';
 import {
   CANCEL_BUTTON,
   DELETE_BUTTON,
@@ -8,17 +7,13 @@ import {
   SAVE_BUTTON,
 } from '@/app/studio/_components/StudioCard/constants';
 import {
-  BEAT_DELETE_CONFIRM_TITLE,
-  CHAPTER_BEATS_BUTTON,
-  CHAPTER_BEATS_LABEL,
-  CHAPTER_BEATS_REGENERATE_BUTTON,
-  CHAPTER_BEATS_REGENERATE_CONFIRM_CONTENT,
-  CHAPTER_BEATS_REGENERATE_CONFIRM_TITLE,
   CHAPTER_DELETE_CONFIRM_TITLE,
-  CHAPTER_PURPOSE_LABEL,
+  CHAPTER_EVENT_LABEL,
+  CHAPTER_HOOK_HINT,
+  CHAPTER_HOOK_LABEL,
+  CHAPTER_SCENE_LABEL,
   CHAPTER_TITLE_PLACEHOLDER,
   CONFIRM_CANCEL,
-  CONFIRM_OK,
 } from '../../../constants';
 import type { StructureChapter } from '../../../types';
 import { formatChapterPrefix, stripChapterPrefix } from '../utils';
@@ -26,67 +21,58 @@ import styles from './ChapterItem.module.css';
 
 type ChapterItemProps = {
   chapter: StructureChapter;
-  /** 1-based 章节序号，用于自动生成「第N章」。 */
   index: number;
   removable: boolean;
-  /** 嵌套在卷卡内时去掉横向 padding，使序号与卷纲对齐。 */
   embedded?: boolean;
-  generatingBeats?: boolean;
-  onChange: (patch: { title?: string; purpose?: string }) => void;
+  onChange: (patch: Partial<Pick<StructureChapter, 'title' | 'scene' | 'event' | 'hook'>>) => void;
   onRemove: () => void;
-  onGenerateBeats: () => void;
-  onChangeBeat: (beatId: string, text: string) => void;
-  onRemoveBeat: (beatId: string) => void;
 };
 
-/** 单章卡片：标题 + 目的 + 按需章内节拍；「第N章」由序号自动生成。 */
+/** 单章卡片：标题、场景、事件、钩子。「第N章」由序号生成。 */
 export default function ChapterItem({
   chapter,
   index,
   removable,
   embedded = false,
-  generatingBeats = false,
   onChange,
   onRemove,
-  onGenerateBeats,
-  onChangeBeat,
-  onRemoveBeat,
 }: ChapterItemProps) {
   const [editing, setEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
-  const [purposeDraft, setPurposeDraft] = useState('');
-
+  const [sceneDraft, setSceneDraft] = useState('');
+  const [eventDraft, setEventDraft] = useState('');
+  const [hookDraft, setHookDraft] = useState('');
   const prefix = formatChapterPrefix(index);
   const titleName = stripChapterPrefix(chapter.title);
-  const hasBeats = chapter.beats.length > 0;
-  const beatRemovable = chapter.beats.length > 1;
 
   const startEdit = (event?: MouseEvent) => {
     event?.stopPropagation();
     setTitleDraft(titleName);
-    setPurposeDraft(chapter.purpose);
+    setSceneDraft(chapter.scene);
+    setEventDraft(chapter.event);
+    setHookDraft(chapter.hook);
     setEditing(true);
   };
 
   const cancelEdit = (event?: MouseEvent) => {
     event?.stopPropagation();
-    setTitleDraft('');
-    setPurposeDraft('');
     setEditing(false);
   };
 
   const saveEdit = (event?: MouseEvent) => {
     event?.stopPropagation();
-    const nextTitle = titleDraft.trim();
-    const nextPurpose = purposeDraft.trim();
-    if (!nextTitle || !nextPurpose) return;
-    onChange({ title: nextTitle, purpose: nextPurpose });
-    setTitleDraft('');
-    setPurposeDraft('');
+    const title = titleDraft.trim();
+    const scene = sceneDraft.trim();
+    const eventText = eventDraft.trim();
+    const hook = hookDraft.trim();
+    if (!title || !scene || !eventText || !hook) return;
+    onChange({ title, scene, event: eventText, hook });
     setEditing(false);
   };
 
-  const canSave = Boolean(titleDraft.trim() && purposeDraft.trim());
+  const canSave = Boolean(
+    titleDraft.trim() && sceneDraft.trim() && eventDraft.trim() && hookDraft.trim(),
+  );
 
   return (
     <Card size="small" className={embedded ? `${styles.card} ${styles.embedded}` : styles.card}>
@@ -98,21 +84,28 @@ export default function ChapterItem({
             </span>
             <span className={styles.prefix}>{prefix}</span>
             <Input
-              className={styles.titleInput}
               value={titleDraft}
               placeholder={CHAPTER_TITLE_PLACEHOLDER}
-              autoFocus
               onChange={(event) => setTitleDraft(event.target.value)}
             />
           </div>
-          <div className={styles.purposeEdit}>
-            <p className={styles.purposeLabel}>{CHAPTER_PURPOSE_LABEL}</p>
-            <Input.TextArea
-              value={purposeDraft}
-              rows={3}
-              onChange={(event) => setPurposeDraft(event.target.value)}
-            />
-          </div>
+          <Input.TextArea
+            value={sceneDraft}
+            placeholder={CHAPTER_SCENE_LABEL}
+            autoSize={{ minRows: 3, maxRows: 8 }}
+            onChange={(event) => setSceneDraft(event.target.value)}
+          />
+          <Input.TextArea
+            value={eventDraft}
+            placeholder={CHAPTER_EVENT_LABEL}
+            autoSize={{ minRows: 3, maxRows: 8 }}
+            onChange={(event) => setEventDraft(event.target.value)}
+          />
+          <Input
+            value={hookDraft}
+            placeholder={`${CHAPTER_HOOK_LABEL}（${CHAPTER_HOOK_HINT}）`}
+            onChange={(event) => setHookDraft(event.target.value)}
+          />
           <div className={styles.actions}>
             <Button size="small" onClick={cancelEdit}>
               {CANCEL_BUTTON}
@@ -123,91 +116,39 @@ export default function ChapterItem({
           </div>
         </div>
       ) : (
-        <>
-          <div className={styles.displayRow}>
-            <div className={styles.displayMain}>
-              <span className={styles.index} aria-hidden>
-                {index}
-              </span>
-              <div className={styles.bodyStack}>
-                <p className={styles.titleText}>
-                  {prefix}
-                  {titleName ? `　${titleName}` : ''}
-                </p>
-                <p className={styles.purposeLabel}>{CHAPTER_PURPOSE_LABEL}</p>
-                <p className={styles.purposeText}>{chapter.purpose}</p>
-              </div>
-            </div>
-            {removable ? (
-              <span className={styles.displayActions} onClick={(event) => event.stopPropagation()}>
-                <Popconfirm
-                  title={CHAPTER_DELETE_CONFIRM_TITLE}
-                  okText={DELETE_BUTTON}
-                  cancelText={CANCEL_BUTTON}
-                  okButtonProps={{ danger: true }}
-                  onConfirm={onRemove}
-                >
-                  <Button size="small" type="link" danger className={styles.actionBtn}>
-                    {DELETE_BUTTON}
-                  </Button>
-                </Popconfirm>
-              </span>
-            ) : null}
-            <Button type="link" size="small" className={styles.actionBtn} onClick={startEdit}>
+        <div className={styles.displayRow}>
+          <span className={styles.index}>{index}</span>
+          <div className={styles.bodyStack}>
+            <p className={styles.titleText}>
+              {prefix}
+              {titleName ? `　${titleName}` : ''}
+            </p>
+            <p className={styles.purposeLabel}>{CHAPTER_SCENE_LABEL}</p>
+            <p className={styles.purposeText}>{chapter.scene}</p>
+            <p className={styles.purposeLabel}>{CHAPTER_EVENT_LABEL}</p>
+            <p className={styles.purposeText}>{chapter.event}</p>
+            <p className={styles.purposeLabel}>{CHAPTER_HOOK_LABEL}</p>
+            <p className={styles.purposeText}>{chapter.hook}</p>
+          </div>
+          <div className={styles.displayActions}>
+            <Button type="link" size="small" onClick={startEdit}>
               {EDIT_BUTTON}
             </Button>
-          </div>
-
-          <div className={styles.beatsBlock}>
-            <div className={styles.beatsHead}>
-              <p className={styles.beatsLabel}>{CHAPTER_BEATS_LABEL}</p>
-              {hasBeats ? (
-                <Popconfirm
-                  title={CHAPTER_BEATS_REGENERATE_CONFIRM_TITLE}
-                  description={CHAPTER_BEATS_REGENERATE_CONFIRM_CONTENT}
-                  okText={CONFIRM_OK}
-                  cancelText={CONFIRM_CANCEL}
-                  onConfirm={onGenerateBeats}
-                >
-                  <Button
-                    type="link"
-                    size="small"
-                    className={styles.actionBtn}
-                    loading={generatingBeats}
-                  >
-                    {CHAPTER_BEATS_REGENERATE_BUTTON}
-                  </Button>
-                </Popconfirm>
-              ) : (
-                <Button
-                  type="link"
-                  size="small"
-                  className={styles.actionBtn}
-                  loading={generatingBeats}
-                  onClick={onGenerateBeats}
-                >
-                  {CHAPTER_BEATS_BUTTON}
+            {removable ? (
+              <Popconfirm
+                title={CHAPTER_DELETE_CONFIRM_TITLE}
+                okText={DELETE_BUTTON}
+                cancelText={CONFIRM_CANCEL}
+                okButtonProps={{ danger: true }}
+                onConfirm={onRemove}
+              >
+                <Button type="text" danger size="small">
+                  {DELETE_BUTTON}
                 </Button>
-              )}
-            </div>
-            {hasBeats ? (
-              <div className={styles.beatsList}>
-                {chapter.beats.map((beat, beatIndex) => (
-                  <StudioCard
-                    key={beat.id}
-                    editable
-                    index={beatIndex + 1}
-                    value={beat.text}
-                    onSave={(value) => onChangeBeat(beat.id, value)}
-                    removable={beatRemovable}
-                    onRemove={() => onRemoveBeat(beat.id)}
-                    deleteConfirmTitle={BEAT_DELETE_CONFIRM_TITLE}
-                  />
-                ))}
-              </div>
+              </Popconfirm>
             ) : null}
           </div>
-        </>
+        </div>
       )}
     </Card>
   );

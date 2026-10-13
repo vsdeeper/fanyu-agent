@@ -16,6 +16,7 @@ import StudioControlPanel, {
 } from '@/app/studio/_components/StudioControlPanel';
 import TopicCardView from '../TopicCardView';
 import {
+  CAST_BUTTON,
   GENRE_LABEL,
   GENRE_OPTIONS,
   GENRE_PLACEHOLDER,
@@ -26,34 +27,31 @@ import {
   IDEA_FILE_SUBTITLE,
   IDEA_FILE_TYPE_WARNING,
   IDEA_LABEL,
-  BIBLE_BUTTON,
-  BIBLE_HIDDEN_AXIS_LABELS,
   IDEA_PLACEHOLDER,
-  LONG_FORMAT_LABEL,
-  LONG_FORMAT_OPTIONS,
-  RESEARCH_BUTTON,
+  PLAN_BUTTON,
+  PLAN_FILE_HINT,
+  PLAN_FILE_LABEL,
+  PLAN_FILE_MAX,
+  PLAN_FILE_SUBTITLE,
   REASONING_EFFORT_LABEL,
   REASONING_EFFORT_OPTION_LABEL,
+  RESEARCH_BUTTON,
   SELECTED_TOPIC_EMPTY,
   SELECTED_TOPIC_LABEL,
-  NARRATION_TITLE,
-  STRUCTURE_BUTTON,
   STYLE_LABEL,
   TENSE_LABEL,
   TENSE_OPTIONS,
-  VOLUME_LABEL,
-  VOLUME_OPTIONS,
-  WRITE_HIDDEN_AXIS_LABELS,
 } from '../constants';
 import type {
+  ChaptersSnapshot,
   NovelPanelValues,
+  NovelPlan,
   NovelTense,
-  StructureSnapshot,
   StudioPhase,
   TopicCard,
 } from '../types';
 import WritingUnitList from './WritingUnitList';
-import { isAllowedIdeaFile, requireIdeaOrFile } from './utils';
+import { isAllowedIdeaFile, requireSystemFiles } from './utils';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
@@ -63,23 +61,22 @@ type ControlPanelProps = {
   onReasoningEffortChange: (next: NovelReasoningEffort) => void;
   phase: StudioPhase;
   selectedTopic?: TopicCard;
-  structure?: StructureSnapshot;
+  plan?: NovelPlan;
+  chapters?: ChaptersSnapshot;
   selectedUnitIds: string[];
   focusUnitId?: string;
   styleSelections: StyleDimensionSelections;
-  bibleVoiceFocus: StyleDimensionSelections;
-  bibleTense?: NovelTense;
+  tense?: NovelTense;
   writeBusy?: boolean;
   onResearch: () => void;
-  onGenerateBible: () => void;
-  onBibleVoiceFocusChange: (next: StyleDimensionSelections) => void;
-  onBibleTenseChange: (tense: NovelTense) => void;
-  onGenerateStructure: () => void;
+  onGeneratePlan: () => void;
+  onGenerateCast: () => void;
   onToggleWritingUnit: (unitId: string) => void;
   onStyleSelectionsChange: (next: StyleDimensionSelections) => void;
+  onTenseChange: (tense: NovelTense) => void;
 };
 
-/** 小说左栏：调研、设定、结构、写作共用一个 Form。 */
+/** 小说左栏：调研、方案、角色、卷章、写作共用一个 Form。 */
 export default function ControlPanel({
   form,
   initialValues,
@@ -87,20 +84,19 @@ export default function ControlPanel({
   onReasoningEffortChange,
   phase,
   selectedTopic,
-  structure,
+  plan,
+  chapters,
   selectedUnitIds,
   focusUnitId,
   styleSelections,
-  bibleVoiceFocus,
-  bibleTense,
+  tense,
   writeBusy = false,
   onResearch,
-  onGenerateBible,
-  onBibleVoiceFocusChange,
-  onBibleTenseChange,
-  onGenerateStructure,
+  onGeneratePlan,
+  onGenerateCast,
   onToggleWritingUnit,
   onStyleSelectionsChange,
+  onTenseChange,
 }: ControlPanelProps) {
   const chatProvider = useChatSettingsStore((state) => state.settings?.chatProvider);
   const settingsHydrated = useChatSettingsStore((state) => state.hydrated);
@@ -115,16 +111,16 @@ export default function ControlPanel({
   const showReasoningEffort = settingsHydrated && chatProvider !== 'ark' && Boolean(chatProvider);
 
   const researchBusy = phase === 'researching';
-  const bibleBusy = phase === 'bibling';
-  const structureBusy = phase === 'structuring';
+  const planBusy = phase === 'planning';
+  const castBusy = phase === 'casting';
   const researchStep = phase === 'research' || phase === 'researching' || phase === 'researched';
-  const bibleStep = phase === 'bible' || phase === 'bibling' || phase === 'bibled';
-  const structureStep = phase === 'structure' || phase === 'structuring' || phase === 'structured';
+  const planStep = phase === 'plan' || phase === 'planning' || phase === 'planned';
+  const castStep = phase === 'cast' || phase === 'casting' || phase === 'casted';
+  const chaptersStep = phase === 'chapters' || phase === 'chaptering' || phase === 'chaptered';
   const writeStep = phase === 'write' || phase === 'writing' || phase === 'written';
-  const showFooter = researchStep || bibleStep || structureStep;
-  const volume = Form.useWatch('volume', form);
+  const showFooter = researchStep || planStep || castStep;
   const formDisabled =
-    (researchStep && researchBusy) || (bibleStep && bibleBusy) || (writeStep && writeBusy);
+    (researchStep && researchBusy) || (planStep && planBusy) || (writeStep && writeBusy);
 
   return (
     <StudioControlPanel
@@ -136,35 +132,34 @@ export default function ControlPanel({
                 {RESEARCH_BUTTON}
               </Button>
             ) : null}
-            {bibleStep ? (
+            {planStep ? (
               <Button
                 type="primary"
                 block
                 size="large"
-                loading={bibleBusy}
+                loading={planBusy}
                 disabled={!selectedTopic}
-                onClick={onGenerateBible}
+                onClick={onGeneratePlan}
               >
-                {BIBLE_BUTTON}
+                {PLAN_BUTTON}
               </Button>
             ) : null}
-            {structureStep ? (
+            {castStep ? (
               <Button
                 type="primary"
                 block
                 size="large"
-                loading={structureBusy}
-                disabled={!selectedTopic}
-                onClick={onGenerateStructure}
+                loading={castBusy}
+                disabled={!selectedTopic || !plan}
+                onClick={onGenerateCast}
               >
-                {STRUCTURE_BUTTON}
+                {CAST_BUTTON}
               </Button>
             ) : null}
           </>
         ) : undefined
       }
     >
-      {/* 各步共用这一份 Form，切步只换里面的字段，避免叙述、时态和文风落在 Form 外面。 */}
       <Form
         form={form}
         initialValues={initialValues}
@@ -176,11 +171,10 @@ export default function ControlPanel({
           <>
             <Form.Item
               name="ideaFiles"
-              dependencies={['idea']}
               rules={[
                 {
                   validator: async (_, value: NovelPanelValues['ideaFiles'] | undefined) => {
-                    await requireIdeaOrFile(form.getFieldValue('idea'), value);
+                    await requireSystemFiles(value);
                   },
                 },
               ]}
@@ -193,22 +187,24 @@ export default function ControlPanel({
                 accept={IDEA_FILE_ACCEPT}
                 typeWarning={IDEA_FILE_TYPE_WARNING}
                 isAllowedFile={isAllowedIdeaFile}
-                ariaLabel="上传思路文件"
+                ariaLabel="上传体系设定"
                 disabled={researchBusy}
               />
             </Form.Item>
-            <Form.Item
-              name="idea"
-              label={IDEA_LABEL}
-              dependencies={['ideaFiles']}
-              rules={[
-                {
-                  validator: async (_, value: string | undefined) => {
-                    await requireIdeaOrFile(value, form.getFieldValue('ideaFiles'));
-                  },
-                },
-              ]}
-            >
+            <Form.Item name="planFiles">
+              <ProductDocsUpload
+                max={PLAN_FILE_MAX}
+                label={PLAN_FILE_LABEL}
+                subtitle={PLAN_FILE_SUBTITLE}
+                hint={PLAN_FILE_HINT}
+                accept={IDEA_FILE_ACCEPT}
+                typeWarning={IDEA_FILE_TYPE_WARNING}
+                isAllowedFile={isAllowedIdeaFile}
+                ariaLabel="上传创作方案"
+                disabled={researchBusy}
+              />
+            </Form.Item>
+            <Form.Item name="idea" label={IDEA_LABEL}>
               <Input.TextArea rows={6} placeholder={IDEA_PLACEHOLDER} />
             </Form.Item>
             <Form.Item name="genres" label={GENRE_LABEL}>
@@ -220,18 +216,10 @@ export default function ControlPanel({
                 showSearch={{ optionFilterProp: 'label' }}
               />
             </Form.Item>
-            <Form.Item name="volume" label={VOLUME_LABEL}>
-              <Select options={VOLUME_OPTIONS} />
-            </Form.Item>
-            {volume === 'long' ? (
-              <Form.Item name="longFormat" label={LONG_FORMAT_LABEL}>
-                <Select options={LONG_FORMAT_OPTIONS} />
-              </Form.Item>
-            ) : null}
           </>
         ) : null}
 
-        {bibleStep || structureStep ? (
+        {planStep || castStep || chaptersStep ? (
           <div className={styles.topicBlock}>
             <div className={styles.topicLabel}>{SELECTED_TOPIC_LABEL}</div>
             {selectedTopic ? (
@@ -242,35 +230,12 @@ export default function ControlPanel({
           </div>
         ) : null}
 
-        {bibleStep ? (
-          <>
-            <Form.Item label={NARRATION_TITLE}>
-              <StyleDimensionPicker
-                value={bibleVoiceFocus}
-                hiddenAxisLabels={BIBLE_HIDDEN_AXIS_LABELS}
-                disabled={bibleBusy}
-                onChange={onBibleVoiceFocusChange}
-              />
-            </Form.Item>
-            <Form.Item label={TENSE_LABEL}>
-              <Select
-                value={bibleTense}
-                options={TENSE_OPTIONS}
-                placeholder={TENSE_LABEL}
-                disabled={bibleBusy}
-                onChange={onBibleTenseChange}
-              />
-            </Form.Item>
-          </>
-        ) : null}
-
-        {writeStep && structure ? (
+        {writeStep && plan ? (
           <>
             <div className={styles.styleRow}>
               <Form.Item label={STYLE_LABEL}>
                 <StyleDimensionPicker
                   value={styleSelections}
-                  hiddenAxisLabels={WRITE_HIDDEN_AXIS_LABELS}
                   disabled={writeBusy}
                   onChange={onStyleSelectionsChange}
                 />
@@ -282,8 +247,18 @@ export default function ControlPanel({
                 onPaste={onStyleSelectionsChange}
               />
             </div>
+            <Form.Item label={TENSE_LABEL}>
+              <Select
+                value={tense}
+                options={TENSE_OPTIONS}
+                placeholder={TENSE_LABEL}
+                disabled={writeBusy}
+                onChange={onTenseChange}
+              />
+            </Form.Item>
             <WritingUnitList
-              structure={structure}
+              plan={plan}
+              chapters={chapters}
               selectedUnitIds={selectedUnitIds}
               focusUnitId={focusUnitId}
               onToggle={onToggleWritingUnit}
@@ -291,7 +266,6 @@ export default function ControlPanel({
           </>
         ) : null}
 
-        {/* 只在调研步露出；后续设定/结构/写作仍用同一份已落盘强度。 */}
         {showReasoningEffort && researchStep ? (
           <Form.Item label={REASONING_EFFORT_LABEL}>
             <Select
