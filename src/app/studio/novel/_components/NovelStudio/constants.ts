@@ -174,6 +174,7 @@ export const VOLUME_GEOGRAPHY_LABEL = '范围';
 export const VOLUME_CONFLICT_LABEL = '核心冲突';
 export const VOLUME_OUTCOME_LABEL = '本卷结果';
 export const VOLUME_TARGET_CHARS_LABEL = '目标字数';
+export const VOLUME_TARGET_CHARS_SUFFIX = '字';
 export const VOLUME_CHAPTERS_LABEL = '本卷章卡';
 export const VOLUME_CHAPTERS_BUTTON = '生成本卷章卡';
 export const VOLUME_CHAPTERS_REGENERATE_BUTTON = '重新生成本卷章卡';

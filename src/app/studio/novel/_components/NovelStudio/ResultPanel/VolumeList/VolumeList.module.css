@@ -94,6 +94,16 @@
   gap: 10px;
 }
 
+.targetChars {
+  width: 100%;
+}
+
+.targetChars :global(.ant-input-number) {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
 .titleEditRow {
   display: flex;
   align-items: center;

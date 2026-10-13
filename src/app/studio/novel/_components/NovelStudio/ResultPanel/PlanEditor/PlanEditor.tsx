@@ -2,7 +2,7 @@ import {
   NOVEL_THREAD_COUNT_MAX,
   NOVEL_THREAD_COUNT_MIN,
 } from '@/app/api/studio/novel/_shared/constants';
-import { Button, Card, Input, InputNumber, Popconfirm } from 'antd';
+import { Button, Card, Input, InputNumber, Popconfirm, Space } from 'antd';
 import {
   ADD_THREAD_BUTTON,
   ADD_VOLUME_BUTTON,
@@ -18,6 +18,7 @@ import {
   VOLUME_GEOGRAPHY_LABEL,
   VOLUME_OUTCOME_LABEL,
   VOLUME_TARGET_CHARS_LABEL,
+  VOLUME_TARGET_CHARS_SUFFIX,
   VOLUME_TITLE_PLACEHOLDER,
   VOLUMES_TITLE,
 } from '../../constants';
@@ -214,17 +215,19 @@ export default function PlanEditor({ plan, onChange }: PlanEditorProps) {
                 autoSize={{ minRows: 2, maxRows: 6 }}
                 onChange={(event) => updateVolume(volume.id, { outcome: event.target.value })}
               />
-              <InputNumber
-                min={2000}
-                step={10000}
-                value={volume.targetChars}
-                placeholder={VOLUME_TARGET_CHARS_LABEL}
-                addonAfter="字"
-                onChange={(value) => {
-                  if (typeof value === 'number' && value > 0)
-                    updateVolume(volume.id, { targetChars: value });
-                }}
-              />
+              <Space.Compact className={styles.targetChars} block>
+                <InputNumber
+                  min={2000}
+                  step={10000}
+                  value={volume.targetChars}
+                  placeholder={VOLUME_TARGET_CHARS_LABEL}
+                  onChange={(value) => {
+                    if (typeof value === 'number' && value > 0)
+                      updateVolume(volume.id, { targetChars: value });
+                  }}
+                />
+                <Space.Addon>{VOLUME_TARGET_CHARS_SUFFIX}</Space.Addon>
+              </Space.Compact>
             </div>
           </Card>
         ))}
