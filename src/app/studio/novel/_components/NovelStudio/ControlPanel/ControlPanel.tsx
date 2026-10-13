@@ -17,6 +17,7 @@ import StudioControlPanel, {
 import TopicCardView from '../TopicCardView';
 import {
   CAST_BUTTON,
+  CHAPTERS_BUTTON,
   GENRE_LABEL,
   GENRE_OPTIONS,
   GENRE_PLACEHOLDER,
@@ -71,6 +72,7 @@ type ControlPanelProps = {
   onResearch: () => void;
   onGeneratePlan: () => void;
   onGenerateCast: () => void;
+  onGenerateChapters: () => void;
   onToggleWritingUnit: (unitId: string) => void;
   onStyleSelectionsChange: (next: StyleDimensionSelections) => void;
   onTenseChange: (tense: NovelTense) => void;
@@ -94,6 +96,7 @@ export default function ControlPanel({
   onResearch,
   onGeneratePlan,
   onGenerateCast,
+  onGenerateChapters,
   onToggleWritingUnit,
   onStyleSelectionsChange,
   onTenseChange,
@@ -117,10 +120,14 @@ export default function ControlPanel({
   const planStep = phase === 'plan' || phase === 'planning' || phase === 'planned';
   const castStep = phase === 'cast' || phase === 'casting' || phase === 'casted';
   const chaptersStep = phase === 'chapters' || phase === 'chaptering' || phase === 'chaptered';
+  const chaptersBusy = phase === 'chaptering';
   const writeStep = phase === 'write' || phase === 'writing' || phase === 'written';
-  const showFooter = researchStep || planStep || castStep;
+  const showFooter = researchStep || planStep || castStep || chaptersStep;
   const formDisabled =
-    (researchStep && researchBusy) || (planStep && planBusy) || (writeStep && writeBusy);
+    (researchStep && researchBusy) ||
+    (planStep && planBusy) ||
+    (chaptersStep && chaptersBusy) ||
+    (writeStep && writeBusy);
 
   return (
     <StudioControlPanel
@@ -154,6 +161,18 @@ export default function ControlPanel({
                 onClick={onGenerateCast}
               >
                 {CAST_BUTTON}
+              </Button>
+            ) : null}
+            {chaptersStep ? (
+              <Button
+                type="primary"
+                block
+                size="large"
+                loading={chaptersBusy}
+                disabled={!selectedTopic || !plan}
+                onClick={onGenerateChapters}
+              >
+                {CHAPTERS_BUTTON}
               </Button>
             ) : null}
           </>

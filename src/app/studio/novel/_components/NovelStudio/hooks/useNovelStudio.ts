@@ -17,6 +17,8 @@ import {
   CAST_NO_CAST,
   CAST_REGENERATE_CONFIRM_CONTENT,
   CAST_REGENERATE_CONFIRM_TITLE,
+  CHAPTERS_REGENERATE_CONFIRM_CONTENT,
+  CHAPTERS_REGENERATE_CONFIRM_TITLE,
   CONFIRM_CANCEL,
   CONFIRM_OK,
   COPY_BODY_FAILED,
@@ -751,30 +753,31 @@ export function useNovelStudio(task: NovelTaskDetail) {
     return true;
   }
 
-  async function handleGenerateVolumeChapters(volumeId: string) {
+  /** 为一卷生成章卡。返回 ok 表示这一卷已写入；stop 表示中止或失败，调用方不要继续下一卷。 */
+  async function handleGenerateVolumeChapters(volumeId: string): Promise<'ok' | 'stop'> {
     const currentPlan = planRef.current;
-    if (!currentPlan || !selectedTopic) return;
+    if (!currentPlan || !selectedTopic) return 'stop';
     const castBody = toCastRequest(castRef.current);
     if (!castBody) {
       message.warning(MISSING_CAST_WARNING);
-      return;
+      return 'stop';
     }
     const volume = currentPlan.volumes.find((item) => item.id === volumeId);
-    if (!volume) return;
+    if (!volume) return 'stop';
     const panel = readPanelValues();
     const ideaPayload = await readIdeaPayload(panel);
     if (ideaPayload === 'missing') {
       message.warning(MISSING_IDEA_WARNING);
-      return;
+      return 'stop';
     }
     if (ideaPayload === 'unreadable') {
       message.error(IDEA_FILE_READ_FAILED);
-      return;
+      return 'stop';
     }
     const planFile = await readPlanFile(panel);
     if (planFile === 'unreadable') {
       message.error(PLAN_FILE_READ_FAILED);
-      return;
+      return 'stop';
     }
 
     abortRef.current?.abort();
@@ -814,14 +817,14 @@ export function useNovelStudio(task: NovelTaskDetail) {
         onError: (text) => message.error(text),
       });
       buffer.flushNow();
-      if (controller.signal.aborted) return;
-      if (!receivedDone) return;
+      if (controller.signal.aborted) return 'stop';
+      if (!receivedDone) return 'stop';
 
       const { json } = extractTrailingJsonBlock(buffer.getText());
       const nextCards = parseVolumeChaptersPayload(json);
       if (nextCards.length === 0) {
         message.error(VOLUME_CHAPTERS_FAILED);
-        return;
+        return 'stop';
       }
       const nextChapters = replaceVolumeChapters(
         currentPlan,
@@ -837,16 +840,41 @@ export function useNovelStudio(task: NovelTaskDetail) {
       setFocusUnitId(nextWriting.focusUnitId);
       await persistChapters(nextChapters);
       await persistWrite(nextWriting);
+      return 'ok';
     } catch (err) {
-      if (isAbortError(err) || controller.signal.aborted) return;
+      if (isAbortError(err) || controller.signal.aborted) return 'stop';
       console.error('[novel-studio] volume-chapters', err);
       message.error(err instanceof Error && err.message ? err.message : VOLUME_CHAPTERS_FAILED);
+      return 'stop';
     } finally {
       setGeneratingVolumeId(undefined);
       if (abortRef.current === controller) {
         abortRef.current = null;
         setPhase(areVolumesReadyForWrite(chaptersRef.current) ? 'chaptered' : 'chapters');
       }
+    }
+  }
+
+  /** 左栏生成章卡：先补还没有章卡的卷；每卷都已有时确认后按卷重生成。 */
+  async function handleGenerateChapters() {
+    const currentPlan = planRef.current;
+    if (!currentPlan?.volumes.length || !selectedTopic) return;
+    if (!isCastReady(castRef.current)) {
+      message.warning(MISSING_CAST_WARNING);
+      return;
+    }
+    const missing = volumesMissingChapters(currentPlan, chaptersRef.current);
+    if (missing.length === 0) {
+      const confirmed = await confirmOverwrite(
+        CHAPTERS_REGENERATE_CONFIRM_TITLE,
+        CHAPTERS_REGENERATE_CONFIRM_CONTENT,
+      );
+      if (!confirmed) return;
+    }
+    const targets = missing.length > 0 ? missing : currentPlan.volumes;
+    for (const volume of targets) {
+      const result = await handleGenerateVolumeChapters(volume.id);
+      if (result !== 'ok') return;
     }
   }
 
@@ -1294,6 +1322,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     importCast,
     importChapters,
     handleGenerateVolumeChapters,
+    handleGenerateChapters,
     updateChapter,
     removeChapter,
     handleGenerateWriting,
@@ -1327,6 +1356,14 @@ function pruneChapters(
     return chapters;
   }
   return { volumes };
+}
+
+/** 创作方案里还没有章卡的卷，保持分卷顺序。 */
+function volumesMissingChapters(plan: NovelPlan, chapters: ChaptersSnapshot | undefined) {
+  return plan.volumes.filter((volume) => {
+    const found = chapters?.volumes.find((item) => item.id === volume.id);
+    return !found || found.chapters.length === 0;
+  });
 }
 
 /** 用新章卡覆盖指定卷，其它卷保持原样。 */

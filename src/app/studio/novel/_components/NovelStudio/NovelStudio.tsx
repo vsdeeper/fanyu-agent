@@ -80,6 +80,7 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 onResearch={studio.handleResearch}
                 onGeneratePlan={studio.handleGeneratePlan}
                 onGenerateCast={studio.handleGenerateCast}
+                onGenerateChapters={studio.handleGenerateChapters}
                 onToggleWritingUnit={studio.toggleWritingUnit}
                 onStyleSelectionsChange={studio.updateStyleSelections}
                 onTenseChange={studio.updateTense}
