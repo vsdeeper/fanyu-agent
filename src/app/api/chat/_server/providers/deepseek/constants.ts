@@ -26,6 +26,12 @@ export const DEEPSEEK_UNSUPPORTED_INCLUDES = new Set([
 /** DeepSeek 识图 detail：保留原图档（官方 low/high/original/auto；auto 当前等价 original） */
 export const DEEPSEEK_IMAGE_DETAIL = 'original';
 
+/**
+ * 单次输出上限。上下文 1M 是输入与生成之和，输出参数最高 384K（393216）。
+ * 思考与可见正文都计入该值。未传此参数时，reasoning_effort=max 的默认才是 128K。
+ */
+export const DEEPSEEK_MAX_OUTPUT_TOKENS = 393_216;
+
 /** 读取思考强度：须有 ALS settings；缺省或非 none/low/high/max 时用 high */
 export function getDeepseekReasoningEffort(): DeepseekReasoningEffort {
   const settings = getChatSettings();

@@ -2,6 +2,7 @@ import 'server-only';
 
 import { streamText } from 'ai';
 import { getChatProvider, getModelId } from '@/app/api/chat/_server/providers/config';
+import { DEEPSEEK_MAX_OUTPUT_TOKENS } from '@/app/api/chat/_server/providers/deepseek/constants';
 import { getChatProviderRuntimeFor } from '@/app/api/chat/_server/providers/resolve';
 import { INVALID_JSON } from '@/app/api/studio/_server/constants';
 import {
@@ -28,12 +29,6 @@ import {
   MISSING_VOLUME_CHAPTERS_INPUT,
   MISSING_POLISH_INPUT,
   MISSING_WRITING_INPUT,
-  NOVEL_CAST_MAX_OUTPUT_TOKENS,
-  NOVEL_PLAN_MAX_OUTPUT_TOKENS,
-  NOVEL_POLISH_MAX_OUTPUT_TOKENS,
-  NOVEL_RESEARCH_MAX_OUTPUT_TOKENS,
-  NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS,
-  NOVEL_WRITING_MAX_OUTPUT_TOKENS,
   PLAN_FAILED,
   PLAN_TRUNCATED,
   POLISH_FAILED,
@@ -124,7 +119,6 @@ function createProStream(params: {
   prompt: string;
   pdfParts?: NovelIdeaPdfPart[];
   reasoningEffort?: unknown;
-  maxOutputTokens: number;
   abortSignal: AbortSignal;
   /** 附件说明。有 PDF 时写在正文之前。 */
   attachmentIntro?: string;
@@ -156,7 +150,8 @@ function createProStream(params: {
     instructions: params.instructions,
     messages: [{ role: 'user', content }],
     abortSignal: params.abortSignal,
-    maxOutputTokens: params.maxOutputTokens,
+    // 各步共用官方输出顶。思考与正文同一额度，分档会在写完可见内容前被截断。
+    maxOutputTokens: DEEPSEEK_MAX_OUTPUT_TOKENS,
     providerOptions: { openai: openaiOptions },
   });
 }
@@ -229,7 +224,6 @@ export async function handleNovelBible(req: Request): Promise<Response> {
         ),
         pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
         attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
-        maxOutputTokens: NOVEL_CAST_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });
@@ -273,7 +267,6 @@ export async function handleNovelResearch(req: Request): Promise<Response> {
         ),
         pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
         attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
-        maxOutputTokens: NOVEL_RESEARCH_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });
@@ -323,7 +316,6 @@ export async function handleNovelPlan(req: Request): Promise<Response> {
         ),
         pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
         attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
-        maxOutputTokens: NOVEL_PLAN_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });
@@ -366,7 +358,6 @@ export async function handleNovelVolumeChapters(req: Request): Promise<Response>
         ),
         pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
         attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
-        maxOutputTokens: NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });
@@ -406,7 +397,6 @@ export async function handleNovelWriting(req: Request): Promise<Response> {
       const result = createProStream({
         instructions: WRITING_INSTRUCTIONS,
         prompt: buildWritingPrompt(body),
-        maxOutputTokens: NOVEL_WRITING_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });
@@ -447,7 +437,6 @@ export async function handleNovelPolish(req: Request): Promise<Response> {
       const result = createProStream({
         instructions: POLISH_INSTRUCTIONS,
         prompt: buildPolishPrompt(body),
-        maxOutputTokens: NOVEL_POLISH_MAX_OUTPUT_TOKENS,
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });

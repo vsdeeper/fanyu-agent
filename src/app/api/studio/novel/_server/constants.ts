@@ -17,18 +17,3 @@ export const MISSING_CAST_INPUT = '请先完成创作方案并确认选题';
 export const MISSING_VOLUME_CHAPTERS_INPUT = '请提供有效的卷信息';
 export const MISSING_WRITING_INPUT = '请提供有效的章节写作信息';
 export const MISSING_POLISH_INPUT = '请先写好要润色的正文';
-
-/**
- * 规划步输出上限。
- * 思考模型把 reasoning 与可见正文计入同一 maxOutputTokens；
- * 默认 reasoningEffort=max 时，过小会在写出 JSON 前被 length 截断。
- */
-export const NOVEL_CAST_MAX_OUTPUT_TOKENS = 24576;
-export const NOVEL_RESEARCH_MAX_OUTPUT_TOKENS = 24576;
-export const NOVEL_PLAN_MAX_OUTPUT_TOKENS = 24576;
-/** 一卷章卡可能有几十章，与 reasoning 共用预算，单独加大。 */
-export const NOVEL_VOLUME_CHAPTERS_MAX_OUTPUT_TOKENS = 65536;
-/** 单章正文输出上限；需容纳约 5000 字正文及 reasoning。 */
-export const NOVEL_WRITING_MAX_OUTPUT_TOKENS = 32768;
-/** 润色须整章回写，reasoning 与正文同一预算，与写作同档。 */
-export const NOVEL_POLISH_MAX_OUTPUT_TOKENS = 32768;
