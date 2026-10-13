@@ -1,60 +1,43 @@
+import { useState } from 'react';
 import {
   NOVEL_THREAD_COUNT_MAX,
   NOVEL_THREAD_COUNT_MIN,
 } from '@/app/api/studio/novel/_shared/constants';
-import { Button, Card, Input, InputNumber, Popconfirm, Space } from 'antd';
+import { Button } from 'antd';
 import {
   ADD_THREAD_BUTTON,
   ADD_VOLUME_BUTTON,
-  CONFIRM_CANCEL,
-  DELETE_BUTTON,
-  THREAD_ADVANCE_LABEL,
-  THREAD_CORE_LABEL,
-  THREAD_DELETE_CONFIRM_TITLE,
-  THREAD_NAME_LABEL,
   THREADS_TITLE,
-  VOLUME_CONFLICT_LABEL,
-  VOLUME_DELETE_CONFIRM_TITLE,
-  VOLUME_GEOGRAPHY_LABEL,
-  VOLUME_OUTCOME_LABEL,
-  VOLUME_TARGET_CHARS_LABEL,
-  VOLUME_TARGET_CHARS_SUFFIX,
-  VOLUME_TITLE_PLACEHOLDER,
   VOLUMES_TITLE,
 } from '../../constants';
 import type { NovelPlan, NovelThread, NovelVolumeOutline } from '../../types';
-import styles from '../VolumeList/VolumeList.module.css';
+import ThreadCard from './ThreadCard';
+import VolumeCard from './VolumeCard';
+import { DEFAULT_VOLUME_TARGET_CHARS } from './VolumeCard/utils';
+import styles from './PlanEditor.module.css';
 
 type PlanEditorProps = {
   plan: NovelPlan;
   onChange: (next: NovelPlan) => void;
 };
 
-/** 创作方案：主线与分卷都可直接改。 */
+/** 创作方案：主线与分卷默认只读，点编辑后取消或保存。 */
 export default function PlanEditor({ plan, onChange }: PlanEditorProps) {
-  function updateThread(threadId: string, patch: Partial<NovelThread>) {
+  const [pendingThread, setPendingThread] = useState<NovelThread>();
+  const [pendingVolume, setPendingVolume] = useState<NovelVolumeOutline>();
+  const threadCount = plan.threads.length + (pendingThread ? 1 : 0);
+
+  function saveThread(next: NovelThread) {
     onChange({
       ...plan,
-      threads: plan.threads.map((thread) =>
-        thread.id === threadId ? { ...thread, ...patch } : thread,
-      ),
+      threads: plan.threads.map((thread) => (thread.id === next.id ? next : thread)),
     });
   }
 
-  function updateAdvance(threadId: string, volumeId: string, text: string) {
-    onChange({
-      ...plan,
-      threads: plan.threads.map((thread) => {
-        if (thread.id !== threadId) return thread;
-        const exists = thread.advances.some((advance) => advance.volumeId === volumeId);
-        const advances = exists
-          ? thread.advances.map((advance) =>
-              advance.volumeId === volumeId ? { ...advance, text } : advance,
-            )
-          : [...thread.advances, { volumeId, text }];
-        return { ...thread, advances };
-      }),
-    });
+  function commitPendingThread(next: NovelThread) {
+    if (plan.threads.length >= NOVEL_THREAD_COUNT_MAX) return;
+    onChange({ ...plan, threads: [...plan.threads, next] });
+    setPendingThread(undefined);
   }
 
   function removeThread(threadId: string) {
@@ -63,29 +46,32 @@ export default function PlanEditor({ plan, onChange }: PlanEditorProps) {
   }
 
   function addThread() {
-    if (plan.threads.length >= NOVEL_THREAD_COUNT_MAX) return;
+    if (pendingThread || plan.threads.length >= NOVEL_THREAD_COUNT_MAX) return;
     const id = `thread-${crypto.randomUUID().slice(0, 8)}`;
-    onChange({
-      ...plan,
-      threads: [
-        ...plan.threads,
-        {
-          id,
-          name: '',
-          core: '',
-          advances: plan.volumes.map((volume) => ({ volumeId: volume.id, text: '' })),
-        },
-      ],
+    setPendingThread({
+      id,
+      name: '',
+      core: '',
+      advances: plan.volumes.map((volume) => ({ volumeId: volume.id, text: '' })),
     });
   }
 
-  function updateVolume(volumeId: string, patch: Partial<NovelVolumeOutline>) {
+  function saveVolume(next: NovelVolumeOutline) {
     onChange({
       ...plan,
-      volumes: plan.volumes.map((volume) =>
-        volume.id === volumeId ? { ...volume, ...patch } : volume,
-      ),
+      volumes: plan.volumes.map((volume) => (volume.id === next.id ? next : volume)),
     });
+  }
+
+  function commitPendingVolume(next: NovelVolumeOutline) {
+    onChange({
+      threads: plan.threads.map((thread) => ({
+        ...thread,
+        advances: [...thread.advances, { volumeId: next.id, text: '' }],
+      })),
+      volumes: [...plan.volumes, next],
+    });
+    setPendingVolume(undefined);
   }
 
   function removeVolume(volumeId: string) {
@@ -100,16 +86,15 @@ export default function PlanEditor({ plan, onChange }: PlanEditorProps) {
   }
 
   function addVolume() {
+    if (pendingVolume) return;
     const id = `vol-${crypto.randomUUID().slice(0, 8)}`;
-    onChange({
-      threads: plan.threads.map((thread) => ({
-        ...thread,
-        advances: [...thread.advances, { volumeId: id, text: '' }],
-      })),
-      volumes: [
-        ...plan.volumes,
-        { id, title: '', geography: '', conflict: '', outcome: '', targetChars: 200000 },
-      ],
+    setPendingVolume({
+      id,
+      title: '',
+      geography: '',
+      conflict: '',
+      outcome: '',
+      targetChars: DEFAULT_VOLUME_TARGET_CHARS,
     });
   }
 
@@ -118,55 +103,33 @@ export default function PlanEditor({ plan, onChange }: PlanEditorProps) {
       <p className={styles.sectionTitle}>{THREADS_TITLE}</p>
       <div className={styles.list}>
         {plan.threads.map((thread, index) => (
-          <Card key={thread.id} size="small" className={styles.volumeCard}>
-            <div className={styles.editStack}>
-              <div className={styles.titleEditRow}>
-                <span className={styles.index}>{index + 1}</span>
-                <Input
-                  value={thread.name}
-                  placeholder={THREAD_NAME_LABEL}
-                  onChange={(event) => updateThread(thread.id, { name: event.target.value })}
-                />
-                {plan.threads.length > NOVEL_THREAD_COUNT_MIN ? (
-                  <Popconfirm
-                    title={THREAD_DELETE_CONFIRM_TITLE}
-                    okText={DELETE_BUTTON}
-                    cancelText={CONFIRM_CANCEL}
-                    okButtonProps={{ danger: true }}
-                    onConfirm={() => removeThread(thread.id)}
-                  >
-                    <Button type="text" danger size="small">
-                      {DELETE_BUTTON}
-                    </Button>
-                  </Popconfirm>
-                ) : null}
-              </div>
-              <Input.TextArea
-                value={thread.core}
-                placeholder={THREAD_CORE_LABEL}
-                autoSize={{ minRows: 2, maxRows: 8 }}
-                onChange={(event) => updateThread(thread.id, { core: event.target.value })}
-              />
-              {plan.volumes.map((volume) => {
-                const advance = thread.advances.find((item) => item.volumeId === volume.id);
-                return (
-                  <Input.TextArea
-                    key={volume.id}
-                    value={advance?.text ?? ''}
-                    placeholder={`${THREAD_ADVANCE_LABEL} · ${volume.title || volume.id}`}
-                    autoSize={{ minRows: 2, maxRows: 6 }}
-                    onChange={(event) => updateAdvance(thread.id, volume.id, event.target.value)}
-                  />
-                );
-              })}
-            </div>
-          </Card>
+          <ThreadCard
+            key={thread.id}
+            thread={thread}
+            index={index}
+            volumes={plan.volumes}
+            removable={plan.threads.length > NOVEL_THREAD_COUNT_MIN}
+            onSave={saveThread}
+            onDelete={() => removeThread(thread.id)}
+          />
         ))}
+        {pendingThread ? (
+          <ThreadCard
+            key={pendingThread.id}
+            thread={pendingThread}
+            index={plan.threads.length}
+            volumes={plan.volumes}
+            removable={false}
+            pending
+            onSave={commitPendingThread}
+            onCancelPending={() => setPendingThread(undefined)}
+          />
+        ) : null}
       </div>
       <Button
         color="primary"
         variant="dashed"
-        disabled={plan.threads.length >= NOVEL_THREAD_COUNT_MAX}
+        disabled={threadCount >= NOVEL_THREAD_COUNT_MAX}
         onClick={addThread}
       >
         {ADD_THREAD_BUTTON}
@@ -175,64 +138,33 @@ export default function PlanEditor({ plan, onChange }: PlanEditorProps) {
       <p className={styles.sectionTitle}>{VOLUMES_TITLE}</p>
       <div className={styles.list}>
         {plan.volumes.map((volume, index) => (
-          <Card key={volume.id} size="small" className={styles.volumeCard}>
-            <div className={styles.editStack}>
-              <div className={styles.titleEditRow}>
-                <span className={styles.index}>{index + 1}</span>
-                <Input
-                  value={volume.title}
-                  placeholder={VOLUME_TITLE_PLACEHOLDER}
-                  onChange={(event) => updateVolume(volume.id, { title: event.target.value })}
-                />
-                {plan.volumes.length > 1 ? (
-                  <Popconfirm
-                    title={VOLUME_DELETE_CONFIRM_TITLE}
-                    okText={DELETE_BUTTON}
-                    cancelText={CONFIRM_CANCEL}
-                    okButtonProps={{ danger: true }}
-                    onConfirm={() => removeVolume(volume.id)}
-                  >
-                    <Button type="text" danger size="small">
-                      {DELETE_BUTTON}
-                    </Button>
-                  </Popconfirm>
-                ) : null}
-              </div>
-              <Input
-                value={volume.geography}
-                placeholder={VOLUME_GEOGRAPHY_LABEL}
-                onChange={(event) => updateVolume(volume.id, { geography: event.target.value })}
-              />
-              <Input.TextArea
-                value={volume.conflict}
-                placeholder={VOLUME_CONFLICT_LABEL}
-                autoSize={{ minRows: 2, maxRows: 6 }}
-                onChange={(event) => updateVolume(volume.id, { conflict: event.target.value })}
-              />
-              <Input.TextArea
-                value={volume.outcome ?? ''}
-                placeholder={VOLUME_OUTCOME_LABEL}
-                autoSize={{ minRows: 2, maxRows: 6 }}
-                onChange={(event) => updateVolume(volume.id, { outcome: event.target.value })}
-              />
-              <Space.Compact className={styles.targetChars} block>
-                <InputNumber
-                  min={2000}
-                  step={10000}
-                  value={volume.targetChars}
-                  placeholder={VOLUME_TARGET_CHARS_LABEL}
-                  onChange={(value) => {
-                    if (typeof value === 'number' && value > 0)
-                      updateVolume(volume.id, { targetChars: value });
-                  }}
-                />
-                <Space.Addon>{VOLUME_TARGET_CHARS_SUFFIX}</Space.Addon>
-              </Space.Compact>
-            </div>
-          </Card>
+          <VolumeCard
+            key={volume.id}
+            volume={volume}
+            index={index}
+            removable={plan.volumes.length > 1}
+            onSave={saveVolume}
+            onDelete={() => removeVolume(volume.id)}
+          />
         ))}
+        {pendingVolume ? (
+          <VolumeCard
+            key={pendingVolume.id}
+            volume={pendingVolume}
+            index={plan.volumes.length}
+            removable={false}
+            pending
+            onSave={commitPendingVolume}
+            onCancelPending={() => setPendingVolume(undefined)}
+          />
+        ) : null}
       </div>
-      <Button color="primary" variant="dashed" onClick={addVolume}>
+      <Button
+        color="primary"
+        variant="dashed"
+        disabled={Boolean(pendingVolume)}
+        onClick={addVolume}
+      >
         {ADD_VOLUME_BUTTON}
       </Button>
     </div>

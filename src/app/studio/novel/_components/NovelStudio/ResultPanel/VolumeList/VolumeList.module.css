@@ -88,38 +88,6 @@
   padding-inline: 4px;
 }
 
-.editStack {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.targetChars {
-  width: 100%;
-}
-
-.targetChars :global(.ant-input-number) {
-  flex: 1;
-  min-width: 0;
-  width: auto;
-}
-
-.titleEditRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.titleInput {
-  flex: 1;
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
 .chaptersBlock {
   margin-top: 12px;
   padding-top: 12px;
