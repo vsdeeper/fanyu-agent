@@ -2,12 +2,15 @@ import 'server-only';
 
 import { z } from 'zod';
 import { isNovelIdeaFile, NOVEL_MAX_IDEA_FILES } from '../_shared/idea-file';
+import { normalizeNovelPlan, normalizeVolumeOutline } from '../_shared/normalize-plan';
 import type {
   NovelCastRequest,
+  NovelPlan,
   NovelPlanRequest,
   NovelPolishRequest,
   NovelResearchRequest,
   NovelVolumeChaptersRequest,
+  NovelVolumeOutline,
   NovelWritingRequest,
 } from '../_shared/types';
 
@@ -78,31 +81,21 @@ const castSchema = z.object({
   relations: z.array(relationSchema),
 });
 
-const advanceSchema = z.object({
-  volumeId: z.string().trim().min(1),
-  text: z.string().trim().min(1),
-});
+/** 收成指定类型；形状不对时让整份请求失败。旧的逐卷推进和本卷结果在这里被收掉。 */
+function zodNormalize<T>(parse: (value: unknown) => T | null) {
+  return z.unknown().transform((value, ctx): T => {
+    const parsed = parse(value);
+    if (!parsed) {
+      ctx.addIssue({ code: 'custom', message: 'invalid' });
+      return z.NEVER;
+    }
+    return parsed;
+  });
+}
 
-const threadSchema = z.object({
-  id: z.string().trim().min(1),
-  name: z.string().trim().min(1),
-  core: z.string().trim().min(1),
-  advances: z.array(advanceSchema),
-});
+const volumeOutlineSchema = zodNormalize<NovelVolumeOutline>(normalizeVolumeOutline);
 
-const volumeOutlineSchema = z.object({
-  id: z.string().trim().min(1),
-  title: z.string().trim().min(1),
-  geography: z.string().trim().min(1),
-  conflict: z.string().trim().min(1),
-  outcome: optionalText,
-  targetChars: z.number().int().positive(),
-});
-
-const planSchema = z.object({
-  threads: z.array(threadSchema).min(1),
-  volumes: z.array(volumeOutlineSchema).min(1),
-});
+const planSchema = zodNormalize<NovelPlan>(normalizeNovelPlan);
 
 const researchSchema = z.object({
   ...ideaSourceSchema,

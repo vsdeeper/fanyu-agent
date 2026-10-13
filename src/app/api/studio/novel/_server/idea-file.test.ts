@@ -116,16 +116,21 @@ describe('buildResearchPrompt', () => {
 
 describe('buildCastPrompt', () => {
   const plan = {
-    threads: [
-      {
-        id: 't1',
-        name: '院子',
-        core: '停电夜里把话说完',
-        advances: [{ volumeId: 'v1', text: '灯灭了' }],
-      },
-    ],
+    worldview: { orders: [], hiddenTruth: '', assets: [] },
+    threads: [{ id: 't1', name: '院子', core: '停电夜里把话说完' }],
+    ending: '',
+    theme: '',
     volumes: [
-      { id: 'v1', title: '院子', geography: '夏天', conflict: '家里人不说', targetChars: 20000 },
+      {
+        id: 'v1',
+        title: '院子',
+        geography: '夏天',
+        conflict: '家里人不说',
+        relations: '',
+        assets: [],
+        hook: '',
+        targetChars: 20000,
+      },
     ],
   };
 

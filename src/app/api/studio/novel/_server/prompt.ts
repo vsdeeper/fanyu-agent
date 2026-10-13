@@ -15,6 +15,7 @@ import type {
   NovelThread,
   NovelVolumeChaptersRequest,
   NovelVolumeOutline,
+  NovelWorldview,
   NovelWritingRequest,
 } from '../_shared/types';
 
@@ -114,27 +115,60 @@ export function formatCastPrompt(cast: NovelCast): string {
   return ['【角色设定】', '人物：', characters, '关系：', relations].join('\n');
 }
 
-/** 把创作方案压成后续步骤共用的文本。 */
-export function formatPlanPrompt(plan: NovelPlan): string {
-  const volumeTitle = new Map(plan.volumes.map((volume) => [volume.id, volume.title]));
-  const threads = plan.threads.map((thread) => formatThread(thread, volumeTitle)).join('\n');
-  const volumes = plan.volumes
-    .map(
-      (volume, index) =>
-        `${index + 1}. [${volume.id}] ${volume.title}｜范围：${volume.geography}｜冲突：${volume.conflict}｜本卷结果：${volume.outcome?.trim() || '未写'}｜目标 ${volume.targetChars} 字`,
-    )
-    .join('\n');
-  return ['【创作方案】', '主线：', threads || '无', '分卷：', volumes || '无'].join('\n');
+/** 把世界观压成后续步骤能读的短文本。 */
+function formatWorldview(worldview: NovelWorldview): string {
+  const orders =
+    worldview.orders.length > 0
+      ? worldview.orders
+          .map((order) => {
+            const entries = order.entries
+              .map((entry) => `  - ${entry.name}：${entry.rule}`)
+              .join('\n');
+            return `- ${order.name}：${order.question}${entries ? `\n${entries}` : ''}`;
+          })
+          .join('\n')
+      : '无';
+  const assets =
+    worldview.assets.length > 0
+      ? worldview.assets
+          .map((group) => `- ${group.category}：${group.items.join('、') || '无'}`)
+          .join('\n')
+      : '无';
+  return [
+    '世界观：',
+    '秩序：',
+    orders,
+    `隐藏真相：${worldview.hiddenTruth.trim() || '未写'}`,
+    '物质基础：',
+    assets,
+  ].join('\n');
 }
 
-function formatThread(thread: NovelThread, volumeTitle: Map<string, string>): string {
-  const advances = thread.advances
-    .map((advance) => {
-      const title = volumeTitle.get(advance.volumeId) ?? advance.volumeId;
-      return `  - ${title}：${advance.text}`;
-    })
+function formatVolumeAssets(volume: NovelVolumeOutline): string {
+  if (volume.assets.length === 0) return '无';
+  return volume.assets.map((asset) => `${asset.name}（${asset.use}）`).join('；');
+}
+
+/** 把创作方案压成后续步骤共用的文本。 */
+export function formatPlanPrompt(plan: NovelPlan): string {
+  const threads = plan.threads.map((thread) => formatThread(thread)).join('\n');
+  const volumes = plan.volumes
+    .map((volume, index) => `${index + 1}. ${formatVolumeBody(volume)}`)
     .join('\n');
-  return `- ${thread.name}：${thread.core}${advances ? `\n${advances}` : ''}`;
+  return [
+    '【创作方案】',
+    formatWorldview(plan.worldview),
+    '主线：',
+    threads || '无',
+    `终局：${plan.ending.trim() || '未写'}`,
+    `主题：${plan.theme.trim() || '未写'}`,
+    '分卷：',
+    volumes || '无',
+  ].join('\n');
+}
+
+function formatThread(thread: NovelThread): string {
+  return `- ${thread.name}：${thread.core}`;
 }
 
 /** 按目标字数给出本卷应铺满的章数区间。 */
@@ -147,8 +181,12 @@ export function chapterCountHint(targetChars: number): string {
   return '按本卷冲突从开卷写到交给下一卷，单章约 2000～5000 字';
 }
 
+function formatVolumeBody(volume: NovelVolumeOutline): string {
+  return `[${volume.id}] ${volume.title}｜地图：${volume.geography}｜冲突：${volume.conflict}｜人物推进：${volume.relations.trim() || '未写'}｜要素：${formatVolumeAssets(volume)}｜卷末钩子：${volume.hook.trim() || '未写'}｜目标 ${volume.targetChars} 字`;
+}
+
 function formatVolumeLine(volume: NovelVolumeOutline): string {
-  return `- [${volume.id}] ${volume.title}｜范围：${volume.geography}｜冲突：${volume.conflict}｜本卷结果：${volume.outcome?.trim() || '未写'}｜目标 ${volume.targetChars} 字`;
+  return `- ${formatVolumeBody(volume)}`;
 }
 
 /** 拼装选题调研用户提示。 */
@@ -185,7 +223,7 @@ export function buildPlanPrompt(
     `类型：${body.topic.genreVolume}`,
     `为什么值得写：${body.topic.why}`,
     `故事核：${body.topic.core}${risk}`,
-    '请输出 2～4 条主线与分卷（约 5～8 卷，含终卷；已写明的保持，未写明的按需扩展；不要写章节），末尾附 JSON。',
+    '请输出世界观、2～4 条主线、终局、主题与分卷（约 5～8 卷，含终卷；已写明的保持，未写明的按需扩展；不要写章节），末尾附 JSON。',
   );
   return lines.join('\n');
 }
@@ -225,10 +263,7 @@ export function buildVolumeChaptersPrompt(
     body.siblingVolumes && body.siblingVolumes.length > 0
       ? ['同书其它卷：', ...body.siblingVolumes.map(formatVolumeLine)].join('\n')
       : '同书其它卷：无';
-  const threadLines = body.plan.threads.map((thread) => {
-    const here = thread.advances.find((advance) => advance.volumeId === body.volume.id);
-    return `- ${thread.name}：${thread.core}${here ? `｜本卷推进：${here.text}` : ''}`;
-  });
+  const threadLines = body.plan.threads.map((thread) => `- ${thread.name}：${thread.core}`);
   const lines: string[] = [];
   pushFileBlock(lines, '体系设定', systemFile);
   pushFileBlock(lines, '创作方案文件', planFile);
@@ -240,9 +275,11 @@ export function buildVolumeChaptersPrompt(
     threadLines.join('\n') || '无',
     `本卷 id：${body.volume.id}`,
     `本卷标题：${body.volume.title}`,
-    `范围：${body.volume.geography}`,
+    `地图：${body.volume.geography}`,
     `核心冲突：${body.volume.conflict}`,
-    `本卷结果：${body.volume.outcome?.trim() || '未写'}`,
+    `人物推进：${body.volume.relations.trim() || '未写'}`,
+    `本卷要素：${formatVolumeAssets(body.volume)}`,
+    `卷末钩子：${body.volume.hook.trim() || '未写'}`,
     `目标字数：${body.volume.targetChars}`,
     siblings,
     `请为本卷一次出齐全部章卡（${chapterCountHint(body.volume.targetChars)}）。场景和事件写成一小段，末尾附 chapters JSON。`,

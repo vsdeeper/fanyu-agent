@@ -48,19 +48,50 @@ export type NovelCast = {
   relations: NovelRelation[];
 };
 
-/** 一条主线在某一卷的推进。 */
-export type NovelThreadAdvance = {
-  volumeId: string;
-  text: string;
+/** 一层秩序里的一条规则。 */
+export type NovelWorldEntry = {
+  id: string;
+  name: string;
+  /** 这条规则怎么运作。 */
+  rule: string;
 };
 
-/** 贯穿全书的主线。 */
+/** 一层秩序。地理层、制度、阶层或时间都用这一槽。 */
+export type NovelWorldOrder = {
+  id: string;
+  name: string;
+  /** 这一层要回答的问题。 */
+  question: string;
+  entries: NovelWorldEntry[];
+};
+
+/** 按功能归类的物质基础。没有可列举的事物时可以不写。 */
+export type NovelWorldAssetGroup = {
+  id: string;
+  /** 功能，由这个故事自拟。 */
+  category: string;
+  items: string[];
+};
+
+/** 世界观：秩序、隐藏真相与物质基础。 */
+export type NovelWorldview = {
+  orders: NovelWorldOrder[];
+  hiddenTruth: string;
+  assets: NovelWorldAssetGroup[];
+};
+
+/** 贯穿全书的主线。不含逐卷推进。 */
 export type NovelThread = {
   id: string;
   name: string;
-  /** 核心悬念或核心矛盾。 */
+  /** 这条线贯穿全书的走向。 */
   core: string;
-  advances: NovelThreadAdvance[];
+};
+
+/** 本卷动用的设定要素，以及它在情节里怎么被使用。 */
+export type NovelVolumeAsset = {
+  name: string;
+  use: string;
 };
 
 /** 分卷地图上的一卷，尚不含章。 */
@@ -70,14 +101,23 @@ export type NovelVolumeOutline = {
   /** 地点、地域或时间跨度。 */
   geography: string;
   conflict: string;
-  /** 这一卷结束时多出来的能力、关系或状态。旧快照可能还没有。 */
-  outcome?: string;
+  /** 本卷人物与关系怎么变。 */
+  relations: string;
+  /** 本卷动用的设定要素。可以空。 */
+  assets: NovelVolumeAsset[];
+  /** 卷末钩子：发现、反转，或交给下一卷的问题。 */
+  hook: string;
   targetChars: number;
 };
 
-/** 创作方案：主线与分卷。 */
+/** 创作方案：世界观、主线与分卷。 */
 export type NovelPlan = {
+  worldview: NovelWorldview;
   threads: NovelThread[];
+  /** 终局：谁做了什么选择，旧秩序怎么变。 */
+  ending: string;
+  /** 一句话主题。 */
+  theme: string;
   volumes: NovelVolumeOutline[];
 };
 

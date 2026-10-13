@@ -9,19 +9,17 @@ import {
 import {
   CONFIRM_CANCEL,
   DELETE_BUTTON,
-  THREAD_ADVANCE_LABEL,
   THREAD_CORE_LABEL,
   THREAD_DELETE_CONFIRM_TITLE,
   THREAD_NAME_LABEL,
 } from '../../../constants';
-import type { NovelThread, NovelVolumeOutline } from '../../../types';
+import type { NovelThread } from '../../../types';
 import styles from '../card.module.css';
 import { isSavableThread, threadToDraft, trimThread } from './utils';
 
 type ThreadCardProps = {
   thread: NovelThread;
   index: number;
-  volumes: NovelVolumeOutline[];
   removable: boolean;
   /** 尚未写入方案的新主线；取消即丢弃。 */
   pending?: boolean;
@@ -34,20 +32,18 @@ type ThreadCardProps = {
 export default function ThreadCard({
   thread,
   index,
-  volumes,
   removable,
   pending = false,
   onSave,
   onDelete,
   onCancelPending,
 }: ThreadCardProps) {
-  const volumeIds = volumes.map((volume) => volume.id);
   const [editing, setEditing] = useState(pending);
-  const [draft, setDraft] = useState(() => threadToDraft(thread, volumeIds));
-  const canSave = isSavableThread(draft, volumeIds);
+  const [draft, setDraft] = useState(() => threadToDraft(thread));
+  const canSave = isSavableThread(draft);
 
   function startEdit() {
-    setDraft(threadToDraft(thread, volumeIds));
+    setDraft(threadToDraft(thread));
     setEditing(true);
   }
 
@@ -61,12 +57,8 @@ export default function ThreadCard({
 
   function saveEdit() {
     if (!canSave) return;
-    onSave(trimThread(thread.id, draft, volumeIds));
+    onSave(trimThread(thread.id, draft));
     setEditing(false);
-  }
-
-  function setAdvance(volumeId: string, text: string) {
-    setDraft({ ...draft, advances: { ...draft.advances, [volumeId]: text } });
   }
 
   if (editing) {
@@ -91,19 +83,6 @@ export default function ThreadCard({
               onChange={(event) => setDraft({ ...draft, core: event.target.value })}
             />
           </div>
-          {volumes.map((volume) => (
-            <div key={volume.id} className={styles.field}>
-              <p className={styles.fieldLabel}>
-                {THREAD_ADVANCE_LABEL} · {volume.title || volume.id}
-              </p>
-              <Input.TextArea
-                value={draft.advances[volume.id] ?? ''}
-                placeholder={`${THREAD_ADVANCE_LABEL} · ${volume.title || volume.id}`}
-                autoSize={{ minRows: 2, maxRows: 6 }}
-                onChange={(event) => setAdvance(volume.id, event.target.value)}
-              />
-            </div>
-          ))}
           <div className={styles.actions}>
             <Button size="small" onClick={cancelEdit}>
               {CANCEL_BUTTON}
@@ -151,17 +130,6 @@ export default function ThreadCard({
           <p className={styles.readLabel}>{THREAD_CORE_LABEL}</p>
           <p className={styles.readText}>{thread.core}</p>
         </div>
-        {volumes.map((volume) => {
-          const advance = thread.advances.find((item) => item.volumeId === volume.id);
-          return (
-            <div key={volume.id}>
-              <p className={styles.readLabel}>
-                {THREAD_ADVANCE_LABEL} · {volume.title || volume.id}
-              </p>
-              <p className={styles.readText}>{advance?.text ?? ''}</p>
-            </div>
-          );
-        })}
       </div>
     </StudioCard>
   );

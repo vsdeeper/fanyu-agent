@@ -133,34 +133,85 @@ export function buildCastMarkdown(cast: CastStepSnapshot): string {
   return appendExportEnvelope(markdown, 'cast', cast);
 }
 
+/** 把世界观收成 Markdown：秩序、隐藏真相、物质基础。 */
+function formatWorldviewMarkdown(plan: PlanStepSnapshot): string {
+  const orders =
+    plan.worldview.orders.length > 0
+      ? plan.worldview.orders
+          .map((order) => {
+            const entries = order.entries
+              .map((entry) => `- ${entry.name}：${entry.rule}`)
+              .join('\n');
+            return [`### ${order.name}`, '', order.question, '', entries || '无'].join('\n');
+          })
+          .join('\n\n')
+      : '无';
+  const assets =
+    plan.worldview.assets.length > 0
+      ? plan.worldview.assets
+          .map(
+            (group) =>
+              `#### ${group.category}\n\n${group.items.map((item) => `- ${item}`).join('\n')}`,
+          )
+          .join('\n\n')
+      : '无';
+  return [
+    orders,
+    '',
+    `### 隐藏真相`,
+    '',
+    plan.worldview.hiddenTruth.trim() || '未写',
+    '',
+    `### 物质基础`,
+    '',
+    assets,
+  ].join('\n');
+}
+
 /** 把创作方案整理成人可读的 Markdown。 */
 export function buildPlanMarkdown(plan: PlanStepSnapshot): string {
-  const volumeTitle = new Map(plan.volumes.map((volume) => [volume.id, volume.title]));
   const threads = plan.threads
-    .map((thread) => {
-      const advances = thread.advances
-        .map(
-          (advance) =>
-            `- ${volumeTitle.get(advance.volumeId) ?? advance.volumeId}：${advance.text}`,
-        )
-        .join('\n');
-      return [`### ${thread.name}`, '', thread.core, '', advances].join('\n');
-    })
+    .map((thread) => [`### ${thread.name}`, '', thread.core].join('\n'))
     .join('\n\n');
   const volumes = plan.volumes
-    .map(
-      (volume, index) =>
-        `### 第${toChineseNumeral(index + 1)}卷　${volume.title}\n\n- 范围：${volume.geography}\n- 核心冲突：${volume.conflict}\n- 本卷结果：${volume.outcome?.trim() || '未写'}\n- 目标字数：${volume.targetChars}`,
-    )
+    .map((volume, index) => {
+      const assets =
+        volume.assets.length > 0
+          ? volume.assets.map((asset) => `  - ${asset.name}：${asset.use}`).join('\n')
+          : '  无';
+      return [
+        `### 第${toChineseNumeral(index + 1)}卷　${volume.title}`,
+        '',
+        `- 地图：${volume.geography}`,
+        `- 核心冲突：${volume.conflict}`,
+        `- 人物推进：${volume.relations.trim() || '未写'}`,
+        `- 本卷要素：`,
+        assets,
+        `- 卷末钩子：${volume.hook.trim() || '未写'}`,
+        `- 目标字数：${volume.targetChars}`,
+      ].join('\n');
+    })
     .join('\n\n');
   const markdown = [
     `# 创作方案`,
+    '',
+    `## 世界观`,
+    '',
+    formatWorldviewMarkdown(plan),
     '',
     `## 核心主线`,
     '',
     threads,
     '',
-    `## 分卷结构`,
+    `### 终局`,
+    '',
+    plan.ending.trim() || '未写',
+    '',
+    `### 主题`,
+    '',
+    plan.theme.trim() || '未写',
+    '',
+    `## 分卷设计与卷钩子`,
     '',
     volumes,
   ].join('\n');

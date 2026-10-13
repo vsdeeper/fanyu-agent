@@ -738,7 +738,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
         ...(planFile ? { planFile } : {}),
         ...(panel.genres.length ? { genres: panel.genres } : {}),
         topic: selectedTopic,
-        plan: { threads: currentPlan.threads, volumes: currentPlan.volumes },
+        plan: planRequestBody(currentPlan),
       },
       buffer,
       CAST_FAILED,
@@ -839,7 +839,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
           withChatSettingsBody({
             reasoningEffort: reasoningEffortRef.current,
             topic: selectedTopic,
-            plan: { threads: currentPlan.threads, volumes: currentPlan.volumes },
+            plan: planRequestBody(currentPlan),
             cast: castBody,
             ...ideaPayload,
             ...(planFile ? { planFile } : {}),
@@ -1168,7 +1168,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
             reasoningEffort: reasoningEffortRef.current,
             unitId,
             topic: selectedTopic,
-            plan: { threads: currentPlan.threads, volumes: currentPlan.volumes },
+            plan: planRequestBody(currentPlan),
             cast: castBody,
             tense: currentWriting.tense,
             ...(stylePrompt ? { stylePrompt } : {}),
@@ -1374,6 +1374,17 @@ export function useNovelStudio(task: NovelTaskDetail) {
     updateWritingBody,
     updateStyleSelections,
     updateTense,
+  };
+}
+
+/** 请求体只带方案三块，不带流式过程文案。 */
+function planRequestBody(plan: NovelPlan): NovelPlan {
+  return {
+    worldview: plan.worldview,
+    threads: plan.threads,
+    ending: plan.ending,
+    theme: plan.theme,
+    volumes: plan.volumes,
   };
 }
 

@@ -11,7 +11,12 @@ import type {
   NovelRelationArc,
   NovelTense,
   NovelThread,
+  NovelVolumeAsset,
   NovelVolumeOutline,
+  NovelWorldAssetGroup,
+  NovelWorldEntry,
+  NovelWorldOrder,
+  NovelWorldview,
 } from '@/app/api/studio/novel/_shared/types';
 import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
 import type { StyleDimensionSelections } from '@/app/studio/_components/StyleDimensionPicker';
@@ -46,7 +51,12 @@ export type {
   NovelRelationArc,
   NovelTense,
   NovelThread,
+  NovelVolumeAsset,
   NovelVolumeOutline,
+  NovelWorldAssetGroup,
+  NovelWorldEntry,
+  NovelWorldOrder,
+  NovelWorldview,
 };
 
 export type { StyleDimensionSelections };

@@ -40,21 +40,30 @@ const cast: CastStepSnapshot = {
 };
 
 const plan: PlanStepSnapshot = {
-  threads: [
-    {
-      id: 't1',
-      name: '旧信',
-      core: '一封没寄出的信',
-      advances: [{ volumeId: 'v1', text: '信出现' }],
-    },
-  ],
+  worldview: {
+    orders: [
+      {
+        id: 'o1',
+        name: '县城',
+        question: '谁把旧事说完',
+        entries: [{ id: 'e1', name: '家里人', rule: '先修灯' }],
+      },
+    ],
+    hiddenTruth: '信是父亲写的',
+    assets: [{ id: 'a1', category: '信件', items: ['旧信'] }],
+  },
+  threads: [{ id: 't1', name: '旧信', core: '一封没寄出的信' }],
+  ending: '信被说开',
+  theme: '隐瞒比停电更黑',
   volumes: [
     {
       id: 'v1',
       title: '县城',
       geography: '夏天',
       conflict: '家里人不说',
-      outcome: '信被说开',
+      relations: '终于对上话',
+      assets: [{ name: '旧信', use: '被找到' }],
+      hook: '信被说开',
       targetChars: 10000,
     },
   ],

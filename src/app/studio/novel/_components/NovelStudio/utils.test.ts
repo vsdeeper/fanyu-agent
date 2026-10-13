@@ -19,17 +19,31 @@ import {
 } from './utils';
 
 const plan: NovelPlan = {
-  threads: [
-    {
-      id: 't1',
-      name: '旧信',
-      core: '一封没寄出的信',
-      advances: [{ volumeId: 'v1', text: '信出现' }],
-    },
-  ],
+  worldview: { orders: [], hiddenTruth: '', assets: [] },
+  threads: [{ id: 't1', name: '旧信', core: '一封没寄出的信' }],
+  ending: '',
+  theme: '',
   volumes: [
-    { id: 'v1', title: '县城', geography: '夏天', conflict: '家里人不说', targetChars: 10000 },
-    { id: 'v2', title: '城里', geography: '秋天', conflict: '信被抢走', targetChars: 10000 },
+    {
+      id: 'v1',
+      title: '县城',
+      geography: '夏天',
+      conflict: '家里人不说',
+      relations: '',
+      assets: [],
+      hook: '',
+      targetChars: 10000,
+    },
+    {
+      id: 'v2',
+      title: '城里',
+      geography: '秋天',
+      conflict: '信被抢走',
+      relations: '',
+      assets: [],
+      hook: '',
+      targetChars: 10000,
+    },
   ],
 };
 
@@ -76,29 +90,39 @@ describe('readChaptersStepSnapshot', () => {
 });
 
 describe('isPlanReady', () => {
-  it('主线 2～4 条且每卷写了本卷结果才算可进入下一步', () => {
+  it('秩序、隐藏真相、终局、主题、主线和每卷钩子都写了才算可进入下一步', () => {
     const ready: NovelPlan = {
-      threads: [
-        plan.threads[0]!,
-        {
-          id: 't2',
-          name: '敲门的人',
-          core: '门外是谁',
-          advances: [
-            { volumeId: 'v1', text: '有人敲门' },
-            { volumeId: 'v2', text: '人进了屋' },
-          ],
-        },
-      ],
-      volumes: plan.volumes.map((volume) => ({ ...volume, outcome: '话说开了' })),
+      worldview: {
+        orders: [
+          {
+            id: 'o1',
+            name: '县城',
+            question: '谁把旧事说完',
+            entries: [{ id: 'e1', name: '家里人', rule: '先修灯，再说话' }],
+          },
+        ],
+        hiddenTruth: '信是父亲写的',
+        assets: [],
+      },
+      threads: [plan.threads[0]!, { id: 't2', name: '敲门的人', core: '门外是谁' }],
+      ending: '信被说开',
+      theme: '隐瞒比停电更黑',
+      volumes: plan.volumes.map((volume) => ({
+        ...volume,
+        relations: '终于把话说开',
+        hook: '门外还有人',
+      })),
     };
     expect(isPlanReady(ready)).toBe(true);
     expect(isPlanReady(plan)).toBe(false);
     expect(isFreshPlanComplete(plan)).toBe(false);
     expect(isFreshPlanComplete(ready)).toBe(true);
-    expect(isPlanReady({ ...ready, threads: [{ ...ready.threads[0]!, advances: [] }] })).toBe(
-      false,
-    );
+    expect(
+      isPlanReady({
+        ...ready,
+        volumes: ready.volumes.map((volume) => ({ ...volume, hook: '' })),
+      }),
+    ).toBe(false);
   });
 });
 
@@ -215,8 +239,52 @@ describe('parseCastPayload', () => {
 describe('parsePlanPayload', () => {
   it('要求主线和分卷都在', () => {
     expect(parsePlanPayload(plan)?.volumes).toHaveLength(2);
-    expect(parsePlanPayload(plan)?.volumes[0]?.outcome).toBe('');
+    expect(parsePlanPayload(plan)?.volumes[0]?.hook).toBe('');
     expect(parsePlanPayload({ threads: [], volumes: plan.volumes })).toBeNull();
+  });
+
+  it('把旧的本卷结果和逐卷推进收成卷末钩子', () => {
+    const parsed = parsePlanPayload({
+      threads: [
+        {
+          id: 't1',
+          name: '旧信',
+          core: '一封信',
+          advances: [
+            { volumeId: 'v1', text: '信出现' },
+            { volumeId: 'v2', text: '信被抢走' },
+          ],
+        },
+        {
+          id: 't2',
+          name: '敲门',
+          core: '门外是谁',
+          advances: [
+            { volumeId: 'v1', text: '有人敲门' },
+            { volumeId: 'v2', text: '人进了屋' },
+          ],
+        },
+      ],
+      volumes: [
+        {
+          id: 'v1',
+          title: '县城',
+          geography: '夏天',
+          conflict: '不说',
+          outcome: '话说开了',
+          targetChars: 10000,
+        },
+        { id: 'v2', title: '城里', geography: '秋天', conflict: '信被抢走', targetChars: 10000 },
+      ],
+    });
+    expect(parsed?.threads[0]).toEqual({ id: 't1', name: '旧信', core: '一封信' });
+    expect(parsed?.volumes[0]?.hook).toBe('话说开了');
+    expect(parsed?.volumes[1]?.hook).toBe('信被抢走\n人进了屋');
+    expect(parsed?.worldview).toEqual({ orders: [], hiddenTruth: '', assets: [] });
+    expect(parsed?.ending).toBe('');
+    expect(parsed?.theme).toBe('');
+    expect(parsed?.volumes[0]?.relations).toBe('');
+    expect(parsed?.volumes[0]?.assets).toEqual([]);
   });
 });
 

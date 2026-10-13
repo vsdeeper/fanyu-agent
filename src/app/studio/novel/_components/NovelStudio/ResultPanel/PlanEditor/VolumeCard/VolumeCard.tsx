@@ -7,19 +7,31 @@ import {
   SAVE_BUTTON,
 } from '@/app/studio/_components/StudioCard/constants';
 import {
+  ADD_VOLUME_ASSET_BUTTON,
   CONFIRM_CANCEL,
   DELETE_BUTTON,
+  EMPTY_FIELD_TEXT,
+  VOLUME_ASSET_NAME_LABEL,
+  VOLUME_ASSET_USE_LABEL,
+  VOLUME_ASSETS_LABEL,
   VOLUME_CONFLICT_LABEL,
   VOLUME_DELETE_CONFIRM_TITLE,
   VOLUME_GEOGRAPHY_LABEL,
-  VOLUME_OUTCOME_LABEL,
+  VOLUME_HOOK_LABEL,
+  VOLUME_RELATIONS_LABEL,
   VOLUME_TARGET_CHARS_LABEL,
   VOLUME_TARGET_CHARS_SUFFIX,
   VOLUME_TITLE_PLACEHOLDER,
 } from '../../../constants';
 import type { NovelVolumeOutline } from '../../../types';
 import styles from '../card.module.css';
-import { isSavableVolume, trimVolume, VOLUME_TARGET_CHARS_MIN, volumeToDraft } from './utils';
+import {
+  isSavableVolume,
+  trimVolume,
+  VOLUME_TARGET_CHARS_MIN,
+  volumeToDraft,
+  type VolumeAssetDraft,
+} from './utils';
 
 type VolumeCardProps = {
   volume: NovelVolumeOutline;
@@ -66,6 +78,19 @@ export default function VolumeCard({
     setEditing(false);
   }
 
+  function setAsset(index: number, patch: Partial<VolumeAssetDraft>) {
+    setDraft({
+      ...draft,
+      assets: draft.assets.map((asset, assetIndex) =>
+        assetIndex === index ? { ...asset, ...patch } : asset,
+      ),
+    });
+  }
+
+  function removeAsset(index: number) {
+    setDraft({ ...draft, assets: draft.assets.filter((_, assetIndex) => assetIndex !== index) });
+  }
+
   if (editing) {
     return (
       <StudioCard>
@@ -97,12 +122,53 @@ export default function VolumeCard({
             />
           </div>
           <div className={styles.field}>
-            <p className={styles.fieldLabel}>{VOLUME_OUTCOME_LABEL}</p>
+            <p className={styles.fieldLabel}>{VOLUME_RELATIONS_LABEL}</p>
             <Input.TextArea
-              value={draft.outcome}
-              placeholder={VOLUME_OUTCOME_LABEL}
+              value={draft.relations}
+              placeholder={VOLUME_RELATIONS_LABEL}
               autoSize={{ minRows: 2, maxRows: 6 }}
-              onChange={(event) => setDraft({ ...draft, outcome: event.target.value })}
+              onChange={(event) => setDraft({ ...draft, relations: event.target.value })}
+            />
+          </div>
+          <div className={styles.field}>
+            <p className={styles.fieldLabel}>{VOLUME_ASSETS_LABEL}</p>
+            {draft.assets.map((asset, assetIndex) => (
+              <div key={assetIndex} className={styles.pair}>
+                <Input
+                  className={styles.pairName}
+                  value={asset.name}
+                  placeholder={VOLUME_ASSET_NAME_LABEL}
+                  onChange={(event) => setAsset(assetIndex, { name: event.target.value })}
+                />
+                <Input
+                  className={styles.pairText}
+                  value={asset.use}
+                  placeholder={VOLUME_ASSET_USE_LABEL}
+                  onChange={(event) => setAsset(assetIndex, { use: event.target.value })}
+                />
+                <Button type="text" danger size="small" onClick={() => removeAsset(assetIndex)}>
+                  {DELETE_BUTTON}
+                </Button>
+              </div>
+            ))}
+            <Button
+              size="small"
+              color="primary"
+              variant="dashed"
+              onClick={() =>
+                setDraft({ ...draft, assets: [...draft.assets, { name: '', use: '' }] })
+              }
+            >
+              {ADD_VOLUME_ASSET_BUTTON}
+            </Button>
+          </div>
+          <div className={styles.field}>
+            <p className={styles.fieldLabel}>{VOLUME_HOOK_LABEL}</p>
+            <Input.TextArea
+              value={draft.hook}
+              placeholder={VOLUME_HOOK_LABEL}
+              autoSize={{ minRows: 2, maxRows: 6 }}
+              onChange={(event) => setDraft({ ...draft, hook: event.target.value })}
             />
           </div>
           <div className={styles.field}>
@@ -172,8 +238,24 @@ export default function VolumeCard({
           <p className={styles.readText}>{volume.conflict}</p>
         </div>
         <div>
-          <p className={styles.readLabel}>{VOLUME_OUTCOME_LABEL}</p>
-          <p className={styles.readText}>{volume.outcome ?? ''}</p>
+          <p className={styles.readLabel}>{VOLUME_RELATIONS_LABEL}</p>
+          <p className={styles.readText}>{volume.relations || EMPTY_FIELD_TEXT}</p>
+        </div>
+        <div>
+          <p className={styles.readLabel}>{VOLUME_ASSETS_LABEL}</p>
+          {volume.assets.length > 0 ? (
+            volume.assets.map((asset) => (
+              <p key={`${asset.name}-${asset.use}`} className={styles.readText}>
+                {asset.name}：{asset.use}
+              </p>
+            ))
+          ) : (
+            <p className={styles.readText}>{EMPTY_FIELD_TEXT}</p>
+          )}
+        </div>
+        <div>
+          <p className={styles.readLabel}>{VOLUME_HOOK_LABEL}</p>
+          <p className={styles.readText}>{volume.hook || EMPTY_FIELD_TEXT}</p>
         </div>
         <div>
           <p className={styles.readLabel}>{VOLUME_TARGET_CHARS_LABEL}</p>

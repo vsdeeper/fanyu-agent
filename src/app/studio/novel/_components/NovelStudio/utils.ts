@@ -7,6 +7,7 @@ import {
   NOVEL_THREAD_COUNT_MIN,
   readNovelReasoningEffort,
 } from '@/app/api/studio/novel/_shared/constants';
+import { normalizeNovelPlan } from '@/app/api/studio/novel/_shared/normalize-plan';
 import { NOVEL_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/novel/_shared/task-constants';
 import type { NovelStepKey, NovelTaskStepRecord } from '@/app/api/studio/novel/_shared/task-types';
 import type {
@@ -120,35 +121,42 @@ export function visibleWritingChapters(
   return visible;
 }
 
-/** 创作方案是否能进入角色步：主线 2～4 条，且每卷写了本卷结果。 */
+/** 至少有一层秩序写清了问题，并有一条写清运作方式的规则。 */
+function hasReadyOrder(plan: NovelPlan): boolean {
+  return plan.worldview.orders.some(
+    (order) =>
+      order.name.trim() &&
+      order.question.trim() &&
+      order.entries.some((entry) => entry.name.trim() && entry.rule.trim()),
+  );
+}
+
+/**
+ * 创作方案能否进入角色步。
+ * 需要世界观里的秩序与隐藏真相、终局、主题、2～4 条主线，且每卷写了人物推进和卷末钩子。
+ */
 export function isPlanReady(plan: NovelPlan | undefined): boolean {
   if (!plan || plan.volumes.length === 0) return false;
   const threadCount = plan.threads.length;
   if (threadCount < NOVEL_THREAD_COUNT_MIN || threadCount > NOVEL_THREAD_COUNT_MAX) return false;
-  const volumeIds = new Set(plan.volumes.map((volume) => volume.id));
+  if (!hasReadyOrder(plan) || !plan.worldview.hiddenTruth.trim()) return false;
+  if (!plan.ending.trim() || !plan.theme.trim()) return false;
   const volumesOk = plan.volumes.every(
     (volume) =>
       volume.title.trim() &&
       volume.geography.trim() &&
       volume.conflict.trim() &&
-      Boolean(volume.outcome?.trim()) &&
+      volume.relations.trim() &&
+      volume.hook.trim() &&
       volume.targetChars > 0,
   );
-  const threadsOk = plan.threads.every(
-    (thread) =>
-      thread.name.trim() &&
-      thread.core.trim() &&
-      thread.advances.length > 0 &&
-      thread.advances.every((advance) => volumeIds.has(advance.volumeId) && advance.text.trim()),
-  );
+  const threadsOk = plan.threads.every((thread) => thread.name.trim() && thread.core.trim());
   return volumesOk && threadsOk;
 }
 
-/** 新生成的方案是否可以落盘。条数或本卷结果不合规时当作没解析到。 */
+/** 新生成的方案是否可以落盘。缺秩序、隐藏真相、终局、主题或卷末钩子时当作没解析到。 */
 export function isFreshPlanComplete(plan: NovelPlan): boolean {
-  const threadCount = plan.threads.length;
-  if (threadCount < NOVEL_THREAD_COUNT_MIN || threadCount > NOVEL_THREAD_COUNT_MAX) return false;
-  return plan.volumes.every((volume) => Boolean(volume.outcome?.trim()));
+  return isPlanReady(plan);
 }
 
 /** 按当前章卡对齐写作 units，保留已有正文。 */
@@ -392,7 +400,7 @@ export function extractTrailingJsonBlock(text: string): { prose: string; json: u
       }
     }
   }
-  for (const key of ['"topics"', '"characters"', '"threads"', '"chapters"']) {
+  for (const key of ['"topics"', '"characters"', '"worldview"', '"threads"', '"chapters"']) {
     const index = text.lastIndexOf(key);
     if (index < 0) continue;
     const start = text.lastIndexOf('{', index);
@@ -561,65 +569,9 @@ export function parseResearchTopics(json: unknown): TopicCard[] {
   return topics.map(parseTopicCard).filter((item) => item !== null);
 }
 
-function parseAdvance(value: unknown): { volumeId: string; text: string } | null {
-  if (!value || typeof value !== 'object') return null;
-  const record = value as Record<string, unknown>;
-  const volumeId = asString(record.volumeId);
-  const text = asString(record.text);
-  if (!volumeId || !text) return null;
-  return { volumeId, text };
-}
-
-function parseVolumeOutline(value: unknown) {
-  if (!value || typeof value !== 'object') return null;
-  const record = value as Record<string, unknown>;
-  const id = asString(record.id);
-  const title = asString(record.title);
-  const geography = asString(record.geography) || asString(record.purpose);
-  const conflict = asString(record.conflict) || asString(record.purpose);
-  const targetChars =
-    typeof record.targetChars === 'number' && record.targetChars > 0
-      ? Math.round(record.targetChars)
-      : undefined;
-  if (!id || !title || !geography || !conflict || !targetChars) return null;
-  return {
-    id,
-    title,
-    geography,
-    conflict,
-    outcome: asString(record.outcome) ?? '',
-    targetChars,
-  };
-}
-
-/** 解析创作方案。 */
+/** 解析创作方案。旧快照里的逐卷推进和本卷结果会收成卷末钩子。 */
 export function parsePlanPayload(json: unknown): NovelPlan | null {
-  if (!json || typeof json !== 'object') return null;
-  const record = json as Record<string, unknown>;
-  if (!Array.isArray(record.threads) || !Array.isArray(record.volumes)) return null;
-  const volumes = record.volumes.map(parseVolumeOutline).filter((item) => item !== null);
-  if (volumes.length === 0) return null;
-  const volumeIds = new Set(volumes.map((volume) => volume.id));
-  const threads = record.threads
-    .map((item) => {
-      if (!item || typeof item !== 'object') return null;
-      const thread = item as Record<string, unknown>;
-      const id = asString(thread.id);
-      const name = asString(thread.name);
-      const core = asString(thread.core);
-      if (!id || !name || !core || !Array.isArray(thread.advances)) return null;
-      const advances = thread.advances
-        .map(parseAdvance)
-        .filter(
-          (advance): advance is { volumeId: string; text: string } =>
-            advance !== null && volumeIds.has(advance.volumeId),
-        );
-      if (advances.length === 0) return null;
-      return { id, name, core, advances };
-    })
-    .filter((item) => item !== null);
-  if (threads.length === 0) return null;
-  return { threads, volumes };
+  return normalizeNovelPlan(json);
 }
 
 function parseChapter(value: unknown): StructureChapter | null {

@@ -29,20 +29,19 @@ const cast: NovelCast = {
 };
 
 const plan: NovelPlan = {
-  threads: [
-    {
-      id: 't1',
-      name: '旧信',
-      core: '一封没寄出的信',
-      advances: [{ volumeId: 'v1', text: '信被找到' }],
-    },
-  ],
+  worldview: { orders: [], hiddenTruth: '信是父亲写的', assets: [] },
+  threads: [{ id: 't1', name: '旧信', core: '一封没寄出的信' }],
+  ending: '信被说开',
+  theme: '隐瞒比停电更黑',
   volumes: [
     {
       id: 'v1',
       title: '县城',
       geography: '九十年代县城',
       conflict: '家里人不肯说',
+      relations: '终于对上话',
+      assets: [],
+      hook: '信被说开',
       targetChars: 20000,
     },
   ],
@@ -75,6 +74,35 @@ const writingBody: NovelWritingRequest = {
 describe('parseWritingBody', () => {
   it('接受带此前全文和下一章边界的写作请求', () => {
     expect(parseWritingBody(writingBody)).toEqual(writingBody);
+  });
+
+  it('旧方案里的逐卷推进和本卷结果仍能解析', () => {
+    const parsed = parseWritingBody({
+      ...writingBody,
+      plan: {
+        threads: [
+          {
+            id: 't1',
+            name: '旧信',
+            core: '一封没寄出的信',
+            advances: [{ volumeId: 'v1', text: '信被找到' }],
+          },
+        ],
+        volumes: [
+          {
+            id: 'v1',
+            title: '县城',
+            geography: '九十年代县城',
+            conflict: '家里人不肯说',
+            outcome: '信被说开',
+            targetChars: 20000,
+          },
+        ],
+      },
+    });
+    expect(parsed?.plan.threads[0]).toEqual({ id: 't1', name: '旧信', core: '一封没寄出的信' });
+    expect(parsed?.plan.volumes[0]?.hook).toBe('信被说开');
+    expect(parsed?.plan.worldview).toEqual({ orders: [], hiddenTruth: '', assets: [] });
   });
 
   it('拒绝缺场景的当前章', () => {

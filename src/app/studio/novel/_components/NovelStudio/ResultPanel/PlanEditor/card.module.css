@@ -66,6 +66,22 @@
   color: var(--fanyu-color-text-secondary);
 }
 
+.pair {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.pairName {
+  flex: 0 0 28%;
+  min-width: 0;
+}
+
+.pairText {
+  flex: 1;
+  min-width: 0;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
