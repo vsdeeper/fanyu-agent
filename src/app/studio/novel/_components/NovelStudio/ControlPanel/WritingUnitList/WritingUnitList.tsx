@@ -1,6 +1,6 @@
 import type { ChaptersSnapshot, NovelPlan } from '../../types';
 import { WRITE_UNITS_LABEL } from '../../constants';
-import { formatChapterPrefix, listStructureChapters, stripChapterPrefix } from '../../utils';
+import { formatChapterPrefix, stripChapterPrefix, visibleWritingChapters } from '../../utils';
 import styles from './WritingUnitList.module.css';
 
 type WritingUnitListProps = {
@@ -20,15 +20,15 @@ export default function WritingUnitList({
   onToggle,
 }: WritingUnitListProps) {
   const selected = new Set(selectedUnitIds);
-  const list = listStructureChapters(plan, chapters);
+  const list = visibleWritingChapters(plan, chapters);
 
   return (
     <div className={styles.root}>
       <div className={styles.label}>{WRITE_UNITS_LABEL}</div>
       <div className={styles.groups}>
-        {list.map((chapter, index) => {
+        {list.map(({ chapter, number }) => {
           const titleName = stripChapterPrefix(chapter.title);
-          const chapterLabel = `${formatChapterPrefix(index + 1)}${titleName ? `　${titleName}` : ''}`;
+          const chapterLabel = `${formatChapterPrefix(number)}${titleName ? `　${titleName}` : ''}`;
           return (
             <button
               key={chapter.id}

@@ -80,9 +80,10 @@ export type ChapterVolume = {
   chapters: StructureChapter[];
 };
 
-/** 卷章快照。 */
+/** 卷章快照。selectedVolumeId 是进入写作前点选的那一卷。 */
 export type ChaptersSnapshot = {
   volumes: ChapterVolume[];
+  selectedVolumeId?: string;
 };
 
 /** 写作单元正文，unitId 使用 chapter.id。 */

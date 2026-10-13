@@ -39,7 +39,7 @@ import {
   RESEARCH_TOPICS_TITLE,
   WRITE_PANEL_TITLE,
 } from '../constants';
-import { areVolumesReadyForWrite, hasCastDraft, isCastReady, isPlanReady } from '../utils';
+import { hasCastDraft, isCastReady, isPlanReady, isSelectedVolumeReadyForWrite } from '../utils';
 import TopicCardView from '../TopicCardView';
 import type {
   CastStepSnapshot,
@@ -77,6 +77,7 @@ type ResultPanelProps = {
   plan?: PlanStepSnapshot;
   cast?: CastStepSnapshot;
   chapters?: ChaptersSnapshot;
+  selectedVolumeId?: string;
   writing?: WritingSnapshot;
   selectedUnitIds: string[];
   generatingVolumeId?: string;
@@ -91,6 +92,7 @@ type ResultPanelProps = {
   onImportChapters: (next: ChaptersSnapshot) => Promise<boolean>;
   onPrev: () => void;
   onNext: () => void;
+  onSelectVolume: (volumeId: string) => void;
   onGenerateVolumeChapters: (volumeId: string) => void;
   onUpdateChapter: (
     chapterId: string,
@@ -111,6 +113,7 @@ export default function ResultPanel({
   plan,
   cast,
   chapters,
+  selectedVolumeId,
   writing,
   selectedUnitIds,
   generatingVolumeId,
@@ -125,6 +128,7 @@ export default function ResultPanel({
   onImportChapters,
   onPrev,
   onNext,
+  onSelectVolume,
   onGenerateVolumeChapters,
   onUpdateChapter,
   onRemoveChapter,
@@ -171,7 +175,12 @@ export default function ResultPanel({
     (researched && Boolean(selectedTopicId)) ||
     (planView && !planning && isPlanReady(plan)) ||
     (castView && !casting && isCastReady(cast)) ||
-    (chaptersView && !chaptering && areVolumesReadyForWrite(chapters)) ||
+    (chaptersView &&
+      !chaptering &&
+      isSelectedVolumeReadyForWrite(
+        plan,
+        chapters ? { ...chapters, ...(selectedVolumeId ? { selectedVolumeId } : {}) } : chapters,
+      )) ||
     writeView;
   const stageFill =
     (researchView && (researchEmpty || (researching && topics.length === 0))) ||
@@ -369,6 +378,8 @@ export default function ResultPanel({
                 plan={plan}
                 chapters={chapters}
                 generatingVolumeId={generatingVolumeId}
+                selectedVolumeId={selectedVolumeId}
+                onSelectVolume={onSelectVolume}
                 onGenerateChapters={onGenerateVolumeChapters}
                 onChangeChapter={onUpdateChapter}
                 onRemoveChapter={onRemoveChapter}

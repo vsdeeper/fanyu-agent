@@ -17,8 +17,6 @@ import {
   CAST_NO_CAST,
   CAST_REGENERATE_CONFIRM_CONTENT,
   CAST_REGENERATE_CONFIRM_TITLE,
-  CHAPTERS_REGENERATE_CONFIRM_CONTENT,
-  CHAPTERS_REGENERATE_CONFIRM_TITLE,
   CONFIRM_CANCEL,
   CONFIRM_OK,
   COPY_BODY_FAILED,
@@ -80,7 +78,7 @@ import {
   isFreshPlanComplete,
   isPlanReady,
   isSameWriteSnapshot,
-  listStructureChapters,
+  isSelectedVolumeReadyForWrite,
   parseCastPayload,
   parsePlanPayload,
   parseResearchTopics,
@@ -101,6 +99,7 @@ import {
   toCastRequest,
   toNovelIdeaFileInput,
   toggleWritingSelection,
+  writingChapterIds,
   writingStylePrompt,
 } from '../utils';
 
@@ -143,6 +142,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const [plan, setPlan] = useState<PlanStepSnapshot | undefined>(initialPlan);
   const [cast, setCast] = useState<CastStepSnapshot | undefined>(initialCast);
   const [chapters, setChapters] = useState<ChaptersSnapshot | undefined>(initialChapters);
+  const [selectedVolumeId, setSelectedVolumeId] = useState<string | undefined>(
+    initialChapters?.selectedVolumeId,
+  );
   const [writing, setWriting] = useState<WritingSnapshot | undefined>(initialWrite);
   const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>(
     () => initialWrite?.selectedUnitIds ?? [],
@@ -166,6 +168,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const persistedWriteRef = useRef<WritingSnapshot | undefined>(storedInitialWrite);
   const topicsRef = useRef(topics);
   const selectedTopicIdRef = useRef(selectedTopicId);
+  const selectedVolumeIdRef = useRef(selectedVolumeId);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -188,6 +191,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
   useEffect(() => {
     selectedTopicIdRef.current = selectedTopicId;
   }, [selectedTopicId]);
+  useEffect(() => {
+    selectedVolumeIdRef.current = selectedVolumeId;
+  }, [selectedVolumeId]);
 
   useEffect(() => {
     return () => {
@@ -393,6 +399,8 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
     chaptersRef.current = undefined;
     setChapters(undefined);
+    selectedVolumeIdRef.current = undefined;
+    setSelectedVolumeId(undefined);
     setWriting(undefined);
     writingRef.current = undefined;
     setSelectedUnitIds([]);
@@ -532,6 +540,21 @@ export function useNovelStudio(task: NovelTaskDetail) {
     );
   }
 
+  /** 点选一卷。还没有章卡时先记在内存，生成后写入卷章快照。 */
+  function handleSelectVolume(volumeId: string) {
+    const currentPlan = planRef.current;
+    if (!currentPlan?.volumes.some((volume) => volume.id === volumeId)) return;
+    if (selectedVolumeIdRef.current === volumeId) return;
+    selectedVolumeIdRef.current = volumeId;
+    setSelectedVolumeId(volumeId);
+    const current = chaptersRef.current;
+    if (!current || !current.volumes.some((volume) => volume.id === volumeId)) return;
+    const next: ChaptersSnapshot = { ...current, selectedVolumeId: volumeId };
+    chaptersRef.current = next;
+    setChapters(next);
+    void persistChapters(next);
+  }
+
   async function handleSelectTopic(id: string) {
     setSelectedTopicId(id);
     selectedTopicIdRef.current = id;
@@ -633,6 +656,16 @@ export function useNovelStudio(task: NovelTaskDetail) {
       setChapters(pruned);
       if (pruned) void persistChapters(pruned);
       else void deleteNovelStep(task.id, 'chapters');
+    }
+    const nextSelected =
+      pruned?.selectedVolumeId ??
+      (selectedVolumeIdRef.current &&
+      snapshot.volumes.some((volume) => volume.id === selectedVolumeIdRef.current)
+        ? selectedVolumeIdRef.current
+        : undefined);
+    if (nextSelected !== selectedVolumeIdRef.current) {
+      selectedVolumeIdRef.current = nextSelected;
+      setSelectedVolumeId(nextSelected);
     }
     const nextWriting = syncWritingUnits(snapshot, pruned, writingRef.current);
     commitWriting(nextWriting);
@@ -746,10 +779,19 @@ export function useNovelStudio(task: NovelTaskDetail) {
   }
 
   async function importChapters(next: ChaptersSnapshot): Promise<boolean> {
-    const saved = await persistChapters(next);
+    const selected = selectedVolumeIdRef.current;
+    const stamped: ChaptersSnapshot =
+      selected && next.volumes.some((volume) => volume.id === selected)
+        ? { ...next, selectedVolumeId: selected }
+        : next;
+    const saved = await persistChapters(stamped);
     if (!saved) return false;
-    chaptersRef.current = next;
-    setChapters(next);
+    chaptersRef.current = stamped;
+    setChapters(stamped);
+    if (!stamped.selectedVolumeId && selectedVolumeIdRef.current) {
+      selectedVolumeIdRef.current = undefined;
+      setSelectedVolumeId(undefined);
+    }
     return true;
   }
 
@@ -831,6 +873,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
         chaptersRef.current,
         volumeId,
         nextCards,
+        selectedVolumeIdRef.current,
       );
       chaptersRef.current = nextChapters;
       setChapters(nextChapters);
@@ -855,29 +898,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  /** 左栏生成章卡：先补还没有章卡的卷；每卷都已有时确认后按卷重生成。 */
-  async function handleGenerateChapters() {
-    const currentPlan = planRef.current;
-    if (!currentPlan?.volumes.length || !selectedTopic) return;
-    if (!isCastReady(castRef.current)) {
-      message.warning(MISSING_CAST_WARNING);
-      return;
-    }
-    const missing = volumesMissingChapters(currentPlan, chaptersRef.current);
-    if (missing.length === 0) {
-      const confirmed = await confirmOverwrite(
-        CHAPTERS_REGENERATE_CONFIRM_TITLE,
-        CHAPTERS_REGENERATE_CONFIRM_CONTENT,
-      );
-      if (!confirmed) return;
-    }
-    const targets = missing.length > 0 ? missing : currentPlan.volumes;
-    for (const volume of targets) {
-      const result = await handleGenerateVolumeChapters(volume.id);
-      if (result !== 'ok') return;
-    }
-  }
-
   function updateChapter(
     chapterId: string,
     patch: Partial<Pick<StructureChapter, 'title' | 'scene' | 'event' | 'hook'>>,
@@ -885,6 +905,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     const current = chaptersRef.current;
     if (!current) return;
     const next: ChaptersSnapshot = {
+      ...current,
       volumes: current.volumes.map((volume) => ({
         ...volume,
         chapters: volume.chapters.map((chapter) =>
@@ -907,7 +928,17 @@ export function useNovelStudio(task: NovelTaskDetail) {
         chapters: volume.chapters.filter((chapter) => chapter.id !== chapterId),
       }))
       .filter((volume) => volume.chapters.length > 0);
-    const next = volumes.length ? { volumes } : undefined;
+    const keptSelection =
+      current.selectedVolumeId && volumes.some((volume) => volume.id === current.selectedVolumeId)
+        ? current.selectedVolumeId
+        : undefined;
+    const next = volumes.length
+      ? { volumes, ...(keptSelection ? { selectedVolumeId: keptSelection } : {}) }
+      : undefined;
+    if (keptSelection !== selectedVolumeIdRef.current) {
+      selectedVolumeIdRef.current = keptSelection;
+      setSelectedVolumeId(keptSelection);
+    }
     chaptersRef.current = next;
     setChapters(next);
     const nextWriting = syncWritingUnits(currentPlan, next, writingRef.current);
@@ -991,15 +1022,24 @@ export function useNovelStudio(task: NovelTaskDetail) {
       return;
     }
     if (phase === 'chaptered') {
-      if (!areVolumesReadyForWrite(chapters) || !plan) {
+      const volumeId = selectedVolumeIdRef.current ?? chapters?.selectedVolumeId;
+      const ready = chapters && volumeId ? { ...chapters, selectedVolumeId: volumeId } : chapters;
+      if (!isSelectedVolumeReadyForWrite(plan, ready) || !plan || !ready) {
         message.warning(MISSING_CHAPTERS_WARNING);
         return;
       }
-      if (chapters) await persistChapters(chapters);
-      const nextWriting = syncWritingUnits(plan, chapters, writingRef.current ?? writing);
+      chaptersRef.current = ready;
+      setChapters(ready);
+      await persistChapters(ready);
+      const synced = syncWritingUnits(plan, ready, writingRef.current ?? writing);
+      const visible = new Set(writingChapterIds(plan, ready));
+      const nextIds = (synced.selectedUnitIds ?? []).filter((id) => visible.has(id));
+      const nextFocus =
+        synced.focusUnitId && nextIds.includes(synced.focusUnitId) ? synced.focusUnitId : undefined;
+      const nextWriting = withSelection(synced, nextIds, nextFocus);
       commitWriting(nextWriting);
-      setSelectedUnitIds(nextWriting.selectedUnitIds ?? []);
-      setFocusUnitId(nextWriting.focusUnitId);
+      setSelectedUnitIds(nextIds);
+      setFocusUnitId(nextFocus);
       setPhase(hasWritingBody(nextWriting) ? 'written' : 'write');
       await persistWrite(nextWriting);
       return;
@@ -1045,9 +1085,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
   }
 
   function toggleWritingUnit(unitId: string) {
-    const valid = listStructureChapters(planRef.current, chaptersRef.current).map(
-      (chapter) => chapter.id,
-    );
+    const valid = writingChapterIds(planRef.current, chaptersRef.current);
     const next = toggleWritingSelection(valid, selectedUnitIds, unitId);
     const nextFocus = next.includes(unitId) ? unitId : next.at(-1);
     setSelectedUnitIds(next);
@@ -1080,7 +1118,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
       return;
     }
 
-    const valid = listStructureChapters(currentPlan, currentChapters).map((chapter) => chapter.id);
+    const valid = writingChapterIds(currentPlan, currentChapters);
     const unitId = resolveGenerateUnitIds(valid, unitIds)[0];
     if (!unitId) {
       message.warning(MISSING_WRITE_SELECTION_WARNING);
@@ -1304,6 +1342,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     plan,
     cast,
     chapters,
+    selectedVolumeId,
     writing,
     selectedUnitIds,
     focusUnitId,
@@ -1322,7 +1361,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     importCast,
     importChapters,
     handleGenerateVolumeChapters,
-    handleGenerateChapters,
+    handleSelectVolume,
     updateChapter,
     removeChapter,
     handleGenerateWriting,
@@ -1349,21 +1388,18 @@ function pruneChapters(
     (volume) => ids.has(volume.id) && volume.chapters.length > 0,
   );
   if (volumes.length === 0) return undefined;
+  const selectedVolumeId =
+    chapters.selectedVolumeId && volumes.some((volume) => volume.id === chapters.selectedVolumeId)
+      ? chapters.selectedVolumeId
+      : undefined;
   if (
     volumes.length === chapters.volumes.length &&
-    volumes.every((volume, index) => volume === chapters.volumes[index])
+    volumes.every((volume, index) => volume === chapters.volumes[index]) &&
+    selectedVolumeId === chapters.selectedVolumeId
   ) {
     return chapters;
   }
-  return { volumes };
-}
-
-/** 创作方案里还没有章卡的卷，保持分卷顺序。 */
-function volumesMissingChapters(plan: NovelPlan, chapters: ChaptersSnapshot | undefined) {
-  return plan.volumes.filter((volume) => {
-    const found = chapters?.volumes.find((item) => item.id === volume.id);
-    return !found || found.chapters.length === 0;
-  });
+  return selectedVolumeId ? { volumes, selectedVolumeId } : { volumes };
 }
 
 /** 用新章卡覆盖指定卷，其它卷保持原样。 */
@@ -1372,12 +1408,15 @@ function replaceVolumeChapters(
   chapters: ChaptersSnapshot | undefined,
   volumeId: string,
   nextCards: StructureChapter[],
+  selectedVolumeId?: string,
 ): ChaptersSnapshot {
   const byId = new Map((chapters?.volumes ?? []).map((volume) => [volume.id, volume.chapters]));
   byId.set(volumeId, nextCards);
-  return {
-    volumes: plan.volumes
-      .filter((volume) => (byId.get(volume.id)?.length ?? 0) > 0)
-      .map((volume) => ({ id: volume.id, chapters: byId.get(volume.id) ?? [] })),
-  };
+  const volumes = plan.volumes
+    .filter((volume) => (byId.get(volume.id)?.length ?? 0) > 0)
+    .map((volume) => ({ id: volume.id, chapters: byId.get(volume.id) ?? [] }));
+  const chosen = [selectedVolumeId, chapters?.selectedVolumeId].find(
+    (id): id is string => Boolean(id) && volumes.some((volume) => volume.id === id),
+  );
+  return chosen ? { volumes, selectedVolumeId: chosen } : { volumes };
 }

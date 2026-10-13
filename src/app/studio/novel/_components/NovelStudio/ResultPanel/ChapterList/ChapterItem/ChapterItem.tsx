@@ -116,37 +116,39 @@ export default function ChapterItem({
           </div>
         </div>
       ) : (
-        <div className={styles.displayRow}>
-          <span className={styles.index}>{index}</span>
-          <div className={styles.bodyStack}>
+        <div className={styles.read}>
+          <div className={styles.head}>
+            <span className={styles.index}>{index}</span>
             <p className={styles.titleText}>
               {prefix}
               {titleName ? `　${titleName}` : ''}
             </p>
+            <div className={styles.actions}>
+              <Button type="link" size="small" className={styles.editButton} onClick={startEdit}>
+                {EDIT_BUTTON}
+              </Button>
+              {removable ? (
+                <Popconfirm
+                  title={CHAPTER_DELETE_CONFIRM_TITLE}
+                  okText={DELETE_BUTTON}
+                  cancelText={CONFIRM_CANCEL}
+                  okButtonProps={{ danger: true }}
+                  onConfirm={onRemove}
+                >
+                  <Button type="text" danger size="small">
+                    {DELETE_BUTTON}
+                  </Button>
+                </Popconfirm>
+              ) : null}
+            </div>
+          </div>
+          <div className={styles.fields}>
             <p className={styles.purposeLabel}>{CHAPTER_SCENE_LABEL}</p>
             <p className={styles.purposeText}>{chapter.scene}</p>
             <p className={styles.purposeLabel}>{CHAPTER_EVENT_LABEL}</p>
             <p className={styles.purposeText}>{chapter.event}</p>
             <p className={styles.purposeLabel}>{CHAPTER_HOOK_LABEL}</p>
             <p className={styles.purposeText}>{chapter.hook}</p>
-          </div>
-          <div className={styles.displayActions}>
-            <Button type="link" size="small" onClick={startEdit}>
-              {EDIT_BUTTON}
-            </Button>
-            {removable ? (
-              <Popconfirm
-                title={CHAPTER_DELETE_CONFIRM_TITLE}
-                okText={DELETE_BUTTON}
-                cancelText={CONFIRM_CANCEL}
-                okButtonProps={{ danger: true }}
-                onConfirm={onRemove}
-              >
-                <Button type="text" danger size="small">
-                  {DELETE_BUTTON}
-                </Button>
-              </Popconfirm>
-            ) : null}
           </div>
         </div>
       )}

@@ -74,6 +74,52 @@ export function areVolumesReadyForWrite(chapters: ChaptersSnapshot | undefined):
   return Boolean(chapters?.volumes.some((volume) => volume.chapters.length > 0));
 }
 
+/** 下一步写作要求当前选中的卷已经有章卡。 */
+export function isSelectedVolumeReadyForWrite(
+  plan: NovelPlan | undefined,
+  chapters: ChaptersSnapshot | undefined,
+): boolean {
+  const volumeId = chapters?.selectedVolumeId;
+  if (!volumeId || !plan?.volumes.some((volume) => volume.id === volumeId)) return false;
+  return Boolean(chapters.volumes.find((volume) => volume.id === volumeId)?.chapters.length);
+}
+
+/**
+ * 写作步只操作选中卷的章。
+ * 没选中、或选中卷已不在快照里时沿用全书，避免旧任务一进写作就丢章节。
+ */
+export function writingChapterIds(
+  plan: NovelPlan | undefined,
+  chapters: ChaptersSnapshot | undefined,
+): string[] {
+  const all = listStructureChapters(plan, chapters).map((chapter) => chapter.id);
+  const volumeId = chapters?.selectedVolumeId;
+  if (!volumeId || !chapters) return all;
+  const volume = chapters.volumes.find((item) => item.id === volumeId);
+  if (!volume || volume.chapters.length === 0) return all;
+  const allowed = new Set(volume.chapters.map((chapter) => chapter.id));
+  return all.filter((id) => allowed.has(id));
+}
+
+/** 写作左栏章节。选中卷时只列出该卷，序号仍按全书计数。 */
+export function visibleWritingChapters(
+  plan: NovelPlan | undefined,
+  chapters: ChaptersSnapshot | undefined,
+): { chapter: StructureChapter; number: number }[] {
+  if (!plan) return [];
+  const allowed = new Set(writingChapterIds(plan, chapters));
+  const visible: { chapter: StructureChapter; number: number }[] = [];
+  let number = 0;
+  for (const volume of plan.volumes) {
+    const volumeChapters = chapters?.volumes.find((item) => item.id === volume.id)?.chapters ?? [];
+    for (const chapter of volumeChapters) {
+      number += 1;
+      if (allowed.has(chapter.id)) visible.push({ chapter, number });
+    }
+  }
+  return visible;
+}
+
 /** 创作方案是否能进入角色步：主线 2～4 条，且每卷写了本卷结果。 */
 export function isPlanReady(plan: NovelPlan | undefined): boolean {
   if (!plan || plan.volumes.length === 0) return false;
@@ -169,7 +215,7 @@ export function splitWritingParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
-/** 解析章节 unitId 的展示与生成上下文，含此前各章和下一章边界。 */
+/** 解析章节 unitId 的展示与生成上下文。选中卷时，前章和下一章只看这一卷，章序仍按全书。 */
 export function resolveWritingUnit(
   plan: NovelPlan | undefined,
   chapters: ChaptersSnapshot | undefined,
@@ -178,14 +224,18 @@ export function resolveWritingUnit(
   const list = listStructureChapters(plan, chapters);
   const index = list.findIndex((chapter) => chapter.id === unitId);
   if (index < 0) return undefined;
+  const allowed = new Set(writingChapterIds(plan, chapters));
+  if (!allowed.has(unitId)) return undefined;
+  const scoped = list.filter((chapter) => allowed.has(chapter.id));
+  const localIndex = scoped.findIndex((chapter) => chapter.id === unitId);
   const chapter = list[index]!;
   const titleName = stripChapterPrefix(chapter.title);
   return {
     unitId,
     label: `${formatChapterPrefix(index + 1)}${titleName ? `　${titleName}` : ''}`,
     chapter,
-    previous: list.slice(0, index),
-    next: list[index + 1],
+    previous: scoped.slice(0, localIndex),
+    next: scoped[localIndex + 1],
   };
 }
 
@@ -283,7 +333,7 @@ export function buildWritingEditorBlocks(
   writing: WritingSnapshot,
   selectedUnitIds: string[],
 ): WritingEditorBlock[] {
-  const valid = listStructureChapters(plan, chapters).map((chapter) => chapter.id);
+  const valid = writingChapterIds(plan, chapters);
   const unitId = resolveGenerateUnitIds(valid, selectedUnitIds)[0];
   if (!unitId) return [];
   const resolved = resolveWritingUnit(plan, chapters, unitId);
@@ -724,10 +774,11 @@ export function readPlanStepSnapshot(data: unknown): PlanStepSnapshot | undefine
   return { ...plan, ...(streamText ? { streamText } : {}) };
 }
 
-/** 读取卷章快照。没有场景的旧章不收入。 */
+/** 读取卷章快照。没有场景的旧章不收入。选中卷不在结果里时丢掉。 */
 export function readChaptersStepSnapshot(data: unknown): ChaptersStepSnapshot | undefined {
   if (!data || typeof data !== 'object') return undefined;
-  const volumes = (data as Record<string, unknown>).volumes;
+  const record = data as Record<string, unknown>;
+  const volumes = record.volumes;
   if (!Array.isArray(volumes)) return undefined;
   const parsed = volumes
     .map((item) => {
@@ -747,7 +798,13 @@ export function readChaptersStepSnapshot(data: unknown): ChaptersStepSnapshot | 
     })
     .filter((item) => item !== null);
   if (parsed.length === 0) return undefined;
-  return { volumes: parsed };
+  const selectedVolumeId = asString(record.selectedVolumeId);
+  return {
+    volumes: parsed,
+    ...(selectedVolumeId && parsed.some((volume) => volume.id === selectedVolumeId)
+      ? { selectedVolumeId }
+      : {}),
+  };
 }
 
 function parseTense(value: unknown): NovelTense | undefined {

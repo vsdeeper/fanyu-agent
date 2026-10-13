@@ -4,11 +4,14 @@ import {
   canGenerateWritingUnit,
   isFreshPlanComplete,
   isPlanReady,
+  isSelectedVolumeReadyForWrite,
   listStructureChapters,
   parseCastPayload,
   parsePlanPayload,
   parseVolumeChaptersPayload,
+  readChaptersStepSnapshot,
   readResearchStepSnapshot,
+  resolveWritingUnit,
   resolveGenerateUnitIds,
   resolveInitialPhase,
   syncWritingUnits,
@@ -48,6 +51,27 @@ describe('listStructureChapters', () => {
       'ch-1',
       'ch-2',
     ]);
+  });
+});
+
+describe('isSelectedVolumeReadyForWrite', () => {
+  it('必须选中已经有章卡的卷', () => {
+    expect(isSelectedVolumeReadyForWrite(plan, chapters)).toBe(false);
+    expect(isSelectedVolumeReadyForWrite(plan, { ...chapters, selectedVolumeId: 'v2' })).toBe(
+      false,
+    );
+    expect(isSelectedVolumeReadyForWrite(plan, { ...chapters, selectedVolumeId: 'v1' })).toBe(true);
+  });
+});
+
+describe('readChaptersStepSnapshot', () => {
+  it('保留仍存在的选中卷', () => {
+    expect(
+      readChaptersStepSnapshot({ ...chapters, selectedVolumeId: 'v1' })?.selectedVolumeId,
+    ).toBe('v1');
+    expect(
+      readChaptersStepSnapshot({ ...chapters, selectedVolumeId: 'missing' })?.selectedVolumeId,
+    ).toBeUndefined();
   });
 });
 
@@ -134,6 +158,34 @@ describe('canGenerateWritingUnit', () => {
         'ch-2',
       ),
     ).toBe(true);
+  });
+
+  it('选中后一卷时，不要求前一卷已经写完', () => {
+    const twoVolumes: ChaptersSnapshot = {
+      volumes: [
+        ...chapters.volumes,
+        {
+          id: 'v2',
+          chapters: [
+            { id: 'ch-3', title: '进城', scene: '车站', event: '上了车', hook: '信不在身上' },
+          ],
+        },
+      ],
+      selectedVolumeId: 'v2',
+    };
+    const later: WritingSnapshot = {
+      units: [
+        { unitId: 'ch-1', body: '' },
+        { unitId: 'ch-2', body: '' },
+        { unitId: 'ch-3', body: '' },
+      ],
+    };
+    expect(canGenerateWritingUnit(plan, twoVolumes, later, 'ch-3')).toBe(true);
+    expect(resolveWritingUnit(plan, twoVolumes, 'ch-3')).toMatchObject({
+      label: '第三章　进城',
+      previous: [],
+    });
+    expect(resolveWritingUnit(plan, twoVolumes, 'ch-1')).toBeUndefined();
   });
 });
 

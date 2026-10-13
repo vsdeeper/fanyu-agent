@@ -80,7 +80,6 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 onResearch={studio.handleResearch}
                 onGeneratePlan={studio.handleGeneratePlan}
                 onGenerateCast={studio.handleGenerateCast}
-                onGenerateChapters={studio.handleGenerateChapters}
                 onToggleWritingUnit={studio.toggleWritingUnit}
                 onStyleSelectionsChange={studio.updateStyleSelections}
                 onTenseChange={studio.updateTense}
@@ -92,6 +91,7 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 plan={studio.plan}
                 cast={studio.cast}
                 chapters={studio.chapters}
+                selectedVolumeId={studio.selectedVolumeId}
                 writing={studio.writing}
                 selectedUnitIds={studio.selectedUnitIds}
                 generatingVolumeId={studio.generatingVolumeId}
@@ -106,6 +106,7 @@ export default function NovelStudio({ task }: NovelStudioProps) {
                 onImportChapters={studio.importChapters}
                 onPrev={studio.handlePrev}
                 onNext={studio.handleNext}
+                onSelectVolume={studio.handleSelectVolume}
                 onGenerateVolumeChapters={studio.handleGenerateVolumeChapters}
                 onUpdateChapter={studio.updateChapter}
                 onRemoveChapter={studio.removeChapter}
