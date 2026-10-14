@@ -32,8 +32,6 @@ import {
   SELECTED_TOPIC_EMPTY,
   SELECTED_TOPIC_LABEL,
   STYLE_LABEL,
-  TENSE_LABEL,
-  TENSE_OPTIONS,
   WORLDVIEW_BUTTON,
   WORLDVIEW_FILE_ACCEPT,
   WORLDVIEW_FILE_HINT,
@@ -47,7 +45,6 @@ import type {
   ChaptersSnapshot,
   NovelPanelValues,
   NovelPlan,
-  NovelTense,
   StudioPhase,
   TopicCard,
   VolumesStepSnapshot,
@@ -70,7 +67,6 @@ type ControlPanelProps = {
   selectedUnitIds: string[];
   focusUnitId?: string;
   styleSelections: StyleDimensionSelections;
-  tense?: NovelTense;
   writeBusy?: boolean;
   onGenerateWorldview: () => void;
   onResearch: () => void;
@@ -79,7 +75,6 @@ type ControlPanelProps = {
   onGenerateVolumes: () => void;
   onToggleWritingUnit: (unitId: string) => void;
   onStyleSelectionsChange: (next: StyleDimensionSelections) => void;
-  onTenseChange: (tense: NovelTense) => void;
 };
 
 /** 小说左栏：世界观、选题、方案、角色、卷章、写作共用一个 Form。 */
@@ -97,7 +92,6 @@ export default function ControlPanel({
   selectedUnitIds,
   focusUnitId,
   styleSelections,
-  tense,
   writeBusy = false,
   onGenerateWorldview,
   onResearch,
@@ -106,7 +100,6 @@ export default function ControlPanel({
   onGenerateVolumes,
   onToggleWritingUnit,
   onStyleSelectionsChange,
-  onTenseChange,
 }: ControlPanelProps) {
   const chatProvider = useChatSettingsStore((state) => state.settings?.chatProvider);
   const settingsHydrated = useChatSettingsStore((state) => state.hydrated);
@@ -288,15 +281,6 @@ export default function ControlPanel({
                 onPaste={onStyleSelectionsChange}
               />
             </div>
-            <Form.Item label={TENSE_LABEL}>
-              <Select
-                value={tense}
-                options={TENSE_OPTIONS}
-                placeholder={TENSE_LABEL}
-                disabled={writeBusy}
-                onChange={onTenseChange}
-              />
-            </Form.Item>
             <WritingUnitList
               volumes={volumes}
               chapters={chapters}

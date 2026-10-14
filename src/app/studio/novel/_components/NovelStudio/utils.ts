@@ -18,7 +18,6 @@ import type {
   NovelIdeaFile,
   NovelPlan,
   NovelSection,
-  NovelTense,
   NovelVolumeBeat,
   NovelVolumeDesign,
 } from '@/app/api/studio/novel/_shared/types';
@@ -191,7 +190,6 @@ export function syncWritingUnits(
     ...(prev?.styleSelections && Object.keys(prev.styleSelections).length
       ? { styleSelections: prev.styleSelections }
       : {}),
-    ...(prev?.tense ? { tense: prev.tense } : {}),
     ...(selectedUnitIds.length ? { selectedUnitIds } : {}),
     ...(focusUnitId ? { focusUnitId } : {}),
   };
@@ -211,7 +209,6 @@ function snapshotKey(snapshot: WritingSnapshot) {
   return {
     units: snapshot.units.map((unit) => [unit.unitId, unit.body]),
     styleSelections: snapshot.styleSelections ?? null,
-    tense: snapshot.tense ?? null,
     selectedUnitIds: snapshot.selectedUnitIds ?? [],
     focusUnitId: snapshot.focusUnitId ?? null,
   };
@@ -536,8 +533,7 @@ export function toCastRequest(cast: CastStepSnapshot | undefined): NovelCast | u
 
 /** 写作步的人称、聚焦是否都已选定。 */
 export function hasNarration(writing: WritingSnapshot | undefined): boolean {
-  if (!writing?.tense) return false;
-  return NARRATOR_AXIS_LABELS.every((label) => hasStyleAxis(writing.styleSelections ?? {}, label));
+  return NARRATOR_AXIS_LABELS.every((label) => hasStyleAxis(writing?.styleSelections ?? {}, label));
 }
 
 /** 把写作步文风压成提示。含人称与聚焦。 */
@@ -855,10 +851,6 @@ export function readChaptersStepSnapshot(data: unknown): ChaptersStepSnapshot | 
   return { volumes };
 }
 
-function parseTense(value: unknown): NovelTense | undefined {
-  return value === 'past' || value === 'present' ? value : undefined;
-}
-
 /** 读取写作快照。 */
 export function readWriteStepSnapshot(data: unknown): WriteStepSnapshot | undefined {
   if (!data || typeof data !== 'object') return undefined;
@@ -879,11 +871,9 @@ export function readWriteStepSnapshot(data: unknown): WriteStepSnapshot | undefi
       )
     : [];
   const focusUnitId = asString(record.focusUnitId);
-  const tense = parseTense(record.tense);
   return {
     units,
     ...(Object.keys(styleSelections).length ? { styleSelections } : {}),
-    ...(tense ? { tense } : {}),
     ...(selectedUnitIds.length ? { selectedUnitIds } : {}),
     ...(focusUnitId && selectedUnitIds.includes(focusUnitId) ? { focusUnitId } : {}),
   };

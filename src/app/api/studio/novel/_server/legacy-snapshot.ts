@@ -176,9 +176,6 @@ function mergeNarrationIntoWrite(data: unknown, bible: unknown): unknown {
   const source = asRecord(bible);
   if (!write || !source) return data;
   const next = { ...write };
-  if (next.tense !== 'past' && next.tense !== 'present') {
-    if (source.tense === 'past' || source.tense === 'present') next.tense = source.tense;
-  }
   const voice = asRecord(source.voiceFocus);
   if (voice) {
     const style = asRecord(next.styleSelections) ?? {};

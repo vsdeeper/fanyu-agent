@@ -1342,14 +1342,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
     commitWriting(withSelection(base, next, nextFocus));
   }
 
-  function updateTense(tense: WritingSnapshot['tense']) {
-    const prev = writingRef.current;
-    if (!prev || !tense) return;
-    const nextWriting: WritingSnapshot = { ...prev, tense };
-    commitWriting(nextWriting);
-    void persistWrite(nextWriting);
-  }
-
   async function handleGenerateWriting(unitIds: string[]) {
     const currentPlan = planRef.current;
     const currentVolumes = volumesRef.current;
@@ -1419,7 +1411,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
             topic: selectedTopic,
             plan: toPlanRequest(currentPlan),
             cast: castBody,
-            tense: currentWriting.tense,
             ...(stylePrompt ? { stylePrompt } : {}),
             previousChapters: resolved.previous.map((chapter) => {
               const body = bodyById.get(chapter.id)?.trim();
@@ -1626,7 +1617,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
     toggleWritingUnit,
     updateWritingBody,
     updateStyleSelections,
-    updateTense,
   };
 }
 

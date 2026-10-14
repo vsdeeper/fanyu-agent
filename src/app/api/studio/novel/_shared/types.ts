@@ -4,9 +4,6 @@ export type NovelCharacterRole = 'protagonist' | 'antagonist' | 'supporting';
 /** 人物性别：女或男。 */
 export type NovelCharacterGender = 'female' | 'male';
 
-/** 语法时态：全书锁定，与文风「时间位置」不是同一根轴。 */
-export type NovelTense = 'past' | 'present';
-
 /** 人物在全书中的变化，某一阶段可以空。 */
 export type NovelCharacterArc = {
   early?: string;
@@ -42,7 +39,7 @@ export type NovelRelation = {
   arc?: NovelRelationArc;
 };
 
-/** 角色设定：只含人物与关系。人称、聚焦、时态在写作步。 */
+/** 角色设定：只含人物与关系。人称、聚焦在写作步的文风里。 */
 export type NovelCast = {
   characters: NovelCharacter[];
   relations: NovelRelation[];
@@ -249,7 +246,6 @@ export type NovelWritingRequest = {
   cast: NovelCast;
   /** 文风提示词，含人称与聚焦。 */
   stylePrompt?: string;
-  tense: NovelTense;
   previousChapters: NovelPreviousChapterContext[];
   chapter: Pick<NovelChapterCard, 'title' | 'scene' | 'event' | 'hook'>;
   /** 下一章只用来卡住边界。 */

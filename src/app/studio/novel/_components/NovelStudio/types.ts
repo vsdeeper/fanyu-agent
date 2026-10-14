@@ -11,7 +11,6 @@ import type {
   NovelRelationArc,
   NovelSection,
   NovelSectionBlock,
-  NovelTense,
   NovelThread,
   NovelVolumeAsset,
   NovelVolumeBeat,
@@ -60,7 +59,6 @@ export type {
   NovelRelationArc,
   NovelSection,
   NovelSectionBlock,
-  NovelTense,
   NovelThread,
   NovelVolumeAsset,
   NovelVolumeBeat,
@@ -113,11 +111,10 @@ export type WritingUnit = {
   body: string;
 };
 
-/** 正文写作步骤落盘快照。人称、聚焦在 styleSelections 里，时态单独锁定。 */
+/** 正文写作步骤落盘快照。人称、聚焦在 styleSelections 里。 */
 export type WritingSnapshot = {
   units: WritingUnit[];
   styleSelections?: StyleDimensionSelections;
-  tense?: NovelTense;
   selectedUnitIds?: string[];
   focusUnitId?: string;
 };
@@ -125,7 +122,7 @@ export type WritingSnapshot = {
 /** 角色设定步骤落盘快照。 */
 export type CastStepSnapshot = NovelCast;
 
-/** 模型产出的角色，不含人称与时态。 */
+/** 模型产出的角色，不含人称与聚焦。 */
 export type CastGenerated = NovelCast;
 
 /** 世界观设定步骤落盘快照。 */

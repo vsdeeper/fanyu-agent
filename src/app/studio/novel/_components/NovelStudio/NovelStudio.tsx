@@ -63,7 +63,6 @@ export default function NovelStudio({ task }: NovelStudioProps) {
             selectedUnitIds={studio.selectedUnitIds}
             focusUnitId={studio.focusUnitId}
             styleSelections={studio.writing?.styleSelections ?? {}}
-            tense={studio.writing?.tense}
             writeBusy={studio.generatingUnitIds.length > 0 || Boolean(studio.polishingUnitId)}
             onGenerateWorldview={studio.handleGenerateWorldview}
             onResearch={studio.handleResearch}
@@ -72,7 +71,6 @@ export default function NovelStudio({ task }: NovelStudioProps) {
             onGenerateVolumes={studio.handleGenerateVolumes}
             onToggleWritingUnit={studio.toggleWritingUnit}
             onStyleSelectionsChange={studio.updateStyleSelections}
-            onTenseChange={studio.updateTense}
           />
           <ResultPanel
             phase={studio.phase}

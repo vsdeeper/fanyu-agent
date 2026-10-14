@@ -170,7 +170,6 @@ const writingSchema = z.object({
   plan: planSchema,
   cast: castSchema,
   stylePrompt: z.string().trim().min(1).optional(),
-  tense: z.enum(['past', 'present']),
   previousChapters: z.array(
     chapterCardSchema.extend({
       body: z.string().optional(),

@@ -6,7 +6,6 @@ import type {
   NovelCharacterGender,
   NovelCharacterRole,
   NovelPanelValues,
-  NovelTense,
   StudioPhase,
 } from './types';
 
@@ -118,7 +117,7 @@ export const MISSING_VOLUME_SELECTION_WARNING = '请先点选一卷写了节拍�
 export const MISSING_CHAPTERS_WARNING = '请先为本卷生成章卡，才能进入写作';
 export const MISSING_WRITE_SELECTION_WARNING = '请先选择要写作的章节';
 export const WRITE_SEQUENCE_WARNING = '请先按顺序完成前面的章节';
-export const MISSING_NARRATION_WARNING = '请先选定人称、聚焦和时态';
+export const MISSING_NARRATION_WARNING = '请先选定人称和聚焦';
 export const EMPTY_WORLDVIEW_HINT = '上传世界观设定后点击「整理世界观」，产出可编辑的章节';
 export const EMPTY_RESEARCH_HINT = '确认世界观后点击「开始调研」，将产出若干选题卡供点选';
 export const EMPTY_PLAN_HINT = '确认选题后点击「生成创作方案」，产出全书的两级章节';
@@ -272,15 +271,9 @@ export const CHARACTER_GENDER_OPTIONS: { label: string; value: NovelCharacterGen
   { label: '男', value: 'male' },
 ];
 
-export const TENSE_OPTIONS: { label: string; value: NovelTense }[] = [
-  { label: '过去时', value: 'past' },
-  { label: '现在时', value: 'present' },
-];
-
 export const CHARACTERS_TITLE = '人物';
 export const RELATIONS_TITLE = '关系';
 export const NARRATION_TITLE = '叙述';
-export const TENSE_LABEL = '时态';
 export const ADD_CHARACTER_BUTTON = '添加人物';
 export const ADD_RELATION_BUTTON = '添加关系';
 export const DELETE_BUTTON = '删除';

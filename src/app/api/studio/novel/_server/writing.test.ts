@@ -51,7 +51,6 @@ const writingBody: NovelWritingRequest = {
   topic,
   plan,
   cast,
-  tense: 'past',
   previousChapters: [
     {
       title: '钥匙',

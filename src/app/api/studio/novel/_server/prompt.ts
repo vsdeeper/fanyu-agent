@@ -12,7 +12,6 @@ import type {
   NovelRelationArc,
   NovelResearchRequest,
   NovelSection,
-  NovelTense,
   NovelVolumeChaptersRequest,
   NovelVolumeDesign,
   NovelVolumesRequest,
@@ -29,11 +28,6 @@ const ROLE_LABEL: Record<NovelCharacterRole, string> = {
 const GENDER_LABEL: Record<NovelCharacterGender, string> = {
   female: '女',
   male: '男',
-};
-
-const TENSE_LABEL: Record<NovelTense, string> = {
-  past: '过去时',
-  present: '现在时',
 };
 
 const RELATION_ARC_LABEL: Record<keyof NovelRelationArc, string> = {
@@ -230,7 +224,7 @@ export function buildCastPrompt(body: NovelCastRequest): string {
     `为什么值得写：${body.topic.why}`,
     `故事核：${body.topic.core}${risk}`,
     '规模：核心人物约 12～20 人。',
-    '请直接输出人物与关系的 JSON，不要前言。不要写人称、聚焦或时态。',
+    '请直接输出人物与关系的 JSON，不要前言。不要写人称或聚焦。',
   );
   return lines.join('\n');
 }
@@ -307,7 +301,6 @@ export function buildWritingPrompt(body: NovelWritingRequest): string {
     `故事核：${body.topic.core}`,
     formatPlanPrompt(body.plan),
     formatCastPrompt(body.cast),
-    `时态：${TENSE_LABEL[body.tense]}`,
   ];
   if (body.stylePrompt?.trim()) {
     lines.push('【文风】', body.stylePrompt.trim());
