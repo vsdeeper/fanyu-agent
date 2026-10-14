@@ -3,18 +3,24 @@ import {
   NOVEL_MAX_PLAN_FILES,
 } from '@/app/api/studio/novel/_shared/idea-file';
 import {
-  NOVEL_THREAD_COUNT_MAX,
-  NOVEL_THREAD_COUNT_MIN,
   readNovelReasoningEffort,
+  readOptionalNovelReasoningEffort,
 } from '@/app/api/studio/novel/_shared/constants';
-import { normalizeNovelPlan } from '@/app/api/studio/novel/_shared/normalize-plan';
+import {
+  normalizeNovelPlan,
+  parseSections,
+  worldviewToSections,
+} from '@/app/api/studio/novel/_shared/normalize-plan';
 import { NOVEL_STEP_SNAPSHOT_VERSION } from '@/app/api/studio/novel/_shared/task-constants';
 import type { NovelStepKey, NovelTaskStepRecord } from '@/app/api/studio/novel/_shared/task-types';
 import type {
   NovelCast,
   NovelIdeaFile,
   NovelPlan,
+  NovelSection,
   NovelTense,
+  NovelVolumeBeat,
+  NovelVolumeDesign,
 } from '@/app/api/studio/novel/_shared/types';
 import type { ProductDocUploadItem } from '@/app/studio/_components/ProductDocsUpload';
 import {
@@ -40,6 +46,8 @@ import type {
   StructureChapter,
   StudioPhase,
   TopicCard,
+  VolumesStepSnapshot,
+  WorldviewStepSnapshot,
   WritingSnapshot,
   WritingUnit,
   WriteStepSnapshot,
@@ -58,118 +66,122 @@ export type ResolvedWritingUnit = {
   next?: StructureChapter;
 };
 
-/** 按创作方案的卷序展开已有章卡。 */
-export function listStructureChapters(
-  plan: NovelPlan | undefined,
+/** 卷纲快照里的卷。 */
+export function volumesOf(snapshot: VolumesStepSnapshot | undefined): NovelVolumeDesign[] {
+  return snapshot?.volumes ?? [];
+}
+
+/** 当前点选的那一卷。选中卷已不在卷纲里时返回 undefined。 */
+export function selectedVolume(
+  snapshot: VolumesStepSnapshot | undefined,
+): NovelVolumeDesign | undefined {
+  const volumeId = snapshot?.selectedVolumeId;
+  if (!volumeId) return undefined;
+  return snapshot?.volumes.find((volume) => volume.id === volumeId);
+}
+
+/** 某一卷的章卡。 */
+export function volumeChapters(
+  volumeId: string | undefined,
   chapters: ChaptersSnapshot | undefined,
 ): StructureChapter[] {
-  if (!plan || !chapters) return [];
-  return plan.volumes.flatMap((volume) => {
-    const match = chapters.volumes.find((item) => item.id === volume.id);
-    return match?.chapters ?? [];
-  });
+  if (!volumeId) return [];
+  return chapters?.volumes.find((volume) => volume.id === volumeId)?.chapters ?? [];
 }
 
-/** 至少有一卷已经生成章卡。 */
-export function areVolumesReadyForWrite(chapters: ChaptersSnapshot | undefined): boolean {
-  return Boolean(chapters?.volumes.some((volume) => volume.chapters.length > 0));
+/** 选中卷的章卡。写作与卷章都只看这一卷。 */
+export function selectedVolumeChapters(
+  volumes: VolumesStepSnapshot | undefined,
+  chapters: ChaptersSnapshot | undefined,
+): StructureChapter[] {
+  return volumeChapters(volumes?.selectedVolumeId, chapters);
 }
 
-/** 下一步写作要求当前选中的卷已经有章卡。 */
-export function isSelectedVolumeReadyForWrite(
-  plan: NovelPlan | undefined,
+/** 选中卷是否已经有章卡。 */
+export function isSelectedVolumeReady(
+  volumes: VolumesStepSnapshot | undefined,
   chapters: ChaptersSnapshot | undefined,
 ): boolean {
-  const volumeId = chapters?.selectedVolumeId;
-  if (!volumeId || !plan?.volumes.some((volume) => volume.id === volumeId)) return false;
-  return Boolean(chapters.volumes.find((volume) => volume.id === volumeId)?.chapters.length);
+  return selectedVolumeChapters(volumes, chapters).length > 0;
 }
 
-/**
- * 写作步只操作选中卷的章。
- * 没选中、或选中卷已不在快照里时沿用全书，避免旧任务一进写作就丢章节。
- */
+/** 这一卷的章卡是否已有正文。用于打开任务时判断停在写作还是卷章。 */
+export function volumeHasBody(
+  volumeId: string | undefined,
+  chapters: ChaptersSnapshot | undefined,
+  writing: WritingSnapshot | undefined,
+): boolean {
+  const bodyById = new Map((writing?.units ?? []).map((unit) => [unit.unitId, unit.body.trim()]));
+  return volumeChapters(volumeId, chapters).some((chapter) => bodyById.get(chapter.id));
+}
+
+/** 卷纲能否进入卷章：卷数非空，且点选的那一卷写了节拍。 */
+export function isSelectedVolumeReadyForChapters(
+  snapshot: VolumesStepSnapshot | undefined,
+): boolean {
+  const volume = selectedVolume(snapshot);
+  return Boolean(volume?.beats.length);
+}
+
+/** 至少一节里有一个写了正文的内容块。世界观、创作方案都按这一条放行。 */
+export function isSectionsReady(sections: readonly NovelSection[] | undefined): boolean {
+  return Boolean(sections?.some((section) => section.blocks.some((block) => block.body.trim())));
+}
+
+/** 世界观章节能否进入选题。 */
+export function isWorldviewReady(snapshot: WorldviewStepSnapshot | undefined): boolean {
+  return isSectionsReady(snapshot?.sections);
+}
+
+/** 写作步只操作选中卷的章。 */
 export function writingChapterIds(
-  plan: NovelPlan | undefined,
+  volumes: VolumesStepSnapshot | undefined,
   chapters: ChaptersSnapshot | undefined,
 ): string[] {
-  const all = listStructureChapters(plan, chapters).map((chapter) => chapter.id);
-  const volumeId = chapters?.selectedVolumeId;
-  if (!volumeId || !chapters) return all;
-  const volume = chapters.volumes.find((item) => item.id === volumeId);
-  if (!volume || volume.chapters.length === 0) return all;
-  const allowed = new Set(volume.chapters.map((chapter) => chapter.id));
-  return all.filter((id) => allowed.has(id));
+  return selectedVolumeChapters(volumes, chapters).map((chapter) => chapter.id);
 }
 
-/** 写作左栏章节。选中卷时只列出该卷，序号仍按全书计数。 */
+/** 写作左栏章节：选中卷的全部章，按卷内次序编号。 */
 export function visibleWritingChapters(
-  plan: NovelPlan | undefined,
+  volumes: VolumesStepSnapshot | undefined,
   chapters: ChaptersSnapshot | undefined,
 ): { chapter: StructureChapter; number: number }[] {
-  if (!plan) return [];
-  const allowed = new Set(writingChapterIds(plan, chapters));
-  const visible: { chapter: StructureChapter; number: number }[] = [];
-  let number = 0;
-  for (const volume of plan.volumes) {
-    const volumeChapters = chapters?.volumes.find((item) => item.id === volume.id)?.chapters ?? [];
-    for (const chapter of volumeChapters) {
-      number += 1;
-      if (allowed.has(chapter.id)) visible.push({ chapter, number });
-    }
-  }
-  return visible;
+  return selectedVolumeChapters(volumes, chapters).map((chapter, index) => ({
+    chapter,
+    number: index + 1,
+  }));
 }
 
-/** 至少有一层秩序写清了问题，并有一条写清运作方式的规则。 */
-function hasReadyOrder(plan: NovelPlan): boolean {
-  return plan.worldview.orders.some(
-    (order) =>
-      order.name.trim() &&
-      order.question.trim() &&
-      order.entries.some((entry) => entry.name.trim() && entry.rule.trim()),
-  );
-}
-
-/**
- * 创作方案能否进入角色步。
- * 需要世界观里的秩序与隐藏真相、终局、主题、2～4 条主线，且每卷写了人物推进和卷末钩子。
- */
+/** 创作方案能否进入角色步。至少一节写清了正文。 */
 export function isPlanReady(plan: NovelPlan | undefined): boolean {
-  if (!plan || plan.volumes.length === 0) return false;
-  const threadCount = plan.threads.length;
-  if (threadCount < NOVEL_THREAD_COUNT_MIN || threadCount > NOVEL_THREAD_COUNT_MAX) return false;
-  if (!hasReadyOrder(plan) || !plan.worldview.hiddenTruth.trim()) return false;
-  if (!plan.ending.trim() || !plan.theme.trim()) return false;
-  const volumesOk = plan.volumes.every(
-    (volume) =>
-      volume.title.trim() &&
-      volume.geography.trim() &&
-      volume.conflict.trim() &&
-      volume.relations.trim() &&
-      volume.hook.trim() &&
-      volume.targetChars > 0,
-  );
-  const threadsOk = plan.threads.every((thread) => thread.name.trim() && thread.core.trim());
-  return volumesOk && threadsOk;
+  return isSectionsReady(plan?.sections);
 }
 
-/** 新生成的方案是否可以落盘。缺秩序、隐藏真相、终局、主题或卷末钩子时当作没解析到。 */
+/** 新生成的方案是否可以落盘。 */
 export function isFreshPlanComplete(plan: NovelPlan): boolean {
   return isPlanReady(plan);
 }
 
-/** 按当前章卡对齐写作 units，保留已有正文。 */
+/** 卷纲能否进入卷章。至少一卷写了冲突。 */
+export function isVolumesReady(snapshot: VolumesStepSnapshot | undefined): boolean {
+  return volumesOf(snapshot).some((volume) => volume.title.trim() || volume.beats.length > 0);
+}
+
+/**
+ * 按当前章卡对齐写作 units，保留已有正文。
+ * 全书各卷的章卡都收进来：换卷写作时其它卷的正文留在快照里。
+ */
 export function syncWritingUnits(
-  plan: NovelPlan | undefined,
   chapters: ChaptersSnapshot | undefined,
   prev?: WritingSnapshot,
 ): WritingSnapshot {
   const prevMap = new Map((prev?.units ?? []).map((unit) => [unit.unitId, unit.body]));
-  const units: WritingUnit[] = listStructureChapters(plan, chapters).map((chapter) => ({
-    unitId: chapter.id,
-    body: prevMap.get(chapter.id) ?? '',
-  }));
+  const units: WritingUnit[] = (chapters?.volumes ?? []).flatMap((volume) =>
+    volume.chapters.map((chapter) => ({
+      unitId: chapter.id,
+      body: prevMap.get(chapter.id) ?? '',
+    })),
+  );
   const valid = new Set(units.map((unit) => unit.unitId));
   const selectedUnitIds = (prev?.selectedUnitIds ?? []).filter((id) => valid.has(id));
   const focusUnitId =
@@ -223,27 +235,23 @@ export function splitWritingParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
-/** 解析章节 unitId 的展示与生成上下文。选中卷时，前章和下一章只看这一卷，章序仍按全书。 */
+/** 解析章节 unitId 的展示与生成上下文。章序与前后章都只看选中卷。 */
 export function resolveWritingUnit(
-  plan: NovelPlan | undefined,
+  volumes: VolumesStepSnapshot | undefined,
   chapters: ChaptersSnapshot | undefined,
   unitId: string,
 ): ResolvedWritingUnit | undefined {
-  const list = listStructureChapters(plan, chapters);
+  const list = selectedVolumeChapters(volumes, chapters);
   const index = list.findIndex((chapter) => chapter.id === unitId);
   if (index < 0) return undefined;
-  const allowed = new Set(writingChapterIds(plan, chapters));
-  if (!allowed.has(unitId)) return undefined;
-  const scoped = list.filter((chapter) => allowed.has(chapter.id));
-  const localIndex = scoped.findIndex((chapter) => chapter.id === unitId);
   const chapter = list[index]!;
   const titleName = stripChapterPrefix(chapter.title);
   return {
     unitId,
     label: `${formatChapterPrefix(index + 1)}${titleName ? `　${titleName}` : ''}`,
     chapter,
-    previous: scoped.slice(0, localIndex),
-    next: scoped[localIndex + 1],
+    previous: list.slice(0, index),
+    next: list[index + 1],
   };
 }
 
@@ -269,15 +277,15 @@ export function resolveGenerateUnitIds(
 }
 
 /**
- * 判断章节能否生成：已有正文可重生成；新章节须等所有前章都有正文。
+ * 判断章节能否生成：已有正文可重生成；新章节须等本卷内所有前章都有正文。
  */
 export function canGenerateWritingUnit(
-  plan: NovelPlan | undefined,
+  volumes: VolumesStepSnapshot | undefined,
   chapters: ChaptersSnapshot | undefined,
   writing: WritingSnapshot,
   unitId: string,
 ): boolean {
-  const resolved = resolveWritingUnit(plan, chapters, unitId);
+  const resolved = resolveWritingUnit(volumes, chapters, unitId);
   if (!resolved) return false;
   if (
     !resolved.chapter.scene.trim() ||
@@ -298,37 +306,6 @@ export type WritingEditorBlock = {
   canGenerate: boolean;
 };
 
-export type PreviewSection = {
-  chapterLabel?: string;
-  paragraphs: string[];
-};
-
-export type PreviewDocument = {
-  sections: PreviewSection[];
-  plainText: string;
-};
-
-/** 按全书顺序组装预览文稿。 */
-export function buildPreviewDocument(
-  plan: NovelPlan | undefined,
-  chapters: ChaptersSnapshot | undefined,
-  writing: WritingSnapshot,
-): PreviewDocument {
-  const bodyOf = (unitId: string) =>
-    writing.units.find((unit) => unit.unitId === unitId)?.body.trim() ?? '';
-  const sections: PreviewSection[] = [];
-  const plainParts: string[] = [];
-  listStructureChapters(plan, chapters).forEach((chapter, chapterIndex) => {
-    const body = bodyOf(chapter.id);
-    if (!body) return;
-    const titleName = stripChapterPrefix(chapter.title);
-    const chapterLabel = `${formatChapterPrefix(chapterIndex + 1)}${titleName ? `　${titleName}` : ''}`;
-    sections.push({ chapterLabel, paragraphs: splitWritingParagraphs(body) });
-    plainParts.push(`${chapterLabel}\n\n${body}`);
-  });
-  return { sections, plainText: plainParts.join('\n\n\n') };
-}
-
 /** 复制纯文本到剪贴板。 */
 export async function copyText(text: string): Promise<void> {
   await navigator.clipboard.writeText(text);
@@ -336,22 +313,22 @@ export async function copyText(text: string): Promise<void> {
 
 /** 为当前选中章节构建正文编辑块。 */
 export function buildWritingEditorBlocks(
-  plan: NovelPlan | undefined,
+  volumes: VolumesStepSnapshot | undefined,
   chapters: ChaptersSnapshot | undefined,
   writing: WritingSnapshot,
   selectedUnitIds: string[],
 ): WritingEditorBlock[] {
-  const valid = writingChapterIds(plan, chapters);
+  const valid = writingChapterIds(volumes, chapters);
   const unitId = resolveGenerateUnitIds(valid, selectedUnitIds)[0];
   if (!unitId) return [];
-  const resolved = resolveWritingUnit(plan, chapters, unitId);
+  const resolved = resolveWritingUnit(volumes, chapters, unitId);
   if (!resolved) return [];
   return [
     {
       unitId,
       label: resolved.label,
       body: writing.units.find((unit) => unit.unitId === unitId)?.body ?? '',
-      canGenerate: canGenerateWritingUnit(plan, chapters, writing, unitId),
+      canGenerate: canGenerateWritingUnit(volumes, chapters, writing, unitId),
     },
   ];
 }
@@ -400,7 +377,14 @@ export function extractTrailingJsonBlock(text: string): { prose: string; json: u
       }
     }
   }
-  for (const key of ['"topics"', '"characters"', '"worldview"', '"threads"', '"chapters"']) {
+  for (const key of [
+    '"topics"',
+    '"characters"',
+    '"sections"',
+    '"worldview"',
+    '"threads"',
+    '"chapters"',
+  ]) {
     const index = text.lastIndexOf(key);
     if (index < 0) continue;
     const start = text.lastIndexOf('{', index);
@@ -569,9 +553,92 @@ export function parseResearchTopics(json: unknown): TopicCard[] {
   return topics.map(parseTopicCard).filter((item) => item !== null);
 }
 
-/** 解析创作方案。旧快照里的逐卷推进和本卷结果会收成卷末钩子。 */
+/** 解析世界观设定或创作方案的两级章节。 */
+export function parseSectionsPayload(json: unknown): NovelSection[] {
+  if (!json || typeof json !== 'object') return [];
+  return parseSections((json as Record<string, unknown>).sections);
+}
+
+/** 解析创作方案。旧方案的分卷会收成一级标题，主线与终局原样留着。 */
 export function parsePlanPayload(json: unknown): NovelPlan | null {
   return normalizeNovelPlan(json);
+}
+
+/** 把方案压成请求体：只带方案本身，不带流式过程文案。 */
+export function toPlanRequest(plan: NovelPlan): NovelPlan {
+  return {
+    sections: plan.sections,
+    ...(plan.threads && plan.threads.length > 0 ? { threads: plan.threads } : {}),
+    ...(plan.ending?.trim() ? { ending: plan.ending } : {}),
+    ...(plan.theme?.trim() ? { theme: plan.theme } : {}),
+    ...(plan.worldview ? { worldview: plan.worldview } : {}),
+  };
+}
+
+/**
+ * 世界观章节：优先用世界观步骤的结果。
+ * 旧任务没有这一步时，退回旧方案里内嵌的世界观，别让下游失去设定。
+ */
+export function resolveWorldviewSections(
+  snapshot: WorldviewStepSnapshot | undefined,
+  plan: NovelPlan | undefined,
+): NovelSection[] {
+  if (isSectionsReady(snapshot?.sections)) return snapshot!.sections;
+  return worldviewToSections(plan?.worldview);
+}
+
+/** 解析一拍。没有 id 或标题与事都没写的丢掉。 */
+function parseBeat(value: unknown): NovelVolumeBeat | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const id = asString(record.id);
+  if (!id) return null;
+  const title = asString(record.title) ?? '';
+  const event = asString(record.event) ?? '';
+  if (!title && !event) return null;
+  const characterIds = Array.isArray(record.characterIds)
+    ? record.characterIds
+        .map(asString)
+        .filter((item): item is string => Boolean(item))
+        .filter((item, index, list) => list.indexOf(item) === index)
+    : [];
+  return { id, title, event, characterIds };
+}
+
+/**
+ * 解析一卷卷纲。没有 id 或整卷空白的丢掉。
+ * sourceSectionId 只认创作方案里真实存在的节，对不上的省略。
+ */
+export function parseVolumeDesign(
+  value: unknown,
+  knownSectionIds?: ReadonlySet<string>,
+): NovelVolumeDesign | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const id = asString(record.id);
+  if (!id) return null;
+  const beats = Array.isArray(record.beats)
+    ? record.beats.map(parseBeat).filter((beat): beat is NovelVolumeBeat => beat !== null)
+    : [];
+  const title = asString(record.title) ?? '';
+  const conflict = asString(record.conflict) ?? '';
+  const hook = asString(record.hook) ?? '';
+  if (!title && !conflict && !hook && beats.length === 0) return null;
+  const source = asString(record.sourceSectionId);
+  const sourceSectionId =
+    source && (!knownSectionIds || knownSectionIds.has(source)) ? source : undefined;
+  return { id, title, conflict, hook, beats, ...(sourceSectionId ? { sourceSectionId } : {}) };
+}
+
+/** 解析卷纲生成结果。 */
+export function parseVolumesPayload(json: unknown, plan?: NovelPlan): NovelVolumeDesign[] {
+  if (!json || typeof json !== 'object') return [];
+  const raw = (json as Record<string, unknown>).volumes;
+  if (!Array.isArray(raw)) return [];
+  const knownSectionIds = plan ? new Set(plan.sections.map((section) => section.id)) : undefined;
+  return raw
+    .map((item) => parseVolumeDesign(item, knownSectionIds))
+    .filter((volume): volume is NovelVolumeDesign => volume !== null);
 }
 
 function parseChapter(value: unknown): StructureChapter | null {
@@ -680,14 +747,31 @@ function readStoredFiles(value: unknown, max: number): ProductDocUploadItem[] {
   return files;
 }
 
-/** 读取选题调研快照。旧的体量、赛道字段忽略。 */
+/** 读取世界观设定快照。 */
+export function readWorldviewStepSnapshot(data: unknown): WorldviewStepSnapshot | undefined {
+  if (!data || typeof data !== 'object') return undefined;
+  const record = data as Record<string, unknown>;
+  const sections = parseSections(record.sections);
+  const files = readStoredFiles(record.files, NOVEL_MAX_IDEA_FILES);
+  const streamText = asString(record.streamText);
+  // 没写思考强度时留 undefined，让调用方继续往更旧的步骤找
+  const reasoningEffort = readOptionalNovelReasoningEffort(record.reasoningEffort);
+  if (sections.length === 0 && files.length === 0) return undefined;
+  return {
+    sections,
+    ...(files.length ? { files } : {}),
+    ...(streamText ? { streamText } : {}),
+    ...(reasoningEffort ? { reasoningEffort } : {}),
+  };
+}
+
+/** 读取选题调研快照。旧的体量、赛道字段忽略；旧快照的体系设定附件读成世界观设定。 */
 export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | undefined {
   if (!data || typeof data !== 'object') return undefined;
   const record = data as Record<string, unknown>;
   const topics = Array.isArray(record.topics)
     ? record.topics.map(parseTopicCard).filter((item) => item !== null)
     : [];
-  const idea = typeof record.idea === 'string' ? record.idea : '';
   const genres = Array.isArray(record.genres)
     ? record.genres.filter(
         (item): item is string => typeof item === 'string' && item.trim().length > 0,
@@ -695,9 +779,9 @@ export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | 
     : [];
   const selectedTopicId = asString(record.selectedTopicId);
   const streamText = asString(record.streamText);
+  const legacyFiles = readStoredFiles(record.ideaFiles, NOVEL_MAX_IDEA_FILES);
   return {
-    idea,
-    ideaFiles: readStoredFiles(record.ideaFiles, NOVEL_MAX_IDEA_FILES),
+    worldviewFiles: legacyFiles,
     planFiles: readStoredFiles(record.planFiles, NOVEL_MAX_PLAN_FILES),
     genres,
     topics,
@@ -726,19 +810,37 @@ export function readPlanStepSnapshot(data: unknown): PlanStepSnapshot | undefine
   return { ...plan, ...(streamText ? { streamText } : {}) };
 }
 
-/** 读取卷章快照。没有场景的旧章不收入。选中卷不在结果里时丢掉。 */
+/** 读取卷纲快照。 */
+export function readVolumesStepSnapshot(data: unknown): VolumesStepSnapshot | undefined {
+  if (!data || typeof data !== 'object') return undefined;
+  const record = data as Record<string, unknown>;
+  if (!Array.isArray(record.volumes)) return undefined;
+  const volumes = record.volumes
+    .map((item) => parseVolumeDesign(item))
+    .filter((volume): volume is NovelVolumeDesign => volume !== null);
+  const streamText = asString(record.streamText);
+  const selectedVolumeId = asString(record.selectedVolumeId);
+  return {
+    volumes,
+    ...(selectedVolumeId && volumes.some((volume) => volume.id === selectedVolumeId)
+      ? { selectedVolumeId }
+      : {}),
+    ...(streamText ? { streamText } : {}),
+  };
+}
+
+/** 读取卷章快照。卷 id 与卷纲里的卷对齐。 */
 export function readChaptersStepSnapshot(data: unknown): ChaptersStepSnapshot | undefined {
   if (!data || typeof data !== 'object') return undefined;
   const record = data as Record<string, unknown>;
-  const volumes = record.volumes;
-  if (!Array.isArray(volumes)) return undefined;
-  const parsed = volumes
+  if (!Array.isArray(record.volumes)) return undefined;
+  const volumes = record.volumes
     .map((item) => {
       if (!item || typeof item !== 'object') return null;
-      const record = item as Record<string, unknown>;
-      const id = asString(record.id);
-      if (!id || !Array.isArray(record.chapters)) return null;
-      const chapters = record.chapters
+      const volume = item as Record<string, unknown>;
+      const id = asString(volume.id);
+      if (!id || !Array.isArray(volume.chapters)) return null;
+      const chapters = volume.chapters
         .map((chapter) => {
           if (!chapter || typeof chapter !== 'object') return null;
           if (!asString((chapter as Record<string, unknown>).scene)) return null;
@@ -749,14 +851,8 @@ export function readChaptersStepSnapshot(data: unknown): ChaptersStepSnapshot | 
       return { id, chapters };
     })
     .filter((item) => item !== null);
-  if (parsed.length === 0) return undefined;
-  const selectedVolumeId = asString(record.selectedVolumeId);
-  return {
-    volumes: parsed,
-    ...(selectedVolumeId && parsed.some((volume) => volume.id === selectedVolumeId)
-      ? { selectedVolumeId }
-      : {}),
-  };
+  if (volumes.length === 0) return undefined;
+  return { volumes };
 }
 
 function parseTense(value: unknown): NovelTense | undefined {
@@ -793,20 +889,31 @@ export function readWriteStepSnapshot(data: unknown): WriteStepSnapshot | undefi
   };
 }
 
-/** 打开任务时停在最远的已有步骤。 */
+/**
+ * 打开任务时按数据停步。卷纲之后都以点选的那一卷为准：
+ * 这一卷有正文停在写作，有章卡停在卷章，只点选没章卡则停在卷纲。
+ */
 export function resolveInitialPhase(input: {
+  worldview?: WorldviewStepSnapshot;
   research?: ResearchStepSnapshot;
   plan?: PlanStepSnapshot;
   cast?: CastStepSnapshot;
+  volumes?: VolumesStepSnapshot;
   chapters?: ChaptersSnapshot;
   writing?: WritingSnapshot;
 }): StudioPhase {
-  if (hasWritingBody(input.writing)) return 'written';
-  if (areVolumesReadyForWrite(input.chapters)) return 'chaptered';
+  const volumeId = input.volumes?.selectedVolumeId;
+  if (volumeId) {
+    if (volumeHasBody(volumeId, input.chapters, input.writing)) return 'written';
+    if (isSelectedVolumeReady(input.volumes, input.chapters)) return 'chaptered';
+    return 'volumed';
+  }
+  if (volumesOf(input.volumes).length > 0) return 'volumed';
   if (hasCastDraft(input.cast)) return 'casted';
   if (input.plan) return 'planned';
   if (input.research?.topics.length) return 'researched';
-  return 'research';
+  if (isWorldviewReady(input.worldview)) return 'worldviewed';
+  return 'worldview';
 }
 
 /** 落盘小说步骤快照，返回服务端处理后的 data。 */

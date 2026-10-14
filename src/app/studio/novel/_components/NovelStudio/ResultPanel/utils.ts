@@ -1,13 +1,28 @@
 import {
   CHARACTER_GENDER_OPTIONS,
   CHARACTER_ROLE_OPTIONS,
+  EMPTY_FIELD_TEXT,
   NOVEL_MARKDOWN_EXPORT_VERSION,
 } from '../constants';
-import type { CastStepSnapshot, ChaptersSnapshot, NovelPlan, PlanStepSnapshot } from '../types';
-import { readCastStepSnapshot, readChaptersStepSnapshot, readPlanStepSnapshot } from '../utils';
+import type {
+  CastStepSnapshot,
+  ChaptersSnapshot,
+  NovelSection,
+  NovelVolumeDesign,
+  PlanStepSnapshot,
+  VolumesStepSnapshot,
+  WorldviewStepSnapshot,
+} from '../types';
+import {
+  readCastStepSnapshot,
+  readChaptersStepSnapshot,
+  readPlanStepSnapshot,
+  readVolumesStepSnapshot,
+  readWorldviewStepSnapshot,
+} from '../utils';
 import { formatChapterPrefix, stripChapterPrefix, toChineseNumeral } from './ChapterList/utils';
 
-export type NovelMarkdownExportType = 'cast' | 'plan' | 'chapters';
+export type NovelMarkdownExportType = 'cast' | 'plan' | 'chapters' | 'worldview' | 'volumes';
 
 export type NovelMarkdownImportError =
   'missing-payload' | 'invalid-payload' | 'wrong-type' | 'unsupported-version';
@@ -78,6 +93,20 @@ function parseExportEnvelope(
   return { ok: true, data: record.data };
 }
 
+/** 把通用两级章节整理成人可读的 Markdown。 */
+function formatSectionsMarkdown(sections: NovelSection[]): string {
+  return sections
+    .map((section) => {
+      const blocks = section.blocks
+        .map((block) =>
+          [`### ${block.title.trim() || EMPTY_FIELD_TEXT}`, '', block.body].join('\n'),
+        )
+        .join('\n\n');
+      return [`## ${section.title.trim() || EMPTY_FIELD_TEXT}`, '', blocks].join('\n');
+    })
+    .join('\n\n');
+}
+
 function roleLabel(role: string): string {
   return CHARACTER_ROLE_OPTIONS.find((option) => option.value === role)?.label ?? role;
 }
@@ -133,98 +162,81 @@ export function buildCastMarkdown(cast: CastStepSnapshot): string {
   return appendExportEnvelope(markdown, 'cast', cast);
 }
 
-/** 把世界观收成 Markdown：秩序、隐藏真相、物质基础。 */
-function formatWorldviewMarkdown(plan: PlanStepSnapshot): string {
-  const orders =
-    plan.worldview.orders.length > 0
-      ? plan.worldview.orders
-          .map((order) => {
-            const entries = order.entries
-              .map((entry) => `- ${entry.name}：${entry.rule}`)
-              .join('\n');
-            return [`### ${order.name}`, '', order.question, '', entries || '无'].join('\n');
-          })
-          .join('\n\n')
-      : '无';
-  const assets =
-    plan.worldview.assets.length > 0
-      ? plan.worldview.assets
-          .map(
-            (group) =>
-              `#### ${group.category}\n\n${group.items.map((item) => `- ${item}`).join('\n')}`,
-          )
-          .join('\n\n')
-      : '无';
-  return [
-    orders,
-    '',
-    `### 隐藏真相`,
-    '',
-    plan.worldview.hiddenTruth.trim() || '未写',
-    '',
-    `### 物质基础`,
-    '',
-    assets,
-  ].join('\n');
+/** 把世界观设定整理成人可读的 Markdown。 */
+export function buildWorldviewMarkdown(snapshot: WorldviewStepSnapshot): string {
+  const markdown = [`# 世界观设定`, '', formatSectionsMarkdown(snapshot.sections)].join('\n');
+  return appendExportEnvelope(markdown, 'worldview', snapshot);
+}
+
+/** 把叙事卷整理成人可读的 Markdown。 */
+function formatVolumesMarkdown(volumes: NovelVolumeDesign[]): string {
+  return volumes
+    .map((volume, index) => {
+      const beats = volume.beats
+        .map((beat, beatIndex) => {
+          const event = beat.event ? `：${beat.event}` : '';
+          return `${beatIndex + 1}. ${beat.title.trim() || '未写'}${event}`;
+        })
+        .join('\n');
+      return [
+        `## 第${toChineseNumeral(index + 1)}卷　${volume.title.trim() || '未命名'}`,
+        '',
+        `- 核心冲突：${volume.conflict.trim() || '未写'}`,
+        `- 卷末钩子：${volume.hook.trim() || '未写'}`,
+        '',
+        `### 节拍（按时间）`,
+        '',
+        beats || '未写',
+      ].join('\n');
+    })
+    .join('\n\n');
+}
+
+/** 旧方案残留的主线、终局与主题，新方案不再写。 */
+function formatLegacyPlanExtras(plan: PlanStepSnapshot): string {
+  const parts: string[] = [];
+  if (plan.threads && plan.threads.length > 0) {
+    parts.push(
+      [
+        '## 核心主线',
+        '',
+        ...plan.threads.map((thread) => `### ${thread.name}\n\n${thread.core}`),
+      ].join('\n\n'),
+    );
+  }
+  if (plan.ending?.trim()) parts.push(['## 终局', '', plan.ending.trim()].join('\n'));
+  if (plan.theme?.trim()) parts.push(['## 主题', '', plan.theme.trim()].join('\n'));
+  return parts.join('\n\n');
 }
 
 /** 把创作方案整理成人可读的 Markdown。 */
 export function buildPlanMarkdown(plan: PlanStepSnapshot): string {
-  const threads = plan.threads
-    .map((thread) => [`### ${thread.name}`, '', thread.core].join('\n'))
-    .join('\n\n');
-  const volumes = plan.volumes
-    .map((volume, index) => {
-      const assets =
-        volume.assets.length > 0
-          ? volume.assets.map((asset) => `  - ${asset.name}：${asset.use}`).join('\n')
-          : '  无';
-      return [
-        `### 第${toChineseNumeral(index + 1)}卷　${volume.title}`,
-        '',
-        `- 地图：${volume.geography}`,
-        `- 核心冲突：${volume.conflict}`,
-        `- 人物推进：${volume.relations.trim() || '未写'}`,
-        `- 本卷要素：`,
-        assets,
-        `- 卷末钩子：${volume.hook.trim() || '未写'}`,
-        `- 目标字数：${volume.targetChars}`,
-      ].join('\n');
-    })
-    .join('\n\n');
+  const legacy = formatLegacyPlanExtras(plan);
   const markdown = [
     `# 创作方案`,
     '',
-    `## 世界观`,
-    '',
-    formatWorldviewMarkdown(plan),
-    '',
-    `## 核心主线`,
-    '',
-    threads,
-    '',
-    `### 终局`,
-    '',
-    plan.ending.trim() || '未写',
-    '',
-    `### 主题`,
-    '',
-    plan.theme.trim() || '未写',
-    '',
-    `## 分卷设计与卷钩子`,
-    '',
-    volumes,
+    formatSectionsMarkdown(plan.sections),
+    ...(legacy ? ['', legacy] : []),
   ].join('\n');
   return appendExportEnvelope(markdown, 'plan', plan);
 }
 
-/** 把卷章设计整理成人可读的 Markdown。卷标题来自创作方案。 */
-export function buildChaptersMarkdown(plan: NovelPlan, chapters: ChaptersSnapshot): string {
+/** 把卷纲设计整理成人可读的 Markdown。节拍里的角色用姓名。 */
+export function buildVolumesMarkdown(snapshot: VolumesStepSnapshot): string {
+  const markdown = [`# 卷纲设计`, '', formatVolumesMarkdown(snapshot.volumes)].join('\n');
+  return appendExportEnvelope(markdown, 'volumes', snapshot);
+}
+
+/** 卷章设计整理成人可读的 Markdown。只写已经出过章卡的那些卷。 */
+export function buildChaptersMarkdown(
+  volumes: VolumesStepSnapshot | undefined,
+  chapters: ChaptersSnapshot,
+): string {
   let index = 0;
-  const volumes = plan.volumes
+  const names = new Map((volumes?.volumes ?? []).map((volume) => [volume.id, volume.title]));
+  const body = chapters.volumes
     .map((volume) => {
-      const cards = chapters.volumes.find((item) => item.id === volume.id)?.chapters ?? [];
-      const body = cards
+      const cards = volume.chapters
         .map((chapter) => {
           index += 1;
           const title = stripChapterPrefix(chapter.title);
@@ -237,10 +249,20 @@ export function buildChaptersMarkdown(plan: NovelPlan, chapters: ChaptersSnapsho
           ].join('\n');
         })
         .join('\n\n');
-      return [`## ${volume.title}`, '', body || '尚未生成章卡'].join('\n');
+      return [`## ${names.get(volume.id) ?? volume.id}`, '', cards].join('\n');
     })
     .join('\n\n');
-  return appendExportEnvelope([`# 卷章设计`, '', volumes].join('\n'), 'chapters', chapters);
+  return appendExportEnvelope([`# 卷章设计`, '', body].join('\n'), 'chapters', chapters);
+}
+
+export function parseWorldviewMarkdownImport(
+  markdown: string,
+): NovelMarkdownImportResult<WorldviewStepSnapshot> {
+  const envelope = parseExportEnvelope(markdown, 'worldview');
+  if (!envelope.ok) return envelope;
+  const snapshot = readWorldviewStepSnapshot(envelope.data);
+  if (!snapshot) return { ok: false, error: 'invalid-payload' };
+  return { ok: true, data: snapshot };
 }
 
 export function parseCastMarkdownImport(
@@ -261,6 +283,16 @@ export function parsePlanMarkdownImport(
   const plan = readPlanStepSnapshot(envelope.data);
   if (!plan) return { ok: false, error: 'invalid-payload' };
   return { ok: true, data: plan };
+}
+
+export function parseVolumesMarkdownImport(
+  markdown: string,
+): NovelMarkdownImportResult<VolumesStepSnapshot> {
+  const envelope = parseExportEnvelope(markdown, 'volumes');
+  if (!envelope.ok) return envelope;
+  const volumes = readVolumesStepSnapshot(envelope.data);
+  if (!volumes) return { ok: false, error: 'invalid-payload' };
+  return { ok: true, data: volumes };
 }
 
 export function parseChaptersMarkdownImport(

@@ -25,9 +25,11 @@ import {
   IDEA_FILE_INVALID,
   MISSING_CAST_INPUT,
   MISSING_PLAN_INPUT,
+  MISSING_POLISH_INPUT,
   MISSING_RESEARCH_INPUT,
   MISSING_VOLUME_CHAPTERS_INPUT,
-  MISSING_POLISH_INPUT,
+  MISSING_VOLUMES_INPUT,
+  MISSING_WORLDVIEW_INPUT,
   MISSING_WRITING_INPUT,
   PLAN_FAILED,
   PLAN_TRUNCATED,
@@ -37,6 +39,10 @@ import {
   RESEARCH_TRUNCATED,
   VOLUME_CHAPTERS_FAILED,
   VOLUME_CHAPTERS_TRUNCATED,
+  VOLUMES_FAILED,
+  VOLUMES_TRUNCATED,
+  WORLDVIEW_FAILED,
+  WORLDVIEW_TRUNCATED,
   WRITING_FAILED,
   WRITING_TRUNCATED,
 } from './constants';
@@ -48,6 +54,8 @@ import {
   POLISH_INSTRUCTIONS,
   RESEARCH_INSTRUCTIONS,
   VOLUME_CHAPTERS_INSTRUCTIONS,
+  VOLUMES_INSTRUCTIONS,
+  WORLDVIEW_INSTRUCTIONS,
   WRITING_INSTRUCTIONS,
 } from './instructions';
 import {
@@ -56,6 +64,8 @@ import {
   parsePolishBody,
   parseResearchBody,
   parseVolumeChaptersBody,
+  parseVolumesBody,
+  parseWorldviewBody,
   parseWritingBody,
 } from './parse-request';
 import {
@@ -64,6 +74,8 @@ import {
   buildPolishPrompt,
   buildResearchPrompt,
   buildVolumeChaptersPrompt,
+  buildVolumesPrompt,
+  buildWorldviewPrompt,
   buildWritingPrompt,
 } from './prompt';
 
@@ -156,7 +168,7 @@ function createProStream(params: {
   });
 }
 
-/** 解码思路文件。未上传视为成功；损坏时返回 400，避免流已经 200 才失败。 */
+/** 解码世界观设定附件。未上传视为成功；损坏时返回 400，避免流已经 200 才失败。 */
 async function readIdeaFiles(
   files: NovelIdeaFile[] | undefined,
 ): Promise<{ documentsText: string; pdfParts: NovelIdeaPdfPart[] } | Response> {
@@ -189,59 +201,82 @@ function createNovelSse(
   );
 }
 
-/** POST /api/studio/novel/bible：流式产出人物与关系。 */
-export async function handleNovelBible(req: Request): Promise<Response> {
-  let json: unknown;
+/** 读取 JSON 请求体并拆出对话设置；失败返回 Response。 */
+async function readJsonBody(req: Request): Promise<{ json: unknown } | Response> {
   try {
-    json = await req.json();
+    return { json: await req.json() };
   } catch {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
   }
+}
 
-  const split = splitChatSettings(json);
+/** 已解码的附件：正文、PDF 份数与 PDF 分片。 */
+type ResolvedAttachment = {
+  documentsText: string;
+  pdfCount: number;
+  pdfParts: NovelIdeaPdfPart[];
+};
+
+/** 读取可选的创作方案样本附件。 */
+async function readPlanFile(
+  file: NovelIdeaFile | undefined,
+): Promise<ResolvedAttachment | Response> {
+  const read = await readIdeaFiles(file ? [file] : undefined);
+  if (read instanceof Response) return read;
+  return {
+    documentsText: read.documentsText,
+    pdfCount: read.pdfParts.length,
+    pdfParts: read.pdfParts,
+  };
+}
+
+/** POST /api/studio/novel/worldview：把世界观设定附件整理成两级章节。 */
+export async function handleNovelWorldview(req: Request): Promise<Response> {
+  const parsed = await readJsonBody(req);
+  if (parsed instanceof Response) return parsed;
+  const split = splitChatSettings(parsed.json);
   if (!split.ok) {
     return settingsFailResponse(split.message);
   }
 
-  const body = parseCastBody(split.rest);
+  const body = parseWorldviewBody(split.rest);
   if (!body) {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_CAST_INPUT, 400);
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_WORLDVIEW_INPUT, 400);
   }
 
-  const ideaFiles = await readIdeaFiles(body.ideaFiles);
-  if (ideaFiles instanceof Response) return ideaFiles;
-  const planFile = await readIdeaFiles(body.planFile ? [body.planFile] : undefined);
-  if (planFile instanceof Response) return planFile;
+  const files = await readIdeaFiles(body.ideaFiles);
+  if (files instanceof Response) return files;
 
-  return createNovelSse('novel/bible', CAST_FAILED, async (send) => {
+  return createNovelSse('novel/worldview', WORLDVIEW_FAILED, async (send) => {
     await withStudioChatSettings(split.settings, async () => {
       const result = createProStream({
-        instructions: CAST_INSTRUCTIONS,
-        prompt: buildCastPrompt(
-          body,
-          { documentsText: ideaFiles.documentsText, pdfCount: ideaFiles.pdfParts.length },
-          { documentsText: planFile.documentsText, pdfCount: planFile.pdfParts.length },
-        ),
-        pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
-        attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
+        instructions: WORLDVIEW_INSTRUCTIONS,
+        prompt: buildWorldviewPrompt({
+          documentsText: files.documentsText,
+          pdfCount: files.pdfParts.length,
+        }),
+        pdfParts: files.pdfParts,
+        attachmentIntro: '以下附件是世界观设定，请按文件名阅读正文：',
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });
-      await pipeTextStream(result, req.signal, send, CAST_FAILED, CAST_TRUNCATED, 'novel/bible');
+      await pipeTextStream(
+        result,
+        req.signal,
+        send,
+        WORLDVIEW_FAILED,
+        WORLDVIEW_TRUNCATED,
+        'novel/worldview',
+      );
     });
   });
 }
 
 /** POST /api/studio/novel/research：流式产出选题卡。 */
 export async function handleNovelResearch(req: Request): Promise<Response> {
-  let json: unknown;
-  try {
-    json = await req.json();
-  } catch {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
-  }
-
-  const split = splitChatSettings(json);
+  const parsed = await readJsonBody(req);
+  if (parsed instanceof Response) return parsed;
+  const split = splitChatSettings(parsed.json);
   if (!split.ok) {
     return settingsFailResponse(split.message);
   }
@@ -251,22 +286,16 @@ export async function handleNovelResearch(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_RESEARCH_INPUT, 400);
   }
 
-  const ideaFiles = await readIdeaFiles(body.ideaFiles);
-  if (ideaFiles instanceof Response) return ideaFiles;
-  const planFile = await readIdeaFiles(body.planFile ? [body.planFile] : undefined);
+  const planFile = await readPlanFile(body.planFile);
   if (planFile instanceof Response) return planFile;
 
   return createNovelSse('novel/research', RESEARCH_FAILED, async (send) => {
     await withStudioChatSettings(split.settings, async () => {
       const result = createProStream({
         instructions: RESEARCH_INSTRUCTIONS,
-        prompt: buildResearchPrompt(
-          body,
-          { documentsText: ideaFiles.documentsText, pdfCount: ideaFiles.pdfParts.length },
-          { documentsText: planFile.documentsText, pdfCount: planFile.pdfParts.length },
-        ),
-        pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
-        attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
+        prompt: buildResearchPrompt(body, planFile),
+        pdfParts: planFile.pdfParts,
+        attachmentIntro: '以下附件是创作方案样本，请按文件名阅读正文：',
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });
@@ -281,16 +310,12 @@ export async function handleNovelResearch(req: Request): Promise<Response> {
     });
   });
 }
-/** POST /api/studio/novel/plan：流式产出主线与分卷。 */
-export async function handleNovelPlan(req: Request): Promise<Response> {
-  let json: unknown;
-  try {
-    json = await req.json();
-  } catch {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
-  }
 
-  const split = splitChatSettings(json);
+/** POST /api/studio/novel/plan：流式产出两级章节的创作方案。 */
+export async function handleNovelPlan(req: Request): Promise<Response> {
+  const parsed = await readJsonBody(req);
+  if (parsed instanceof Response) return parsed;
+  const split = splitChatSettings(parsed.json);
   if (!split.ok) {
     return settingsFailResponse(split.message);
   }
@@ -300,22 +325,16 @@ export async function handleNovelPlan(req: Request): Promise<Response> {
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_PLAN_INPUT, 400);
   }
 
-  const ideaFiles = await readIdeaFiles(body.ideaFiles);
-  if (ideaFiles instanceof Response) return ideaFiles;
-  const planFile = await readIdeaFiles(body.planFile ? [body.planFile] : undefined);
+  const planFile = await readPlanFile(body.planFile);
   if (planFile instanceof Response) return planFile;
 
   return createNovelSse('novel/plan', PLAN_FAILED, async (send) => {
     await withStudioChatSettings(split.settings, async () => {
       const result = createProStream({
         instructions: PLAN_INSTRUCTIONS,
-        prompt: buildPlanPrompt(
-          body,
-          { documentsText: ideaFiles.documentsText, pdfCount: ideaFiles.pdfParts.length },
-          { documentsText: planFile.documentsText, pdfCount: planFile.pdfParts.length },
-        ),
-        pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
-        attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
+        prompt: buildPlanPrompt(body, planFile),
+        pdfParts: planFile.pdfParts,
+        attachmentIntro: '以下附件是创作方案样本，请按文件名阅读正文：',
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });
@@ -323,16 +342,73 @@ export async function handleNovelPlan(req: Request): Promise<Response> {
     });
   });
 }
-/** POST /api/studio/novel/volume-chapters：流式产出指定卷的章纲。 */
-export async function handleNovelVolumeChapters(req: Request): Promise<Response> {
-  let json: unknown;
-  try {
-    json = await req.json();
-  } catch {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
+
+/** POST /api/studio/novel/bible：流式产出人物与关系。 */
+export async function handleNovelBible(req: Request): Promise<Response> {
+  const parsed = await readJsonBody(req);
+  if (parsed instanceof Response) return parsed;
+  const split = splitChatSettings(parsed.json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
   }
 
-  const split = splitChatSettings(json);
+  const body = parseCastBody(split.rest);
+  if (!body) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_CAST_INPUT, 400);
+  }
+
+  return createNovelSse('novel/bible', CAST_FAILED, async (send) => {
+    await withStudioChatSettings(split.settings, async () => {
+      const result = createProStream({
+        instructions: CAST_INSTRUCTIONS,
+        prompt: buildCastPrompt(body),
+        abortSignal: req.signal,
+        reasoningEffort: requestReasoningEffort(split.rest),
+      });
+      await pipeTextStream(result, req.signal, send, CAST_FAILED, CAST_TRUNCATED, 'novel/bible');
+    });
+  });
+}
+
+/** POST /api/studio/novel/volumes：流式产出全书叙事卷纲。 */
+export async function handleNovelVolumes(req: Request): Promise<Response> {
+  const parsed = await readJsonBody(req);
+  if (parsed instanceof Response) return parsed;
+  const split = splitChatSettings(parsed.json);
+  if (!split.ok) {
+    return settingsFailResponse(split.message);
+  }
+
+  const body = parseVolumesBody(split.rest);
+  if (!body) {
+    return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_VOLUMES_INPUT, 400);
+  }
+
+  return createNovelSse('novel/volumes', VOLUMES_FAILED, async (send) => {
+    await withStudioChatSettings(split.settings, async () => {
+      const result = createProStream({
+        instructions: VOLUMES_INSTRUCTIONS,
+        prompt: buildVolumesPrompt(body),
+        abortSignal: req.signal,
+        reasoningEffort: requestReasoningEffort(split.rest),
+      });
+      await pipeTextStream(
+        result,
+        req.signal,
+        send,
+        VOLUMES_FAILED,
+        VOLUMES_TRUNCATED,
+        'novel/volumes',
+      );
+    });
+  });
+}
+
+/** POST /api/studio/novel/volume-chapters：流式产出指定一卷的章纲。 */
+export async function handleNovelVolumeChapters(req: Request): Promise<Response> {
+  const parsed = await readJsonBody(req);
+  if (parsed instanceof Response) return parsed;
+  const split = splitChatSettings(parsed.json);
   if (!split.ok) {
     return settingsFailResponse(split.message);
   }
@@ -342,22 +418,11 @@ export async function handleNovelVolumeChapters(req: Request): Promise<Response>
     return jsonFail(ApiErrorCode.INVALID_PARAMS, MISSING_VOLUME_CHAPTERS_INPUT, 400);
   }
 
-  const ideaFiles = await readIdeaFiles(body.ideaFiles);
-  if (ideaFiles instanceof Response) return ideaFiles;
-  const planFile = await readIdeaFiles(body.planFile ? [body.planFile] : undefined);
-  if (planFile instanceof Response) return planFile;
-
   return createNovelSse('novel/volume-chapters', VOLUME_CHAPTERS_FAILED, async (send) => {
     await withStudioChatSettings(split.settings, async () => {
       const result = createProStream({
         instructions: VOLUME_CHAPTERS_INSTRUCTIONS,
-        prompt: buildVolumeChaptersPrompt(
-          body,
-          { documentsText: ideaFiles.documentsText, pdfCount: ideaFiles.pdfParts.length },
-          { documentsText: planFile.documentsText, pdfCount: planFile.pdfParts.length },
-        ),
-        pdfParts: [...ideaFiles.pdfParts, ...planFile.pdfParts],
-        attachmentIntro: '以下附件是体系设定或创作方案，请按文件名阅读正文：',
+        prompt: buildVolumeChaptersPrompt(body),
         abortSignal: req.signal,
         reasoningEffort: requestReasoningEffort(split.rest),
       });
@@ -372,16 +437,12 @@ export async function handleNovelVolumeChapters(req: Request): Promise<Response>
     });
   });
 }
+
 /** POST /api/studio/novel/writing：流式产出当前章正文。 */
 export async function handleNovelWriting(req: Request): Promise<Response> {
-  let json: unknown;
-  try {
-    json = await req.json();
-  } catch {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
-  }
-
-  const split = splitChatSettings(json);
+  const parsed = await readJsonBody(req);
+  if (parsed instanceof Response) return parsed;
+  const split = splitChatSettings(parsed.json);
   if (!split.ok) {
     return settingsFailResponse(split.message);
   }
@@ -414,14 +475,9 @@ export async function handleNovelWriting(req: Request): Promise<Response> {
 
 /** POST /api/studio/novel/polish：对整篇或整章正文做通顺润色（不改情节）。 */
 export async function handleNovelPolish(req: Request): Promise<Response> {
-  let json: unknown;
-  try {
-    json = await req.json();
-  } catch {
-    return jsonFail(ApiErrorCode.INVALID_PARAMS, INVALID_JSON, 400);
-  }
-
-  const split = splitChatSettings(json);
+  const parsed = await readJsonBody(req);
+  if (parsed instanceof Response) return parsed;
+  const split = splitChatSettings(parsed.json);
   if (!split.ok) {
     return settingsFailResponse(split.message);
   }

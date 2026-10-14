@@ -6,7 +6,11 @@ import {
   NOVEL_DEFAULT_REASONING_EFFORT,
   type NovelReasoningEffort,
 } from '@/app/api/studio/novel/_shared/constants';
-import type { NovelIdeaFile } from '@/app/api/studio/novel/_shared/types';
+import type {
+  NovelIdeaFile,
+  NovelSection,
+  NovelVolumeDesign,
+} from '@/app/api/studio/novel/_shared/types';
 import type { NovelTaskDetail } from '@/app/api/studio/novel/_shared/task-types';
 import { withChatSettingsBody } from '@/app/studio/_utils/chat-settings';
 import { validateForm } from '@/app/studio/_utils/form-validate';
@@ -22,14 +26,13 @@ import {
   COPY_BODY_FAILED,
   COPY_BODY_OK,
   DEFAULT_PANEL_VALUES,
-  IDEA_FILE_READ_FAILED,
   MISSING_CAST_WARNING,
   MISSING_CHAPTERS_WARNING,
-  MISSING_IDEA_WARNING,
   MISSING_NARRATION_WARNING,
   MISSING_PLAN_WARNING,
-  MISSING_PREVIEW_BODY_WARNING,
   MISSING_TOPIC_WARNING,
+  MISSING_VOLUME_SELECTION_WARNING,
+  MISSING_WORLDVIEW_WARNING,
   MISSING_WRITE_SELECTION_WARNING,
   PLAN_FAILED,
   PLAN_FILE_READ_FAILED,
@@ -41,7 +44,16 @@ import {
   RESEARCH_NO_TOPICS,
   RESEARCH_REGENERATE_CONFIRM_CONTENT,
   RESEARCH_REGENERATE_CONFIRM_TITLE,
+  VOLUMES_FAILED,
+  VOLUMES_NO_VOLUMES,
+  VOLUMES_REGENERATE_CONFIRM_CONTENT,
+  VOLUMES_REGENERATE_CONFIRM_TITLE,
   VOLUME_CHAPTERS_FAILED,
+  WORLDVIEW_FAILED,
+  WORLDVIEW_FILE_READ_FAILED,
+  WORLDVIEW_NO_SECTIONS,
+  WORLDVIEW_REGENERATE_CONFIRM_CONTENT,
+  WORLDVIEW_REGENERATE_CONFIRM_TITLE,
   WRITE_REGENERATE_CONFIRM_CONTENT,
   WRITE_REGENERATE_CONFIRM_TITLE,
   WRITE_SEQUENCE_WARNING,
@@ -57,13 +69,13 @@ import type {
   StructureChapter,
   StudioPhase,
   TopicCard,
+  VolumesStepSnapshot,
+  WorldviewStepSnapshot,
   WritingSnapshot,
   WriteStepSnapshot,
 } from '../types';
 import {
-  areVolumesReadyForWrite,
   assertOkOrJsonFail,
-  buildPreviewDocument,
   canGenerateWritingUnit,
   consumeAnalyzeSse,
   copyText,
@@ -78,73 +90,94 @@ import {
   isFreshPlanComplete,
   isPlanReady,
   isSameWriteSnapshot,
-  isSelectedVolumeReadyForWrite,
+  isSectionsReady,
+  isSelectedVolumeReady,
+  isSelectedVolumeReadyForChapters,
   parseCastPayload,
   parsePlanPayload,
   parseResearchTopics,
+  parseSectionsPayload,
   parseVolumeChaptersPayload,
+  parseVolumesPayload,
   readCastStepSnapshot,
   readChaptersStepSnapshot,
   readFormIdeaFiles,
   readPlanStepSnapshot,
   readResearchStepSnapshot,
+  readVolumesStepSnapshot,
+  readWorldviewStepSnapshot,
   readWriteStepSnapshot,
   resolveGenerateUnitIds,
   resolveInitialPhase,
+  resolveWorldviewSections,
   resolveWritingUnit,
   saveNovelStep,
+  selectedVolume,
   serializeIdeaFiles,
   stripTrailingJsonFenceForDisplay,
   syncWritingUnits,
   toCastRequest,
   toNovelIdeaFileInput,
+  toPlanRequest,
   toggleWritingSelection,
   writingChapterIds,
   writingStylePrompt,
 } from '../utils';
 
-/** 管理小说六步：调研 → 方案 → 角色 → 卷章 → 写作 → 预览。生成走 SSE，步骤落盘。 */
+/** 管理小说七步：世界观 → 调研 → 方案 → 角色 → 卷纲 → 卷章 → 写作。生成走 SSE，步骤落盘。 */
 export function useNovelStudio(task: NovelTaskDetail) {
   const { message, modal } = App.useApp();
+  const initialWorldview = readWorldviewStepSnapshot(task.steps.worldview?.data);
   const initialResearch = readResearchStepSnapshot(task.steps.research?.data);
   const initialPlan = readPlanStepSnapshot(task.steps.plan?.data);
   const initialCast = readCastStepSnapshot(task.steps.cast?.data);
+  const initialVolumes = readVolumesStepSnapshot(task.steps.volumes?.data);
   const initialChapters = readChaptersStepSnapshot(task.steps.chapters?.data);
   const storedInitialWrite = readWriteStepSnapshot(task.steps.write?.data);
-  const initialWrite = syncWritingUnits(initialPlan, initialChapters, storedInitialWrite);
+  const initialWrite = syncWritingUnits(initialChapters, storedInitialWrite);
 
+  // 思考强度是任务级设置，落盘世界观步骤；旧任务没有这一步时读旧的选题快照
   const [reasoningEffort, setReasoningEffort] = useState<NovelReasoningEffort>(
-    () => initialResearch?.reasoningEffort ?? NOVEL_DEFAULT_REASONING_EFFORT,
+    () =>
+      initialWorldview?.reasoningEffort ??
+      initialResearch?.reasoningEffort ??
+      NOVEL_DEFAULT_REASONING_EFFORT,
   );
   const reasoningEffortRef = useRef(reasoningEffort);
+  const researchSavedRef = useRef(Boolean(initialResearch));
+  const worldviewStreamTextRef = useRef(initialWorldview?.streamText);
   const researchStreamTextRef = useRef(initialResearch?.streamText);
   const planStreamTextRef = useRef(initialPlan?.streamText);
+  const volumesStreamTextRef = useRef(initialVolumes?.streamText);
   const [panelForm] = Form.useForm<NovelPanelValues>();
   const [panelInitialValues] = useState<NovelPanelValues>(() => ({
-    idea: initialResearch?.idea ?? DEFAULT_PANEL_VALUES.idea,
-    ideaFiles: initialResearch?.ideaFiles ?? DEFAULT_PANEL_VALUES.ideaFiles,
+    worldviewFiles:
+      initialWorldview?.files ??
+      initialResearch?.worldviewFiles ??
+      DEFAULT_PANEL_VALUES.worldviewFiles,
     planFiles: initialResearch?.planFiles ?? DEFAULT_PANEL_VALUES.planFiles,
     genres: initialResearch?.genres ?? DEFAULT_PANEL_VALUES.genres,
   }));
   const [phase, setPhase] = useState<StudioPhase>(() =>
     resolveInitialPhase({
+      worldview: initialWorldview,
       research: initialResearch,
       plan: initialPlan,
       cast: initialCast,
+      volumes: initialVolumes,
       chapters: initialChapters,
       writing: initialWrite,
     }),
   );
+  const [worldview, setWorldview] = useState<WorldviewStepSnapshot | undefined>(initialWorldview);
   const [topics, setTopics] = useState<TopicCard[]>(initialResearch?.topics ?? []);
   const [selectedTopicId, setSelectedTopicId] = useState<string | undefined>(
     initialResearch?.selectedTopicId,
   );
   const [plan, setPlan] = useState<PlanStepSnapshot | undefined>(initialPlan);
   const [cast, setCast] = useState<CastStepSnapshot | undefined>(initialCast);
+  const [volumes, setVolumes] = useState<VolumesStepSnapshot | undefined>(initialVolumes);
   const [chapters, setChapters] = useState<ChaptersSnapshot | undefined>(initialChapters);
-  const [selectedVolumeId, setSelectedVolumeId] = useState<string | undefined>(
-    initialChapters?.selectedVolumeId,
-  );
   const [writing, setWriting] = useState<WritingSnapshot | undefined>(initialWrite);
   const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>(
     () => initialWrite?.selectedUnitIds ?? [],
@@ -152,7 +185,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const [focusUnitId, setFocusUnitId] = useState<string | undefined>(
     () => initialWrite?.focusUnitId,
   );
-  const [generatingVolumeId, setGeneratingVolumeId] = useState<string | undefined>();
   const [generatingUnitIds, setGeneratingUnitIds] = useState<string[]>([]);
   const [polishingUnitId, setPolishingUnitId] = useState<string | undefined>();
 
@@ -161,24 +193,31 @@ export function useNovelStudio(task: NovelTaskDetail) {
   const generatingRef = useRef(false);
   const streamRunIdRef = useRef(0);
   const phaseRef = useRef(phase);
+  const worldviewRef = useRef(worldview);
   const planRef = useRef(plan);
   const castRef = useRef(cast);
+  const volumesRef = useRef(volumes);
   const chaptersRef = useRef(chapters);
   const writingRef = useRef(writing);
   const persistedWriteRef = useRef<WritingSnapshot | undefined>(storedInitialWrite);
   const topicsRef = useRef(topics);
   const selectedTopicIdRef = useRef(selectedTopicId);
-  const selectedVolumeIdRef = useRef(selectedVolumeId);
 
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+  useEffect(() => {
+    worldviewRef.current = worldview;
+  }, [worldview]);
   useEffect(() => {
     planRef.current = plan;
   }, [plan]);
   useEffect(() => {
     castRef.current = cast;
   }, [cast]);
+  useEffect(() => {
+    volumesRef.current = volumes;
+  }, [volumes]);
   useEffect(() => {
     chaptersRef.current = chapters;
   }, [chapters]);
@@ -191,16 +230,13 @@ export function useNovelStudio(task: NovelTaskDetail) {
   useEffect(() => {
     selectedTopicIdRef.current = selectedTopicId;
   }, [selectedTopicId]);
-  useEffect(() => {
-    selectedVolumeIdRef.current = selectedVolumeId;
-  }, [selectedVolumeId]);
 
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
-      const ideaFiles = panelForm.getFieldValue('ideaFiles');
+      const worldviewFiles = panelForm.getFieldValue('worldviewFiles');
       const planFiles = panelForm.getFieldValue('planFiles');
-      if (Array.isArray(ideaFiles)) revokeLocalUploadItemUrls(ideaFiles);
+      if (Array.isArray(worldviewFiles)) revokeLocalUploadItemUrls(worldviewFiles);
       if (Array.isArray(planFiles)) revokeLocalUploadItemUrls(planFiles);
     };
   }, [panelForm]);
@@ -222,30 +258,28 @@ export function useNovelStudio(task: NovelTaskDetail) {
 
   function readPanelValues(): NovelPanelValues {
     const values = panelForm.getFieldsValue(true);
-    const idea =
-      typeof values.idea === 'string' ? values.idea.trim() : (initialResearch?.idea ?? '');
-    const ideaFiles = readFormIdeaFiles(values.ideaFiles) ?? initialResearch?.ideaFiles ?? [];
+    const worldviewFiles =
+      readFormIdeaFiles(values.worldviewFiles) ??
+      initialWorldview?.files ??
+      initialResearch?.worldviewFiles ??
+      [];
     const planFiles = readFormIdeaFiles(values.planFiles) ?? initialResearch?.planFiles ?? [];
     const genres = Array.isArray(values.genres)
       ? values.genres.map((item: unknown) => String(item).trim()).filter(Boolean)
       : (initialResearch?.genres ?? []);
-    return { idea, ideaFiles, planFiles, genres };
+    return { worldviewFiles, planFiles, genres };
   }
 
-  /** 体系设定必填。想法可选，创作方案文件另读。 */
-  async function readIdeaPayload(
+  /** 世界观设定附件必填。 */
+  async function readWorldviewPayload(
     panel: NovelPanelValues,
-  ): Promise<{ idea?: string; ideaFiles: NovelIdeaFile[] } | 'missing' | 'unreadable'> {
+  ): Promise<NovelIdeaFile[] | 'missing' | 'unreadable'> {
     try {
-      const ideaFiles = await toNovelIdeaFileInput(panel.ideaFiles);
-      const idea = panel.idea.trim();
+      const ideaFiles = await toNovelIdeaFileInput(panel.worldviewFiles);
       if (ideaFiles.length === 0) return 'missing';
-      return {
-        ...(idea ? { idea } : {}),
-        ideaFiles,
-      };
+      return ideaFiles;
     } catch (err) {
-      console.error('[novel-studio] read idea file', err);
+      console.error('[novel-studio] read worldview file', err);
       return 'unreadable';
     }
   }
@@ -263,7 +297,12 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  async function storedFiles(items: NovelPanelValues['ideaFiles'], failedMessage: string) {
+  /** 当前可用的世界观章节：世界观步骤的结果，旧任务退回旧方案里的世界观。 */
+  function currentWorldviewSections(): NovelSection[] {
+    return resolveWorldviewSections(worldviewRef.current, planRef.current);
+  }
+
+  async function storedFiles(items: NovelPanelValues['worldviewFiles'], failedMessage: string) {
     try {
       return await serializeIdeaFiles(items);
     } catch (err) {
@@ -273,12 +312,41 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
+  async function persistWorldview(
+    next: WorldviewStepSnapshot,
+  ): Promise<WorldviewStepSnapshot | undefined> {
+    if (next.streamText) worldviewStreamTextRef.current = next.streamText;
+    try {
+      return await saveNovelStep(task.id, 'worldview', next);
+    } catch (err) {
+      console.error('[novel-studio] persist worldview', err);
+      return undefined;
+    }
+  }
+
+  async function worldviewSnapshot(
+    sections: NovelSection[],
+    extra?: Pick<WorldviewStepSnapshot, 'streamText'>,
+  ): Promise<WorldviewStepSnapshot> {
+    const panel = readPanelValues();
+    const files = await storedFiles(panel.worldviewFiles, WORLDVIEW_FILE_READ_FAILED);
+    const streamText = extra?.streamText ?? worldviewStreamTextRef.current;
+    return {
+      sections,
+      ...(files.length ? { files } : {}),
+      ...(streamText ? { streamText } : {}),
+      reasoningEffort: reasoningEffortRef.current,
+    };
+  }
+
   async function persistResearch(
     next: ResearchStepSnapshot,
   ): Promise<ResearchStepSnapshot | undefined> {
     if (next.streamText) researchStreamTextRef.current = next.streamText;
     try {
-      return await saveNovelStep(task.id, 'research', next);
+      const saved = await saveNovelStep(task.id, 'research', next);
+      researchSavedRef.current = true;
+      return saved;
     } catch (err) {
       console.error('[novel-studio] persist research', err);
       return undefined;
@@ -290,13 +358,10 @@ export function useNovelStudio(task: NovelTaskDetail) {
     extra?: Pick<ResearchStepSnapshot, 'selectedTopicId' | 'streamText'>,
   ): Promise<ResearchStepSnapshot> {
     const panel = readPanelValues();
-    const ideaFiles = await storedFiles(panel.ideaFiles, IDEA_FILE_READ_FAILED);
     const planFiles = await storedFiles(panel.planFiles, PLAN_FILE_READ_FAILED);
     const nextSelected = extra?.selectedTopicId ?? selectedTopicIdRef.current;
     const streamText = extra?.streamText ?? researchStreamTextRef.current;
     return {
-      idea: panel.idea,
-      ...(ideaFiles.length ? { ideaFiles } : {}),
       ...(planFiles.length ? { planFiles } : {}),
       genres: panel.genres,
       topics: nextTopics,
@@ -306,11 +371,21 @@ export function useNovelStudio(task: NovelTaskDetail) {
     };
   }
 
+  /**
+   * 思考强度对每一步生效，选在世界观步骤。
+   * 只在已有快照上落盘：改一个设置不该凭空写出步骤行。还没有世界观步骤时，值会随这一轮生成的快照一起写入。
+   */
   async function handleReasoningEffortChange(next: NovelReasoningEffort) {
     if (next === reasoningEffortRef.current) return;
     reasoningEffortRef.current = next;
     setReasoningEffort(next);
-    await persistResearch(await researchSnapshot(topicsRef.current));
+    if (worldviewRef.current) {
+      await persistWorldview(await worldviewSnapshot(worldviewRef.current.sections));
+      return;
+    }
+    if (researchSavedRef.current) {
+      await persistResearch(await researchSnapshot(topicsRef.current));
+    }
   }
 
   async function persistPlan(next: PlanStepSnapshot): Promise<PlanStepSnapshot | undefined> {
@@ -330,6 +405,33 @@ export function useNovelStudio(task: NovelTaskDetail) {
       console.error('[novel-studio] persist cast', err);
       return undefined;
     }
+  }
+
+  async function persistVolumes(
+    next: VolumesStepSnapshot,
+  ): Promise<VolumesStepSnapshot | undefined> {
+    if (next.streamText) volumesStreamTextRef.current = next.streamText;
+    try {
+      return await saveNovelStep(task.id, 'volumes', next);
+    } catch (err) {
+      console.error('[novel-studio] persist volumes', err);
+      return undefined;
+    }
+  }
+
+  function volumesSnapshot(
+    nextVolumes: NovelVolumeDesign[],
+    extra?: Pick<VolumesStepSnapshot, 'selectedVolumeId' | 'streamText'>,
+  ): VolumesStepSnapshot {
+    const nextSelected = extra?.selectedVolumeId ?? volumesRef.current?.selectedVolumeId;
+    const streamText = extra?.streamText ?? volumesStreamTextRef.current;
+    return {
+      volumes: nextVolumes,
+      ...(nextSelected && nextVolumes.some((volume) => volume.id === nextSelected)
+        ? { selectedVolumeId: nextSelected }
+        : {}),
+      ...(streamText ? { streamText } : {}),
+    };
   }
 
   async function persistChapters(next: ChaptersSnapshot): Promise<ChaptersSnapshot | undefined> {
@@ -378,10 +480,15 @@ export function useNovelStudio(task: NovelTaskDetail) {
     return nextWriting;
   }
 
-  /** 重新生成方案或角色时清掉更后面的落盘。 */
-  async function clearDownstreamSteps(from: 'plan' | 'cast') {
+  /** 重新生成某一步时清掉更后面的落盘。清卷章与正文之前先清卷纲。 */
+  async function clearDownstreamSteps(from: 'worldview' | 'plan' | 'cast' | 'volumes') {
     try {
-      if (from === 'plan') await deleteNovelStep(task.id, 'cast');
+      if (from === 'worldview') {
+        await deleteNovelStep(task.id, 'research');
+        await deleteNovelStep(task.id, 'plan');
+      }
+      if (from === 'worldview' || from === 'plan') await deleteNovelStep(task.id, 'cast');
+      if (from !== 'volumes') await deleteNovelStep(task.id, 'volumes');
       await deleteNovelStep(task.id, 'chapters');
       await deleteNovelStep(task.id, 'write');
       persistedWriteRef.current = undefined;
@@ -390,22 +497,29 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  function resetDownstreamMemory(from: 'plan' | 'cast') {
-    if (from === 'plan') {
+  function resetDownstreamMemory(from: 'worldview' | 'plan' | 'cast' | 'volumes') {
+    if (from === 'worldview') {
+      setTopics([]);
+      topicsRef.current = [];
+      setSelectedTopicId(undefined);
+      selectedTopicIdRef.current = undefined;
+    }
+    if (from === 'worldview' || from === 'plan') {
       planRef.current = undefined;
       setPlan(undefined);
       castRef.current = undefined;
       setCast(undefined);
     }
+    if (from === 'worldview' || from === 'plan' || from === 'cast') {
+      volumesRef.current = undefined;
+      setVolumes(undefined);
+    }
     chaptersRef.current = undefined;
     setChapters(undefined);
-    selectedVolumeIdRef.current = undefined;
-    setSelectedVolumeId(undefined);
     setWriting(undefined);
     writingRef.current = undefined;
     setSelectedUnitIds([]);
     setFocusUnitId(undefined);
-    setGeneratingVolumeId(undefined);
     generatingRef.current = false;
     setGeneratingUnitIds([]);
   }
@@ -466,18 +580,102 @@ export function useNovelStudio(task: NovelTaskDetail) {
     }
   }
 
-  async function handleResearch() {
+  async function handleGenerateWorldview() {
     if (!(await validateForm(panelForm))) return;
     const panel = readPanelValues();
-    const ideaPayload = await readIdeaPayload(panel);
-    if (ideaPayload === 'missing') {
-      message.warning(MISSING_IDEA_WARNING);
+    const ideaFiles = await readWorldviewPayload(panel);
+    if (ideaFiles === 'missing') {
+      message.warning(MISSING_WORLDVIEW_WARNING);
       return;
     }
-    if (ideaPayload === 'unreadable') {
-      message.error(IDEA_FILE_READ_FAILED);
+    if (ideaFiles === 'unreadable') {
+      message.error(WORLDVIEW_FILE_READ_FAILED);
       return;
     }
+
+    if (isSectionsReady(worldviewRef.current?.sections)) {
+      const confirmed = await confirmOverwrite(
+        WORLDVIEW_REGENERATE_CONFIRM_TITLE,
+        WORLDVIEW_REGENERATE_CONFIRM_CONTENT,
+      );
+      if (!confirmed) return;
+    }
+
+    const hadDraft = isSectionsReady(worldviewRef.current?.sections);
+    const runId = ++streamRunIdRef.current;
+    resetDownstreamMemory('worldview');
+    setPhase('worldviewing');
+    await clearDownstreamSteps('worldview');
+    if (runId !== streamRunIdRef.current) return;
+
+    const buffer = createRafTextBuffer(() => {
+      /* 世界观过程文案不单独展示 */
+    });
+    await runSse(
+      '/api/studio/novel/worldview',
+      { ideaFiles },
+      buffer,
+      WORLDVIEW_FAILED,
+      async (fullText) => {
+        if (runId !== streamRunIdRef.current) return;
+        const { prose, json } = extractTrailingJsonBlock(fullText);
+        const sections = parseSectionsPayload(json);
+        if (!isSectionsReady(sections)) {
+          if (runId !== streamRunIdRef.current) return;
+          setPhase(hadDraft ? 'worldviewed' : 'worldview');
+          message.error(WORLDVIEW_NO_SECTIONS);
+          return;
+        }
+        if (runId !== streamRunIdRef.current) return;
+        const next: WorldviewStepSnapshot = {
+          sections,
+          streamText: stripTrailingJsonFenceForDisplay(prose || fullText),
+        };
+        const snapshot = await worldviewSnapshot(next.sections, { streamText: next.streamText });
+        worldviewRef.current = snapshot;
+        setWorldview(snapshot);
+        setPhase('worldviewed');
+        await persistWorldview(snapshot);
+      },
+      'worldviewing',
+      hadDraft ? 'worldviewed' : 'worldview',
+      runId,
+    );
+  }
+
+  function updateWorldview(next: NovelSection[]) {
+    const streamText = worldviewStreamTextRef.current;
+    const snapshot: WorldviewStepSnapshot = {
+      sections: next,
+      ...(worldviewRef.current?.files ? { files: worldviewRef.current.files } : {}),
+      ...(streamText ? { streamText } : {}),
+      reasoningEffort: reasoningEffortRef.current,
+    };
+    worldviewRef.current = snapshot;
+    setWorldview(snapshot);
+    void persistWorldview(snapshot);
+  }
+
+  async function importWorldview(next: WorldviewStepSnapshot): Promise<boolean> {
+    const snapshot: WorldviewStepSnapshot = {
+      ...next,
+      ...(next.files?.length ? {} : { files: worldviewRef.current?.files ?? [] }),
+      reasoningEffort: next.reasoningEffort ?? reasoningEffortRef.current,
+    };
+    const saved = await persistWorldview(snapshot);
+    if (!saved) return false;
+    worldviewRef.current = saved;
+    setWorldview(saved);
+    return true;
+  }
+
+  async function handleResearch() {
+    if (!(await validateForm(panelForm))) return;
+    if (!isSectionsReady(currentWorldviewSections())) {
+      message.warning(MISSING_WORLDVIEW_WARNING);
+      return;
+    }
+    const panel = readPanelValues();
     const planFile = await readPlanFile(panel);
     if (planFile === 'unreadable') {
       message.error(PLAN_FILE_READ_FAILED);
@@ -505,7 +703,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     await runSse(
       '/api/studio/novel/research',
       {
-        ...ideaPayload,
+        worldview: currentWorldviewSections(),
         ...(planFile ? { planFile } : {}),
         ...(panel.genres.length ? { genres: panel.genres } : {}),
       },
@@ -540,21 +738,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
     );
   }
 
-  /** 点选一卷。还没有章卡时先记在内存，生成后写入卷章快照。 */
-  function handleSelectVolume(volumeId: string) {
-    const currentPlan = planRef.current;
-    if (!currentPlan?.volumes.some((volume) => volume.id === volumeId)) return;
-    if (selectedVolumeIdRef.current === volumeId) return;
-    selectedVolumeIdRef.current = volumeId;
-    setSelectedVolumeId(volumeId);
-    const current = chaptersRef.current;
-    if (!current || !current.volumes.some((volume) => volume.id === volumeId)) return;
-    const next: ChaptersSnapshot = { ...current, selectedVolumeId: volumeId };
-    chaptersRef.current = next;
-    setChapters(next);
-    void persistChapters(next);
-  }
-
   async function handleSelectTopic(id: string) {
     setSelectedTopicId(id);
     selectedTopicIdRef.current = id;
@@ -576,22 +759,13 @@ export function useNovelStudio(task: NovelTaskDetail) {
       return;
     }
     const panel = readPanelValues();
-    const ideaPayload = await readIdeaPayload(panel);
-    if (ideaPayload === 'missing') {
-      message.warning(MISSING_IDEA_WARNING);
-      return;
-    }
-    if (ideaPayload === 'unreadable') {
-      message.error(IDEA_FILE_READ_FAILED);
-      return;
-    }
     const planFile = await readPlanFile(panel);
     if (planFile === 'unreadable') {
       message.error(PLAN_FILE_READ_FAILED);
       return;
     }
 
-    if (plan || hasCastDraft(cast) || chapters || hasWritingBody(writing)) {
+    if (plan || hasCastDraft(cast) || volumes || chapters || hasWritingBody(writing)) {
       const confirmed = await confirmOverwrite(
         PLAN_REGENERATE_CONFIRM_TITLE,
         PLAN_REGENERATE_CONFIRM_CONTENT,
@@ -612,7 +786,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     await runSse(
       '/api/studio/novel/plan',
       {
-        ...ideaPayload,
+        worldview: currentWorldviewSections(),
         ...(planFile ? { planFile } : {}),
         ...(panel.genres.length ? { genres: panel.genres } : {}),
         topic: selectedTopic,
@@ -650,29 +824,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     const snapshot: PlanStepSnapshot = { ...next, ...(streamText ? { streamText } : {}) };
     planRef.current = snapshot;
     setPlan(snapshot);
-    const pruned = pruneChapters(snapshot, chaptersRef.current);
-    if (pruned !== chaptersRef.current) {
-      chaptersRef.current = pruned;
-      setChapters(pruned);
-      if (pruned) void persistChapters(pruned);
-      else void deleteNovelStep(task.id, 'chapters');
-    }
-    const nextSelected =
-      pruned?.selectedVolumeId ??
-      (selectedVolumeIdRef.current &&
-      snapshot.volumes.some((volume) => volume.id === selectedVolumeIdRef.current)
-        ? selectedVolumeIdRef.current
-        : undefined);
-    if (nextSelected !== selectedVolumeIdRef.current) {
-      selectedVolumeIdRef.current = nextSelected;
-      setSelectedVolumeId(nextSelected);
-    }
-    const nextWriting = syncWritingUnits(snapshot, pruned, writingRef.current);
-    commitWriting(nextWriting);
-    setSelectedUnitIds(nextWriting.selectedUnitIds ?? []);
-    setFocusUnitId(nextWriting.focusUnitId);
     void persistPlan(snapshot);
-    void persistWrite(nextWriting);
   }
 
   async function importPlan(next: PlanStepSnapshot): Promise<boolean> {
@@ -693,24 +845,10 @@ export function useNovelStudio(task: NovelTaskDetail) {
       message.warning(MISSING_PLAN_WARNING);
       return;
     }
-    const panel = readPanelValues();
-    const ideaPayload = await readIdeaPayload(panel);
-    if (ideaPayload === 'missing') {
-      message.warning(MISSING_IDEA_WARNING);
-      return;
-    }
-    if (ideaPayload === 'unreadable') {
-      message.error(IDEA_FILE_READ_FAILED);
-      return;
-    }
-    const planFile = await readPlanFile(panel);
-    if (planFile === 'unreadable') {
-      message.error(PLAN_FILE_READ_FAILED);
-      return;
-    }
 
     if (
       hasCastDraft(castRef.current) ||
+      volumesRef.current ||
       chaptersRef.current ||
       hasWritingBody(writingRef.current)
     ) {
@@ -734,11 +872,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
     await runSse(
       '/api/studio/novel/bible',
       {
-        ...ideaPayload,
-        ...(planFile ? { planFile } : {}),
-        ...(panel.genres.length ? { genres: panel.genres } : {}),
+        worldview: currentWorldviewSections(),
         topic: selectedTopic,
-        plan: planRequestBody(currentPlan),
+        plan: toPlanRequest(currentPlan),
       },
       buffer,
       CAST_FAILED,
@@ -778,54 +914,169 @@ export function useNovelStudio(task: NovelTaskDetail) {
     return true;
   }
 
-  async function importChapters(next: ChaptersSnapshot): Promise<boolean> {
-    const selected = selectedVolumeIdRef.current;
-    const stamped: ChaptersSnapshot =
-      selected && next.volumes.some((volume) => volume.id === selected)
-        ? { ...next, selectedVolumeId: selected }
-        : next;
-    const saved = await persistChapters(stamped);
-    if (!saved) return false;
-    chaptersRef.current = stamped;
-    setChapters(stamped);
-    if (!stamped.selectedVolumeId && selectedVolumeIdRef.current) {
-      selectedVolumeIdRef.current = undefined;
-      setSelectedVolumeId(undefined);
+  async function handleGenerateVolumes() {
+    const currentPlan = planRef.current;
+    const castBody = toCastRequest(castRef.current);
+    if (!selectedTopic) {
+      message.warning(MISSING_TOPIC_WARNING);
+      return;
     }
+    if (!castBody || !currentPlan) {
+      message.warning(MISSING_CAST_WARNING);
+      return;
+    }
+
+    if (volumesRef.current || chaptersRef.current || hasWritingBody(writingRef.current)) {
+      const confirmed = await confirmOverwrite(
+        VOLUMES_REGENERATE_CONFIRM_TITLE,
+        VOLUMES_REGENERATE_CONFIRM_CONTENT,
+      );
+      if (!confirmed) return;
+    }
+
+    const hadDraft = Boolean(volumesRef.current);
+    const runId = ++streamRunIdRef.current;
+    resetDownstreamMemory('volumes');
+    setPhase('voluming');
+    await clearDownstreamSteps('volumes');
+    if (runId !== streamRunIdRef.current) return;
+
+    const buffer = createRafTextBuffer(() => {
+      /* 卷纲过程文案不单独展示 */
+    });
+    await runSse(
+      '/api/studio/novel/volumes',
+      {
+        worldview: currentWorldviewSections(),
+        topic: selectedTopic,
+        plan: toPlanRequest(currentPlan),
+        cast: castBody,
+      },
+      buffer,
+      VOLUMES_FAILED,
+      async (fullText) => {
+        if (runId !== streamRunIdRef.current) return;
+        const { prose, json } = extractTrailingJsonBlock(fullText);
+        const nextVolumes = parseVolumesPayload(json, currentPlan);
+        if (nextVolumes.length === 0) {
+          if (runId !== streamRunIdRef.current) return;
+          setPhase(hadDraft ? 'volumed' : 'volumes');
+          message.error(VOLUMES_NO_VOLUMES);
+          return;
+        }
+        if (runId !== streamRunIdRef.current) return;
+        // 新排的卷纲不沿用旧的选中卷：卷 id 是模型新给的，选中态要重新点
+        const nextStreamText = stripTrailingJsonFenceForDisplay(prose || fullText);
+        const snapshot: VolumesStepSnapshot = {
+          volumes: nextVolumes,
+          ...(nextStreamText ? { streamText: nextStreamText } : {}),
+        };
+        volumesRef.current = snapshot;
+        setVolumes(snapshot);
+        setPhase('volumed');
+        await persistVolumes(snapshot);
+      },
+      'voluming',
+      hadDraft ? 'volumed' : 'volumes',
+      runId,
+    );
+  }
+
+  /** 编辑卷纲：章卡只保留 id 仍在卷纲里的卷，对不上的正文一并剪掉。 */
+  function updateVolumes(next: NovelVolumeDesign[]) {
+    const snapshot = volumesSnapshot(next);
+    volumesRef.current = snapshot;
+    setVolumes(snapshot);
+    const pruned = pruneChapters(snapshot, chaptersRef.current);
+    if (pruned !== chaptersRef.current) {
+      chaptersRef.current = pruned;
+      setChapters(pruned);
+      if (pruned) void persistChapters(pruned);
+      else void deleteNovelStep(task.id, 'chapters');
+    }
+    const nextWriting = syncWritingUnits(pruned, writingRef.current);
+    commitWriting(nextWriting);
+    setSelectedUnitIds(nextWriting.selectedUnitIds ?? []);
+    setFocusUnitId(nextWriting.focusUnitId);
+    void persistVolumes(snapshot);
+    void persistWrite(nextWriting);
+  }
+
+  /** 点选一卷。卷章与写作都跟着切到这一卷，其它卷的章卡与正文留在快照里。 */
+  function handleSelectVolume(volumeId: string) {
+    const current = volumesRef.current;
+    if (!current || !current.volumes.some((volume) => volume.id === volumeId)) return;
+    if (current.selectedVolumeId === volumeId) return;
+    const next: VolumesStepSnapshot = { ...current, selectedVolumeId: volumeId };
+    volumesRef.current = next;
+    setVolumes(next);
+    void persistVolumes(next);
+  }
+
+  async function importVolumes(next: VolumesStepSnapshot): Promise<boolean> {
+    const current = volumesRef.current;
+    const selected =
+      next.selectedVolumeId && next.volumes.some((volume) => volume.id === next.selectedVolumeId)
+        ? next.selectedVolumeId
+        : current?.selectedVolumeId &&
+            next.volumes.some((volume) => volume.id === current.selectedVolumeId)
+          ? current.selectedVolumeId
+          : undefined;
+    const snapshot: VolumesStepSnapshot = {
+      volumes: next.volumes,
+      ...(selected ? { selectedVolumeId: selected } : {}),
+      ...(next.streamText ? { streamText: next.streamText } : {}),
+    };
+    const saved = await persistVolumes(snapshot);
+    if (!saved) return false;
+    volumesRef.current = saved;
+    setVolumes(saved);
+    const pruned = pruneChapters(saved, chaptersRef.current);
+    if (pruned !== chaptersRef.current) {
+      chaptersRef.current = pruned;
+      setChapters(pruned);
+      if (pruned) void persistChapters(pruned);
+      else void deleteNovelStep(task.id, 'chapters');
+    }
+    const nextWriting = syncWritingUnits(pruned, writingRef.current);
+    commitWriting(nextWriting);
+    setSelectedUnitIds(nextWriting.selectedUnitIds ?? []);
+    setFocusUnitId(nextWriting.focusUnitId);
+    void persistWrite(nextWriting);
     return true;
   }
 
-  /** 为一卷生成章卡。返回 ok 表示这一卷已写入；stop 表示中止或失败，调用方不要继续下一卷。 */
-  async function handleGenerateVolumeChapters(volumeId: string): Promise<'ok' | 'stop'> {
+  async function importChapters(next: ChaptersSnapshot): Promise<boolean> {
+    const saved = await persistChapters(next);
+    if (!saved) return false;
+    chaptersRef.current = next;
+    setChapters(next);
+    const nextWriting = syncWritingUnits(next, writingRef.current);
+    commitWriting(nextWriting);
+    setSelectedUnitIds(nextWriting.selectedUnitIds ?? []);
+    setFocusUnitId(nextWriting.focusUnitId);
+    void persistWrite(nextWriting);
+    return true;
+  }
+
+  /** 为点选的那一卷生成章卡。返回 ok 表示已写入；stop 表示中止或失败。 */
+  async function handleGenerateVolumeChapters(): Promise<'ok' | 'stop'> {
     const currentPlan = planRef.current;
+    const volume = selectedVolume(volumesRef.current);
     if (!currentPlan || !selectedTopic) return 'stop';
     const castBody = toCastRequest(castRef.current);
     if (!castBody) {
       message.warning(MISSING_CAST_WARNING);
       return 'stop';
     }
-    const volume = currentPlan.volumes.find((item) => item.id === volumeId);
-    if (!volume) return 'stop';
-    const panel = readPanelValues();
-    const ideaPayload = await readIdeaPayload(panel);
-    if (ideaPayload === 'missing') {
-      message.warning(MISSING_IDEA_WARNING);
-      return 'stop';
-    }
-    if (ideaPayload === 'unreadable') {
-      message.error(IDEA_FILE_READ_FAILED);
-      return 'stop';
-    }
-    const planFile = await readPlanFile(panel);
-    if (planFile === 'unreadable') {
-      message.error(PLAN_FILE_READ_FAILED);
+    if (!volume) {
+      message.warning(MISSING_VOLUME_SELECTION_WARNING);
       return 'stop';
     }
 
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    setGeneratingVolumeId(volumeId);
     setPhase('chaptering');
     const buffer = createRafTextBuffer(() => {
       /* 章卡过程文案不单独展示 */
@@ -838,13 +1089,14 @@ export function useNovelStudio(task: NovelTaskDetail) {
         body: JSON.stringify(
           withChatSettingsBody({
             reasoningEffort: reasoningEffortRef.current,
+            worldview: currentWorldviewSections(),
             topic: selectedTopic,
-            plan: planRequestBody(currentPlan),
+            plan: toPlanRequest(currentPlan),
             cast: castBody,
-            ...ideaPayload,
-            ...(planFile ? { planFile } : {}),
             volume,
-            siblingVolumes: currentPlan.volumes.filter((item) => item.id !== volumeId),
+            siblingVolumes: (volumesRef.current?.volumes ?? []).filter(
+              (item) => item.id !== volume.id,
+            ),
           }),
         ),
         signal: controller.signal,
@@ -869,15 +1121,14 @@ export function useNovelStudio(task: NovelTaskDetail) {
         return 'stop';
       }
       const nextChapters = replaceVolumeChapters(
-        currentPlan,
+        volumesRef.current?.volumes ?? [],
         chaptersRef.current,
-        volumeId,
+        volume.id,
         nextCards,
-        selectedVolumeIdRef.current,
       );
       chaptersRef.current = nextChapters;
       setChapters(nextChapters);
-      const nextWriting = syncWritingUnits(currentPlan, nextChapters, writingRef.current);
+      const nextWriting = syncWritingUnits(nextChapters, writingRef.current);
       commitWriting(nextWriting);
       setSelectedUnitIds(nextWriting.selectedUnitIds ?? []);
       setFocusUnitId(nextWriting.focusUnitId);
@@ -890,10 +1141,11 @@ export function useNovelStudio(task: NovelTaskDetail) {
       message.error(err instanceof Error && err.message ? err.message : VOLUME_CHAPTERS_FAILED);
       return 'stop';
     } finally {
-      setGeneratingVolumeId(undefined);
       if (abortRef.current === controller) {
         abortRef.current = null;
-        setPhase(areVolumesReadyForWrite(chaptersRef.current) ? 'chaptered' : 'chapters');
+        setPhase(
+          isSelectedVolumeReady(volumesRef.current, chaptersRef.current) ? 'chaptered' : 'chapters',
+        );
       }
     }
   }
@@ -920,41 +1172,37 @@ export function useNovelStudio(task: NovelTaskDetail) {
 
   function removeChapter(chapterId: string) {
     const current = chaptersRef.current;
-    const currentPlan = planRef.current;
     if (!current) return;
-    const volumes = current.volumes
+    const volumesWithChapters = current.volumes
       .map((volume) => ({
         ...volume,
         chapters: volume.chapters.filter((chapter) => chapter.id !== chapterId),
       }))
       .filter((volume) => volume.chapters.length > 0);
-    const keptSelection =
-      current.selectedVolumeId && volumes.some((volume) => volume.id === current.selectedVolumeId)
-        ? current.selectedVolumeId
-        : undefined;
-    const next = volumes.length
-      ? { volumes, ...(keptSelection ? { selectedVolumeId: keptSelection } : {}) }
+    const next: ChaptersSnapshot | undefined = volumesWithChapters.length
+      ? { volumes: volumesWithChapters }
       : undefined;
-    if (keptSelection !== selectedVolumeIdRef.current) {
-      selectedVolumeIdRef.current = keptSelection;
-      setSelectedVolumeId(keptSelection);
-    }
     chaptersRef.current = next;
     setChapters(next);
-    const nextWriting = syncWritingUnits(currentPlan, next, writingRef.current);
+    const nextWriting = syncWritingUnits(next, writingRef.current);
     commitWriting(nextWriting);
     setSelectedUnitIds(nextWriting.selectedUnitIds ?? []);
     setFocusUnitId(nextWriting.focusUnitId);
     if (next) void persistChapters(next);
     else void deleteNovelStep(task.id, 'chapters');
     void persistWrite(nextWriting);
+    if (!isSelectedVolumeReady(volumesRef.current, next)) {
+      setPhase('chapters');
+    }
   }
 
   function handlePrev() {
     const current = phaseRef.current;
     if (
+      current === 'worldviewing' ||
       current === 'planning' ||
       current === 'casting' ||
+      current === 'voluming' ||
       current === 'chaptering' ||
       current === 'researching' ||
       polishingUnitIdRef.current ||
@@ -962,18 +1210,22 @@ export function useNovelStudio(task: NovelTaskDetail) {
     ) {
       return;
     }
-    if (current === 'preview') {
-      setPhase(hasWritingBody(writingRef.current) ? 'written' : 'write');
-      return;
-    }
     if (current === 'write' || current === 'writing' || current === 'written') {
       abortRef.current?.abort();
-      setPhase(areVolumesReadyForWrite(chaptersRef.current) ? 'chaptered' : 'chapters');
+      setPhase(
+        isSelectedVolumeReady(volumesRef.current, chaptersRef.current) ? 'chaptered' : 'chapters',
+      );
       return;
     }
     if (current === 'chapters' || current === 'chaptered') {
       abortRef.current?.abort();
-      setGeneratingVolumeId(undefined);
+      setPhase(volumesRef.current ? 'volumed' : 'volumes');
+      return;
+    }
+    if (current === 'volumes' || current === 'volumed') {
+      abortRef.current?.abort();
+      const currentVolumes = volumesRef.current;
+      if (currentVolumes) void persistVolumes(currentVolumes);
       setPhase(hasCastDraft(castRef.current) ? 'casted' : 'cast');
       return;
     }
@@ -989,11 +1241,25 @@ export function useNovelStudio(task: NovelTaskDetail) {
       const currentPlan = planRef.current;
       if (currentPlan) void persistPlan(currentPlan);
       setPhase('researched');
+      return;
+    }
+    if (current === 'research' || current === 'researched') {
+      abortRef.current?.abort();
+      setPhase(isSectionsReady(worldviewRef.current?.sections) ? 'worldviewed' : 'worldview');
     }
   }
 
   async function handleNext() {
     if (polishingUnitIdRef.current || generatingRef.current) return;
+    if (phase === 'worldview' || phase === 'worldviewed') {
+      if (!isSectionsReady(worldviewRef.current?.sections)) {
+        message.warning(MISSING_WORLDVIEW_WARNING);
+        return;
+      }
+      if (worldview) await persistWorldview(worldview);
+      setPhase(topics.length > 0 ? 'researched' : 'research');
+      return;
+    }
     if (phase === 'researched') {
       if (!selectedTopicId) return;
       setPhase(plan ? 'planned' : 'plan');
@@ -1014,7 +1280,18 @@ export function useNovelStudio(task: NovelTaskDetail) {
         return;
       }
       if (cast) await persistCast(cast);
-      setPhase(areVolumesReadyForWrite(chapters) ? 'chaptered' : 'chapters');
+      setPhase(volumesRef.current ? 'volumed' : 'volumes');
+      return;
+    }
+    if (phase === 'volumes' || phase === 'volumed') {
+      if (!isSelectedVolumeReadyForChapters(volumesRef.current)) {
+        message.warning(MISSING_VOLUME_SELECTION_WARNING);
+        return;
+      }
+      if (volumes) await persistVolumes(volumes);
+      setPhase(
+        isSelectedVolumeReady(volumesRef.current, chaptersRef.current) ? 'chaptered' : 'chapters',
+      );
       return;
     }
     if (phase === 'chapters' || phase === 'chaptering') {
@@ -1022,17 +1299,13 @@ export function useNovelStudio(task: NovelTaskDetail) {
       return;
     }
     if (phase === 'chaptered') {
-      const volumeId = selectedVolumeIdRef.current ?? chapters?.selectedVolumeId;
-      const ready = chapters && volumeId ? { ...chapters, selectedVolumeId: volumeId } : chapters;
-      if (!isSelectedVolumeReadyForWrite(plan, ready) || !plan || !ready) {
+      const currentVolumes = volumesRef.current;
+      if (!isSelectedVolumeReady(currentVolumes, chapters)) {
         message.warning(MISSING_CHAPTERS_WARNING);
         return;
       }
-      chaptersRef.current = ready;
-      setChapters(ready);
-      await persistChapters(ready);
-      const synced = syncWritingUnits(plan, ready, writingRef.current ?? writing);
-      const visible = new Set(writingChapterIds(plan, ready));
+      const synced = syncWritingUnits(chapters, writingRef.current ?? writing);
+      const visible = new Set(writingChapterIds(currentVolumes, chapters));
       const nextIds = (synced.selectedUnitIds ?? []).filter((id) => visible.has(id));
       const nextFocus =
         synced.focusUnitId && nextIds.includes(synced.focusUnitId) ? synced.focusUnitId : undefined;
@@ -1042,32 +1315,6 @@ export function useNovelStudio(task: NovelTaskDetail) {
       setFocusUnitId(nextFocus);
       setPhase(hasWritingBody(nextWriting) ? 'written' : 'write');
       await persistWrite(nextWriting);
-      return;
-    }
-    if (phase === 'write' || phase === 'writing' || phase === 'written') {
-      const currentWriting = writingRef.current ?? writing;
-      if (!hasWritingBody(currentWriting)) {
-        message.warning(MISSING_PREVIEW_BODY_WARNING);
-        return;
-      }
-      abortRef.current?.abort();
-      if (currentWriting) await persistWrite(currentWriting);
-      setPhase('preview');
-    }
-  }
-
-  async function handleCopyPreview() {
-    if (!plan || !writing) return;
-    const { plainText } = buildPreviewDocument(plan, chapters, writing);
-    if (!plainText.trim()) {
-      message.warning(MISSING_PREVIEW_BODY_WARNING);
-      return;
-    }
-    try {
-      await copyText(plainText);
-      message.success(COPY_BODY_OK);
-    } catch {
-      message.error(COPY_BODY_FAILED);
     }
   }
 
@@ -1085,7 +1332,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
   }
 
   function toggleWritingUnit(unitId: string) {
-    const valid = writingChapterIds(planRef.current, chaptersRef.current);
+    const valid = writingChapterIds(volumesRef.current, chaptersRef.current);
     const next = toggleWritingSelection(valid, selectedUnitIds, unitId);
     const nextFocus = next.includes(unitId) ? unitId : next.at(-1);
     setSelectedUnitIds(next);
@@ -1105,6 +1352,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
 
   async function handleGenerateWriting(unitIds: string[]) {
     const currentPlan = planRef.current;
+    const currentVolumes = volumesRef.current;
     const currentChapters = chaptersRef.current;
     const currentWriting = writingRef.current;
     if (!currentPlan || !currentWriting || !selectedTopic) return;
@@ -1118,18 +1366,18 @@ export function useNovelStudio(task: NovelTaskDetail) {
       return;
     }
 
-    const valid = writingChapterIds(currentPlan, currentChapters);
+    const valid = writingChapterIds(currentVolumes, currentChapters);
     const unitId = resolveGenerateUnitIds(valid, unitIds)[0];
     if (!unitId) {
       message.warning(MISSING_WRITE_SELECTION_WARNING);
       return;
     }
-    const resolved = resolveWritingUnit(currentPlan, currentChapters, unitId);
+    const resolved = resolveWritingUnit(currentVolumes, currentChapters, unitId);
     if (!resolved) {
       message.warning(MISSING_WRITE_SELECTION_WARNING);
       return;
     }
-    if (!canGenerateWritingUnit(currentPlan, currentChapters, currentWriting, unitId)) {
+    if (!canGenerateWritingUnit(currentVolumes, currentChapters, currentWriting, unitId)) {
       message.warning(WRITE_SEQUENCE_WARNING);
       return;
     }
@@ -1167,8 +1415,9 @@ export function useNovelStudio(task: NovelTaskDetail) {
           withChatSettingsBody({
             reasoningEffort: reasoningEffortRef.current,
             unitId,
+            worldview: currentWorldviewSections(),
             topic: selectedTopic,
-            plan: planRequestBody(currentPlan),
+            plan: toPlanRequest(currentPlan),
             cast: castBody,
             tense: currentWriting.tense,
             ...(stylePrompt ? { stylePrompt } : {}),
@@ -1234,12 +1483,11 @@ export function useNovelStudio(task: NovelTaskDetail) {
 
   async function handlePolishWriting(unitId: string) {
     const currentWriting = writingRef.current;
-    const currentPlan = planRef.current;
     const currentChapters = chaptersRef.current;
-    if (!currentWriting || !currentPlan) return;
+    if (!currentWriting) return;
     const previousBody = currentWriting.units.find((unit) => unit.unitId === unitId)?.body ?? '';
     if (!previousBody.trim()) return;
-    const resolved = resolveWritingUnit(currentPlan, currentChapters, unitId);
+    const resolved = resolveWritingUnit(volumesRef.current, currentChapters, unitId);
     if (!resolved) return;
 
     const stylePrompt = writingStylePrompt(currentWriting);
@@ -1336,20 +1584,23 @@ export function useNovelStudio(task: NovelTaskDetail) {
     panelInitialValues,
     reasoningEffort,
     phase,
+    worldview,
     topics,
     selectedTopicId,
     selectedTopic,
     plan,
     cast,
+    volumes,
     chapters,
-    selectedVolumeId,
     writing,
     selectedUnitIds,
     focusUnitId,
-    generatingVolumeId,
     generatingUnitIds,
     polishingUnitId,
     handleReasoningEffortChange,
+    handleGenerateWorldview,
+    updateWorldview,
+    importWorldview,
     handleResearch,
     handleSelectTopic,
     updateTopic,
@@ -1359,16 +1610,18 @@ export function useNovelStudio(task: NovelTaskDetail) {
     handleGenerateCast,
     updateCast,
     importCast,
+    handleGenerateVolumes,
+    updateVolumes,
+    importVolumes,
+    handleSelectVolume,
     importChapters,
     handleGenerateVolumeChapters,
-    handleSelectVolume,
     updateChapter,
     removeChapter,
     handleGenerateWriting,
     handlePolishWriting,
     handlePrev,
     handleNext,
-    handleCopyPreview,
     handleCopyWritingBody,
     toggleWritingUnit,
     updateWritingBody,
@@ -1377,57 +1630,38 @@ export function useNovelStudio(task: NovelTaskDetail) {
   };
 }
 
-/** 请求体只带方案三块，不带流式过程文案。 */
-function planRequestBody(plan: NovelPlan): NovelPlan {
-  return {
-    worldview: plan.worldview,
-    threads: plan.threads,
-    ending: plan.ending,
-    theme: plan.theme,
-    volumes: plan.volumes,
-  };
-}
-
-/** 去掉已经不在创作方案里的卷，以及被清空的卷。 */
+/** 去掉已经不在卷纲里的卷，以及被清空的卷。 */
 function pruneChapters(
-  plan: NovelPlan,
+  volumes: VolumesStepSnapshot,
   chapters: ChaptersSnapshot | undefined,
 ): ChaptersSnapshot | undefined {
   if (!chapters) return undefined;
-  const ids = new Set(plan.volumes.map((volume) => volume.id));
-  const volumes = chapters.volumes.filter(
+  const ids = new Set(volumes.volumes.map((volume) => volume.id));
+  const kept = chapters.volumes.filter(
     (volume) => ids.has(volume.id) && volume.chapters.length > 0,
   );
-  if (volumes.length === 0) return undefined;
-  const selectedVolumeId =
-    chapters.selectedVolumeId && volumes.some((volume) => volume.id === chapters.selectedVolumeId)
-      ? chapters.selectedVolumeId
-      : undefined;
+  if (kept.length === 0) return undefined;
   if (
-    volumes.length === chapters.volumes.length &&
-    volumes.every((volume, index) => volume === chapters.volumes[index]) &&
-    selectedVolumeId === chapters.selectedVolumeId
+    kept.length === chapters.volumes.length &&
+    kept.every((volume, index) => volume === chapters.volumes[index])
   ) {
     return chapters;
   }
-  return selectedVolumeId ? { volumes, selectedVolumeId } : { volumes };
+  return { volumes: kept };
 }
 
 /** 用新章卡覆盖指定卷，其它卷保持原样。 */
 function replaceVolumeChapters(
-  plan: NovelPlan,
+  volumes: NovelVolumeDesign[],
   chapters: ChaptersSnapshot | undefined,
   volumeId: string,
   nextCards: StructureChapter[],
-  selectedVolumeId?: string,
 ): ChaptersSnapshot {
   const byId = new Map((chapters?.volumes ?? []).map((volume) => [volume.id, volume.chapters]));
   byId.set(volumeId, nextCards);
-  const volumes = plan.volumes
-    .filter((volume) => (byId.get(volume.id)?.length ?? 0) > 0)
-    .map((volume) => ({ id: volume.id, chapters: byId.get(volume.id) ?? [] }));
-  const chosen = [selectedVolumeId, chapters?.selectedVolumeId].find(
-    (id): id is string => Boolean(id) && volumes.some((volume) => volume.id === id),
-  );
-  return chosen ? { volumes, selectedVolumeId: chosen } : { volumes };
+  return {
+    volumes: volumes
+      .filter((volume) => (byId.get(volume.id)?.length ?? 0) > 0)
+      .map((volume) => ({ id: volume.id, chapters: byId.get(volume.id) ?? [] })),
+  };
 }

@@ -80,6 +80,19 @@ export type NovelWorldview = {
   assets: NovelWorldAssetGroup[];
 };
 
+/** 通用两级章节里的二级块：标题与自由正文。 */
+export type NovelSectionBlock = {
+  title: string;
+  body: string;
+};
+
+/** 通用两级章节里的一级标题。标题与正文都由这份设定自己的内容决定。 */
+export type NovelSection = {
+  id: string;
+  title: string;
+  blocks: NovelSectionBlock[];
+};
+
 /** 贯穿全书的主线。不含逐卷推进。 */
 export type NovelThread = {
   id: string;
@@ -88,13 +101,13 @@ export type NovelThread = {
   core: string;
 };
 
-/** 本卷动用的设定要素，以及它在情节里怎么被使用。 */
+/** 本卷动用的设定要素，以及它在情节里怎么被使用。旧方案残留。 */
 export type NovelVolumeAsset = {
   name: string;
   use: string;
 };
 
-/** 分卷地图上的一卷，尚不含章。 */
+/** 旧方案里分卷地图上的一卷。新方案不再写，读取时收成一级标题。 */
 export type NovelVolumeOutline = {
   id: string;
   title: string;
@@ -110,15 +123,40 @@ export type NovelVolumeOutline = {
   targetChars: number;
 };
 
-/** 创作方案：世界观、主线与分卷。 */
+/**
+ * 创作方案：与世界观设定同一套通用两级章节。
+ * 主线、终局、主题与世界观是旧方案残留，只读不再写，仍供下游阅读。
+ */
 export type NovelPlan = {
-  worldview: NovelWorldview;
-  threads: NovelThread[];
+  sections: NovelSection[];
+  threads?: NovelThread[];
   /** 终局：谁做了什么选择，旧秩序怎么变。 */
-  ending: string;
+  ending?: string;
   /** 一句话主题。 */
-  theme: string;
-  volumes: NovelVolumeOutline[];
+  theme?: string;
+  /** 旧方案内嵌的世界观。世界观已有独立步骤后不再写。 */
+  worldview?: NovelWorldview;
+};
+
+/** 卷内一拍：这一拍发生的事，以及涉及的角色。 */
+export type NovelVolumeBeat = {
+  id: string;
+  title: string;
+  event: string;
+  /** 本批角色里的 id。过场人物可以不写。 */
+  characterIds: string[];
+};
+
+/** 叙事卷纲。方案里的节拍在这里排成一卷内的时间顺序。 */
+export type NovelVolumeDesign = {
+  id: string;
+  title: string;
+  /** 回溯到创作方案里的一节。没有对应节时省略。 */
+  sourceSectionId?: string;
+  conflict: string;
+  /** 卷末钩子：交给下一卷的问题。 */
+  hook: string;
+  beats: NovelVolumeBeat[];
 };
 
 /** 卷内一章。钩子是悬念、冲突、发现三者之一。 */
@@ -141,49 +179,56 @@ export type NovelTopicCard = {
   risk?: string;
 };
 
-/** 选题调研上传的文件。TXT/MD 抽正文，PDF 由模型直接阅读。 */
+/** 世界观设定步上传的文件。TXT/MD 抽正文，PDF 由模型直接阅读。 */
 export type NovelIdeaFile = {
   filename: string;
   mediaType: string;
   dataUrl: string;
 };
 
-/** 选题调研请求。体系设定必填；想法与创作方案文件可选。 */
-export type NovelResearchRequest = {
-  idea?: string;
+/** 世界观设定请求。附件必填，最多三份。 */
+export type NovelWorldviewRequest = {
   ideaFiles: NovelIdeaFile[];
+};
+
+/** 选题调研请求。世界观章节必填；创作方案文件可选。 */
+export type NovelResearchRequest = {
+  worldview: NovelSection[];
   planFile?: NovelIdeaFile;
   genres?: string[];
 };
 
-/** 创作方案生成请求。体系设定必填；创作方案文件可选。 */
+/** 创作方案生成请求。世界观章节必填；创作方案文件可选。 */
 export type NovelPlanRequest = {
-  idea?: string;
-  ideaFiles: NovelIdeaFile[];
+  worldview: NovelSection[];
   planFile?: NovelIdeaFile;
   genres?: string[];
   topic: NovelTopicCard;
 };
 
-/** 角色设定生成请求。体系设定必填；创作方案文件可选。 */
+/** 角色设定生成请求。世界观章节与创作方案必填。 */
 export type NovelCastRequest = {
-  idea?: string;
-  ideaFiles: NovelIdeaFile[];
-  planFile?: NovelIdeaFile;
-  genres?: string[];
+  worldview: NovelSection[];
   topic: NovelTopicCard;
   plan: NovelPlan;
 };
 
-/** 按卷一次出齐章卡的请求。体系设定必填；创作方案文件可选。 */
-export type NovelVolumeChaptersRequest = {
+/** 卷纲生成请求。世界观章节、选题、方案与角色都带上，不带附件原文。 */
+export type NovelVolumesRequest = {
+  worldview: NovelSection[];
   topic: NovelTopicCard;
   plan: NovelPlan;
   cast: NovelCast;
-  ideaFiles: NovelIdeaFile[];
-  planFile?: NovelIdeaFile;
-  volume: NovelVolumeOutline;
-  siblingVolumes?: NovelVolumeOutline[];
+};
+
+/** 按卷一次出齐章卡的请求。其余卷只给标题与卷末钩子，用来卡住边界。 */
+export type NovelVolumeChaptersRequest = {
+  worldview: NovelSection[];
+  topic: NovelTopicCard;
+  plan: NovelPlan;
+  cast: NovelCast;
+  volume: NovelVolumeDesign;
+  siblingVolumes?: NovelVolumeDesign[];
 };
 
 /** 此前一章：设计卡片，以及已经写下的全文。 */
@@ -198,6 +243,7 @@ export type NovelPreviousChapterContext = {
 /** 正文写作请求。此前各章全文不截断。 */
 export type NovelWritingRequest = {
   unitId: string;
+  worldview: NovelSection[];
   topic: NovelTopicCard;
   plan: NovelPlan;
   cast: NovelCast;

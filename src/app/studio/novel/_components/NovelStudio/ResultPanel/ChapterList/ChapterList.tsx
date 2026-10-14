@@ -14,7 +14,7 @@ type ChapterListProps = {
   onRemoveChapter: (chapterId: string) => void;
 };
 
-/** 一卷的章卡列表。 */
+/** 一节的章卡列表。 */
 export default function ChapterList({
   chapters,
   title,

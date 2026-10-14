@@ -15,7 +15,6 @@ import {
   CHAPTERS_EXPORT_BUTTON,
   CHAPTERS_EXPORT_FILE_NAME,
   CHAPTERS_EXPORT_MEDIA_TYPE,
-  CHAPTERS_GENERATING_HINT,
   CHAPTERS_IMPORT_CONFIRM_CONTENT,
   CHAPTERS_IMPORT_CONFIRM_TITLE,
   CHAPTERS_PANEL_TITLE,
@@ -23,7 +22,9 @@ import {
   EMPTY_CHAPTERS_HINT,
   EMPTY_PLAN_HINT,
   EMPTY_RESEARCH_HINT,
+  EMPTY_VOLUMES_HINT,
   EMPTY_WRITE_HINT,
+  EMPTY_WORLDVIEW_HINT,
   NEXT_BUTTON,
   PLAN_EXPORT_BUTTON,
   PLAN_EXPORT_FILE_NAME,
@@ -37,18 +38,46 @@ import {
   RESEARCH_GENERATING_HINT,
   RESEARCH_PANEL_TITLE,
   RESEARCH_TOPICS_TITLE,
+  VOLUMES_EXPORT_BUTTON,
+  VOLUMES_EXPORT_FILE_NAME,
+  VOLUMES_EXPORT_MEDIA_TYPE,
+  VOLUMES_GENERATING_HINT,
+  VOLUMES_IMPORT_CONFIRM_CONTENT,
+  VOLUMES_IMPORT_CONFIRM_TITLE,
+  VOLUMES_PANEL_TITLE,
+  VOLUME_CHAPTERS_GENERATING_HINT,
+  WORLDVIEW_EXPORT_BUTTON,
+  WORLDVIEW_EXPORT_FILE_NAME,
+  WORLDVIEW_EXPORT_MEDIA_TYPE,
+  WORLDVIEW_GENERATING_HINT,
+  WORLDVIEW_IMPORT_CONFIRM_CONTENT,
+  WORLDVIEW_IMPORT_CONFIRM_TITLE,
+  WORLDVIEW_PANEL_TITLE,
   WRITE_PANEL_TITLE,
 } from '../constants';
-import { hasCastDraft, isCastReady, isPlanReady, isSelectedVolumeReadyForWrite } from '../utils';
+import {
+  hasCastDraft,
+  isCastReady,
+  isPlanReady,
+  isSelectedVolumeReady,
+  isSelectedVolumeReadyForChapters,
+  isWorldviewReady,
+  selectedVolume,
+  selectedVolumeChapters,
+} from '../utils';
 import TopicCardView from '../TopicCardView';
 import type {
   CastStepSnapshot,
   ChaptersSnapshot,
   NovelPlan,
+  NovelSection,
+  NovelVolumeDesign,
   PlanStepSnapshot,
   StudioPhase,
   StructureChapter,
   TopicCard,
+  VolumesStepSnapshot,
+  WorldviewStepSnapshot,
   WritingSnapshot,
 } from '../types';
 import BibleEditor from './BibleEditor';
@@ -56,44 +85,53 @@ import RelationGraph from './BibleEditor/RelationGraph';
 import { RELATION_GRAPH_MODAL_WIDTH } from './BibleEditor/RelationGraph/constants';
 import { hasNamedCharacter } from './BibleEditor/RelationGraph/utils';
 import MarkdownImportButton from './MarkdownImportButton';
-import PlanEditor from './PlanEditor';
-import VolumeList from './VolumeList';
+import SectionEditor from './SectionEditor';
+import VolumeChapters from './VolumeChapters';
+import VolumeDesignEditor from './VolumeDesignEditor';
 import WritingEditor from './WritingEditor';
 import styles from './ResultPanel.module.css';
 import {
   buildCastMarkdown,
   buildChaptersMarkdown,
   buildPlanMarkdown,
+  buildVolumesMarkdown,
+  buildWorldviewMarkdown,
   downloadMarkdown,
   parseCastMarkdownImport,
   parseChaptersMarkdownImport,
   parsePlanMarkdownImport,
+  parseVolumesMarkdownImport,
+  parseWorldviewMarkdownImport,
 } from './utils';
 
 type ResultPanelProps = {
   phase: StudioPhase;
+  worldview?: WorldviewStepSnapshot;
   topics: TopicCard[];
   selectedTopicId?: string;
   plan?: PlanStepSnapshot;
   cast?: CastStepSnapshot;
+  volumes?: VolumesStepSnapshot;
   chapters?: ChaptersSnapshot;
-  selectedVolumeId?: string;
   writing?: WritingSnapshot;
   selectedUnitIds: string[];
-  generatingVolumeId?: string;
   generatingUnitIds?: string[];
   polishingUnitId?: string;
   onSelectTopic: (id: string) => void;
   onUpdateTopic: (next: TopicCard) => void;
+  onChangeWorldview: (next: NovelSection[]) => void;
+  onImportWorldview: (next: WorldviewStepSnapshot) => Promise<boolean>;
   onChangePlan: (next: NovelPlan) => void;
   onImportPlan: (next: PlanStepSnapshot) => Promise<boolean>;
   onChangeCast: (next: CastStepSnapshot) => void;
   onImportCast: (next: CastStepSnapshot) => Promise<boolean>;
+  onChangeVolumes: (next: NovelVolumeDesign[]) => void;
+  onImportVolumes: (next: VolumesStepSnapshot) => Promise<boolean>;
+  onSelectVolume: (volumeId: string) => void;
   onImportChapters: (next: ChaptersSnapshot) => Promise<boolean>;
   onPrev: () => void;
   onNext: () => void;
-  onSelectVolume: (volumeId: string) => void;
-  onGenerateVolumeChapters: (volumeId: string) => void;
+  onGenerateVolumeChapters: () => void;
   onUpdateChapter: (
     chapterId: string,
     patch: Partial<Pick<StructureChapter, 'title' | 'scene' | 'event' | 'hook'>>,
@@ -105,30 +143,34 @@ type ResultPanelProps = {
   onCopyWritingBody: (unitId: string) => void;
 };
 
-/** 右侧结果区：选题 / 创作方案 / 角色 / 卷章 / 正文。 */
+/** 右侧结果区：世界观 / 选题 / 创作方案 / 角色 / 卷纲 / 卷章 / 正文。 */
 export default function ResultPanel({
   phase,
+  worldview,
   topics,
   selectedTopicId,
   plan,
   cast,
+  volumes,
   chapters,
-  selectedVolumeId,
   writing,
   selectedUnitIds,
-  generatingVolumeId,
   generatingUnitIds = [],
   polishingUnitId,
   onSelectTopic,
   onUpdateTopic,
+  onChangeWorldview,
+  onImportWorldview,
   onChangePlan,
   onImportPlan,
   onChangeCast,
   onImportCast,
+  onChangeVolumes,
+  onImportVolumes,
+  onSelectVolume,
   onImportChapters,
   onPrev,
   onNext,
-  onSelectVolume,
   onGenerateVolumeChapters,
   onUpdateChapter,
   onRemoveChapter,
@@ -137,32 +179,45 @@ export default function ResultPanel({
   onPolishWriting,
   onCopyWritingBody,
 }: ResultPanelProps) {
+  const worldviewView =
+    phase === 'worldview' || phase === 'worldviewing' || phase === 'worldviewed';
   const researchView = phase === 'research' || phase === 'researching' || phase === 'researched';
   const planView = phase === 'plan' || phase === 'planning' || phase === 'planned';
   const castView = phase === 'cast' || phase === 'casting' || phase === 'casted';
+  const volumesView = phase === 'volumes' || phase === 'voluming' || phase === 'volumed';
   const chaptersView = phase === 'chapters' || phase === 'chaptering' || phase === 'chaptered';
   const writeView = phase === 'write' || phase === 'writing' || phase === 'written';
+  const worldviewing = phase === 'worldviewing';
   const researching = phase === 'researching';
   const researched = phase === 'researched';
   const planning = phase === 'planning';
   const casting = phase === 'casting';
+  const voluming = phase === 'voluming';
   const chaptering = phase === 'chaptering';
+  const worldviewEmpty = worldviewView && !worldviewing && !isWorldviewReady(worldview);
   const researchEmpty = researchView && !researching && topics.length === 0;
   const planEmpty = planView && !planning && !plan;
   const castEmpty = castView && !casting && !hasCastDraft(cast);
-  const chaptersEmpty = chaptersView && !plan;
+  const volumesEmpty = volumesView && !voluming && !(volumes?.volumes.length ?? 0);
+  const activeVolume = selectedVolume(volumes);
+  const chaptersEmpty = chaptersView && !activeVolume;
 
   const panelTitle = writeView
     ? WRITE_PANEL_TITLE
     : chaptersView
       ? CHAPTERS_PANEL_TITLE
-      : castView
-        ? CAST_PANEL_TITLE
-        : planView
-          ? PLAN_PANEL_TITLE
-          : RESEARCH_PANEL_TITLE;
+      : volumesView
+        ? VOLUMES_PANEL_TITLE
+        : castView
+          ? CAST_PANEL_TITLE
+          : planView
+            ? PLAN_PANEL_TITLE
+            : researchView
+              ? RESEARCH_PANEL_TITLE
+              : WORLDVIEW_PANEL_TITLE;
   const writingLocked = Boolean(polishingUnitId) || generatingUnitIds.length > 0;
-  const prevLocked = planning || casting || chaptering || (writeView && writingLocked);
+  const prevLocked =
+    worldviewing || planning || casting || voluming || chaptering || (writeView && writingLocked);
   const [relationGraphOpen, setRelationGraphOpen] = useState(false);
   const [relationGraphPhase, setRelationGraphPhase] = useState(castView);
   if (relationGraphPhase !== castView) {
@@ -170,24 +225,22 @@ export default function ResultPanel({
     if (!castView) setRelationGraphOpen(false);
   }
   const canPreviewRelations = Boolean(cast && hasNamedCharacter(cast.characters));
-  const canPrev = planView || castView || chaptersView || writeView;
+  const canPrev = researchView || planView || castView || volumesView || chaptersView || writeView;
   const canNext =
+    (worldviewView && !worldviewing && isWorldviewReady(worldview)) ||
     (researched && Boolean(selectedTopicId)) ||
     (planView && !planning && isPlanReady(plan)) ||
     (castView && !casting && isCastReady(cast)) ||
-    (chaptersView &&
-      !chaptering &&
-      isSelectedVolumeReadyForWrite(
-        plan,
-        chapters ? { ...chapters, ...(selectedVolumeId ? { selectedVolumeId } : {}) } : chapters,
-      )) ||
-    writeView;
+    (volumesView && !voluming && isSelectedVolumeReadyForChapters(volumes)) ||
+    (chaptersView && !chaptering && isSelectedVolumeReady(volumes, chapters));
   const stageFill =
+    (worldviewView && (worldviewEmpty || (worldviewing && !worldview))) ||
     (researchView && (researchEmpty || (researching && topics.length === 0))) ||
     (planView && (planEmpty || (planning && !plan))) ||
     (castView && (castEmpty || casting)) ||
+    (volumesView && (volumesEmpty || (voluming && !(volumes?.volumes.length ?? 0)))) ||
     (chaptersView && chaptersEmpty) ||
-    (writeView && !(plan && writing));
+    (writeView && !(volumes && writing));
 
   return (
     <div className={styles.frame}>
@@ -197,6 +250,32 @@ export default function ResultPanel({
           <>
             <StarOutlined />
             {panelTitle}
+            {worldviewView ? (
+              <div className={studioStageHeadActionsClassName}>
+                <MarkdownImportButton
+                  disabled={worldviewing}
+                  confirmTitle={WORLDVIEW_IMPORT_CONFIRM_TITLE}
+                  confirmContent={WORLDVIEW_IMPORT_CONFIRM_CONTENT}
+                  parse={parseWorldviewMarkdownImport}
+                  onImport={onImportWorldview}
+                />
+                <Button
+                  size="small"
+                  type="link"
+                  disabled={worldviewing || !worldview || worldviewEmpty}
+                  onClick={() =>
+                    worldview &&
+                    downloadMarkdown(
+                      WORLDVIEW_EXPORT_FILE_NAME,
+                      WORLDVIEW_EXPORT_MEDIA_TYPE,
+                      buildWorldviewMarkdown(worldview),
+                    )
+                  }
+                >
+                  {WORLDVIEW_EXPORT_BUTTON}
+                </Button>
+              </div>
+            ) : null}
             {planView ? (
               <div className={studioStageHeadActionsClassName}>
                 <MarkdownImportButton
@@ -249,10 +328,36 @@ export default function ResultPanel({
                 </Button>
               </div>
             ) : null}
+            {volumesView ? (
+              <div className={studioStageHeadActionsClassName}>
+                <MarkdownImportButton
+                  disabled={voluming}
+                  confirmTitle={VOLUMES_IMPORT_CONFIRM_TITLE}
+                  confirmContent={VOLUMES_IMPORT_CONFIRM_CONTENT}
+                  parse={parseVolumesMarkdownImport}
+                  onImport={onImportVolumes}
+                />
+                <Button
+                  size="small"
+                  type="link"
+                  disabled={voluming || !volumes || volumesEmpty}
+                  onClick={() =>
+                    volumes &&
+                    downloadMarkdown(
+                      VOLUMES_EXPORT_FILE_NAME,
+                      VOLUMES_EXPORT_MEDIA_TYPE,
+                      buildVolumesMarkdown(volumes),
+                    )
+                  }
+                >
+                  {VOLUMES_EXPORT_BUTTON}
+                </Button>
+              </div>
+            ) : null}
             {chaptersView ? (
               <div className={studioStageHeadActionsClassName}>
                 <MarkdownImportButton
-                  disabled={chaptering || !plan}
+                  disabled={chaptering || !activeVolume}
                   confirmTitle={CHAPTERS_IMPORT_CONFIRM_TITLE}
                   confirmContent={CHAPTERS_IMPORT_CONFIRM_CONTENT}
                   parse={parseChaptersMarkdownImport}
@@ -261,14 +366,13 @@ export default function ResultPanel({
                 <Button
                   size="small"
                   type="link"
-                  disabled={chaptering || !plan || !chapters}
+                  disabled={chaptering || !chapters}
                   onClick={() =>
-                    plan &&
                     chapters &&
                     downloadMarkdown(
                       CHAPTERS_EXPORT_FILE_NAME,
                       CHAPTERS_EXPORT_MEDIA_TYPE,
-                      buildChaptersMarkdown(plan, chapters),
+                      buildChaptersMarkdown(volumes, chapters),
                     )
                   }
                 >
@@ -293,12 +397,31 @@ export default function ResultPanel({
                 {PREV_BUTTON}
               </Button>
             ) : null}
-            <Button type="primary" disabled={!canNext || writingLocked} onClick={onNext}>
-              {NEXT_BUTTON}
-            </Button>
+            {writeView ? null : (
+              <Button type="primary" disabled={!canNext || writingLocked} onClick={onNext}>
+                {NEXT_BUTTON}
+              </Button>
+            )}
           </>
         }
       >
+        {worldviewView ? (
+          worldviewing && !isWorldviewReady(worldview) ? (
+            <div className={styles.body}>
+              <Spin />
+              <p className={styles.hint}>{WORLDVIEW_GENERATING_HINT}</p>
+            </div>
+          ) : worldviewEmpty ? (
+            <div className={styles.body}>
+              <p className={styles.hint}>{EMPTY_WORLDVIEW_HINT}</p>
+            </div>
+          ) : worldview ? (
+            <div className={styles.scrollContent}>
+              <SectionEditor sections={worldview.sections} onChange={onChangeWorldview} />
+            </div>
+          ) : null
+        ) : null}
+
         {researchView ? (
           researchEmpty ? (
             <div className={styles.body}>
@@ -339,7 +462,10 @@ export default function ResultPanel({
             </div>
           ) : plan ? (
             <div className={styles.scrollContent}>
-              <PlanEditor plan={plan} onChange={onChangePlan} />
+              <SectionEditor
+                sections={plan.sections}
+                onChange={(sections) => onChangePlan({ ...plan, sections })}
+              />
             </div>
           ) : null
         ) : null}
@@ -361,25 +487,47 @@ export default function ResultPanel({
           ) : null
         ) : null}
 
+        {volumesView ? (
+          voluming && !(volumes?.volumes.length ?? 0) ? (
+            <div className={styles.body}>
+              <Spin />
+              <p className={styles.hint}>{VOLUMES_GENERATING_HINT}</p>
+            </div>
+          ) : volumesEmpty ? (
+            <div className={styles.body}>
+              <p className={styles.hint}>{EMPTY_VOLUMES_HINT}</p>
+            </div>
+          ) : volumes ? (
+            <div className={styles.scrollContent}>
+              <VolumeDesignEditor
+                volumes={volumes.volumes}
+                characters={cast?.characters ?? []}
+                selectedVolumeId={volumes.selectedVolumeId}
+                onSelectVolume={onSelectVolume}
+                onChange={onChangeVolumes}
+              />
+            </div>
+          ) : null
+        ) : null}
+
         {chaptersView ? (
-          !plan ? (
+          !activeVolume ? (
             <div className={styles.body}>
               <p className={styles.hint}>{EMPTY_CHAPTERS_HINT}</p>
             </div>
           ) : (
             <div className={styles.scrollContent}>
-              {chaptering && !chapters ? (
+              {chaptering && !(chapters?.volumes.length ?? 0) ? (
                 <div className={styles.body}>
                   <Spin />
-                  <p className={styles.hint}>{CHAPTERS_GENERATING_HINT}</p>
+                  <p className={styles.hint}>{VOLUME_CHAPTERS_GENERATING_HINT}</p>
                 </div>
               ) : null}
-              <VolumeList
-                plan={plan}
-                chapters={chapters}
-                generatingVolumeId={generatingVolumeId}
-                selectedVolumeId={selectedVolumeId}
-                onSelectVolume={onSelectVolume}
+              <VolumeChapters
+                volume={activeVolume}
+                characters={cast?.characters ?? []}
+                chapters={selectedVolumeChapters(volumes, chapters)}
+                generating={chaptering}
                 onGenerateChapters={onGenerateVolumeChapters}
                 onChangeChapter={onUpdateChapter}
                 onRemoveChapter={onRemoveChapter}
@@ -389,10 +537,10 @@ export default function ResultPanel({
         ) : null}
 
         {writeView ? (
-          plan && writing ? (
+          volumes && writing ? (
             <div className={styles.scrollContent}>
               <WritingEditor
-                plan={plan}
+                volumes={volumes}
                 chapters={chapters}
                 writing={writing}
                 selectedUnitIds={selectedUnitIds}

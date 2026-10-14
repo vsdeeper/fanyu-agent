@@ -2,7 +2,7 @@ import 'server-only';
 
 import { z } from 'zod';
 import { isNovelIdeaFile, NOVEL_MAX_IDEA_FILES } from '../_shared/idea-file';
-import { normalizeNovelPlan, normalizeVolumeOutline } from '../_shared/normalize-plan';
+import { normalizeNovelPlan, parseSections } from '../_shared/normalize-plan';
 import type {
   NovelCastRequest,
   NovelPlan,
@@ -10,7 +10,8 @@ import type {
   NovelPolishRequest,
   NovelResearchRequest,
   NovelVolumeChaptersRequest,
-  NovelVolumeOutline,
+  NovelVolumesRequest,
+  NovelWorldviewRequest,
   NovelWritingRequest,
 } from '../_shared/types';
 
@@ -22,9 +23,8 @@ const ideaFileSchema = z
   })
   .refine((value) => isNovelIdeaFile(value.filename, value.mediaType));
 
-/** 想法可选。体系设定必填，最多三份。 */
+/** 世界观设定附件：必填，最多三份。 */
 const ideaSourceSchema = {
-  idea: z.string().trim().min(1).optional(),
   ideaFiles: z.array(ideaFileSchema).min(1).max(NOVEL_MAX_IDEA_FILES),
 };
 
@@ -81,7 +81,7 @@ const castSchema = z.object({
   relations: z.array(relationSchema),
 });
 
-/** 收成指定类型；形状不对时让整份请求失败。旧的逐卷推进和本卷结果在这里被收掉。 */
+/** 收成指定类型；形状不对时让整份请求失败。旧方案的分卷在这里被收成一级标题。 */
 function zodNormalize<T>(parse: (value: unknown) => T | null) {
   return z.unknown().transform((value, ctx): T => {
     const parsed = parse(value);
@@ -93,39 +93,67 @@ function zodNormalize<T>(parse: (value: unknown) => T | null) {
   });
 }
 
-const volumeOutlineSchema = zodNormalize<NovelVolumeOutline>(normalizeVolumeOutline);
-
 const planSchema = zodNormalize<NovelPlan>(normalizeNovelPlan);
 
-const researchSchema = z.object({
+/** 两级章节：缺省收成空数组，形状不对的条目丢掉。 */
+const sectionsSchema = z
+  .unknown()
+  .optional()
+  .transform((value) => parseSections(value));
+
+const beatSchema = z.object({
+  id: z.string().trim().min(1),
+  title: z.string().trim(),
+  event: z.string().trim(),
+  characterIds: z.array(z.string().trim().min(1)),
+});
+
+const volumeSchema = z.object({
+  id: z.string().trim().min(1),
+  title: z.string().trim(),
+  sourceSectionId: optionalText,
+  conflict: z.string().trim(),
+  hook: z.string().trim(),
+  beats: z.array(beatSchema),
+});
+
+const worldviewRequestSchema = z.object({
   ...ideaSourceSchema,
+});
+
+const researchSchema = z.object({
+  worldview: sectionsSchema,
   planFile: ideaFileSchema.optional(),
   genres: z.array(z.string().trim().min(1)).optional(),
 });
 
 const planRequestSchema = z.object({
-  ...ideaSourceSchema,
+  worldview: sectionsSchema,
   planFile: ideaFileSchema.optional(),
   genres: z.array(z.string().trim().min(1)).optional(),
   topic: topicSchema,
 });
 
 const castRequestSchema = z.object({
-  ...ideaSourceSchema,
-  planFile: ideaFileSchema.optional(),
-  genres: z.array(z.string().trim().min(1)).optional(),
+  worldview: sectionsSchema,
   topic: topicSchema,
   plan: planSchema,
 });
 
-const volumeChaptersSchema = z.object({
+const volumesRequestSchema = z.object({
+  worldview: sectionsSchema,
   topic: topicSchema,
   plan: planSchema,
   cast: castSchema,
-  ideaFiles: z.array(ideaFileSchema).min(1).max(NOVEL_MAX_IDEA_FILES),
-  planFile: ideaFileSchema.optional(),
-  volume: volumeOutlineSchema,
-  siblingVolumes: z.array(volumeOutlineSchema).optional(),
+});
+
+const volumeChaptersSchema = z.object({
+  worldview: sectionsSchema,
+  topic: topicSchema,
+  plan: planSchema,
+  cast: castSchema,
+  volume: volumeSchema,
+  siblingVolumes: z.array(volumeSchema).optional(),
 });
 
 const chapterCardSchema = z.object({
@@ -137,6 +165,7 @@ const chapterCardSchema = z.object({
 
 const writingSchema = z.object({
   unitId: z.string().trim().min(1),
+  worldview: sectionsSchema,
   topic: topicSchema,
   plan: planSchema,
   cast: castSchema,
@@ -165,13 +194,19 @@ const polishSchema = z.object({
   stylePrompt: z.string().trim().min(1).optional(),
 });
 
-/** 解析选题调研请求体；失败返回 null。 */
+/** 解析世界观设定请求体；失败返回 null。 */
+export function parseWorldviewBody(json: unknown): NovelWorldviewRequest | null {
+  const parsed = worldviewRequestSchema.safeParse(json);
+  return parsed.success ? parsed.data : null;
+}
+
+/** 解析选题调研请求体；失败返回 null。创作方案文件最多一份。 */
 export function parseResearchBody(json: unknown): NovelResearchRequest | null {
   const parsed = researchSchema.safeParse(json);
   return parsed.success ? parsed.data : null;
 }
 
-/** 解析创作方案请求体；失败返回 null。创作方案文件最多一份。 */
+/** 解析创作方案请求体；失败返回 null。 */
 export function parsePlanBody(json: unknown): NovelPlanRequest | null {
   const parsed = planRequestSchema.safeParse(json);
   return parsed.success ? parsed.data : null;
@@ -180,6 +215,12 @@ export function parsePlanBody(json: unknown): NovelPlanRequest | null {
 /** 解析角色设定请求体；失败返回 null。 */
 export function parseCastBody(json: unknown): NovelCastRequest | null {
   const parsed = castRequestSchema.safeParse(json);
+  return parsed.success ? parsed.data : null;
+}
+
+/** 解析卷纲请求体；失败返回 null。 */
+export function parseVolumesBody(json: unknown): NovelVolumesRequest | null {
+  const parsed = volumesRequestSchema.safeParse(json);
   return parsed.success ? parsed.data : null;
 }
 

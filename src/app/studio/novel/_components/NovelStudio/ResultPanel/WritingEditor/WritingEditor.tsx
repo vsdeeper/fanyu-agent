@@ -1,11 +1,11 @@
 import { EMPTY_WRITE_HINT } from '../../constants';
-import type { ChaptersSnapshot, NovelPlan, WritingSnapshot } from '../../types';
+import type { ChaptersSnapshot, VolumesStepSnapshot, WritingSnapshot } from '../../types';
 import { buildWritingEditorBlocks } from '../../utils';
 import WritingBodyCard from './WritingBodyCard';
 import styles from './WritingEditor.module.css';
 
 type WritingEditorProps = {
-  plan?: NovelPlan;
+  volumes?: VolumesStepSnapshot;
   chapters?: ChaptersSnapshot;
   writing: WritingSnapshot;
   selectedUnitIds: string[];
@@ -19,7 +19,7 @@ type WritingEditorProps = {
 
 /** 写作右栏：一次只展示并编辑一篇或一章连续正文。 */
 export default function WritingEditor({
-  plan,
+  volumes,
   chapters,
   writing,
   selectedUnitIds,
@@ -30,7 +30,7 @@ export default function WritingEditor({
   onPolishWriting,
   onCopyWritingBody,
 }: WritingEditorProps) {
-  const blocks = buildWritingEditorBlocks(plan, chapters, writing, selectedUnitIds);
+  const blocks = buildWritingEditorBlocks(volumes, chapters, writing, selectedUnitIds);
   const generatingSet = new Set(generatingUnitIds);
   const writingBusy = generatingUnitIds.length > 0 || Boolean(polishingUnitId);
 

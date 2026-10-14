@@ -16,17 +16,21 @@ export type NovelReasoningEffort = (typeof NOVEL_REASONING_EFFORTS)[number];
 /** 长篇默认拉满；旧任务没写这个字段时也用这一档。 */
 export const NOVEL_DEFAULT_REASONING_EFFORT: NovelReasoningEffort = 'max';
 
-/** 新生成的创作方案主线条数。已保存的旧方案可以落在这个区间之外。 */
-export const NOVEL_THREAD_COUNT_MIN = 2;
-export const NOVEL_THREAD_COUNT_MAX = 4;
-
 /** 读取落盘或请求里的思考强度；缺省、非法都回落 max。 */
 export function readNovelReasoningEffort(value: unknown): NovelReasoningEffort {
+  return readOptionalNovelReasoningEffort(value) ?? NOVEL_DEFAULT_REASONING_EFFORT;
+}
+
+/**
+ * 同上，但缺省或非法时返回 undefined。
+ * 世界观步骤在选题之前，旧快照没写这一项时调用方还要继续往更旧的步骤找。
+ */
+export function readOptionalNovelReasoningEffort(value: unknown): NovelReasoningEffort | undefined {
   if (
     typeof value === 'string' &&
     (NOVEL_REASONING_EFFORTS as readonly string[]).includes(value.trim())
   ) {
     return value.trim() as NovelReasoningEffort;
   }
-  return NOVEL_DEFAULT_REASONING_EFFORT;
+  return undefined;
 }

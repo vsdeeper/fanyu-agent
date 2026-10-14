@@ -4,8 +4,13 @@ vi.mock('server-only', () => ({}));
 
 import { isNovelIdeaFile } from '../_shared/idea-file';
 import { resolveNovelIdeaFiles } from './idea-file';
-import { parseCastBody, parseResearchBody } from './parse-request';
-import { buildCastPrompt, buildResearchPrompt } from './prompt';
+import {
+  parseCastBody,
+  parsePlanBody,
+  parseResearchBody,
+  parseWorldviewBody,
+} from './parse-request';
+import { buildCastPrompt, buildPlanPrompt, buildResearchPrompt } from './prompt';
 
 const TXT = {
   filename: '大纲.txt',
@@ -21,6 +26,8 @@ const topic = {
   core: '全家在院子里说话',
 };
 
+const worldview = [{ id: 'w1', title: '县城', blocks: [{ title: '地图', body: '夏天，老院子' }] }];
+
 describe('isNovelIdeaFile', () => {
   it('接受 txt、md、pdf，拒绝其它扩展名', () => {
     expect(isNovelIdeaFile('a.txt', '')).toBe(true);
@@ -30,30 +37,33 @@ describe('isNovelIdeaFile', () => {
   });
 });
 
-describe('parseResearchBody', () => {
-  it('体系设定必填，想法可选', () => {
-    expect(parseResearchBody({ idea: ' 院子 ', ideaFiles: [TXT] })).toMatchObject({
-      idea: '院子',
-      ideaFiles: [TXT],
-    });
-    expect(parseResearchBody({ ideaFiles: [TXT] })).toMatchObject({ ideaFiles: [TXT] });
-    expect(parseResearchBody({ idea: '院子' })).toBeNull();
-  });
-
-  it('两项都空时拒绝', () => {
-    expect(parseResearchBody({})).toBeNull();
-    expect(parseResearchBody({ idea: '   ' })).toBeNull();
+describe('parseWorldviewBody', () => {
+  it('世界观附件必填，最多三份', () => {
+    expect(parseWorldviewBody({ ideaFiles: [TXT] })).toMatchObject({ ideaFiles: [TXT] });
+    expect(parseWorldviewBody({})).toBeNull();
+    expect(parseWorldviewBody({ ideaFiles: [TXT, TXT, TXT, TXT] })).toBeNull();
     expect(
-      parseResearchBody({
+      parseWorldviewBody({
         ideaFiles: [
-          {
-            filename: 'a.docx',
-            mediaType: 'application/octet-stream',
-            dataUrl: TXT.dataUrl,
-          },
+          { filename: 'a.docx', mediaType: 'application/octet-stream', dataUrl: TXT.dataUrl },
         ],
       }),
     ).toBeNull();
+  });
+});
+
+describe('parseResearchBody', () => {
+  it('世界观章节必填，创作方案文件可选', () => {
+    expect(parseResearchBody({ worldview })).toMatchObject({ worldview });
+    expect(parseResearchBody({ worldview, planFile: TXT })).toMatchObject({ planFile: TXT });
+    expect(parseResearchBody({})).toMatchObject({ worldview: [] });
+  });
+});
+
+describe('parsePlanBody', () => {
+  it('必须带选定选题', () => {
+    expect(parsePlanBody({ worldview, topic })).toMatchObject({ topic });
+    expect(parsePlanBody({ worldview })).toBeNull();
   });
 });
 
@@ -87,61 +97,50 @@ describe('resolveNovelIdeaFiles', () => {
     ]);
     expect(emptyPdf.ok).toBe(false);
   });
-
-  it('超过三份时拒绝', () => {
-    expect(
-      parseResearchBody({
-        ideaFiles: [TXT, TXT, TXT, TXT],
-      }),
-    ).toBeNull();
-  });
 });
 
 describe('buildResearchPrompt', () => {
-  it('未附文件正文时不写体系设定块', () => {
-    const prompt = buildResearchPrompt({ idea: '院子', ideaFiles: [TXT] });
-    expect(prompt).toContain('我的想法：院子');
-    expect(prompt).not.toContain('【体系设定】');
+  it('带上世界观章节，不写旧的想法一项', () => {
+    const prompt = buildResearchPrompt({ worldview, genres: ['现实'] });
+    expect(prompt).toContain('【世界观章节】');
+    expect(prompt).toContain('夏天，老院子');
+    expect(prompt).toContain('偏好类型：现实');
+    expect(prompt).not.toContain('我的想法');
   });
 
-  it('只填文件时说明以体系设定为准', () => {
+  it('附了创作方案样本时写进提示', () => {
     const prompt = buildResearchPrompt(
-      { ideaFiles: [TXT] },
+      { worldview },
       { documentsText: '附件「大纲.txt」：\n夏天停电' },
     );
-    expect(prompt).toContain('未填写，以体系设定为准');
+    expect(prompt).toContain('【创作方案文件】');
     expect(prompt).toContain('夏天停电');
   });
 });
 
-describe('buildCastPrompt', () => {
-  const plan = {
-    worldview: { orders: [], hiddenTruth: '', assets: [] },
-    threads: [{ id: 't1', name: '院子', core: '停电夜里把话说完' }],
-    ending: '',
-    theme: '',
-    volumes: [
-      {
-        id: 'v1',
-        title: '院子',
-        geography: '夏天',
-        conflict: '家里人不说',
-        relations: '',
-        assets: [],
-        hook: '',
-        targetChars: 20000,
-      },
-    ],
-  };
+describe('buildPlanPrompt', () => {
+  it('带上世界观章节、选题与样本，要求两级章节', () => {
+    const prompt = buildPlanPrompt(
+      { worldview, topic },
+      { documentsText: '样本正文', pdfCount: 1 },
+    );
+    expect(prompt).toContain('【世界观章节】');
+    expect(prompt).toContain('选定选题：停电的院子');
+    expect(prompt).toContain('样本正文');
+    expect(prompt).toContain('1 份 PDF');
+    expect(prompt).toContain('sections JSON');
+  });
+});
 
-  it('PDF 体系设定写成附件说明', () => {
-    const prompt = buildCastPrompt(
-      { topic, plan, idea: '院子', ideaFiles: [TXT] },
-      { pdfCount: 2 },
-    );
-    expect(prompt).toContain('2 份 PDF');
-    expect(parseCastBody({ topic, ideaFiles: [TXT], plan })?.ideaFiles?.[0]?.filename).toBe(
-      '大纲.txt',
-    );
+describe('buildCastPrompt', () => {
+  it('带上世界观章节、方案与选题，并接受角色请求', () => {
+    const plan = {
+      sections: [{ id: 's1', title: '县城', blocks: [{ title: '核心冲突', body: '不说' }] }],
+    };
+    const prompt = buildCastPrompt({ worldview, topic, plan });
+    expect(prompt).toContain('【世界观章节】');
+    expect(prompt).toContain('【创作方案】');
+    expect(prompt).toContain('不说');
+    expect(parseCastBody({ worldview, topic, plan })?.topic.title).toBe('停电的院子');
   });
 });

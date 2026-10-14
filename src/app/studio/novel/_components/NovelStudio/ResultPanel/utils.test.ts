@@ -1,12 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import type { CastStepSnapshot, ChaptersSnapshot, PlanStepSnapshot } from '../types';
+import type {
+  CastStepSnapshot,
+  ChaptersSnapshot,
+  PlanStepSnapshot,
+  VolumesStepSnapshot,
+  WorldviewStepSnapshot,
+} from '../types';
 import {
   buildCastMarkdown,
   buildChaptersMarkdown,
   buildPlanMarkdown,
+  buildVolumesMarkdown,
+  buildWorldviewMarkdown,
   parseCastMarkdownImport,
   parseChaptersMarkdownImport,
   parsePlanMarkdownImport,
+  parseVolumesMarkdownImport,
+  parseWorldviewMarkdownImport,
 } from './utils';
 
 const cast: CastStepSnapshot = {
@@ -29,60 +39,68 @@ const cast: CastStepSnapshot = {
       trait: '先把灯修好',
     },
   ],
-  relations: [
+  relations: [{ fromId: 'c1', toId: 'c2', label: '瞒着' }],
+};
+
+const worldview: WorldviewStepSnapshot = {
+  sections: [
     {
-      fromId: 'c1',
-      toId: 'c2',
-      label: '瞒着',
-      arc: { early: '躲开', late: '把信交给他' },
+      id: 'w1',
+      title: '县城',
+      blocks: [{ title: '谁把旧事说完', body: '家里人：先修灯，再说话' }],
     },
   ],
 };
 
 const plan: PlanStepSnapshot = {
-  worldview: {
-    orders: [
-      {
-        id: 'o1',
-        name: '县城',
-        question: '谁把旧事说完',
-        entries: [{ id: 'e1', name: '家里人', rule: '先修灯' }],
-      },
-    ],
-    hiddenTruth: '信是父亲写的',
-    assets: [{ id: 'a1', category: '信件', items: ['旧信'] }],
-  },
+  sections: [
+    {
+      id: 's1',
+      title: '县城',
+      blocks: [{ title: '核心冲突', body: '家里人不说，旧信被翻出来' }],
+    },
+  ],
   threads: [{ id: 't1', name: '旧信', core: '一封没寄出的信' }],
   ending: '信被说开',
   theme: '隐瞒比停电更黑',
+};
+
+const volumes: VolumesStepSnapshot = {
   volumes: [
     {
-      id: 'v1',
+      id: 'vol-1',
       title: '县城',
-      geography: '夏天',
+      sourceSectionId: 's1',
       conflict: '家里人不说',
-      relations: '终于对上话',
-      assets: [{ name: '旧信', use: '被找到' }],
       hook: '信被说开',
-      targetChars: 10000,
+      beats: [{ id: 'beat-1', title: '停电', event: '灯灭了', characterIds: ['c1'] }],
     },
   ],
+  selectedVolumeId: 'vol-1',
 };
 
 const chapters: ChaptersSnapshot = {
   volumes: [
     {
-      id: 'v1',
+      id: 'vol-1',
       chapters: [{ id: 'ch-1', title: '停电', scene: '院子', event: '灯灭了', hook: '有人敲门' }],
     },
   ],
 };
 
 describe('markdown import', () => {
-  it('角色、方案、卷章都能从自己导出的文件读回', () => {
+  it('世界观、方案、角色、卷纲、卷章都能从自己导出的文件读回', () => {
+    expect(parseWorldviewMarkdownImport(buildWorldviewMarkdown(worldview))).toEqual({
+      ok: true,
+      data: worldview,
+    });
     expect(parseCastMarkdownImport(buildCastMarkdown(cast))).toEqual({ ok: true, data: cast });
     expect(parsePlanMarkdownImport(buildPlanMarkdown(plan))).toEqual({ ok: true, data: plan });
-    expect(parseChaptersMarkdownImport(buildChaptersMarkdown(plan, chapters))).toEqual({
+    expect(parseVolumesMarkdownImport(buildVolumesMarkdown(volumes))).toEqual({
+      ok: true,
+      data: volumes,
+    });
+    expect(parseChaptersMarkdownImport(buildChaptersMarkdown(volumes, chapters))).toEqual({
       ok: true,
       data: chapters,
     });
@@ -90,6 +108,14 @@ describe('markdown import', () => {
 
   it('类型不对时拒绝', () => {
     expect(parsePlanMarkdownImport(buildCastMarkdown(cast))).toEqual({
+      ok: false,
+      error: 'wrong-type',
+    });
+    expect(parseVolumesMarkdownImport(buildPlanMarkdown(plan))).toEqual({
+      ok: false,
+      error: 'wrong-type',
+    });
+    expect(parseChaptersMarkdownImport(buildVolumesMarkdown(volumes))).toEqual({
       ok: false,
       error: 'wrong-type',
     });

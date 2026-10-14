@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Button, Form, Input, Select, type FormInstance } from 'antd';
+import { Button, Form, Select, type FormInstance } from 'antd';
 import {
   DEEPSEEK_REASONING_EFFORTS,
   ZHIPU_REASONING_EFFORTS,
@@ -17,17 +17,10 @@ import StudioControlPanel, {
 import TopicCardView from '../TopicCardView';
 import {
   CAST_BUTTON,
+  VOLUMES_BUTTON,
   GENRE_LABEL,
   GENRE_OPTIONS,
   GENRE_PLACEHOLDER,
-  IDEA_FILE_ACCEPT,
-  IDEA_FILE_HINT,
-  IDEA_FILE_LABEL,
-  IDEA_FILE_MAX,
-  IDEA_FILE_SUBTITLE,
-  IDEA_FILE_TYPE_WARNING,
-  IDEA_LABEL,
-  IDEA_PLACEHOLDER,
   PLAN_BUTTON,
   PLAN_FILE_HINT,
   PLAN_FILE_LABEL,
@@ -41,17 +34,26 @@ import {
   STYLE_LABEL,
   TENSE_LABEL,
   TENSE_OPTIONS,
+  WORLDVIEW_BUTTON,
+  WORLDVIEW_FILE_ACCEPT,
+  WORLDVIEW_FILE_HINT,
+  WORLDVIEW_FILE_LABEL,
+  WORLDVIEW_FILE_MAX,
+  WORLDVIEW_FILE_SUBTITLE,
+  WORLDVIEW_FILE_TYPE_WARNING,
 } from '../constants';
 import type {
+  CastStepSnapshot,
   ChaptersSnapshot,
   NovelPanelValues,
   NovelPlan,
   NovelTense,
   StudioPhase,
   TopicCard,
+  VolumesStepSnapshot,
 } from '../types';
 import WritingUnitList from './WritingUnitList';
-import { isAllowedIdeaFile, requireSystemFiles } from './utils';
+import { isAllowedIdeaFile, requireWorldviewFiles } from './utils';
 import styles from './ControlPanel.module.css';
 
 type ControlPanelProps = {
@@ -62,21 +64,25 @@ type ControlPanelProps = {
   phase: StudioPhase;
   selectedTopic?: TopicCard;
   plan?: NovelPlan;
+  cast?: CastStepSnapshot;
+  volumes?: VolumesStepSnapshot;
   chapters?: ChaptersSnapshot;
   selectedUnitIds: string[];
   focusUnitId?: string;
   styleSelections: StyleDimensionSelections;
   tense?: NovelTense;
   writeBusy?: boolean;
+  onGenerateWorldview: () => void;
   onResearch: () => void;
   onGeneratePlan: () => void;
   onGenerateCast: () => void;
+  onGenerateVolumes: () => void;
   onToggleWritingUnit: (unitId: string) => void;
   onStyleSelectionsChange: (next: StyleDimensionSelections) => void;
   onTenseChange: (tense: NovelTense) => void;
 };
 
-/** 小说左栏：调研、方案、角色、卷章、写作共用一个 Form。 */
+/** 小说左栏：世界观、选题、方案、角色、卷章、写作共用一个 Form。 */
 export default function ControlPanel({
   form,
   initialValues,
@@ -85,15 +91,19 @@ export default function ControlPanel({
   phase,
   selectedTopic,
   plan,
+  cast,
+  volumes,
   chapters,
   selectedUnitIds,
   focusUnitId,
   styleSelections,
   tense,
   writeBusy = false,
+  onGenerateWorldview,
   onResearch,
   onGeneratePlan,
   onGenerateCast,
+  onGenerateVolumes,
   onToggleWritingUnit,
   onStyleSelectionsChange,
   onTenseChange,
@@ -110,23 +120,42 @@ export default function ControlPanel({
     : 'max';
   const showReasoningEffort = settingsHydrated && chatProvider !== 'ark' && Boolean(chatProvider);
 
+  const worldviewBusy = phase === 'worldviewing';
   const researchBusy = phase === 'researching';
   const planBusy = phase === 'planning';
   const castBusy = phase === 'casting';
+  const volumesBusy = phase === 'voluming';
+  const worldviewStep =
+    phase === 'worldview' || phase === 'worldviewing' || phase === 'worldviewed';
   const researchStep = phase === 'research' || phase === 'researching' || phase === 'researched';
   const planStep = phase === 'plan' || phase === 'planning' || phase === 'planned';
   const castStep = phase === 'cast' || phase === 'casting' || phase === 'casted';
+  const volumesStep = phase === 'volumes' || phase === 'voluming' || phase === 'volumed';
   const chaptersStep = phase === 'chapters' || phase === 'chaptering' || phase === 'chaptered';
   const writeStep = phase === 'write' || phase === 'writing' || phase === 'written';
-  const showFooter = researchStep || planStep || castStep;
+  const showFooter = worldviewStep || researchStep || planStep || castStep || volumesStep;
   const formDisabled =
-    (researchStep && researchBusy) || (planStep && planBusy) || (writeStep && writeBusy);
+    (worldviewStep && worldviewBusy) ||
+    (researchStep && researchBusy) ||
+    (planStep && planBusy) ||
+    (writeStep && writeBusy);
 
   return (
     <StudioControlPanel
       footer={
         showFooter ? (
           <>
+            {worldviewStep ? (
+              <Button
+                type="primary"
+                block
+                size="large"
+                loading={worldviewBusy}
+                onClick={onGenerateWorldview}
+              >
+                {WORLDVIEW_BUTTON}
+              </Button>
+            ) : null}
             {researchStep ? (
               <Button type="primary" block size="large" loading={researchBusy} onClick={onResearch}>
                 {RESEARCH_BUTTON}
@@ -156,6 +185,18 @@ export default function ControlPanel({
                 {CAST_BUTTON}
               </Button>
             ) : null}
+            {volumesStep ? (
+              <Button
+                type="primary"
+                block
+                size="large"
+                loading={volumesBusy}
+                disabled={!selectedTopic || !cast}
+                onClick={onGenerateVolumes}
+              >
+                {VOLUMES_BUTTON}
+              </Button>
+            ) : null}
           </>
         ) : undefined
       }
@@ -167,45 +208,45 @@ export default function ControlPanel({
         disabled={formDisabled}
         className={studioControlFormClassName}
       >
+        {worldviewStep ? (
+          <Form.Item
+            name="worldviewFiles"
+            rules={[
+              {
+                validator: async (_, value: NovelPanelValues['worldviewFiles'] | undefined) => {
+                  await requireWorldviewFiles(value);
+                },
+              },
+            ]}
+          >
+            <ProductDocsUpload
+              max={WORLDVIEW_FILE_MAX}
+              label={WORLDVIEW_FILE_LABEL}
+              subtitle={WORLDVIEW_FILE_SUBTITLE}
+              hint={WORLDVIEW_FILE_HINT}
+              accept={WORLDVIEW_FILE_ACCEPT}
+              typeWarning={WORLDVIEW_FILE_TYPE_WARNING}
+              isAllowedFile={isAllowedIdeaFile}
+              ariaLabel="上传世界观设定"
+              disabled={worldviewBusy}
+            />
+          </Form.Item>
+        ) : null}
+
         {researchStep ? (
           <>
-            <Form.Item
-              name="ideaFiles"
-              rules={[
-                {
-                  validator: async (_, value: NovelPanelValues['ideaFiles'] | undefined) => {
-                    await requireSystemFiles(value);
-                  },
-                },
-              ]}
-            >
-              <ProductDocsUpload
-                max={IDEA_FILE_MAX}
-                label={IDEA_FILE_LABEL}
-                subtitle={IDEA_FILE_SUBTITLE}
-                hint={IDEA_FILE_HINT}
-                accept={IDEA_FILE_ACCEPT}
-                typeWarning={IDEA_FILE_TYPE_WARNING}
-                isAllowedFile={isAllowedIdeaFile}
-                ariaLabel="上传体系设定"
-                disabled={researchBusy}
-              />
-            </Form.Item>
             <Form.Item name="planFiles">
               <ProductDocsUpload
                 max={PLAN_FILE_MAX}
                 label={PLAN_FILE_LABEL}
                 subtitle={PLAN_FILE_SUBTITLE}
                 hint={PLAN_FILE_HINT}
-                accept={IDEA_FILE_ACCEPT}
-                typeWarning={IDEA_FILE_TYPE_WARNING}
+                accept={WORLDVIEW_FILE_ACCEPT}
+                typeWarning={WORLDVIEW_FILE_TYPE_WARNING}
                 isAllowedFile={isAllowedIdeaFile}
                 ariaLabel="上传创作方案"
                 disabled={researchBusy}
               />
-            </Form.Item>
-            <Form.Item name="idea" label={IDEA_LABEL}>
-              <Input.TextArea rows={6} placeholder={IDEA_PLACEHOLDER} />
             </Form.Item>
             <Form.Item name="genres" label={GENRE_LABEL}>
               <Select
@@ -219,7 +260,7 @@ export default function ControlPanel({
           </>
         ) : null}
 
-        {planStep || castStep || chaptersStep ? (
+        {planStep || castStep || volumesStep || chaptersStep ? (
           <div className={styles.topicBlock}>
             <div className={styles.topicLabel}>{SELECTED_TOPIC_LABEL}</div>
             {selectedTopic ? (
@@ -230,7 +271,7 @@ export default function ControlPanel({
           </div>
         ) : null}
 
-        {writeStep && plan ? (
+        {writeStep && volumes ? (
           <>
             <div className={styles.styleRow}>
               <Form.Item label={STYLE_LABEL}>
@@ -257,7 +298,7 @@ export default function ControlPanel({
               />
             </Form.Item>
             <WritingUnitList
-              plan={plan}
+              volumes={volumes}
               chapters={chapters}
               selectedUnitIds={selectedUnitIds}
               focusUnitId={focusUnitId}
@@ -266,7 +307,7 @@ export default function ControlPanel({
           </>
         ) : null}
 
-        {showReasoningEffort && researchStep ? (
+        {showReasoningEffort && worldviewStep ? (
           <Form.Item label={REASONING_EFFORT_LABEL}>
             <Select
               value={reasoningValue}

@@ -2,7 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import type { NovelCast, NovelPlan, NovelTopicCard, NovelWritingRequest } from '../_shared/types';
+import type {
+  NovelCast,
+  NovelPlan,
+  NovelSection,
+  NovelTopicCard,
+  NovelWritingRequest,
+} from '../_shared/types';
 import { parseWritingBody } from './parse-request';
 import { buildWritingPrompt } from './prompt';
 
@@ -28,27 +34,20 @@ const cast: NovelCast = {
   relations: [],
 };
 
+const worldview: NovelSection[] = [
+  { id: 'w1', title: '县城', blocks: [{ title: '地图', body: '夏天，老院子' }] },
+];
+
 const plan: NovelPlan = {
-  worldview: { orders: [], hiddenTruth: '信是父亲写的', assets: [] },
+  sections: [{ id: 'v1', title: '县城', blocks: [{ title: '核心冲突', body: '家里人不肯说' }] }],
   threads: [{ id: 't1', name: '旧信', core: '一封没寄出的信' }],
   ending: '信被说开',
   theme: '隐瞒比停电更黑',
-  volumes: [
-    {
-      id: 'v1',
-      title: '县城',
-      geography: '九十年代县城',
-      conflict: '家里人不肯说',
-      relations: '终于对上话',
-      assets: [],
-      hook: '信被说开',
-      targetChars: 20000,
-    },
-  ],
 };
 
 const writingBody: NovelWritingRequest = {
   unitId: 'ch-2',
+  worldview,
   topic,
   plan,
   cast,
@@ -76,7 +75,7 @@ describe('parseWritingBody', () => {
     expect(parseWritingBody(writingBody)).toEqual(writingBody);
   });
 
-  it('旧方案里的逐卷推进和本卷结果仍能解析', () => {
+  it('旧方案里的分卷、逐卷推进和本卷结果仍能解析', () => {
     const parsed = parseWritingBody({
       ...writingBody,
       plan: {
@@ -100,9 +99,11 @@ describe('parseWritingBody', () => {
         ],
       },
     });
-    expect(parsed?.plan.threads[0]).toEqual({ id: 't1', name: '旧信', core: '一封没寄出的信' });
-    expect(parsed?.plan.volumes[0]?.hook).toBe('信被说开');
-    expect(parsed?.plan.worldview).toEqual({ orders: [], hiddenTruth: '', assets: [] });
+    expect(parsed?.plan.sections.map((section) => section.id)).toEqual(['v1']);
+    expect(parsed?.plan.sections[0]?.blocks.find((block) => block.title === '卷末钩子')?.body).toBe(
+      '信被说开',
+    );
+    expect(parsed?.plan.threads?.[0]).toEqual({ id: 't1', name: '旧信', core: '一封没寄出的信' });
   });
 
   it('拒绝缺场景的当前章', () => {
@@ -116,14 +117,15 @@ describe('parseWritingBody', () => {
 });
 
 describe('buildWritingPrompt', () => {
-  it('带上完整方案、此前全文，以及下一章的标题和钩子', () => {
+  it('带上世界观章节、完整方案、此前全文，以及下一章的标题和钩子', () => {
     const prompt = buildWritingPrompt(writingBody);
+    expect(prompt).toContain('【世界观章节】');
+    expect(prompt).toContain('夏天，老院子');
     expect(prompt).toContain('【创作方案】');
     expect(prompt).toContain('【角色设定】');
     expect(prompt).toContain('门锁响了一声。这是此前章节的全文，不应被截断。');
     expect(prompt).toContain('【下一章边界】');
     expect(prompt).toContain('钩子：陌生人登门');
-    expect(prompt).not.toContain('【体系设定】');
     expect(prompt).not.toContain('节拍');
   });
 });

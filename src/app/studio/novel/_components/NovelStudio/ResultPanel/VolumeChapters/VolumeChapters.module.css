@@ -1,0 +1,88 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.volumeCard {
+  border-color: var(--fanyu-color-border-secondary);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fanyu-color-text);
+  word-break: break-word;
+}
+
+.pointHint {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--fanyu-color-text-tertiary);
+}
+
+.fieldLabel {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--fanyu-color-text-secondary);
+}
+
+.readText {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fanyu-color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.beat {
+  display: flex;
+  flex-direction: column;
+}
+
+.beatTitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fanyu-color-text-secondary);
+  word-break: break-word;
+}
+
+.chaptersBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.chaptersHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.chaptersLabel {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fanyu-color-text-secondary);
+}
+
+.emptyHint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fanyu-color-text-tertiary);
+}

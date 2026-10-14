@@ -20,11 +20,10 @@ type StepRow = {
   updatedAt: string;
 };
 
-/** 把旧步骤键 bible / structure 映射到角色、方案与卷章，供打开历史任务。 */
+/** 把旧步骤键 bible 映射到角色，供打开历史任务。 */
 export function mergeLegacyNovelDetail(detail: NovelTaskDetail, rows: StepRow[]): NovelTaskDetail {
   const steps = { ...detail.steps };
   const bibleRow = rows.find((row) => row.stepKey === 'bible');
-  const structureRow = rows.find((row) => row.stepKey === 'structure');
   const bible = bibleRow ? parseStepData(bibleRow.data) : undefined;
 
   if (!steps.cast && bible) {
@@ -37,25 +36,6 @@ export function mergeLegacyNovelDetail(detail: NovelTaskDetail, rows: StepRow[])
         updatedAt: bibleRow?.updatedAt ?? detail.updatedAt,
       };
     }
-  }
-
-  const structure = structureRow ? parseStepData(structureRow.data) : undefined;
-  const mapped = structure ? mapStructure(structure) : undefined;
-  if (!steps.plan && mapped?.plan) {
-    steps.plan = {
-      stepKey: 'plan',
-      snapshotVersion: structureRow?.snapshotVersion ?? 1,
-      data: mapped.plan,
-      updatedAt: structureRow?.updatedAt ?? detail.updatedAt,
-    };
-  }
-  if (!steps.chapters && mapped?.chapters) {
-    steps.chapters = {
-      stepKey: 'chapters',
-      snapshotVersion: structureRow?.snapshotVersion ?? 1,
-      data: mapped.chapters,
-      updatedAt: structureRow?.updatedAt ?? detail.updatedAt,
-    };
   }
 
   if (steps.write && bible) {
@@ -75,14 +55,7 @@ export function mergeLegacyCompletedKeys(
   rows: StepRow[],
 ): NovelStepKey[] {
   const keys = new Set(completed);
-  const own = rows.filter((row) => row.taskId === taskId);
-  if (own.some((row) => row.stepKey === 'bible')) keys.add('cast');
-  const structure = own.find((row) => row.stepKey === 'structure');
-  if (structure) {
-    keys.add('plan');
-    const mapped = mapStructure(parseStepData(structure.data));
-    if (mapped?.chapters) keys.add('chapters');
-  }
+  if (rows.some((row) => row.taskId === taskId && row.stepKey === 'bible')) keys.add('cast');
   return NOVEL_STEP_KEYS.filter((key) => keys.has(key));
 }
 
@@ -196,68 +169,6 @@ function mapRelation(
   if (!fromId || !toId || !label || fromId === toId) return null;
   if (!ids.has(fromId) || !ids.has(toId)) return null;
   return { fromId, toId, label };
-}
-
-function mapStructure(data: unknown):
-  | {
-      plan?: { threads: []; volumes: unknown[] };
-      chapters?: { volumes: unknown[] };
-    }
-  | undefined {
-  const record = asRecord(data);
-  if (!record || record.kind !== 'volumes' || !Array.isArray(record.volumes)) return undefined;
-  const volumes: unknown[] = [];
-  const chapterVolumes: unknown[] = [];
-  for (const item of record.volumes) {
-    const volume = asRecord(item);
-    if (!volume) continue;
-    const id = asString(volume.id);
-    const title = asString(volume.title);
-    const conflict = asString(volume.conflict) || asString(volume.purpose);
-    if (!id || !title || !conflict) continue;
-    const targetChars =
-      typeof volume.targetChars === 'number' && volume.targetChars > 0
-        ? Math.round(volume.targetChars)
-        : 200000;
-    volumes.push({
-      id,
-      title,
-      geography: asString(volume.geography) || '未标明',
-      conflict,
-      targetChars,
-    });
-    const chapters = Array.isArray(volume.chapters)
-      ? volume.chapters.map(mapChapter).filter((chapter) => chapter !== null)
-      : [];
-    if (chapters.length > 0) chapterVolumes.push({ id, chapters });
-  }
-  if (volumes.length === 0) return undefined;
-  return {
-    plan: { threads: [], volumes },
-    ...(chapterVolumes.length > 0 ? { chapters: { volumes: chapterVolumes } } : {}),
-  };
-}
-
-function mapChapter(value: unknown): {
-  id: string;
-  title: string;
-  scene: string;
-  event: string;
-  hook: string;
-} | null {
-  const record = asRecord(value);
-  if (!record) return null;
-  const id = asString(record.id);
-  const title = asString(record.title);
-  const event = asString(record.event) || asString(record.purpose);
-  if (!id || !title || !event) return null;
-  return {
-    id,
-    title,
-    scene: asString(record.scene) || '未标明',
-    event,
-    hook: asString(record.hook) || event,
-  };
 }
 
 function mergeNarrationIntoWrite(data: unknown, bible: unknown): unknown {

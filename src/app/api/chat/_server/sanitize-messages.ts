@@ -58,8 +58,9 @@ export function markLastAssistantStopped(messages: UIMessage[]): UIMessage[] {
   const lastText = last.parts?.findLast(isTextUIPart);
   const body =
     last.parts
-      ?.filter((part) => part.type === 'text' && typeof part.text === 'string')
-      .map((part) => part.text)
+      ?.filter(isTextUIPart)
+      // isTextUIPart 只判 type，落库数据可能缺 text，仍按字符串兜底
+      .map((part) => (typeof part.text === 'string' ? part.text : ''))
       .join('')
       .trim() ?? '';
   if (body && lastText?.state === 'done') {

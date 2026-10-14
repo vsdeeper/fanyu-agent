@@ -1,26 +1,26 @@
-import type { ChaptersSnapshot, NovelPlan } from '../../types';
+import type { ChaptersSnapshot, VolumesStepSnapshot } from '../../types';
 import { WRITE_UNITS_LABEL } from '../../constants';
 import { formatChapterPrefix, stripChapterPrefix, visibleWritingChapters } from '../../utils';
 import styles from './WritingUnitList.module.css';
 
 type WritingUnitListProps = {
-  plan: NovelPlan;
+  volumes?: VolumesStepSnapshot;
   chapters?: ChaptersSnapshot;
   selectedUnitIds: string[];
   focusUnitId?: string;
   onToggle: (unitId: string) => void;
 };
 
-/** 写作左栏：按卷列出章节，单选。 */
+/** 写作左栏：列出选中卷的章节，单选。 */
 export default function WritingUnitList({
-  plan,
+  volumes,
   chapters,
   selectedUnitIds,
   focusUnitId,
   onToggle,
 }: WritingUnitListProps) {
   const selected = new Set(selectedUnitIds);
-  const list = visibleWritingChapters(plan, chapters);
+  const list = visibleWritingChapters(volumes, chapters);
 
   return (
     <div className={styles.root}>

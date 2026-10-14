@@ -11,10 +11,11 @@ import type {
   NovelPolishRequest,
   NovelRelationArc,
   NovelResearchRequest,
+  NovelSection,
   NovelTense,
-  NovelThread,
   NovelVolumeChaptersRequest,
-  NovelVolumeOutline,
+  NovelVolumeDesign,
+  NovelVolumesRequest,
   NovelWorldview,
   NovelWritingRequest,
 } from '../_shared/types';
@@ -65,13 +66,6 @@ export type IdeaFilePrompt = {
   pdfCount?: number;
 };
 
-/** 把想法写进提示。只填了文件时明确告诉模型以文件为准。 */
-function pushIdea(lines: string[], idea: string | undefined) {
-  const text = idea?.trim() ?? '';
-  if (text) lines.push(`我的想法：${text}`);
-  else lines.push('我的想法：（未填写，以体系设定为准）');
-}
-
 /** 把一类上传文件写进提示。 */
 function pushFileBlock(lines: string[], label: string, file?: IdeaFilePrompt) {
   const doc = file?.documentsText?.trim();
@@ -115,7 +109,29 @@ export function formatCastPrompt(cast: NovelCast): string {
   return ['【角色设定】', '人物：', characters, '关系：', relations].join('\n');
 }
 
-/** 把世界观压成后续步骤能读的短文本。 */
+function formatBlock(section: NovelSection): string {
+  return section.blocks
+    .map(
+      (block) => `  - ${block.title.trim() ? `${block.title.trim()}：` : ''}${block.body.trim()}`,
+    )
+    .join('\n');
+}
+
+/** 把通用两级章节压成提示文本。 */
+export function formatSectionsPrompt(label: string, sections: NovelSection[]): string {
+  const body =
+    sections.length > 0
+      ? sections
+          .map((section) => {
+            const blocks = formatBlock(section);
+            return `## ${section.title.trim() || '未命名'}${blocks ? `\n${blocks}` : ''}`;
+          })
+          .join('\n')
+      : '无';
+  return [`【${label}】`, body].join('\n');
+}
+
+/** 旧方案里内嵌的世界观压成短文本。 */
 function formatWorldview(worldview: NovelWorldview): string {
   const orders =
     worldview.orders.length > 0
@@ -144,78 +160,52 @@ function formatWorldview(worldview: NovelWorldview): string {
   ].join('\n');
 }
 
-function formatVolumeAssets(volume: NovelVolumeOutline): string {
-  if (volume.assets.length === 0) return '无';
-  return volume.assets.map((asset) => `${asset.name}（${asset.use}）`).join('；');
+/** 旧方案残留的主线、终局与主题，仍供下游阅读；新方案没有这几块。 */
+function formatLegacyPlanExtras(plan: NovelPlan): string[] {
+  const lines: string[] = [];
+  if (plan.threads && plan.threads.length > 0) {
+    lines.push('主线：', ...plan.threads.map((thread) => `- ${thread.name}：${thread.core}`));
+  }
+  if (plan.ending?.trim()) lines.push(`终局：${plan.ending.trim()}`);
+  if (plan.theme?.trim()) lines.push(`主题：${plan.theme.trim()}`);
+  if (plan.worldview) lines.push(formatWorldview(plan.worldview));
+  return lines;
 }
 
 /** 把创作方案压成后续步骤共用的文本。 */
 export function formatPlanPrompt(plan: NovelPlan): string {
-  const threads = plan.threads.map((thread) => formatThread(thread)).join('\n');
-  const volumes = plan.volumes
-    .map((volume, index) => `${index + 1}. ${formatVolumeBody(volume)}`)
-    .join('\n');
-  return [
-    '【创作方案】',
-    formatWorldview(plan.worldview),
-    '主线：',
-    threads || '无',
-    `终局：${plan.ending.trim() || '未写'}`,
-    `主题：${plan.theme.trim() || '未写'}`,
-    '分卷：',
-    volumes || '无',
-  ].join('\n');
+  return [formatSectionsPrompt('创作方案', plan.sections), ...formatLegacyPlanExtras(plan)].join(
+    '\n',
+  );
 }
 
-function formatThread(thread: NovelThread): string {
-  return `- ${thread.name}：${thread.core}`;
-}
-
-/** 按目标字数给出本卷应铺满的章数区间。 */
-export function chapterCountHint(targetChars: number): string {
-  if (targetChars >= 2000) {
-    const min = Math.max(1, Math.round(targetChars / 5000));
-    const max = Math.max(min, Math.round(targetChars / 2000));
-    return `约 ${min}～${max} 章（本卷目标 ${targetChars} 字，单章 2000～5000 字）`;
-  }
-  return '按本卷冲突从开卷写到交给下一卷，单章约 2000～5000 字';
-}
-
-function formatVolumeBody(volume: NovelVolumeOutline): string {
-  return `[${volume.id}] ${volume.title}｜地图：${volume.geography}｜冲突：${volume.conflict}｜人物推进：${volume.relations.trim() || '未写'}｜要素：${formatVolumeAssets(volume)}｜卷末钩子：${volume.hook.trim() || '未写'}｜目标 ${volume.targetChars} 字`;
-}
-
-function formatVolumeLine(volume: NovelVolumeOutline): string {
-  return `- ${formatVolumeBody(volume)}`;
+/** 拼装世界观设定用户提示。附件正文与 PDF 说明由调用方传入。 */
+export function buildWorldviewPrompt(file?: IdeaFilePrompt): string {
+  const lines: string[] = [];
+  pushFileBlock(lines, '世界观设定附件', file);
+  lines.push(
+    '请把附件整理成能装下全文的两级章节：改进矛盾和不合理之处，做整理和精简，并按需补上缺的部分；已经写明的内容保留。末尾附 sections JSON。',
+  );
+  return lines.join('\n');
 }
 
 /** 拼装选题调研用户提示。 */
-export function buildResearchPrompt(
-  body: NovelResearchRequest,
-  systemFile?: IdeaFilePrompt,
-  planFile?: IdeaFilePrompt,
-): string {
+export function buildResearchPrompt(body: NovelResearchRequest, planFile?: IdeaFilePrompt): string {
   const genres =
     body.genres && body.genres.length > 0 ? body.genres.join('、') : '未指定（可自由发挥）';
   const lines: string[] = [];
-  pushIdea(lines, body.idea);
-  pushFileBlock(lines, '体系设定', systemFile);
+  lines.push(formatSectionsPrompt('世界观章节', body.worldview));
   pushFileBlock(lines, '创作方案文件', planFile);
   lines.push(`偏好类型：${genres}`, '体裁：网文长篇', '请产出 3～5 张选题卡，末尾附 topics JSON。');
   return lines.join('\n');
 }
 
 /** 拼装创作方案用户提示。 */
-export function buildPlanPrompt(
-  body: NovelPlanRequest,
-  systemFile?: IdeaFilePrompt,
-  planFile?: IdeaFilePrompt,
-): string {
+export function buildPlanPrompt(body: NovelPlanRequest, planFile?: IdeaFilePrompt): string {
   const genres = body.genres && body.genres.length > 0 ? body.genres.join('、') : '未指定';
   const risk = body.topic.risk ? `\n风险/难点：${body.topic.risk}` : '';
   const lines: string[] = [];
-  pushIdea(lines, body.idea);
-  pushFileBlock(lines, '体系设定', systemFile);
+  lines.push(formatSectionsPrompt('世界观章节', body.worldview));
   pushFileBlock(lines, '创作方案文件', planFile);
   lines.push(
     `偏好类型：${genres}`,
@@ -223,73 +213,96 @@ export function buildPlanPrompt(
     `类型：${body.topic.genreVolume}`,
     `为什么值得写：${body.topic.why}`,
     `故事核：${body.topic.core}${risk}`,
-    '请输出世界观、2～4 条主线、终局、主题与分卷（约 5～8 卷，含终卷；已写明的保持，未写明的按需扩展；不要写章节），末尾附 JSON。',
+    '请按世界观与选定选题写出两级章节的创作方案（有样本就改进补缺，没写到的按长篇需要补全；不要写章节），末尾附 sections JSON。',
   );
   return lines.join('\n');
 }
 
 /** 拼装角色设定用户提示。 */
-export function buildCastPrompt(
-  body: NovelCastRequest,
-  systemFile?: IdeaFilePrompt,
-  planFile?: IdeaFilePrompt,
-): string {
-  const genres = body.genres && body.genres.length > 0 ? body.genres.join('、') : '未指定';
+export function buildCastPrompt(body: NovelCastRequest): string {
   const risk = body.topic.risk ? `\n风险/难点：${body.topic.risk}` : '';
   const lines: string[] = [];
-  pushIdea(lines, body.idea);
-  pushFileBlock(lines, '体系设定', systemFile);
-  pushFileBlock(lines, '创作方案文件', planFile);
   lines.push(
-    `偏好类型：${genres}`,
+    formatSectionsPrompt('世界观章节', body.worldview),
+    formatPlanPrompt(body.plan),
     `选定选题：${body.topic.title}`,
     `类型：${body.topic.genreVolume}`,
     `为什么值得写：${body.topic.why}`,
     `故事核：${body.topic.core}${risk}`,
-    formatPlanPrompt(body.plan),
     '规模：核心人物约 12～20 人。',
     '请直接输出人物与关系的 JSON，不要前言。不要写人称、聚焦或时态。',
   );
   return lines.join('\n');
 }
 
-/** 拼装按卷章卡用户提示。 */
-export function buildVolumeChaptersPrompt(
-  body: NovelVolumeChaptersRequest,
-  systemFile?: IdeaFilePrompt,
-  planFile?: IdeaFilePrompt,
-): string {
-  const siblings =
-    body.siblingVolumes && body.siblingVolumes.length > 0
-      ? ['同书其它卷：', ...body.siblingVolumes.map(formatVolumeLine)].join('\n')
-      : '同书其它卷：无';
-  const threadLines = body.plan.threads.map((thread) => `- ${thread.name}：${thread.core}`);
+/** 把一卷的节拍压成后续步骤能读的短文本。角色 id 换成姓名。 */
+function formatVolumeBeats(volume: NovelVolumeDesign, cast: NovelCast): string[] {
+  const names = new Map(cast.characters.map((character) => [character.id, character.name]));
+  return volume.beats.map((beat, index) => {
+    const who = beat.characterIds
+      .map((id) => names.get(id) ?? id)
+      .filter(Boolean)
+      .join('、');
+    return `${index + 1}. [${beat.id}] ${beat.title}${who ? `（${who}）` : ''}：${beat.event}`;
+  });
+}
+
+/** 把一卷卷纲压成提示文本。 */
+export function formatVolumePrompt(volume: NovelVolumeDesign, cast: NovelCast): string {
+  const beats = formatVolumeBeats(volume, cast);
+  return [
+    `## [${volume.id}] ${volume.title}`,
+    `核心冲突：${volume.conflict.trim() || '未写'}`,
+    `卷末钩子：${volume.hook.trim() || '未写'}`,
+    '节拍（按时间）：',
+    ...(beats.length > 0 ? beats : ['无']),
+  ].join('\n');
+}
+
+/** 拼装卷纲用户提示。 */
+export function buildVolumesPrompt(body: NovelVolumesRequest): string {
   const lines: string[] = [];
-  pushFileBlock(lines, '体系设定', systemFile);
-  pushFileBlock(lines, '创作方案文件', planFile);
   lines.push(
-    `选题：${body.topic.title}（${body.topic.genreVolume}）`,
-    `故事核：${body.topic.core}`,
+    formatSectionsPrompt('世界观章节', body.worldview),
+    formatPlanPrompt(body.plan),
     formatCastPrompt(body.cast),
-    '本卷相关主线：',
-    threadLines.join('\n') || '无',
-    `本卷 id：${body.volume.id}`,
-    `本卷标题：${body.volume.title}`,
-    `地图：${body.volume.geography}`,
-    `核心冲突：${body.volume.conflict}`,
-    `人物推进：${body.volume.relations.trim() || '未写'}`,
-    `本卷要素：${formatVolumeAssets(body.volume)}`,
-    `卷末钩子：${body.volume.hook.trim() || '未写'}`,
-    `目标字数：${body.volume.targetChars}`,
-    siblings,
-    `请为本卷一次出齐全部章卡（${chapterCountHint(body.volume.targetChars)}）。场景和事件写成一小段，末尾附 chapters JSON。`,
+    `选定选题：${body.topic.title}（${body.topic.genreVolume}）`,
+    `故事核：${body.topic.core}`,
+    '请把全书排成叙事卷：只收叙事卷，节拍按时间写清这一拍发生的事，characterIds 只用角色设定里的 id，末尾附 volumes JSON。',
   );
   return lines.join('\n');
 }
 
-/** 拼装正文写作用户提示。此前各章全文原样进入。写作不再附体系设定或创作方案原文。 */
+/** 拼装按卷章卡用户提示。 */
+export function buildVolumeChaptersPrompt(body: NovelVolumeChaptersRequest): string {
+  const siblings =
+    body.siblingVolumes && body.siblingVolumes.length > 0
+      ? [
+          '同书其它卷（只有标题与卷末钩子，用来卡住边界）：',
+          ...body.siblingVolumes.map(
+            (volume) => `- ${volume.title}｜卷末钩子：${volume.hook.trim() || '未写'}`,
+          ),
+        ].join('\n')
+      : '同书其它卷：无';
+  const lines: string[] = [];
+  lines.push(
+    formatSectionsPrompt('世界观章节', body.worldview),
+    formatPlanPrompt(body.plan),
+    formatCastPrompt(body.cast),
+    `选题：${body.topic.title}（${body.topic.genreVolume}）`,
+    `故事核：${body.topic.core}`,
+    '本卷卷纲：',
+    formatVolumePrompt(body.volume, body.cast),
+    siblings,
+    '请按本卷节拍顺序一次出齐全部章卡（一拍可展开成一章或多章，单章 2000～5000 字）。场景和事件写成一小段，末尾附 chapters JSON。',
+  );
+  return lines.join('\n');
+}
+
+/** 拼装正文写作用户提示。此前各章全文原样进入。写作不再附世界观设定附件原文。 */
 export function buildWritingPrompt(body: NovelWritingRequest): string {
   const lines = [
+    formatSectionsPrompt('世界观章节', body.worldview),
     `选题：${body.topic.title}（${body.topic.genreVolume}）`,
     `故事核：${body.topic.core}`,
     formatPlanPrompt(body.plan),

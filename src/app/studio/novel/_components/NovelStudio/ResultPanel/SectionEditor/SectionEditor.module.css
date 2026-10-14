@@ -1,3 +1,15 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .title {
   display: inline-flex;
   align-items: center;
@@ -31,11 +43,17 @@
   gap: 10px;
 }
 
+.readBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .readLabel {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
-  color: var(--fanyu-color-text-secondary);
+  font-weight: bold;
 }
 
 .readText {
@@ -53,6 +71,22 @@
   gap: 8px;
 }
 
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--fanyu-color-border-secondary);
+  border-radius: 6px;
+}
+
+.blockHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -66,34 +100,8 @@
   color: var(--fanyu-color-text-secondary);
 }
 
-.pair {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.pairName {
-  flex: 0 0 28%;
-  min-width: 0;
-}
-
-.pairText {
-  flex: 1;
-  min-width: 0;
-}
-
 .actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-}
-
-.targetChars {
-  width: 100%;
-}
-
-.targetChars :global(.ant-input-number) {
-  flex: 1;
-  min-width: 0;
-  width: auto;
 }

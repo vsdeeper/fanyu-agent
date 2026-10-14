@@ -1,7 +1,7 @@
-/** 体系设定份数上限。选题、创作方案、角色与卷章共用；写作不再附原文。 */
+/** 世界观设定份数上限。只在世界观设定步传入，之后各步只读整理后的章节。 */
 export const NOVEL_MAX_IDEA_FILES = 3;
 
-/** 创作方案上传份数上限。 */
+/** 创作方案样本份数上限。只在选题调研与创作方案两步传入。 */
 export const NOVEL_MAX_PLAN_FILES = 1;
 
 const IDEA_FILE_EXTS = new Set(['txt', 'md', 'pdf']);
@@ -16,7 +16,7 @@ function toExt(filename: string): string {
     .toLowerCase();
 }
 
-/** 选题调研思路文件：TXT / MD 进正文，PDF 由模型直接阅读。 */
+/** 世界观设定或创作方案样本：TXT / MD 进正文，PDF 由模型直接阅读。 */
 export function isNovelIdeaFile(filename: string, mediaType?: string): boolean {
   if (
     mediaType === 'text/plain' ||
