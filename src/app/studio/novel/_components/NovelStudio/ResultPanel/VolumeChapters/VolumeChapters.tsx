@@ -88,7 +88,7 @@ export default function VolumeChapters({
               cancelText={CONFIRM_CANCEL}
               onConfirm={onGenerateChapters}
             >
-              <Button size="small" loading={generating}>
+              <Button size="small" type="link" loading={generating}>
                 {VOLUME_CHAPTERS_REGENERATE_BUTTON}
               </Button>
             </Popconfirm>

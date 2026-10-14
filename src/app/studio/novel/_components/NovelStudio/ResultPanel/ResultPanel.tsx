@@ -45,7 +45,6 @@ import {
   VOLUMES_IMPORT_CONFIRM_CONTENT,
   VOLUMES_IMPORT_CONFIRM_TITLE,
   VOLUMES_PANEL_TITLE,
-  VOLUME_CHAPTERS_GENERATING_HINT,
   WORLDVIEW_EXPORT_BUTTON,
   WORLDVIEW_EXPORT_FILE_NAME,
   WORLDVIEW_EXPORT_MEDIA_TYPE,
@@ -517,12 +516,6 @@ export default function ResultPanel({
             </div>
           ) : (
             <div className={styles.scrollContent}>
-              {chaptering && !(chapters?.volumes.length ?? 0) ? (
-                <div className={styles.body}>
-                  <Spin />
-                  <p className={styles.hint}>{VOLUME_CHAPTERS_GENERATING_HINT}</p>
-                </div>
-              ) : null}
               <VolumeChapters
                 volume={activeVolume}
                 characters={cast?.characters ?? []}

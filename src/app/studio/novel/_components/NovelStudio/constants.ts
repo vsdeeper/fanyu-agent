@@ -137,7 +137,6 @@ export const RESEARCH_GENERATING_HINT = '正在生成选题…';
 export const PLAN_GENERATING_HINT = '正在生成创作方案…';
 export const CAST_GENERATING_HINT = '正在生成角色…';
 export const VOLUMES_GENERATING_HINT = '正在生成卷纲…';
-export const VOLUME_CHAPTERS_GENERATING_HINT = '正在生成本卷章卡…';
 export const WRITE_GENERATING_HINT = '正在生成正文…';
 export const WORLDVIEW_PANEL_TITLE = '世界观设定';
 export const WORLDVIEW_EXPORT_BUTTON = '导出';
