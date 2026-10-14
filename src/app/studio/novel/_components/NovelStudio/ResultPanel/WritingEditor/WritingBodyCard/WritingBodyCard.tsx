@@ -1,5 +1,7 @@
+import { EDIT_BUTTON } from '@/app/studio/_components/StudioCard/constants';
 import StudioCard from '@/app/studio/_components/StudioCard';
 import { Button } from 'antd';
+import { useState } from 'react';
 import {
   POLISH_BUTTON,
   WRITE_BUTTON,
@@ -42,6 +44,8 @@ export default function WritingBodyCard({
   onCopy,
 }: WritingBodyCardProps) {
   const hasBody = Boolean(body.trim());
+  const [editing, setEditing] = useState(false);
+  const showReadActions = !editing;
 
   return (
     <StudioCard
@@ -51,10 +55,53 @@ export default function WritingBodyCard({
       extra={
         <span className={styles.extraRow}>
           <span className={styles.charCount}>{WRITE_CHAR_COUNT(countTextChars(body))}</span>
+          {showReadActions && (hasBody || polishing) ? (
+            <Button
+              type="link"
+              size="small"
+              className={styles.headerBtn}
+              loading={polishing}
+              disabled={writeBusy && !polishing}
+              onClick={(event) => {
+                event.stopPropagation();
+                onPolish();
+              }}
+            >
+              {POLISH_BUTTON}
+            </Button>
+          ) : null}
+          {showReadActions && hasBody ? (
+            <Button
+              type="link"
+              size="small"
+              className={styles.headerBtn}
+              disabled={writeBusy}
+              onClick={(event) => {
+                event.stopPropagation();
+                onCopy();
+              }}
+            >
+              {COPY_BUTTON}
+            </Button>
+          ) : null}
+          {showReadActions && !generating ? (
+            <Button
+              type="link"
+              size="small"
+              className={styles.headerBtn}
+              disabled={polishing}
+              onClick={(event) => {
+                event.stopPropagation();
+                setEditing(true);
+              }}
+            >
+              {EDIT_BUTTON}
+            </Button>
+          ) : null}
           <Button
             type="link"
             size="small"
-            className={styles.generateBtn}
+            className={styles.headerBtn}
             loading={generating}
             disabled={writeBusy || !canGenerate}
             onClick={(event) => {
@@ -66,28 +113,8 @@ export default function WritingBodyCard({
           </Button>
         </span>
       }
-      editable={!generating}
-      editDisabled={polishing}
-      bodyActions={
-        hasBody || polishing ? (
-          <>
-            <Button
-              type="link"
-              size="small"
-              loading={polishing}
-              disabled={writeBusy && !polishing}
-              onClick={onPolish}
-            >
-              {POLISH_BUTTON}
-            </Button>
-            {hasBody ? (
-              <Button type="link" size="small" disabled={writeBusy} onClick={onCopy}>
-                {COPY_BUTTON}
-              </Button>
-            ) : null}
-          </>
-        ) : null
-      }
+      editing={editing}
+      onEditingChange={setEditing}
       value={body}
       onSave={onSave}
       textareaRows={16}

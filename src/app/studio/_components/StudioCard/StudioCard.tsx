@@ -99,6 +99,12 @@ export default function StudioCard({
   const [uncontrolledEditing, setUncontrolledEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const isEditing = isControlled ? editingProp : uncontrolledEditing;
+  const [prevEditing, setPrevEditing] = useState(isEditing);
+  if (isEditing !== prevEditing) {
+    setPrevEditing(isEditing);
+    // 调用方直接打开编辑态时不会经过 startEdit，这里补上当前正文，避免编辑区是空的。
+    setDraft(isEditing ? value : '');
+  }
   const { assistLoading, runAssist, invalidateAssist } = useCardAiAssist(onAiAssist, setDraft);
   const canRemove = Boolean(onRemove) && removable;
 
