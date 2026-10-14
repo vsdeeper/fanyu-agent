@@ -62,8 +62,17 @@ describe('parseResearchBody', () => {
 
 describe('parsePlanBody', () => {
   it('必须带选定选题', () => {
-    expect(parsePlanBody({ worldview, topic })).toMatchObject({ topic });
-    expect(parsePlanBody({ worldview })).toBeNull();
+    expect(parsePlanBody({ worldview, topic, volumeChars: 120000 })).toMatchObject({ topic });
+    expect(parsePlanBody({ worldview, volumeChars: 120000 })).toBeNull();
+  });
+
+  it('每卷字数缺、越界都拒绝，区间内才收', () => {
+    expect(parsePlanBody({ worldview, topic })).toBeNull();
+    expect(parsePlanBody({ worldview, topic, volumeChars: 70000 })).toBeNull();
+    expect(parsePlanBody({ worldview, topic, volumeChars: 310000 })).toBeNull();
+    expect(parsePlanBody({ worldview, topic, volumeChars: 12000.5 })).toBeNull();
+    expect(parsePlanBody({ worldview, topic, volumeChars: 80000 })?.volumeChars).toBe(80000);
+    expect(parsePlanBody({ worldview, topic, volumeChars: 300000 })?.volumeChars).toBe(300000);
   });
 });
 
@@ -121,7 +130,7 @@ describe('buildResearchPrompt', () => {
 describe('buildPlanPrompt', () => {
   it('带上世界观章节、选题与样本，要求两级章节', () => {
     const prompt = buildPlanPrompt(
-      { worldview, topic },
+      { worldview, topic, volumeChars: 120000 },
       { documentsText: '样本正文', pdfCount: 1 },
     );
     expect(prompt).toContain('【世界观章节】');
@@ -129,6 +138,13 @@ describe('buildPlanPrompt', () => {
     expect(prompt).toContain('样本正文');
     expect(prompt).toContain('1 份 PDF');
     expect(prompt).toContain('sections JSON');
+  });
+
+  it('收束句写请求里的每卷字数与折出的章数，不写死篇幅', () => {
+    const prompt = buildPlanPrompt({ worldview, topic, volumeChars: 90000 });
+    expect(prompt).toContain('每卷大约字数：90000（约 23 章，单章约 4000 字）');
+    expect(prompt).toContain('每一卷的走向按这个字数写出前后不能对调的事');
+    expect(prompt).not.toContain('12 万');
   });
 });
 

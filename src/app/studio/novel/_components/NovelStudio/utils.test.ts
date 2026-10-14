@@ -451,6 +451,14 @@ describe('readResearchStepSnapshot', () => {
     expect(snapshot?.worldviewFiles?.[0]?.name).toBe('大纲.txt');
     expect(snapshot?.topics).toHaveLength(1);
   });
+
+  it('每卷字数：记下的照读，缺的或越界的回落默认值', () => {
+    const base = { genres: [], topics: [], reasoningEffort: 'max' as const };
+    expect(readResearchStepSnapshot({ ...base, volumeChars: 90000 })?.volumeChars).toBe(90000);
+    expect(readResearchStepSnapshot(base)?.volumeChars).toBe(120000);
+    expect(readResearchStepSnapshot({ ...base, volumeChars: 70000 })?.volumeChars).toBe(120000);
+    expect(readResearchStepSnapshot({ ...base, volumeChars: '120000' })?.volumeChars).toBe(120000);
+  });
 });
 
 describe('resolveInitialPhase', () => {

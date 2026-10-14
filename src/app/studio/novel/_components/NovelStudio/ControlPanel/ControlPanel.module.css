@@ -1,3 +1,13 @@
+.volumeChars {
+  width: 100%;
+}
+
+.volumeChars :global(.ant-input-number) {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
 .topicBlock {
   display: flex;
   flex-direction: column;

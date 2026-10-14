@@ -3,7 +3,9 @@ import {
   NOVEL_MAX_PLAN_FILES,
 } from '@/app/api/studio/novel/_shared/idea-file';
 import {
+  NOVEL_DEFAULT_VOLUME_CHARS,
   readNovelReasoningEffort,
+  readNovelVolumeChars,
   readOptionalNovelReasoningEffort,
 } from '@/app/api/studio/novel/_shared/constants';
 import {
@@ -780,6 +782,7 @@ export function readResearchStepSnapshot(data: unknown): ResearchStepSnapshot | 
     worldviewFiles: legacyFiles,
     planFiles: readStoredFiles(record.planFiles, NOVEL_MAX_PLAN_FILES),
     genres,
+    volumeChars: readNovelVolumeChars(record.volumeChars) ?? NOVEL_DEFAULT_VOLUME_CHARS,
     topics,
     reasoningEffort: readNovelReasoningEffort(record.reasoningEffort),
     ...(selectedTopicId && topics.some((topic) => topic.id === selectedTopicId)

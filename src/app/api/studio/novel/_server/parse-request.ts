@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { z } from 'zod';
+import { NOVEL_VOLUME_CHARS_MAX, NOVEL_VOLUME_CHARS_MIN } from '../_shared/constants';
 import { isNovelIdeaFile, NOVEL_MAX_IDEA_FILES } from '../_shared/idea-file';
 import { normalizeNovelPlan, parseSections } from '../_shared/normalize-plan';
 import type {
@@ -95,6 +96,9 @@ function zodNormalize<T>(parse: (value: unknown) => T | null) {
 
 const planSchema = zodNormalize<NovelPlan>(normalizeNovelPlan);
 
+/** 每卷字数：左栏填的数，越界或不是整数直接让请求失败。 */
+const volumeCharsSchema = z.number().int().min(NOVEL_VOLUME_CHARS_MIN).max(NOVEL_VOLUME_CHARS_MAX);
+
 /** 两级章节：缺省收成空数组，形状不对的条目丢掉。 */
 const sectionsSchema = z
   .unknown()
@@ -132,6 +136,7 @@ const planRequestSchema = z.object({
   planFile: ideaFileSchema.optional(),
   genres: z.array(z.string().trim().min(1)).optional(),
   topic: topicSchema,
+  volumeChars: volumeCharsSchema,
 });
 
 const castRequestSchema = z.object({
@@ -145,6 +150,7 @@ const volumesRequestSchema = z.object({
   topic: topicSchema,
   plan: planSchema,
   cast: castSchema,
+  volumeChars: volumeCharsSchema,
 });
 
 const volumeChaptersSchema = z.object({

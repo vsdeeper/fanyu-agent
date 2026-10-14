@@ -4,6 +4,8 @@ import { App, Form } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import {
   NOVEL_DEFAULT_REASONING_EFFORT,
+  NOVEL_DEFAULT_VOLUME_CHARS,
+  readNovelVolumeChars,
   type NovelReasoningEffort,
 } from '@/app/api/studio/novel/_shared/constants';
 import type {
@@ -44,6 +46,7 @@ import {
   RESEARCH_NO_TOPICS,
   RESEARCH_REGENERATE_CONFIRM_CONTENT,
   RESEARCH_REGENERATE_CONFIRM_TITLE,
+  VOLUME_CHARS_INVALID_WARNING,
   VOLUMES_FAILED,
   VOLUMES_NO_VOLUMES,
   VOLUMES_REGENERATE_CONFIRM_CONTENT,
@@ -157,6 +160,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
       DEFAULT_PANEL_VALUES.worldviewFiles,
     planFiles: initialResearch?.planFiles ?? DEFAULT_PANEL_VALUES.planFiles,
     genres: initialResearch?.genres ?? DEFAULT_PANEL_VALUES.genres,
+    volumeChars: initialResearch?.volumeChars ?? DEFAULT_PANEL_VALUES.volumeChars,
   }));
   const [phase, setPhase] = useState<StudioPhase>(() =>
     resolveInitialPhase({
@@ -267,7 +271,13 @@ export function useNovelStudio(task: NovelTaskDetail) {
     const genres = Array.isArray(values.genres)
       ? values.genres.map((item: unknown) => String(item).trim()).filter(Boolean)
       : (initialResearch?.genres ?? []);
-    return { worldviewFiles, planFiles, genres };
+    const volumeChars = readNovelVolumeChars(values.volumeChars);
+    return { worldviewFiles, planFiles, genres, volumeChars };
+  }
+
+  /** 当前左栏的每卷字数；越界或没填时返回 undefined，调用方拦住生成。 */
+  function currentVolumeChars(): number | undefined {
+    return readNovelVolumeChars(readPanelValues().volumeChars);
   }
 
   /** 世界观设定附件必填。 */
@@ -364,6 +374,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
     return {
       ...(planFiles.length ? { planFiles } : {}),
       genres: panel.genres,
+      volumeChars: readNovelVolumeChars(panel.volumeChars) ?? NOVEL_DEFAULT_VOLUME_CHARS,
       topics: nextTopics,
       reasoningEffort: reasoningEffortRef.current,
       ...(nextSelected ? { selectedTopicId: nextSelected } : {}),
@@ -759,10 +770,19 @@ export function useNovelStudio(task: NovelTaskDetail) {
       return;
     }
     const panel = readPanelValues();
+    const volumeChars = readNovelVolumeChars(panel.volumeChars);
+    if (!volumeChars) {
+      message.warning(VOLUME_CHARS_INVALID_WARNING);
+      return;
+    }
     const planFile = await readPlanFile(panel);
     if (planFile === 'unreadable') {
       message.error(PLAN_FILE_READ_FAILED);
       return;
+    }
+    // 左栏这一项不是 form 字段之外的东西：生成前把当前数字写回选题快照，换设备打开也是这个数
+    if (researchSavedRef.current) {
+      await persistResearch(await researchSnapshot(topicsRef.current));
     }
 
     if (plan || hasCastDraft(cast) || volumes || chapters || hasWritingBody(writing)) {
@@ -790,6 +810,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
         ...(planFile ? { planFile } : {}),
         ...(panel.genres.length ? { genres: panel.genres } : {}),
         topic: selectedTopic,
+        volumeChars,
       },
       buffer,
       PLAN_FAILED,
@@ -925,6 +946,15 @@ export function useNovelStudio(task: NovelTaskDetail) {
       message.warning(MISSING_CAST_WARNING);
       return;
     }
+    const volumeChars = currentVolumeChars();
+    if (!volumeChars) {
+      message.warning(VOLUME_CHARS_INVALID_WARNING);
+      return;
+    }
+    // 数字只在创作方案左栏改，这里把它写回选题快照，重开还是这个数
+    if (researchSavedRef.current) {
+      await persistResearch(await researchSnapshot(topicsRef.current));
+    }
 
     if (volumesRef.current || chaptersRef.current || hasWritingBody(writingRef.current)) {
       const confirmed = await confirmOverwrite(
@@ -951,6 +981,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
         topic: selectedTopic,
         plan: toPlanRequest(currentPlan),
         cast: castBody,
+        volumeChars,
       },
       buffer,
       VOLUMES_FAILED,

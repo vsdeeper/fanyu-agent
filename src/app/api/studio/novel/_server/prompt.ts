@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { NOVEL_CHAPTER_TARGET_CHARS, novelChapterCountForVolume } from '../_shared/constants';
 import type {
   NovelCast,
   NovelCastRequest,
@@ -207,7 +208,8 @@ export function buildPlanPrompt(body: NovelPlanRequest, planFile?: IdeaFilePromp
     `类型：${body.topic.genreVolume}`,
     `为什么值得写：${body.topic.why}`,
     `故事核：${body.topic.core}${risk}`,
-    '请按世界观与选定选题写出两级章节的创作方案（有样本就改进补缺，没写到的按长篇需要补全；不要写章节），末尾附 sections JSON。',
+    `每卷大约字数：${body.volumeChars}（约 ${novelChapterCountForVolume(body.volumeChars)} 章，单章约 ${NOVEL_CHAPTER_TARGET_CHARS} 字）`,
+    '请按世界观、选定选题与这个篇幅写出两级章节的创作方案：每一卷的走向按这个字数写出前后不能对调的事，不要收成几句结果（有样本就改进补缺，没写到的按长篇需要补全；不要写章节），末尾附 sections JSON。',
   );
   return lines.join('\n');
 }
@@ -262,7 +264,8 @@ export function buildVolumesPrompt(body: NovelVolumesRequest): string {
     formatCastPrompt(body.cast),
     `选定选题：${body.topic.title}（${body.topic.genreVolume}）`,
     `故事核：${body.topic.core}`,
-    '请把全书排成叙事卷：只收叙事卷，节拍按时间写清这一拍发生的事，characterIds 只用角色设定里的 id，末尾附 volumes JSON。',
+    `每卷大约字数：${body.volumeChars}（约 ${novelChapterCountForVolume(body.volumeChars)} 章，单章约 ${NOVEL_CHAPTER_TARGET_CHARS} 字）`,
+    '请把全书排成叙事卷：只收叙事卷；每一卷按这个字数把方案在这一卷写明的事件铺成按时间的节拍，一拍写清地点、谁拦、当场代价这些不能对调的事，不要把方案的一块收成一句；characterIds 只用角色设定里的 id，末尾附 volumes JSON。',
   );
   return lines.join('\n');
 }
@@ -288,7 +291,7 @@ export function buildVolumeChaptersPrompt(body: NovelVolumeChaptersRequest): str
     '本卷卷纲：',
     formatVolumePrompt(body.volume, body.cast),
     siblings,
-    '请按本卷节拍顺序一次出齐全部章卡（一拍可展开成一章或多章，单章 2000～5000 字）。场景和事件写成一小段，末尾附 chapters JSON。',
+    '请按本卷节拍一次出齐全部章卡：一件事写成一章或几章，不要打乱节拍次序，也不要把一句结果拆成多章（单章 2000～5000 字）。场景和事件写成一小段，末尾附 chapters JSON。',
   );
   return lines.join('\n');
 }

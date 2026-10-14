@@ -79,6 +79,8 @@ export type NovelPanelValues = {
   /** 创作方案样本，至多一份。只在选题与创作方案两步使用。 */
   planFiles: ProductDocUploadItem[];
   genres: string[];
+  /** 每卷大约多少字。创作方案左栏填，方案与卷纲的篇幅都按它算；清空时未定义。 */
+  volumeChars?: number;
 };
 
 /** 选题卡：调研步点选。 */
@@ -142,6 +144,8 @@ export type ResearchStepSnapshot = {
   /** 可选的创作方案样本，至多一份。 */
   planFiles?: ProductDocUploadItem[];
   genres: string[];
+  /** 每卷大约多少字；旧快照缺省按默认值预填。 */
+  volumeChars: number;
   topics: TopicCard[];
   selectedTopicId?: string;
   streamText?: string;

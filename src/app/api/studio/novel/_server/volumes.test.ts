@@ -63,8 +63,14 @@ const sibling: NovelVolumeDesign = {
 };
 
 describe('parseVolumesBody', () => {
-  it('世界观章节、选题、方案与角色都要', () => {
-    expect(parseVolumesBody({ worldview, topic, plan, cast })).toMatchObject({ topic });
+  it('世界观章节、选题、方案、角色与每卷字数都要', () => {
+    expect(parseVolumesBody({ worldview, topic, plan, cast, volumeChars: 120000 })).toMatchObject({
+      topic,
+      volumeChars: 120000,
+    });
+    expect(parseVolumesBody({ worldview, topic, plan, cast })).toBeNull();
+    expect(parseVolumesBody({ worldview, topic, plan, cast, volumeChars: 50000 })).toBeNull();
+    expect(parseVolumesBody({ worldview, topic, plan, cast, volumeChars: 400000 })).toBeNull();
     expect(parseVolumesBody({ worldview, topic, plan })).toBeNull();
     expect(parseVolumesBody({ worldview, topic, cast })).toBeNull();
   });
@@ -88,12 +94,19 @@ describe('parseVolumeChaptersBody', () => {
 
 describe('buildVolumesPrompt', () => {
   it('带上世界观章节、方案、角色与选题，并要求叙事卷', () => {
-    const prompt = buildVolumesPrompt({ worldview, topic, plan, cast });
+    const prompt = buildVolumesPrompt({ worldview, topic, plan, cast, volumeChars: 120000 });
     expect(prompt).toContain('【世界观章节】');
     expect(prompt).toContain('【创作方案】');
     expect(prompt).toContain('【角色设定】');
     expect(prompt).toContain('选定选题：停电之夜');
     expect(prompt).toContain('volumes JSON');
+  });
+
+  it('收束句写请求里的每卷字数与折出的章数，并要求把方案的事件铺成节拍', () => {
+    const prompt = buildVolumesPrompt({ worldview, topic, plan, cast, volumeChars: 200000 });
+    expect(prompt).toContain('每卷大约字数：200000（约 50 章，单章约 4000 字）');
+    expect(prompt).toContain('每一卷按这个字数把方案在这一卷写明的事件铺成按时间的节拍');
+    expect(prompt).toContain('不要把方案的一块收成一句');
   });
 });
 
@@ -120,5 +133,20 @@ describe('buildVolumeChaptersPrompt', () => {
   it('没有其它卷时写明没有', () => {
     const prompt = buildVolumeChaptersPrompt({ worldview, topic, plan, cast, volume });
     expect(prompt).toContain('同书其它卷：无');
+  });
+
+  it('按节拍里的事拆章卡，不出现每卷字数', () => {
+    const prompt = buildVolumeChaptersPrompt({
+      worldview,
+      topic,
+      plan,
+      cast,
+      volume,
+      siblingVolumes: [sibling],
+    });
+    expect(prompt).toContain('一件事写成一章或几章');
+    expect(prompt).toContain('不要把一句结果拆成多章');
+    expect(prompt).not.toContain('每卷大约字数');
+    expect(prompt).not.toContain('铺满');
   });
 });

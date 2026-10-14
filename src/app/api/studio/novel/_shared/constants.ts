@@ -34,3 +34,32 @@ export function readOptionalNovelReasoningEffort(value: unknown): NovelReasoning
   }
   return undefined;
 }
+
+/**
+ * 每卷字数：创作方案左栏填的数字，方案与卷纲的篇幅都按它算。
+ * 低于下限的一卷装不下前后不能对调的事，终卷也用这个下限。
+ */
+export const NOVEL_VOLUME_CHARS_MIN = 80_000;
+export const NOVEL_VOLUME_CHARS_MAX = 300_000;
+export const NOVEL_VOLUME_CHARS_STEP = 10_000;
+/** 旧快照没有这个数时的初始值，只是可改的预填。 */
+export const NOVEL_DEFAULT_VOLUME_CHARS = 120_000;
+/** 单章目标字数，用来把一卷的字数折成章数。 */
+export const NOVEL_CHAPTER_TARGET_CHARS = 4000;
+
+/** 每卷字数是否在允许区间内。 */
+export function isNovelVolumeCharsInRange(value: number): boolean {
+  return (
+    Number.isInteger(value) && value >= NOVEL_VOLUME_CHARS_MIN && value <= NOVEL_VOLUME_CHARS_MAX
+  );
+}
+
+/** 读取落盘或请求里的每卷字数；缺省、越界都返回 undefined。 */
+export function readNovelVolumeChars(value: unknown): number | undefined {
+  return typeof value === 'number' && isNovelVolumeCharsInRange(value) ? value : undefined;
+}
+
+/** 把一卷的字数折成大约章数，最少一章。 */
+export function novelChapterCountForVolume(volumeChars: number): number {
+  return Math.max(1, Math.round(volumeChars / NOVEL_CHAPTER_TARGET_CHARS));
+}

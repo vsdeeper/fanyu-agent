@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
-import { Button, Form, Select, type FormInstance } from 'antd';
+import { Button, Form, InputNumber, Select, Space, type FormInstance } from 'antd';
 import {
   DEEPSEEK_REASONING_EFFORTS,
   ZHIPU_REASONING_EFFORTS,
 } from '@/app/api/chat/_shared/chat-settings';
-import type { NovelReasoningEffort } from '@/app/api/studio/novel/_shared/constants';
+import {
+  isNovelVolumeCharsInRange,
+  type NovelReasoningEffort,
+} from '@/app/api/studio/novel/_shared/constants';
 import { useChatSettingsStore } from '@/stores/chat-settings';
 import StyleDimensionPicker, {
   StyleClipboardActions,
@@ -32,6 +35,12 @@ import {
   SELECTED_TOPIC_EMPTY,
   SELECTED_TOPIC_LABEL,
   STYLE_LABEL,
+  VOLUME_CHARS_INVALID_WARNING,
+  VOLUME_CHARS_LABEL,
+  VOLUME_CHARS_MAX,
+  VOLUME_CHARS_MIN,
+  VOLUME_CHARS_STEP,
+  VOLUME_CHARS_SUFFIX,
   WORLDVIEW_BUTTON,
   WORLDVIEW_FILE_ACCEPT,
   WORLDVIEW_FILE_HINT,
@@ -262,6 +271,35 @@ export default function ControlPanel({
               <p className={styles.topicEmpty}>{SELECTED_TOPIC_EMPTY}</p>
             )}
           </div>
+        ) : null}
+
+        {planStep ? (
+          // name 必须挂在 InputNumber 上。Form.Item 只把 value/onChange 注入直接子元素，
+          // 隔一层 Space.Compact 时它们会落到外层 div，volumeChars 收不到用户输入。
+          <Form.Item label={VOLUME_CHARS_LABEL}>
+            <Space.Compact className={styles.volumeChars} block>
+              <Form.Item
+                name="volumeChars"
+                noStyle
+                rules={[
+                  {
+                    validator: async (_, value: number | undefined) => {
+                      if (typeof value === 'number' && isNovelVolumeCharsInRange(value)) return;
+                      throw new Error(VOLUME_CHARS_INVALID_WARNING);
+                    },
+                  },
+                ]}
+              >
+                <InputNumber
+                  min={VOLUME_CHARS_MIN}
+                  max={VOLUME_CHARS_MAX}
+                  step={VOLUME_CHARS_STEP}
+                  placeholder={VOLUME_CHARS_LABEL}
+                />
+              </Form.Item>
+              <Space.Addon>{VOLUME_CHARS_SUFFIX}</Space.Addon>
+            </Space.Compact>
+          </Form.Item>
         ) : null}
 
         {writeStep && volumes ? (

@@ -1,4 +1,11 @@
 import {
+  NOVEL_CHAPTER_TARGET_CHARS,
+  NOVEL_DEFAULT_VOLUME_CHARS,
+  NOVEL_VOLUME_CHARS_MAX,
+  NOVEL_VOLUME_CHARS_MIN,
+  NOVEL_VOLUME_CHARS_STEP,
+} from '@/app/api/studio/novel/_shared/constants';
+import {
   NOVEL_MAX_IDEA_FILES,
   NOVEL_MAX_PLAN_FILES,
 } from '@/app/api/studio/novel/_shared/idea-file';
@@ -70,6 +77,7 @@ export const DEFAULT_PANEL_VALUES: NovelPanelValues = {
   worldviewFiles: [],
   planFiles: [],
   genres: [],
+  volumeChars: NOVEL_DEFAULT_VOLUME_CHARS,
 };
 
 export const WORLDVIEW_BUTTON = '整理世界观';
@@ -98,6 +106,14 @@ export const PLAN_FILE_MAX = NOVEL_MAX_PLAN_FILES;
 export const PLAN_FILE_READ_FAILED = '创作方案无法读取，请重新上传';
 export const GENRE_LABEL = '偏好类型';
 export const GENRE_PLACEHOLDER = '可选，多选';
+export const VOLUME_CHARS_LABEL = '每卷大约多少字';
+export const VOLUME_CHARS_SUFFIX = '字';
+const VOLUME_CHARS_MIN_WAN = NOVEL_VOLUME_CHARS_MIN / 10000;
+const VOLUME_CHARS_MAX_WAN = NOVEL_VOLUME_CHARS_MAX / 10000;
+export const VOLUME_CHARS_MIN = NOVEL_VOLUME_CHARS_MIN;
+export const VOLUME_CHARS_MAX = NOVEL_VOLUME_CHARS_MAX;
+export const VOLUME_CHARS_STEP = NOVEL_VOLUME_CHARS_STEP;
+export const VOLUME_CHARS_INVALID_WARNING = `每卷字数要在 ${VOLUME_CHARS_MIN_WAN} 万到 ${VOLUME_CHARS_MAX_WAN} 万之间`;
 export const SELECTED_TOPIC_LABEL = '选定选题';
 export const SELECTED_TOPIC_EMPTY = '尚未选择选题';
 export const STYLE_LABEL = '文风';

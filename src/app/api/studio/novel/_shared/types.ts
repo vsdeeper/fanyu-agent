@@ -195,12 +195,13 @@ export type NovelResearchRequest = {
   genres?: string[];
 };
 
-/** 创作方案生成请求。世界观章节必填；创作方案文件可选。 */
+/** 创作方案生成请求。世界观章节必填；创作方案文件可选；每卷字数定这一卷的篇幅。 */
 export type NovelPlanRequest = {
   worldview: NovelSection[];
   planFile?: NovelIdeaFile;
   genres?: string[];
   topic: NovelTopicCard;
+  volumeChars: number;
 };
 
 /** 角色设定生成请求。世界观章节与创作方案必填。 */
@@ -216,6 +217,7 @@ export type NovelVolumesRequest = {
   topic: NovelTopicCard;
   plan: NovelPlan;
   cast: NovelCast;
+  volumeChars: number;
 };
 
 /** 按卷一次出齐章卡的请求。其余卷只给标题与卷末钩子，用来卡住边界。 */
