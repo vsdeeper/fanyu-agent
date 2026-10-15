@@ -140,6 +140,7 @@ export async function handleImageTextPlan(req: Request): Promise<Response> {
           if (finishReason === 'length') {
             console.warn('[image-text/plan] output truncated by length', {
               chars: fullText.length,
+              maxOutputTokens: IMAGE_TEXT_PLAN_MAX_OUTPUT_TOKENS,
             });
             await send(IMAGE_TEXT_SSE_EVENT.error, { message: PLAN_TRUNCATED });
             return;
