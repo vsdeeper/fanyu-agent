@@ -1455,8 +1455,8 @@ export function useNovelStudio(task: NovelTaskDetail) {
             plan: toPlanRequest(currentPlan),
             cast: castBody,
             ...(stylePrompt ? { stylePrompt } : {}),
-            previousChapters: resolved.previous.map((chapter) => {
-              const body = bodyById.get(chapter.id)?.trim();
+            previousChapters: resolved.previous.map((chapter, index, list) => {
+              const body = index === list.length - 1 ? bodyById.get(chapter.id)?.trim() : undefined;
               return {
                 title: chapter.title,
                 scene: chapter.scene,

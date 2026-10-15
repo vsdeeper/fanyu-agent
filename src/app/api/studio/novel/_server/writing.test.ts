@@ -53,11 +53,18 @@ const writingBody: NovelWritingRequest = {
   cast,
   previousChapters: [
     {
+      title: '夜路',
+      scene: '巷口',
+      event: '听见脚步',
+      hook: '有人跟着',
+      body: '更早章节的全文不应进入提示。',
+    },
+    {
       title: '钥匙',
       scene: '旧屋门口',
       event: '拿到钥匙',
       hook: '门锁响了一声',
-      body: '门锁响了一声。这是此前章节的全文，不应被截断。',
+      body: '门锁响了一声。这是紧挨着的上一章全文。',
     },
   ],
   chapter: {
@@ -116,13 +123,16 @@ describe('parseWritingBody', () => {
 });
 
 describe('buildWritingPrompt', () => {
-  it('带上世界观章节、完整方案、此前全文，以及下一章的标题和钩子', () => {
+  it('带上世界观章节、完整方案、上一章全文，以及下一章的标题和钩子', () => {
     const prompt = buildWritingPrompt(writingBody);
     expect(prompt).toContain('【世界观章节】');
     expect(prompt).toContain('夏天，老院子');
     expect(prompt).toContain('【创作方案】');
     expect(prompt).toContain('【角色设定】');
-    expect(prompt).toContain('门锁响了一声。这是此前章节的全文，不应被截断。');
+    expect(prompt).toContain('第1章 夜路');
+    expect(prompt).toContain('场景：巷口');
+    expect(prompt).toContain('门锁响了一声。这是紧挨着的上一章全文。');
+    expect(prompt).not.toContain('更早章节的全文不应进入提示。');
     expect(prompt).toContain('【下一章边界】');
     expect(prompt).toContain('钩子：陌生人登门');
     expect(prompt).not.toContain('节拍');

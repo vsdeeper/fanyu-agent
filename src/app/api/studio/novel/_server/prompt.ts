@@ -296,7 +296,7 @@ export function buildVolumeChaptersPrompt(body: NovelVolumeChaptersRequest): str
   return lines.join('\n');
 }
 
-/** 拼装正文写作用户提示。此前各章全文原样进入。写作不再附世界观设定附件原文。 */
+/** 拼装正文写作用户提示。此前各章只带章卡，紧挨着的上一章附全文。写作不再附世界观设定附件原文。 */
 export function buildWritingPrompt(body: NovelWritingRequest): string {
   const lines = [
     formatSectionsPrompt('世界观章节', body.worldview),
@@ -308,19 +308,23 @@ export function buildWritingPrompt(body: NovelWritingRequest): string {
   if (body.stylePrompt?.trim()) {
     lines.push('【文风】', body.stylePrompt.trim());
   }
-  if (body.previousChapters.length > 0) {
-    lines.push('【此前各章】按顺序。已有正文以全文为准。');
-    body.previousChapters.forEach((chapter, index) => {
+  const previous = body.previousChapters;
+  if (previous.length > 0) {
+    const lastBody = previous[previous.length - 1]?.body?.trim();
+    lines.push(
+      lastBody
+        ? '【此前各章】按顺序。更早的章只有章卡；紧挨着的上一章附全文，续写以这篇全文的收束为准。'
+        : '【此前各章】按顺序，只有章卡。',
+    );
+    previous.forEach((chapter, index) => {
       lines.push(
         `第${index + 1}章 ${chapter.title}`,
         `场景：${chapter.scene}`,
         `事件：${chapter.event}`,
         `钩子：${chapter.hook}`,
       );
-      if (chapter.body?.trim()) {
-        lines.push('全文：', chapter.body.trim());
-      } else {
-        lines.push('全文：（尚未写下）');
+      if (index === previous.length - 1 && lastBody) {
+        lines.push('全文：', lastBody);
       }
     });
   } else {
@@ -342,7 +346,7 @@ export function buildWritingPrompt(body: NovelWritingRequest): string {
     );
   }
   lines.push(
-    '请一次写完当前章正文（约 2000～5000 字）。写出场景里的事件，落到本章钩子再收束；从此前章节自然续写，不要复述；自然段之间只换一行，不要留空白行。',
+    '请一次写完当前章正文（约 2000～5000 字）。写出场景里的事件，落到本章钩子再收束；若有上一章全文，从其收束自然续写，不要复述；自然段之间只换一行，不要留空白行。',
   );
   return lines.join('\n');
 }

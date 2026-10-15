@@ -230,16 +230,17 @@ export type NovelVolumeChaptersRequest = {
   siblingVolumes?: NovelVolumeDesign[];
 };
 
-/** 此前一章：设计卡片，以及已经写下的全文。 */
+/** 本卷此前一章的章卡。body 只属于紧挨着的上一章全文。 */
 export type NovelPreviousChapterContext = {
   title: string;
   scene: string;
   event: string;
   hook: string;
+  /** 仅紧挨着的上一章附全文，供续写衔接。 */
   body?: string;
 };
 
-/** 正文写作请求。此前各章全文不截断。 */
+/** 正文写作请求。更早的章只带章卡，上一章附全文。 */
 export type NovelWritingRequest = {
   unitId: string;
   worldview: NovelSection[];
