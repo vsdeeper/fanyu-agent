@@ -31,6 +31,7 @@ import {
   toggleWritingSelection,
   visibleWritingChapters,
   volumeHasBody,
+  writingStyleOnly,
 } from './utils';
 
 const plan: NovelPlan = {
@@ -166,6 +167,21 @@ describe('syncWritingUnits', () => {
       { unitId: 'ch-3', body: '' },
     ]);
     expect(synced.selectedUnitIds).toBeUndefined();
+  });
+
+  it('卷纲重排后只留文风，正文和选中章节丢掉', () => {
+    expect(
+      writingStyleOnly({
+        units: [{ unitId: 'ch-1', body: '第一段' }],
+        styleSelections: { narrativeStance: ['first-person'] },
+        selectedUnitIds: ['ch-1'],
+        focusUnitId: 'ch-1',
+      }),
+    ).toEqual({
+      units: [],
+      styleSelections: { narrativeStance: ['first-person'] },
+    });
+    expect(writingStyleOnly({ units: [{ unitId: 'ch-1', body: '第一段' }] })).toBeUndefined();
   });
 });
 

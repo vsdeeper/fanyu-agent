@@ -201,6 +201,18 @@ export function syncWritingUnits(
   };
 }
 
+/**
+ * 卷纲重排后章卡和正文作废，只留下写作步的文风。
+ * 没有文风时返回 undefined，调用方可以删掉写作步。
+ */
+export function writingStyleOnly(
+  writing: WritingSnapshot | undefined,
+): WritingSnapshot | undefined {
+  const styleSelections = writing?.styleSelections;
+  if (!styleSelections || Object.keys(styleSelections).length === 0) return undefined;
+  return { units: [], styleSelections };
+}
+
 /** 写作快照是否与上次落盘一致。 */
 export function isSameWriteSnapshot(
   prev: WritingSnapshot | undefined,

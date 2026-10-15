@@ -124,6 +124,7 @@ import {
   toPlanRequest,
   toggleWritingSelection,
   writingChapterIds,
+  writingStyleOnly,
   writingStylePrompt,
 } from '../utils';
 
@@ -501,8 +502,18 @@ export function useNovelStudio(task: NovelTaskDetail) {
       if (from === 'worldview' || from === 'plan') await deleteNovelStep(task.id, 'cast');
       if (from !== 'volumes') await deleteNovelStep(task.id, 'volumes');
       await deleteNovelStep(task.id, 'chapters');
-      await deleteNovelStep(task.id, 'write');
-      persistedWriteRef.current = undefined;
+      if (from === 'volumes') {
+        const kept = writingStyleOnly(writingRef.current);
+        if (kept) {
+          await persistWrite(kept);
+        } else {
+          await deleteNovelStep(task.id, 'write');
+          persistedWriteRef.current = undefined;
+        }
+      } else {
+        await deleteNovelStep(task.id, 'write');
+        persistedWriteRef.current = undefined;
+      }
     } catch (err) {
       console.error('[novel-studio] clear downstream steps', err);
     }
@@ -525,10 +536,11 @@ export function useNovelStudio(task: NovelTaskDetail) {
       volumesRef.current = undefined;
       setVolumes(undefined);
     }
+    const keptWriting = from === 'volumes' ? writingStyleOnly(writingRef.current) : undefined;
     chaptersRef.current = undefined;
     setChapters(undefined);
-    setWriting(undefined);
-    writingRef.current = undefined;
+    setWriting(keptWriting);
+    writingRef.current = keptWriting;
     setSelectedUnitIds([]);
     setFocusUnitId(undefined);
     generatingRef.current = false;
