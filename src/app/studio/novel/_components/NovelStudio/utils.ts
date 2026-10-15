@@ -1,4 +1,8 @@
 import {
+  canonicalCharacterIds,
+  type CharacterIdRef,
+} from '@/app/api/studio/novel/_shared/character-ids';
+import {
   NOVEL_MAX_IDEA_FILES,
   NOVEL_MAX_PLAN_FILES,
 } from '@/app/api/studio/novel/_shared/idea-file';
@@ -585,8 +589,8 @@ export function resolveWorldviewSections(
   return worldviewToSections(plan?.worldview);
 }
 
-/** 解析一拍。没有 id 或标题与事都没写的丢掉。 */
-function parseBeat(value: unknown): NovelVolumeBeat | null {
+/** 解析一拍。没有 id 或标题与事都没写的丢掉。角色 id 少了下划线时收成角色表里的 id。 */
+function parseBeat(value: unknown, characters?: readonly CharacterIdRef[]): NovelVolumeBeat | null {
   if (!value || typeof value !== 'object') return null;
   const record = value as Record<string, unknown>;
   const id = asString(record.id);
@@ -594,12 +598,13 @@ function parseBeat(value: unknown): NovelVolumeBeat | null {
   const title = asString(record.title) ?? '';
   const event = asString(record.event) ?? '';
   if (!title && !event) return null;
-  const characterIds = Array.isArray(record.characterIds)
+  const rawIds = Array.isArray(record.characterIds)
     ? record.characterIds
         .map(asString)
         .filter((item): item is string => Boolean(item))
         .filter((item, index, list) => list.indexOf(item) === index)
     : [];
+  const characterIds = characters ? canonicalCharacterIds(rawIds, characters) : rawIds;
   return { id, title, event, characterIds };
 }
 
@@ -610,13 +615,16 @@ function parseBeat(value: unknown): NovelVolumeBeat | null {
 export function parseVolumeDesign(
   value: unknown,
   knownSectionIds?: ReadonlySet<string>,
+  characters?: readonly CharacterIdRef[],
 ): NovelVolumeDesign | null {
   if (!value || typeof value !== 'object') return null;
   const record = value as Record<string, unknown>;
   const id = asString(record.id);
   if (!id) return null;
   const beats = Array.isArray(record.beats)
-    ? record.beats.map(parseBeat).filter((beat): beat is NovelVolumeBeat => beat !== null)
+    ? record.beats
+        .map((beat) => parseBeat(beat, characters))
+        .filter((beat): beat is NovelVolumeBeat => beat !== null)
     : [];
   const title = asString(record.title) ?? '';
   const conflict = asString(record.conflict) ?? '';
@@ -628,14 +636,18 @@ export function parseVolumeDesign(
   return { id, title, conflict, hook, beats, ...(sourceSectionId ? { sourceSectionId } : {}) };
 }
 
-/** 解析卷纲生成结果。 */
-export function parseVolumesPayload(json: unknown, plan?: NovelPlan): NovelVolumeDesign[] {
+/** 解析卷纲生成结果。传入角色表时，把少了下划线的 characterIds 收成表里的 id。 */
+export function parseVolumesPayload(
+  json: unknown,
+  plan?: NovelPlan,
+  characters?: readonly CharacterIdRef[],
+): NovelVolumeDesign[] {
   if (!json || typeof json !== 'object') return [];
   const raw = (json as Record<string, unknown>).volumes;
   if (!Array.isArray(raw)) return [];
   const knownSectionIds = plan ? new Set(plan.sections.map((section) => section.id)) : undefined;
   return raw
-    .map((item) => parseVolumeDesign(item, knownSectionIds))
+    .map((item) => parseVolumeDesign(item, knownSectionIds, characters))
     .filter((volume): volume is NovelVolumeDesign => volume !== null);
 }
 

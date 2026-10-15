@@ -98,6 +98,10 @@ describe('buildVolumesPrompt', () => {
     expect(prompt).toContain('【世界观章节】');
     expect(prompt).toContain('【创作方案】');
     expect(prompt).toContain('【角色设定】');
+    expect(prompt).toContain('- c1｜李夏｜主角｜女｜');
+    expect(prompt).toContain(
+      'characterIds 必须原样照抄角色设定行首的 id，不要改写、不要去掉下划线',
+    );
     expect(prompt).toContain('选定选题：停电之夜');
     expect(prompt).toContain('volumes JSON');
   });
@@ -128,6 +132,23 @@ describe('buildVolumeChaptersPrompt', () => {
     expect(prompt).toContain('第二卷 进城｜卷末钩子：门外还有人');
     expect(prompt).not.toContain('[beat-3]');
     expect(prompt).toContain('chapters JSON');
+  });
+
+  it('节拍角色 id 少了下划线时仍换成姓名', () => {
+    const prompt = buildVolumeChaptersPrompt({
+      worldview,
+      topic,
+      plan,
+      cast: {
+        characters: [{ ...cast.characters[0], id: 'jiang_xu', name: '姜墟' }],
+        relations: [],
+      },
+      volume: {
+        ...volume,
+        beats: [{ id: 'beat-1', title: '停电', event: '灯灭了', characterIds: ['jiangxu'] }],
+      },
+    });
+    expect(prompt).toContain('1. [beat-1] 停电（姜墟）：灯灭了');
   });
 
   it('没有其它卷时写明没有', () => {

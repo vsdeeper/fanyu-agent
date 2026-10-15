@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { characterNameById } from '../_shared/character-ids';
 import { NOVEL_CHAPTER_TARGET_CHARS, novelChapterCountForVolume } from '../_shared/constants';
 import type {
   NovelCast,
@@ -82,13 +83,13 @@ function formatArc(arc: NovelCharacterArc | undefined): string {
   return parts.length > 0 ? `｜变化：${parts.join('；')}` : '';
 }
 
-/** 把角色设定压成后续步骤共用的短文本。 */
+/** 把角色设定压成后续步骤共用的短文本。行首带 id，供卷纲原样写入 characterIds。 */
 export function formatCastPrompt(cast: NovelCast): string {
   const names = new Map(cast.characters.map((character) => [character.id, character.name]));
   const characters = cast.characters
     .map((character) => {
       const gender = character.gender ? GENDER_LABEL[character.gender] : '未填写';
-      return `- ${character.name}｜${ROLE_LABEL[character.role]}｜${gender}｜出身：${character.origin}｜特质：${character.trait}${formatArc(character.arc)}`;
+      return `- ${character.id}｜${character.name}｜${ROLE_LABEL[character.role]}｜${gender}｜出身：${character.origin}｜特质：${character.trait}${formatArc(character.arc)}`;
     })
     .join('\n');
   const relations =
@@ -233,10 +234,9 @@ export function buildCastPrompt(body: NovelCastRequest): string {
 
 /** 把一卷的节拍压成后续步骤能读的短文本。角色 id 换成姓名。 */
 function formatVolumeBeats(volume: NovelVolumeDesign, cast: NovelCast): string[] {
-  const names = new Map(cast.characters.map((character) => [character.id, character.name]));
   return volume.beats.map((beat, index) => {
     const who = beat.characterIds
-      .map((id) => names.get(id) ?? id)
+      .map((id) => characterNameById(id, cast.characters))
       .filter(Boolean)
       .join('、');
     return `${index + 1}. [${beat.id}] ${beat.title}${who ? `（${who}）` : ''}：${beat.event}`;
@@ -265,7 +265,7 @@ export function buildVolumesPrompt(body: NovelVolumesRequest): string {
     `选定选题：${body.topic.title}（${body.topic.genreVolume}）`,
     `故事核：${body.topic.core}`,
     `每卷大约字数：${body.volumeChars}（约 ${novelChapterCountForVolume(body.volumeChars)} 章，单章约 ${NOVEL_CHAPTER_TARGET_CHARS} 字）`,
-    '请把全书排成叙事卷：只收叙事卷；每一卷按这个字数把方案在这一卷写明的事件铺成按时间的节拍，一拍写清地点、谁拦、当场代价这些不能对调的事，不要把方案的一块收成一句；characterIds 只用角色设定里的 id，末尾附 volumes JSON。',
+    '请把全书排成叙事卷：只收叙事卷；每一卷按这个字数把方案在这一卷写明的事件铺成按时间的节拍，一拍写清地点、谁拦、当场代价这些不能对调的事，不要把方案的一块收成一句；characterIds 必须原样照抄角色设定行首的 id，不要改写、不要去掉下划线，末尾附 volumes JSON。',
   );
   return lines.join('\n');
 }

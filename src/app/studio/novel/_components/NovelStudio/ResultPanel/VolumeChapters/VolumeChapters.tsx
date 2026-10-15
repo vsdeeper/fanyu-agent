@@ -1,4 +1,5 @@
 import { Button, Card, Popconfirm } from 'antd';
+import { characterNameById } from '@/app/api/studio/novel/_shared/character-ids';
 import {
   CONFIRM_CANCEL,
   CONFIRM_OK,
@@ -41,7 +42,6 @@ export default function VolumeChapters({
   onChangeChapter,
   onRemoveChapter,
 }: VolumeChaptersProps) {
-  const nameById = new Map(characters.map((character) => [character.id, character.name]));
   const hasChapters = chapters.length > 0;
 
   return (
@@ -59,7 +59,7 @@ export default function VolumeChapters({
         {volume.beats.length > 0 ? (
           volume.beats.map((beat, index) => {
             const who = beat.characterIds
-              .map((id) => nameById.get(id) ?? id)
+              .map((id) => characterNameById(id, characters))
               .filter(Boolean)
               .join('、');
             return (

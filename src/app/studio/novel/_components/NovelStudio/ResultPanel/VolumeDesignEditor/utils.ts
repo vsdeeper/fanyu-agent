@@ -1,3 +1,7 @@
+import {
+  canonicalCharacterIds,
+  type CharacterIdRef,
+} from '@/app/api/studio/novel/_shared/character-ids';
 import type { NovelVolumeBeat, NovelVolumeDesign } from '../../types';
 
 export type BeatDraft = {
@@ -34,8 +38,11 @@ export function createPendingVolume(id: string): NovelVolumeDesign {
   };
 }
 
-/** 把一卷收成编辑草稿。 */
-export function volumeToDraft(volume: NovelVolumeDesign): VolumeDraft {
+/** 把一卷收成编辑草稿。角色 id 少了下划线时收成角色表里的 id，方便多选对上姓名。 */
+export function volumeToDraft(
+  volume: NovelVolumeDesign,
+  characters: readonly CharacterIdRef[] = [],
+): VolumeDraft {
   return {
     title: volume.title,
     conflict: volume.conflict,
@@ -43,7 +50,7 @@ export function volumeToDraft(volume: NovelVolumeDesign): VolumeDraft {
     beats: volume.beats.map((beat) => ({
       title: beat.title,
       event: beat.event,
-      characterIds: [...beat.characterIds],
+      characterIds: canonicalCharacterIds(beat.characterIds, characters),
     })),
   };
 }

@@ -1,6 +1,7 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Input, Popconfirm, Select } from 'antd';
 import { useState } from 'react';
+import { characterNameById } from '@/app/api/studio/novel/_shared/character-ids';
 import {
   CANCEL_BUTTON,
   EDIT_BUTTON,
@@ -55,16 +56,15 @@ export default function VolumeCard({
   onDelete,
 }: VolumeCardProps) {
   const [editing, setEditing] = useState(pending);
-  const [draft, setDraft] = useState(() => volumeToDraft(volume));
+  const [draft, setDraft] = useState(() => volumeToDraft(volume, characters));
   const canSave = isSavableVolume(draft);
-  const nameById = new Map(characters.map((character) => [character.id, character.name]));
   const characterOptions = characters.map((character) => ({
     label: character.name,
     value: character.id,
   }));
 
   function startEdit() {
-    setDraft(volumeToDraft(volume));
+    setDraft(volumeToDraft(volume, characters));
     setEditing(true);
   }
 
@@ -215,7 +215,7 @@ export default function VolumeCard({
             {volume.beats.length > 0 ? (
               volume.beats.map((beat, beatIndex) => {
                 const who = beat.characterIds
-                  .map((id) => nameById.get(id) ?? id)
+                  .map((id) => characterNameById(id, characters))
                   .filter(Boolean)
                   .join('、');
                 return (

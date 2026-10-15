@@ -988,7 +988,7 @@ export function useNovelStudio(task: NovelTaskDetail) {
       async (fullText) => {
         if (runId !== streamRunIdRef.current) return;
         const { prose, json } = extractTrailingJsonBlock(fullText);
-        const nextVolumes = parseVolumesPayload(json, currentPlan);
+        const nextVolumes = parseVolumesPayload(json, currentPlan, castBody.characters);
         if (nextVolumes.length === 0) {
           if (runId !== streamRunIdRef.current) return;
           setPhase(hadDraft ? 'volumed' : 'volumes');

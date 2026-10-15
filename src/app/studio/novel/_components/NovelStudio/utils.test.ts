@@ -310,6 +310,33 @@ describe('parseVolumesPayload', () => {
     ]);
   });
 
+  it('角色 id 少了下划线时收成角色表里的 id', () => {
+    const parsed = parseVolumesPayload(
+      {
+        volumes: [
+          {
+            id: 'vol-1',
+            title: '南山血羽',
+            beats: [
+              {
+                id: 'beat-1',
+                title: '招摇山吞牲牲',
+                event: '祭血',
+                characterIds: ['jiangxu', 'qingli', 'jiangxu'],
+              },
+            ],
+          },
+        ],
+      },
+      undefined,
+      [
+        { id: 'jiang_xu', name: '姜墟' },
+        { id: 'qing_li', name: '青黎' },
+      ],
+    );
+    expect(parsed[0]?.beats[0]?.characterIds).toEqual(['jiang_xu', 'qing_li']);
+  });
+
   it('sourceSectionId 对不上方案节时丢掉', () => {
     const parsed = parseVolumesPayload(
       { volumes: [{ id: 'vol-1', title: '第一卷', sourceSectionId: 'missing' }] },

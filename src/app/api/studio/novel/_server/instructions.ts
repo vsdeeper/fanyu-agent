@@ -83,7 +83,7 @@ export const VOLUMES_INSTRUCTIONS = `你是网文长篇的卷纲编辑。根据�
 - title 是这一卷的标题，由这个故事自己决定。
 - sourceSectionId 指向创作方案里对应的一节 id；没有对应关系时省略这个字段。
 - conflict 写这一卷的核心冲突；hook 写卷末钩子，必须能交给下一卷，终卷的钩子收在终局上。
-- beats 从开卷排到卷末。title 是这一拍的短标题；event 写清这一拍发生的事；characterIds 只填本批角色里出场角色的 id，过场人物可以不写，没有则用空数组。
+- beats 从开卷排到卷末。title 是这一拍的短标题；event 写清这一拍发生的事；characterIds 只填【角色设定】人物行开头的 id，必须原样照抄，不要改写、不要去掉下划线。过场人物可以不写，没有则用空数组。
 - 不要写章卡。不要输出 JSON 以外的代码块。`;
 
 /** 按卷一次出齐章卡。 */
