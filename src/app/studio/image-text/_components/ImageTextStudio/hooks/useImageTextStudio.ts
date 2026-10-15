@@ -98,6 +98,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
       materials: toMaterialItems(initialPlan?.materialUrls ?? []),
       documents: initialPlan?.documents ?? [],
       content: initialPlan?.content ?? '',
+      planRequirement: initialPlan?.planRequirement ?? '',
       styleReferenceImages: toImageItems(initialGenerate?.styleReferenceUrl),
       characterRequirement: initialGenerate?.characterRequirement ?? '',
       includeDisclaimer: initialGenerate?.includeDisclaimer !== false,
@@ -166,8 +167,10 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
         item.file ? readUploadItemAsDataUrl(item) : Promise.resolve(item.previewUrl),
       ),
     );
+    const planRequirement = values.planRequirement?.trim() ?? '';
     const saved = await saveImageTextStep<ImageTextPlanSnapshot>(task.id, 'plan', {
       content: values.content?.trim() ?? '',
+      ...(planRequirement ? { planRequirement } : {}),
       materialUrls,
       documents: await serializePlanDocuments(documents),
       body: bodyRef.current,
@@ -236,6 +239,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
       );
       const planDocuments = documents.length > 0 ? await toPlanDocuments(documents) : [];
       const content = String(panelForm.getFieldValue('content') ?? '').trim();
+      const planRequirement = String(panelForm.getFieldValue('planRequirement') ?? '').trim();
       const res = await fetch('/api/studio/image-text/plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -245,6 +249,7 @@ export function useImageTextStudio(task: ImageTextTaskDetail) {
             materialDataUrls,
             ...(planDocuments.length > 0 ? { documents: planDocuments } : {}),
             ...(content ? { content } : {}),
+            ...(planRequirement ? { planRequirement } : {}),
           }),
         ),
       });

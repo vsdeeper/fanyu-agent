@@ -5,6 +5,7 @@ import {
   IMAGE_TEXT_MAX_CONTENT_LENGTH,
   IMAGE_TEXT_MAX_DOCUMENTS,
   IMAGE_TEXT_MAX_MATERIALS,
+  IMAGE_TEXT_MAX_PLAN_REQUIREMENT_LENGTH,
 } from '@/app/api/studio/image-text/_shared/constants';
 import GenerateSpecFields from '@/app/studio/_components/GenerateSpecFields';
 import ProductDocsUpload from '@/app/studio/_components/ProductDocsUpload';
@@ -31,6 +32,9 @@ import {
   MATERIALS_LABEL,
   MISSING_INPUT_WARNING,
   PLAN_BUTTON,
+  PLAN_REQUIREMENT_HINT,
+  PLAN_REQUIREMENT_LABEL,
+  PLAN_REQUIREMENT_PLACEHOLDER,
   VISUAL_REFERENCE_HINT,
   VISUAL_REFERENCE_LABEL,
 } from '../constants';
@@ -234,6 +238,32 @@ export default function ControlPanel({
                 maxLength={IMAGE_TEXT_MAX_CONTENT_LENGTH}
                 showCount
                 placeholder={CONTENT_PLACEHOLDER}
+                disabled={planning}
+              />
+            </Form.Item>
+            <Form.Item
+              name="planRequirement"
+              label={
+                <span className={styles.labelWithTip}>
+                  {PLAN_REQUIREMENT_LABEL}
+                  <Tooltip title={PLAN_REQUIREMENT_HINT}>
+                    <span
+                      className={styles.labelTipIcon}
+                      role="img"
+                      aria-label={PLAN_REQUIREMENT_HINT}
+                    >
+                      <QuestionCircleOutlined />
+                    </span>
+                  </Tooltip>
+                </span>
+              }
+              preserve
+            >
+              <Input.TextArea
+                rows={3}
+                maxLength={IMAGE_TEXT_MAX_PLAN_REQUIREMENT_LENGTH}
+                showCount
+                placeholder={PLAN_REQUIREMENT_PLACEHOLDER}
                 disabled={planning}
               />
             </Form.Item>

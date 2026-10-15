@@ -37,6 +37,10 @@ export const DOCUMENTS_ACCEPT = '.txt,.md,.pdf';
 export const DOCUMENTS_TYPE_WARNING = '仅支持 TXT、MD、PDF';
 export const CONTENT_LABEL = '内容';
 export const CONTENT_PLACEHOLDER = '粘贴或填写主题、大纲、要点等，将整理成图文卡片';
+export const PLAN_REQUIREMENT_LABEL = '我的要求';
+export const PLAN_REQUIREMENT_HINT =
+  '可指定要输出哪些内容块、必含小节与删减侧重；有填写时优先按此调整正文结构';
+export const PLAN_REQUIREMENT_PLACEHOLDER = '可选：如「只要取穴、常见按压方式、配穴组合三个小节」';
 export const VISUAL_REFERENCE_LABEL = '视觉参考';
 export const VISUAL_REFERENCE_HINT =
   '对齐画风、配色与字体；人物主要用于锁定外貌；姿态以「我的要求」优先，其次按正文，不作标识点/标注位置依据';

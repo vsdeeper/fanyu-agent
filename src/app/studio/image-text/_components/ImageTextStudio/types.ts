@@ -32,6 +32,8 @@ export type ImageTextGeneratedImage = {
 export type ImageTextPlanSnapshot = {
   /** 用户填写的输入内容；旧任务可能落在 requirement。 */
   content: string;
+  /** 可选：内容步「我的要求」（内容块 / 小节结构）；旧任务可能无此键。 */
+  planRequirement?: string;
   materialUrls: string[];
   /** TXT / MD / PDF 等素材文件；旧任务可能无此键。 */
   documents: ProductDocUploadItem[];
@@ -71,6 +73,8 @@ export type ImageTextPanelValues = {
   materials: StudioImageUploadItem[];
   documents: ProductDocUploadItem[];
   content: string;
+  /** 可选：内容步指定输出内容块 / 小节结构。 */
+  planRequirement: string;
   styleReferenceImages: StudioImageUploadItem[];
   /** 可选：生成步画面补充要求。 */
   characterRequirement: string;

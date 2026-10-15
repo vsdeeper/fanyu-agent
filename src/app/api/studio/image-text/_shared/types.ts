@@ -7,6 +7,8 @@ export type ImageTextPlanRequest = {
   documents?: BusinessAnalysisDocumentInput[];
   /** 用户填写的正文/大纲，用于生成图文页。 */
   content?: string;
+  /** 可选：指定输出内容块、必含小节、删减侧重。 */
+  planRequirement?: string;
 };
 
 export type ImageTextSseTextEvent = {

@@ -5,6 +5,7 @@ import {
   IMAGE_TEXT_MAX_CONTENT_LENGTH,
   IMAGE_TEXT_MAX_DOCUMENTS,
   IMAGE_TEXT_MAX_MATERIALS,
+  IMAGE_TEXT_MAX_PLAN_REQUIREMENT_LENGTH,
 } from '../_shared/constants';
 import type { ImageTextPlanRequest } from '../_shared/types';
 import { isAllowedImageTextDocument } from './document-guard';
@@ -26,6 +27,7 @@ const planBodySchema = z
       .default([]),
     documents: z.array(documentInputSchema).max(IMAGE_TEXT_MAX_DOCUMENTS).optional(),
     content: z.string().trim().max(IMAGE_TEXT_MAX_CONTENT_LENGTH).optional(),
+    planRequirement: z.string().trim().max(IMAGE_TEXT_MAX_PLAN_REQUIREMENT_LENGTH).optional(),
   })
   .refine(
     (data) =>
@@ -39,10 +41,12 @@ export function parsePlanBody(json: unknown): ImageTextPlanRequest | null {
   const parsed = planBodySchema.safeParse(json);
   if (!parsed.success) return null;
   const content = parsed.data.content?.trim();
+  const planRequirement = parsed.data.planRequirement?.trim();
   const documents = parsed.data.documents;
   return {
     materialDataUrls: parsed.data.materialDataUrls,
     ...(documents?.length ? { documents } : {}),
     ...(content ? { content } : {}),
+    ...(planRequirement ? { planRequirement } : {}),
   };
 }

@@ -303,6 +303,9 @@ export function readPlanSnapshot(data: unknown): ImageTextPlanSnapshot | undefin
   const caption = asString(record.caption) ?? parseCaptionFromBody(body) ?? cards[0]?.caption ?? '';
   return {
     content: asString(record.content) ?? asString(record.requirement) ?? '',
+    ...(asString(record.planRequirement)
+      ? { planRequirement: asString(record.planRequirement) }
+      : {}),
     materialUrls,
     documents,
     body,

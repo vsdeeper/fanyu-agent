@@ -42,6 +42,11 @@ export function buildPlanPrompt(
     lines.push('【内容】', content);
   }
 
+  const planRequirement = body.planRequirement?.trim();
+  if (planRequirement) {
+    lines.push('【我的要求】', planRequirement);
+  }
+
   if (materialCount === 0 && !hasFileMaterials && content) {
     lines.push('未上传素材图与素材文件：请完全依据【内容】整理图文卡片正文。');
   } else if (materialCount === 0 && hasFileMaterials && !content) {

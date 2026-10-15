@@ -6,6 +6,7 @@ import {
   normalizeCardBody,
   parseCaptionFromBody,
   readGenerateSnapshot,
+  readPlanSnapshot,
   stripCaptionFromBody,
   stripHeadingPinyin,
   stripHeadingPinyinFromBody,
@@ -192,5 +193,36 @@ describe('readGenerateSnapshot', () => {
         includeDisclaimer: false,
       })?.includeDisclaimer,
     ).toBe(false);
+  });
+});
+
+describe('readPlanSnapshot', () => {
+  it('读取内容步 planRequirement', () => {
+    expect(
+      readPlanSnapshot({
+        content: '穴位介绍',
+        planRequirement: '只要取穴与配穴组合',
+        materialUrls: [],
+        documents: [],
+        body: '# 标题',
+        caption: '',
+        cards: [],
+        view: 'plan',
+      })?.planRequirement,
+    ).toBe('只要取穴与配穴组合');
+  });
+
+  it('旧快照无 planRequirement 时不补空键', () => {
+    expect(
+      readPlanSnapshot({
+        content: '穴位介绍',
+        materialUrls: [],
+        documents: [],
+        body: '# 标题',
+        caption: '',
+        cards: [],
+        view: 'plan',
+      })?.planRequirement,
+    ).toBeUndefined();
   });
 });

@@ -65,6 +65,36 @@ describe('buildPlanPrompt', () => {
     expect(prompt).toContain('【内容】');
     expect(prompt).toContain('补充要点');
   });
+
+  it('有 planRequirement 时写入【我的要求】', () => {
+    const prompt = buildPlanPrompt({
+      materialDataUrls: [],
+      content: '穴位介绍',
+      planRequirement: '只要取穴与配穴组合两个小节',
+    });
+    expect(prompt).toContain('【我的要求】');
+    expect(prompt).toContain('只要取穴与配穴组合两个小节');
+  });
+
+  it('无 planRequirement 时不写入【我的要求】', () => {
+    const prompt = buildPlanPrompt({ materialDataUrls: [], content: '穴位介绍' });
+    expect(prompt).not.toContain('【我的要求】');
+  });
+});
+
+describe('parsePlanBody planRequirement', () => {
+  it('接受可选 planRequirement', () => {
+    expect(
+      parsePlanBody({
+        content: '穴位介绍',
+        planRequirement: '只要取穴与配穴组合',
+      }),
+    ).toEqual({
+      materialDataUrls: [],
+      content: '穴位介绍',
+      planRequirement: '只要取穴与配穴组合',
+    });
+  });
 });
 
 describe('resolveImageTextDocuments', () => {
