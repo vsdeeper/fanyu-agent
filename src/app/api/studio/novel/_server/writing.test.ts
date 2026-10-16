@@ -46,7 +46,7 @@ const plan: NovelPlan = {
 };
 
 const writingBody: NovelWritingRequest = {
-  unitId: 'ch-2',
+  unitId: 'ch-5',
   worldview,
   topic,
   plan,
@@ -60,11 +60,25 @@ const writingBody: NovelWritingRequest = {
       body: '更早章节的全文不应进入提示。',
     },
     {
+      title: '雨停',
+      scene: '廊檐下',
+      event: '等人散去',
+      hook: '灯还亮着',
+      body: '这是倒数第三章全文。',
+    },
+    {
       title: '钥匙',
       scene: '旧屋门口',
       event: '拿到钥匙',
       hook: '门锁响了一声',
-      body: '门锁响了一声。这是紧挨着的上一章全文。',
+      body: '这是倒数第二章全文。',
+    },
+    {
+      title: '旧信',
+      scene: '抽屉里',
+      event: '拆开信封',
+      hook: '没有落款',
+      body: '这是紧挨着的上一章全文。',
     },
   ],
   chapter: {
@@ -123,7 +137,7 @@ describe('parseWritingBody', () => {
 });
 
 describe('buildWritingPrompt', () => {
-  it('带上世界观章节、完整方案、上一章全文，以及下一章的标题和钩子', () => {
+  it('带上世界观章节、完整方案、最近三章全文，以及下一章的标题和钩子', () => {
     const prompt = buildWritingPrompt(writingBody);
     expect(prompt).toContain('【世界观章节】');
     expect(prompt).toContain('夏天，老院子');
@@ -131,8 +145,11 @@ describe('buildWritingPrompt', () => {
     expect(prompt).toContain('【角色设定】');
     expect(prompt).toContain('第1章 夜路');
     expect(prompt).toContain('场景：巷口');
-    expect(prompt).toContain('门锁响了一声。这是紧挨着的上一章全文。');
+    expect(prompt).toContain('这是倒数第三章全文。');
+    expect(prompt).toContain('这是倒数第二章全文。');
+    expect(prompt).toContain('这是紧挨着的上一章全文。');
     expect(prompt).not.toContain('更早章节的全文不应进入提示。');
+    expect(prompt).toContain('最近至多 3 章附全文');
     expect(prompt).toContain('【下一章边界】');
     expect(prompt).toContain('钩子：陌生人登门');
     expect(prompt).not.toContain('节拍');

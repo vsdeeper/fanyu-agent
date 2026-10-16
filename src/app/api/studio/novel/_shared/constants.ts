@@ -47,6 +47,12 @@ export const NOVEL_DEFAULT_VOLUME_CHARS = 120_000;
 /** 单章目标字数，用来把一卷的字数折成章数。 */
 export const NOVEL_CHAPTER_TARGET_CHARS = 4000;
 
+/**
+ * 正文写作时，此前各章里附全文的最近章数。
+ * 更早的章只带章卡，避免跨章口述细节丢失；再往前仍靠章卡与设定。
+ */
+export const NOVEL_WRITING_PREVIOUS_BODY_COUNT = 3;
+
 /** 每卷字数是否在允许区间内。 */
 export function isNovelVolumeCharsInRange(value: number): boolean {
   return (

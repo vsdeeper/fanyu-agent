@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   NOVEL_DEFAULT_REASONING_EFFORT,
   NOVEL_DEFAULT_VOLUME_CHARS,
+  NOVEL_WRITING_PREVIOUS_BODY_COUNT,
   readNovelVolumeChars,
   type NovelReasoningEffort,
 } from '@/app/api/studio/novel/_shared/constants';
@@ -1456,7 +1457,8 @@ export function useNovelStudio(task: NovelTaskDetail) {
             cast: castBody,
             ...(stylePrompt ? { stylePrompt } : {}),
             previousChapters: resolved.previous.map((chapter, index, list) => {
-              const body = index === list.length - 1 ? bodyById.get(chapter.id)?.trim() : undefined;
+              const attachBody = index >= list.length - NOVEL_WRITING_PREVIOUS_BODY_COUNT;
+              const body = attachBody ? bodyById.get(chapter.id)?.trim() : undefined;
               return {
                 title: chapter.title,
                 scene: chapter.scene,
